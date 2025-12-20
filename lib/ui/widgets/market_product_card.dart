@@ -258,8 +258,7 @@ class _BuyStockBottomSheetState extends ConsumerState<_BuyStockBottomSheet> {
                         ? () {
                             ref
                                 .read(gameControllerProvider)
-                                .buyStock(widget.product, quantityInt,
-                                    unitPrice: widget.unitPrice);
+                                .buyStock(widget.product, quantityInt);
                             Navigator.of(context).pop();
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
