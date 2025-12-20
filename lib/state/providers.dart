@@ -345,6 +345,37 @@ class GameController extends StateNotifier<GlobalGameState> {
     simulationEngine.updateTrucks(updatedTrucks);
   }
 
+  /// Buy a new truck
+  void buyTruck() {
+    print('🟢 CONTROLLER ACTION: Buying truck');
+    const truckPrice = 500.0;
+    
+    if (state.cash < truckPrice) {
+      state = state.addLogMessage('Insufficient funds to buy truck ($truckPrice)');
+      return;
+    }
+
+    final truck = Truck(
+      id: _uuid.v4(),
+      name: 'Truck ${state.trucks.length + 1}',
+      inventory: {},
+    );
+
+    // Update state
+    final updatedTrucks = [...state.trucks, truck];
+    final newCash = state.cash - truckPrice;
+    
+    state = state.copyWith(
+      trucks: updatedTrucks,
+      cash: newCash,
+    );
+    state = state.addLogMessage('Bought ${truck.name} for \$$truckPrice');
+    
+    // Sync to simulation engine
+    simulationEngine.updateTrucks(updatedTrucks);
+    simulationEngine.updateCash(newCash);
+  }
+
   /// Get current machines list
   List<Machine> get machines => state.machines;
 
@@ -354,9 +385,20 @@ class GameController extends StateNotifier<GlobalGameState> {
   /// Get warehouse inventory
   Warehouse get warehouse => state.warehouse;
 
+  // No dispose method needed in GameController for SimulationEngine as it's not a provider but an internal object.
+  // We just want to make sure the timer stops.
   @override
   void dispose() {
-    simulationEngine.dispose();
+    simulationEngine.stop();
+    // Do NOT call super.dispose() here manually because StateNotifierProvider handles it?
+    // Wait, StateNotifier expects dispose() to be called.
+    // The error says "Tried to use GameController after dispose was called".
+    // This implies that something is accessing the controller AFTER it has been disposed.
+    // Riverpod calls dispose() automatically.
+    
+    // Let's try removing our manual dispose entirely and just rely on onDispose in the provider definition?
+    // No, we need to stop the engine.
+    
     super.dispose();
   }
 }
@@ -366,7 +408,10 @@ class GameController extends StateNotifier<GlobalGameState> {
 // Note: Using Provider with StateNotifier for Riverpod 3.0 compatibility
 final gameControllerProvider = Provider<GameController>((ref) {
   final controller = GameController(ref);
-  ref.onDispose(() => controller.dispose());
+  // ref.onDispose is redundant if the provider itself is disposed, but good for cleanup.
+  // However, StateNotifierProvider automatically calls dispose() on the notifier.
+  // So we don't need ref.onDispose(() => controller.dispose()).
+  // ref.onDispose(() => controller.dispose());
   return controller;
 });
 

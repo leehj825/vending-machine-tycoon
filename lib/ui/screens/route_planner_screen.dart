@@ -287,11 +287,27 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> {
                       ),
                     ),
                   ),
+                  // Truck List or Empty State (with Buy button)
                   SizedBox(
                     height: 130,
                     child: trucks.isEmpty
-                        ? const Center(
-                            child: Text('No trucks available'),
+                        ? Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Text('No trucks available'),
+                                const SizedBox(height: 8),
+                                ElevatedButton.icon(
+                                  onPressed: () {
+                                    ref
+                                        .read(gameControllerProvider.notifier)
+                                        .buyTruck();
+                                  },
+                                  icon: const Icon(Icons.add_shopping_cart, size: 16),
+                                  label: const Text('Buy Truck (\$500)'),
+                                ),
+                              ],
+                            ),
                           )
                         : ListView.builder(
                             scrollDirection: Axis.horizontal,

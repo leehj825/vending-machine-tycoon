@@ -149,7 +149,14 @@ class SimulationEngine extends StateNotifier<SimulationState> {
     _tickTimer?.cancel();
     _tickTimer = Timer.periodic(
       const Duration(seconds: 1),
-      (_) => _tick(),
+      (timer) {
+        // Safe check to ensure we don't tick if disposed
+        if (!mounted) {
+          timer.cancel();
+          return;
+        }
+        _tick();
+      },
     );
   }
 
@@ -169,11 +176,14 @@ class SimulationEngine extends StateNotifier<SimulationState> {
     start();
   }
 
-  /// Dispose resources
   @override
   void dispose() {
     stop();
-    _streamController.close();
+    if (!_streamController.isClosed) {
+      _streamController.close();
+    }
+    // SimulationEngine is a StateNotifier, so we must call super.dispose()
+    // However, if we are manually managing it inside another notifier, we need to be careful.
     super.dispose();
   }
 
