@@ -650,7 +650,7 @@ class _LoadCargoDialogState extends ConsumerState<_LoadCargoDialog> {
             availableCapacity,
           ].reduce((a, b) => a < b ? a : b)
         : 0;
-    final quantityInt = _quantity.round().clamp(1, maxQuantity);
+    final quantityInt = maxQuantity > 0 ? _quantity.round().clamp(1, maxQuantity) : 0;
 
     return AlertDialog(
       title: Text('Load Cargo - ${widget.truck.name}'),
@@ -689,19 +689,25 @@ class _LoadCargoDialogState extends ConsumerState<_LoadCargoDialog> {
             ),
             if (_selectedProduct != null) ...[
               const SizedBox(height: 16),
-              Text('Quantity: $quantityInt'),
-              Slider(
-                value: _quantity.clamp(1.0, maxQuantity.toDouble()),
-                min: 1.0,
-                max: maxQuantity.toDouble(),
-                divisions: maxQuantity > 1 ? maxQuantity - 1 : 1,
-                label: quantityInt.toString(),
-                onChanged: (value) {
-                  setState(() {
-                    _quantity = value;
-                  });
-                },
-              ),
+              if (maxQuantity > 0) ...[
+                Text('Quantity: $quantityInt'),
+                Slider(
+                  value: _quantity.clamp(1.0, maxQuantity.toDouble()),
+                  min: 1.0,
+                  max: maxQuantity.toDouble(),
+                  divisions: maxQuantity > 1 ? maxQuantity - 1 : 1,
+                  label: quantityInt.toString(),
+                  onChanged: (value) {
+                    setState(() {
+                      _quantity = value;
+                    });
+                  },
+                ),
+              ] else
+                const Text(
+                  'Cannot load: Truck is full',
+                  style: TextStyle(color: Colors.red),
+                ),
             ],
           ],
         ),
