@@ -124,6 +124,25 @@ class SimulationEngine extends StateNotifier<SimulationState> {
   /// Stream of simulation state changes
   Stream<SimulationState> get stream => _streamController.stream;
 
+  /// Add a machine to the simulation
+  void addMachine(Machine machine) {
+    final updatedMachines = [...state.machines, machine];
+    state = state.copyWith(machines: updatedMachines);
+    _streamController.add(state);
+  }
+
+  /// Update cash in the simulation
+  void updateCash(double amount) {
+    state = state.copyWith(cash: amount);
+    _streamController.add(state);
+  }
+
+  /// Update trucks in the simulation
+  void updateTrucks(List<Truck> trucks) {
+    state = state.copyWith(trucks: trucks);
+    _streamController.add(state);
+  }
+
   /// Start the simulation (ticks every 1 second)
   void start() {
     _tickTimer?.cancel();

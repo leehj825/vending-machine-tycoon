@@ -142,12 +142,11 @@ class GameController extends StateNotifier<GlobalGameState> {
       currentCash: 0.0,
     );
 
-    // Update simulation engine
-    final updatedMachines = [...state.machines, machine];
-    _updateSimulationMachines(updatedMachines);
-
     // Deduct cash and update state
     final newCash = state.cash - price;
+    final updatedMachines = [...state.machines, machine];
+    
+    // Update local state for immediate UI feedback
     state = state.copyWith(
       machines: updatedMachines,
       cash: newCash,
@@ -155,6 +154,10 @@ class GameController extends StateNotifier<GlobalGameState> {
     state = state.addLogMessage(
       'Purchased ${machine.name} for \$${price.toStringAsFixed(2)}',
     );
+    
+    // Sync to simulation engine to prevent reversion on next tick
+    simulationEngine.addMachine(machine);
+    simulationEngine.updateCash(newCash);
   }
 
   /// Create a zone based on zone type
@@ -189,12 +192,6 @@ class GameController extends StateNotifier<GlobalGameState> {
     }
   }
 
-  /// Update machines in simulation engine
-  void _updateSimulationMachines(List<Machine> machines) {
-    // Note: SimulationEngine doesn't have a direct setter for machines
-    // In a full implementation, you'd need to add a method to update machines
-    // For now, we'll track them locally and sync periodically
-  }
 
   /// Buy stock and add to warehouse
   void buyStock(Product product, int quantity, {required double unitPrice}) {
@@ -207,12 +204,18 @@ class GameController extends StateNotifier<GlobalGameState> {
     final newInventory = Map<Product, int>.from(state.warehouse.inventory);
     newInventory[product] = currentQty + quantity;
     
+    // Calculate new cash amount
+    final newCashAmount = state.cash - totalPrice;
+    
     // Update the STATE object completely
     state = state.copyWith(
-      cash: state.cash - totalPrice,
+      cash: newCashAmount,
       warehouse: state.warehouse.copyWith(inventory: newInventory),
     );
     state = state.addLogMessage("Bought $quantity ${product.name}");
+    
+    // Sync cash to simulation engine to prevent reversion on next tick
+    simulationEngine.updateCash(newCashAmount);
   }
 
   /// Assign a route to a truck
@@ -239,14 +242,14 @@ class GameController extends StateNotifier<GlobalGameState> {
     final updatedTrucks = [...state.trucks];
     updatedTrucks[truckIndex] = updatedTruck;
 
-    // Update simulation engine trucks
-    _updateSimulationTrucks(updatedTrucks);
-
     // Update state
     state = state.copyWith(trucks: updatedTrucks);
     state = state.addLogMessage(
       'Assigned route with ${machineIds.length} stops to ${truck.name}',
     );
+    
+    // Sync to simulation engine to prevent reversion on next tick
+    simulationEngine.updateTrucks(updatedTrucks);
   }
 
   /// Update a truck's route (used by route planner)
@@ -270,19 +273,14 @@ class GameController extends StateNotifier<GlobalGameState> {
     final updatedTrucks = [...state.trucks];
     updatedTrucks[truckIndex] = updatedTruck;
 
-    // Update simulation engine trucks
-    _updateSimulationTrucks(updatedTrucks);
-
     // Update state
     state = state.copyWith(trucks: updatedTrucks);
     state = state.addLogMessage(
       'Updated route for ${truck.name}: ${machineIds.length} stops',
     );
-  }
-
-  /// Update trucks in simulation engine
-  void _updateSimulationTrucks(List<Truck> trucks) {
-    // Similar to machines, would need simulation engine method to update
+    
+    // Sync to simulation engine to prevent reversion on next tick
+    simulationEngine.updateTrucks(updatedTrucks);
   }
 
   /// Load cargo onto a truck from warehouse
@@ -342,6 +340,9 @@ class GameController extends StateNotifier<GlobalGameState> {
     state = state.addLogMessage(
       'Loaded $quantity ${product.name} onto ${truck.name}',
     );
+    
+    // Sync to simulation engine to prevent reversion on next tick
+    simulationEngine.updateTrucks(updatedTrucks);
   }
 
   /// Get current machines list
