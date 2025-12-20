@@ -110,7 +110,7 @@ class SimulationEngine extends StateNotifier<SimulationState> {
     int initialReputation = 100,
   }) : super(
           SimulationState(
-            time: const GameTime(day: 1, hour: 8, minute: 0, tick: 0),
+            time: const GameTime(day: 1, hour: 8, minute: 0, tick: 48), // 8:00 AM = 8 hours * 6 ticks/hour = 48 ticks
             machines: initialMachines,
             trucks: initialTrucks,
             cash: initialCash,

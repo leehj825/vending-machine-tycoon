@@ -361,37 +361,55 @@ class GameController extends StateNotifier<GlobalGameState> {
 }
 
 /// Provider for GameController
-// Note: Using a custom provider since StateNotifierProvider is in legacy
-// This creates a provider that manages the GameController lifecycle
+/// 
+/// IMPORTANT: In Riverpod 3.0.3, StateNotifierProvider is not available.
+/// We use a regular Provider. To make UI rebuilds work when state changes,
+/// we use a StreamProvider that periodically checks for state changes.
 final gameControllerProvider = Provider<GameController>((ref) {
   final controller = GameController(ref);
   ref.onDispose(() => controller.dispose());
   return controller;
 });
 
+/// Stream provider that watches the controller's state changes
+/// This is a workaround since StateNotifierProvider doesn't exist in Riverpod 3.0.3
+/// We create a stream that periodically checks for state changes
+final _gameStateStreamProvider = StreamProvider<GlobalGameState>((ref) async* {
+  final controller = ref.read(gameControllerProvider); // Use read to avoid circular dependency
+  // Yield initial state
+  yield controller.currentState;
+  
+  // Create a stream that periodically checks for state changes
+  GlobalGameState lastState = controller.currentState;
+  await for (final _ in Stream.periodic(const Duration(milliseconds: 50))) {
+    final currentState = controller.currentState;
+    if (currentState != lastState) {
+      lastState = currentState;
+      yield currentState;
+    }
+  }
+});
+
 /// Provider for the game state
-/// Note: GameController extends StateNotifier, so we expose state through a getter
+/// This watches the stream provider to get state updates
 final gameStateProvider = Provider<GlobalGameState>((ref) {
-  final controller = ref.watch(gameControllerProvider);
-  // Access state through a public getter since StateNotifier.state is protected
-  return controller.currentState;
+  final asyncState = ref.watch(_gameStateStreamProvider);
+  return asyncState.whenData((state) => state).value ?? 
+         ref.read(gameControllerProvider).currentState;
 });
 
 /// Provider for machines list
 final machinesProvider = Provider<List<Machine>>((ref) {
-  final controller = ref.watch(gameControllerProvider);
-  return controller.machines;
+  return ref.watch(gameControllerProvider).machines;
 });
 
 /// Provider for trucks list
 final trucksProvider = Provider<List<Truck>>((ref) {
-  final controller = ref.watch(gameControllerProvider);
-  return controller.trucks;
+  return ref.watch(gameControllerProvider).trucks;
 });
 
 /// Provider for warehouse
 final warehouseProvider = Provider<Warehouse>((ref) {
-  final controller = ref.watch(gameControllerProvider);
-  return controller.warehouse;
+  return ref.watch(gameControllerProvider).warehouse;
 });
 
