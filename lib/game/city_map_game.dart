@@ -8,9 +8,12 @@ import '../state/providers.dart';
 import 'components/map_machine.dart';
 import 'components/map_truck.dart';
 
+import '../simulation/models/machine.dart';
+
 /// Main game class for the city map visualization
 class CityMapGame extends FlameGame with HasGameReference, PanDetector, ScaleDetector {
   final WidgetRef ref;
+  final void Function(Machine)? onMachineTap;
   final Map<String, MapMachine> _machineComponents = {};
   final Map<String, MapTruck> _truckComponents = {};
   
@@ -26,7 +29,7 @@ class CityMapGame extends FlameGame with HasGameReference, PanDetector, ScaleDet
   Vector2 _cameraPosition = mapCenter;
   Vector2? _panStartPosition;
 
-  CityMapGame(this.ref);
+  CityMapGame(this.ref, {this.onMachineTap});
 
   @override
   Color backgroundColor() => const Color(0xFF388E3C);

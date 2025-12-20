@@ -271,7 +271,7 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> {
           // Top Section: Truck Selector
           SliverToBoxAdapter(
             child: Container(
-              constraints: const BoxConstraints(minHeight: 120),
+              constraints: const BoxConstraints(minHeight: 150),
               padding: const EdgeInsets.symmetric(vertical: 8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -288,7 +288,7 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> {
                     ),
                   ),
                   SizedBox(
-                    height: 100,
+                    height: 130,
                     child: trucks.isEmpty
                         ? const Center(
                             child: Text('No trucks available'),

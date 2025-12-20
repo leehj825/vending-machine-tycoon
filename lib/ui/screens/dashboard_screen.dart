@@ -70,41 +70,47 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             child: Container(
               padding: const EdgeInsets.all(16),
               color: Theme.of(context).colorScheme.surface,
-              child: Row(
-                children: [
-                  // Cash Card
-                  Expanded(
-                    child: _StatusCard(
-                      icon: Icons.attach_money,
-                      iconColor: Colors.green,
-                      label: 'Cash',
-                      value: '\$${cash.toStringAsFixed(2)}',
-                      valueColor: Colors.green,
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    // Cash Card
+                    SizedBox(
+                      width: 140,
+                      child: _StatusCard(
+                        icon: Icons.attach_money,
+                        iconColor: Colors.green,
+                        label: 'Cash',
+                        value: '\$${cash.toStringAsFixed(2)}',
+                        valueColor: Colors.green,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  // Reputation Card
-                  Expanded(
-                    child: _StatusCard(
-                      icon: Icons.star,
-                      iconColor: Colors.amber,
-                      label: 'Reputation',
-                      value: reputation.toString(),
-                      valueColor: Colors.amber,
+                    const SizedBox(width: 12),
+                    // Reputation Card
+                    SizedBox(
+                      width: 140,
+                      child: _StatusCard(
+                        icon: Icons.star,
+                        iconColor: Colors.amber,
+                        label: 'Reputation',
+                        value: reputation.toString(),
+                        valueColor: Colors.amber,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  // Time Card
-                  Expanded(
-                    child: _StatusCard(
-                      icon: Icons.access_time,
-                      iconColor: Colors.blue,
-                      label: 'Time',
-                      value: _formatTime(dayCount, hourOfDay),
-                      valueColor: Colors.blue,
+                    const SizedBox(width: 12),
+                    // Time Card
+                    SizedBox(
+                      width: 160,
+                      child: _StatusCard(
+                        icon: Icons.access_time,
+                        iconColor: Colors.blue,
+                        label: 'Time',
+                        value: _formatTime(dayCount, hourOfDay),
+                        valueColor: Colors.blue,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
