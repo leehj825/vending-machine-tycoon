@@ -68,8 +68,10 @@ final recentLogsProvider = Provider<List<String>>((ref) {
 });
 
 /// Provider that returns whether simulation is running
+/// Note: We use .notifier to access the controller instance since gameControllerProvider
+/// is a StateNotifierProvider that returns the state, not the controller
 final isSimulationRunningProvider = Provider<bool>((ref) {
-  final controller = ref.watch(gameControllerProvider);
+  final controller = ref.read(gameControllerProvider.notifier);
   return controller.isSimulationRunning;
 });
 
