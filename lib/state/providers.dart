@@ -8,7 +8,6 @@ import '../simulation/models/zone.dart';
 import '../simulation/models/machine.dart';
 import '../simulation/models/truck.dart';
 import 'game_state.dart';
-import 'market_provider.dart';
 
 part 'providers.freezed.dart';
 
@@ -190,9 +189,9 @@ class GameController extends StateNotifier<GlobalGameState> {
   }
 
   /// Buy stock and add to warehouse
-  void buyStock(Product product, int quantity) {
-    final cost = ref.read(marketPricesProvider).getPrice(product) * quantity;
-    if (state.cash < cost) {
+  void buyStock(Product product, int quantity, {required double unitPrice}) {
+    final totalPrice = unitPrice * quantity;
+    if (state.cash < totalPrice) {
       state = state.addLogMessage("Not enough cash!");
       return;
     }
@@ -202,7 +201,7 @@ class GameController extends StateNotifier<GlobalGameState> {
     
     // Update the STATE object completely
     state = state.copyWith(
-      cash: state.cash - cost,
+      cash: state.cash - totalPrice,
       warehouse: state.warehouse.copyWith(inventory: newInventory),
     );
     state = state.addLogMessage("Bought $quantity ${product.name}");
