@@ -190,47 +190,22 @@ class GameController extends StateNotifier<GlobalGameState> {
   }
 
   /// Buy stock and add to warehouse
-  void buyStock(Product product, int quantity, {double? unitPrice}) {
-    // Use provided price or get from market
-    final marketPrice = unitPrice ?? 
-        ref.read(marketPricesProvider).getPrice(product);
-    final totalPrice = marketPrice * quantity;
-    
-    if (state.cash < totalPrice) {
-      state = state.addLogMessage('Insufficient funds to buy stock');
+  void buyStock(Product product, int quantity) {
+    final cost = ref.read(marketPricesProvider).getPrice(product) * quantity;
+    if (state.cash < cost) {
+      state = state.addLogMessage("Not enough cash!");
       return;
     }
-
-    // Check warehouse capacity (max 1000 items)
-    const maxCapacity = 1000;
-    final currentTotal = state.warehouse.inventory.values.fold<int>(
-      0,
-      (sum, qty) => sum + qty,
-    );
+    final currentQty = state.warehouse.inventory[product] ?? 0;
+    final newInventory = Map<Product, int>.from(state.warehouse.inventory);
+    newInventory[product] = currentQty + quantity;
     
-    if (currentTotal + quantity > maxCapacity) {
-      final available = maxCapacity - currentTotal;
-      state = state.addLogMessage(
-        'Warehouse full! Only $available slots available',
-      );
-      return;
-    }
-
-    // Add to warehouse
-    final currentStock = state.warehouse.inventory[product] ?? 0;
-    final updatedInventory = Map<Product, int>.from(state.warehouse.inventory);
-    updatedInventory[product] = currentStock + quantity;
-    final newWarehouse = Warehouse(inventory: updatedInventory);
-
-    // Deduct cash and update state
-    final newCash = state.cash - totalPrice;
+    // Update the STATE object completely
     state = state.copyWith(
-      warehouse: newWarehouse,
-      cash: newCash,
+      cash: state.cash - cost,
+      warehouse: state.warehouse.copyWith(inventory: newInventory),
     );
-    state = state.addLogMessage(
-      'Purchased $quantity ${product.name} for \$${totalPrice.toStringAsFixed(2)}',
-    );
+    state = state.addLogMessage("Bought $quantity ${product.name}");
   }
 
   /// Assign a route to a truck

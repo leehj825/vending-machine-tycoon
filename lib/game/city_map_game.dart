@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flame/components.dart';
 import 'package:flame/game.dart';
+import 'package:flame/camera.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../state/providers.dart';
 import 'components/map_machine.dart';
@@ -16,15 +17,18 @@ class CityMapGame extends FlameGame with HasGameReference {
   CityMapGame(this.ref);
 
   @override
+  Color backgroundColor() => const Color(0xFF388E3C);
+
+  @override
   Future<void> onLoad() async {
     super.onLoad();
 
     // Setup camera for 1000x1000 grid
-    camera.viewfinder.visibleGameSize = Vector2(1000, 1000);
     camera.viewfinder.anchor = Anchor.center;
+    camera.viewport = FixedResolutionViewport(resolution: Vector2(1000, 1000));
 
     // Add grid background
-    add(GridBackground());
+    add(GridComponent());
 
     // Initial load of machines and trucks
     _syncMachines();
@@ -122,40 +126,15 @@ class CityMapGame extends FlameGame with HasGameReference {
   }
 }
 
-/// Background component that draws a 10x10 grid
-class GridBackground extends Component {
+/// Grid component that draws grid lines
+class GridComponent extends PositionComponent {
   @override
   void render(Canvas canvas) {
-    final paint = Paint()
-      ..color = const Color(0xFFE0E0E0)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1;
-
-    const gridSize = 1000.0;
-    const cellSize = gridSize / 10; // 10x10 grid
-
-    // Draw vertical lines
-    for (int i = 0; i <= 10; i++) {
-      final x = i * cellSize;
-      canvas.drawLine(
-        Offset(x, 0),
-        Offset(x, gridSize),
-        paint,
-      );
+    final paint = Paint()..color = const Color(0xFF757575)..strokeWidth = 20;
+    for (double i = 0; i <= 1000; i += 100) {
+      canvas.drawLine(Offset(i, 0), Offset(i, 1000), paint);
+      canvas.drawLine(Offset(0, i), Offset(1000, i), paint);
     }
-
-    // Draw horizontal lines
-    for (int i = 0; i <= 10; i++) {
-      final y = i * cellSize;
-      canvas.drawLine(
-        Offset(0, y),
-        Offset(gridSize, y),
-        paint,
-      );
-    }
-
-    // Grid labels removed for cleaner look
-    // Can be re-enabled for debugging if needed
   }
 }
 
