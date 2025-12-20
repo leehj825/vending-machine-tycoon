@@ -381,11 +381,16 @@ class SimulationEngine extends StateNotifier<SimulationState> {
 
       // If truck is at destination, start restocking
       if (distance < 5.0) {
-        // Truck arrived - restock the machine
-        // (In a full implementation, this would transfer inventory)
+        // Truck arrived - mark as restocking.
+        // IMPORTANT: Do NOT advance currentRouteIndex here.
+        // Restocking logic relies on truck.currentDestination (based on currentRouteIndex).
         return truck.copyWith(
           status: TruckStatus.restocking,
-          currentRouteIndex: truck.currentRouteIndex + 1,
+          // Snap to destination to avoid jitter on the map
+          currentX: destination.zone.x,
+          currentY: destination.zone.y,
+          targetX: destination.zone.x,
+          targetY: destination.zone.y,
         );
       }
 
@@ -554,6 +559,7 @@ class SimulationEngine extends StateNotifier<SimulationState> {
         updatedTrucks[i] = truck.copyWith(
           inventory: updatedTruckInventory,
           status: TruckStatus.traveling, // Done restocking, continue route
+          currentRouteIndex: truck.currentRouteIndex + 1,
         );
 
         // Update machine
@@ -562,9 +568,10 @@ class SimulationEngine extends StateNotifier<SimulationState> {
           hoursSinceRestock: 0.0,
         );
       } else {
-        // No space or no items, just mark truck as done
+        // No space or no items, still advance route so the truck doesn't get stuck.
         updatedTrucks[i] = truck.copyWith(
           status: TruckStatus.traveling,
+          currentRouteIndex: truck.currentRouteIndex + 1,
         );
       }
     }

@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flame/components.dart';
 import 'package:flame/game.dart';
@@ -67,12 +68,16 @@ class CityMapGame extends FlameGame with HasGameReference, PanDetector, ScaleDet
   void _updateZoom() {
     if (size.x == 0 || size.y == 0) return;
     
-    // Calculate zoom to fit width (portrait mode priority)
+    // Calculate zoom based on screen size.
+    // We intentionally start a bit "zoomed in" so the user can pan
+    // both horizontally and vertically in portrait mode.
     final widthZoom = size.x / mapWidth;
     final heightZoom = size.y / mapHeight;
     
-    // Use minimum to ensure entire map is visible
-    _currentZoom = (widthZoom < heightZoom ? widthZoom : heightZoom) * 0.95; // 95% to add padding
+    // Start from the larger fit (so we don't zoom out to show the whole map),
+    // then nudge in a bit more so panning is possible in both axes.
+    final baseZoom = math.max(widthZoom, heightZoom);
+    _currentZoom = baseZoom * 1.10;
     
     // Clamp zoom
     _currentZoom = _currentZoom.clamp(_minZoom, _maxZoom);

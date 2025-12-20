@@ -5,6 +5,10 @@ import '../../simulation/models/truck.dart';
 /// Component that represents a truck on the city map
 class MapTruck extends PositionComponent {
   Truck truck;
+  // Simulation coordinates appear to be in "grid units" (e.g., 0-10),
+  // while the map renders on a 1000x1000 world with grid lines every 100.
+  // Keep the map in pixel/world space by scaling simulation coords.
+  static const double _worldScale = 100.0;
   static const double _speed = 50.0; // Pixels per second
   static const double _arrivalThreshold = 2.0; // Distance to consider "arrived"
 
@@ -25,7 +29,7 @@ class MapTruck extends PositionComponent {
   void onLoad() {
     super.onLoad();
     // Initialize position from truck's current position
-    position = Vector2(truck.currentX, truck.currentY);
+    position = Vector2(truck.currentX * _worldScale, truck.currentY * _worldScale);
   }
 
   @override
@@ -33,7 +37,7 @@ class MapTruck extends PositionComponent {
     super.update(dt);
 
     // Update position from truck's current position (synced from simulation)
-    final targetPos = Vector2(truck.currentX, truck.currentY);
+    final targetPos = Vector2(truck.currentX * _worldScale, truck.currentY * _worldScale);
     
     // Move towards target position
     final direction = targetPos - position;
