@@ -257,7 +257,7 @@ class _BuyStockBottomSheetState extends ConsumerState<_BuyStockBottomSheet> {
                     onPressed: totalCost <= cash && quantityInt > 0
                         ? () {
                             ref
-                                .read(gameControllerProvider.notifier)
+                                .read(gameControllerProvider)
                                 .buyStock(
                                   widget.product, 
                                   quantityInt,

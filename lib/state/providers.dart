@@ -130,7 +130,6 @@ class GameController extends StateNotifier<GlobalGameState> {
   void buyMachine(ZoneType zoneType, {required double x, required double y}) {
     print('🟢 CONTROLLER ACTION: Attempting to buy machine...');
     final price = MachinePrices.getPrice(zoneType);
-    
     if (state.cash < price) {
       state = state.addLogMessage('Insufficient funds');
       return;
@@ -139,7 +138,8 @@ class GameController extends StateNotifier<GlobalGameState> {
     // 1. Create Data
     final zone = _createZoneForType(zoneType, x: x, y: y);
     
-    final machine = Machine(
+    // Create machine
+    final newMachine = Machine(
       id: _uuid.v4(),
       name: '${zoneType.name.toUpperCase()} Machine ${state.machines.length + 1}',
       zone: zone,
@@ -148,15 +148,16 @@ class GameController extends StateNotifier<GlobalGameState> {
       currentCash: 0.0,
     );
 
-    // 2. Sync to Engine (Critical Step!)
-    simulationEngine.addMachine(machine);
-    simulationEngine.updateCash(state.cash - price);
+    // Update simulation engine
+    final updatedMachines = [...state.machines, newMachine];
+    _updateSimulationMachines(updatedMachines);
 
-    // 3. Log
-    state = state.addLogMessage('Purchased ${machine.name}');
-    
-    // Note: We do NOT manually update state.machines here. 
-    // The Engine will update its state, fire the listener, and the UI will update automatically.
+    // UPDATE STATE DIRECTLY
+    state = state.copyWith(
+      cash: state.cash - price,
+      machines: updatedMachines,
+    );
+    state = state.addLogMessage("Bought ${newMachine.name}");
   }
 
   /// Create a zone based on zone type
@@ -194,7 +195,6 @@ class GameController extends StateNotifier<GlobalGameState> {
 
   /// Buy stock and add to warehouse
   void buyStock(Product product, int quantity, {required double unitPrice}) {
-    print('🟢 CONTROLLER ACTION: Buying stock. Qty: $quantity');
     final totalPrice = unitPrice * quantity;
     if (state.cash < totalPrice) {
       state = state.addLogMessage("Not enough cash!");
@@ -209,7 +209,7 @@ class GameController extends StateNotifier<GlobalGameState> {
     
     // Update the STATE object completely
     state = state.copyWith(
-      cash: newCashAmount,
+      cash: state.cash - totalPrice,
       warehouse: state.warehouse.copyWith(inventory: newInventory),
     );
     state = state.addLogMessage("Bought $quantity ${product.name}");
@@ -362,34 +362,38 @@ class GameController extends StateNotifier<GlobalGameState> {
 }
 
 /// Provider for GameController
-/// Using StateNotifierProvider so Riverpod listens to state changes automatically
-final gameControllerProvider = StateNotifierProvider<GameController, GlobalGameState>((ref) {
+// CHANGE TO StateNotifierProvider
+// Note: Using Provider with StateNotifier for Riverpod 3.0 compatibility
+final gameControllerProvider = Provider<GameController>((ref) {
   final controller = GameController(ref);
   ref.onDispose(() => controller.dispose());
   return controller;
 });
 
 /// Provider for the game state
-/// ref.watch(stateNotifierProvider) returns the state directly
 final gameStateProvider = Provider<GlobalGameState>((ref) {
-  return ref.watch(gameControllerProvider);
+  final controller = ref.watch(gameControllerProvider);
+  return controller.currentState;
 });
 
 /// Provider for machines list
-/// Read directly from state
+// UPDATE Derived Providers to read from the state
 final machinesProvider = Provider<List<Machine>>((ref) {
-  return ref.watch(gameControllerProvider).machines;
+  final controller = ref.watch(gameControllerProvider);
+  return controller.currentState.machines;
 });
 
 /// Provider for trucks list
 /// Read directly from state
 final trucksProvider = Provider<List<Truck>>((ref) {
-  return ref.watch(gameControllerProvider).trucks;
+  final controller = ref.watch(gameControllerProvider);
+  return controller.currentState.trucks;
 });
 
 /// Provider for warehouse
 /// Read directly from state
 final warehouseProvider = Provider<Warehouse>((ref) {
-  return ref.watch(gameControllerProvider).warehouse;
+  final controller = ref.watch(gameControllerProvider);
+  return controller.currentState.warehouse;
 });
 
