@@ -25,6 +25,8 @@ class CityMapGame extends FlameGame with ScaleDetector, ScrollDetector, TapDetec
   double _minZoom = 0.1;
   double _maxZoom = 5.0;
   double _lastScale = 1.0;
+  double _startZoom = 1.0;
+  bool _hasInitialized = false;
 
   // Legacy callback
   final void Function(Machine)? onMachineTap;
@@ -53,7 +55,12 @@ class CityMapGame extends FlameGame with ScaleDetector, ScrollDetector, TapDetec
   @override
   void onGameResize(Vector2 size) {
     super.onGameResize(size);
-    _fitMapToScreen();
+    // Only fit to screen on first resize, not on every resize
+    // This prevents interfering with user gestures
+    if (!_hasInitialized) {
+      _fitMapToScreen();
+      _hasInitialized = true;
+    }
   }
 
   void _fitMapToScreen() {
@@ -83,25 +90,29 @@ class CityMapGame extends FlameGame with ScaleDetector, ScrollDetector, TapDetec
 
   @override
   void onScaleStart(ScaleStartInfo info) {
-    // Reset scale tracker
+    // Store the initial zoom when gesture starts
+    _startZoom = camera.viewfinder.zoom;
     _lastScale = 1.0;
   }
 
   @override
   void onScaleUpdate(ScaleUpdateInfo info) {
-    // 1. Zoom (Incremental)
-    final currentScale = info.scale.global.x;
-    if (!currentScale.isNaN && currentScale > 0) {
-      final scaleDelta = currentScale / _lastScale;
-      final newZoom = (camera.viewfinder.zoom * scaleDelta).clamp(_minZoom, _maxZoom);
+    // 1. Zoom (using cumulative scale factor)
+    // Use the y component of scale (or average of x and y)
+    final scaleFactor = info.scale.global.y;
+    if (!scaleFactor.isNaN && scaleFactor > 0) {
+      final newZoom = (_startZoom * scaleFactor).clamp(_minZoom, _maxZoom);
       camera.viewfinder.zoom = newZoom;
-      _lastScale = currentScale;
     }
 
     // 2. Pan
-    // Divide by zoom so movement is 1:1
-    final delta = info.delta.global / camera.viewfinder.zoom;
-    camera.viewfinder.position -= delta;
+    // Convert delta from screen space to world space
+    // The delta is already in screen coordinates, so we need to convert it
+    final delta = info.delta.global;
+    if (delta.x != 0 || delta.y != 0) {
+      final worldDelta = delta / camera.viewfinder.zoom;
+      camera.viewfinder.position -= worldDelta;
+    }
 
     // 3. Clamp
     _clampCamera();
