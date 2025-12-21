@@ -10,6 +10,7 @@ import '../state/providers.dart';
 import 'components/map_machine.dart';
 import 'components/map_truck.dart';
 import '../simulation/models/machine.dart';
+import '../simulation/models/truck.dart';
 
 // 1. REMOVED PanDetector. It conflicts with ScaleDetector.
 class CityMapGame extends FlameGame with ScaleDetector, ScrollDetector, TapDetector {
@@ -185,9 +186,21 @@ class CityMapGame extends FlameGame with ScaleDetector, ScrollDetector, TapDetec
          _truckComponents.remove(id)?.removeFromParent();
       });
       for (final t in trucks) {
-        final roadX = t.currentX.round().toDouble();
-        final roadY = t.currentY.round().toDouble();
-        final pos = Vector2(roadX * 100, roadY * 100);
+        // When truck is restocking, it should be at the machine's exact position (not on road)
+        // Otherwise, trucks should be on roads (integer coordinates)
+        double posX, posY;
+        if (t.status == TruckStatus.restocking) {
+          // Use exact coordinates when at machine (allows .5 positions for block centers)
+          posX = t.currentX * 100;
+          posY = t.currentY * 100;
+        } else {
+          // Round to road coordinates when traveling
+          final roadX = t.currentX.round().toDouble();
+          final roadY = t.currentY.round().toDouble();
+          posX = roadX * 100;
+          posY = roadY * 100;
+        }
+        final pos = Vector2(posX, posY);
         if (_truckComponents.containsKey(t.id)) {
            _truckComponents[t.id]!.updateTruck(t);
            _truckComponents[t.id]!.position = pos;

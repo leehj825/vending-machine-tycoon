@@ -374,8 +374,8 @@ class SimulationEngine extends StateNotifier<SimulationState> {
         orElse: () => machines.first, // Fallback
       );
 
-      // Calculate Manhattan distance (for grid-based movement along roads)
-      // Use road coordinates for distance calculation
+      // Calculate Manhattan distance to destination road
+      // Use road coordinates for pathfinding
       final truckRoadX = truck.currentX.round().toDouble();
       final truckRoadY = truck.currentY.round().toDouble();
       final destRoadX = destination.zone.x.round().toDouble();
@@ -385,18 +385,54 @@ class SimulationEngine extends StateNotifier<SimulationState> {
       final dy = destRoadY - truckRoadY;
       final manhattanDistance = dx.abs() + dy.abs();
 
-      // If truck is at destination road, start restocking
+      // If truck is at destination road, make final approach to machine
       if (manhattanDistance == 0) {
-        // Truck arrived at destination road - mark as restocking.
-        // IMPORTANT: Do NOT advance currentRouteIndex here.
-        // Restocking logic relies on truck.currentDestination (based on currentRouteIndex).
+        // Truck is at the road near the machine
+        // Now make final approach to machine's actual position (block center)
+        final machineX = destination.zone.x;
+        final machineY = destination.zone.y;
+        final finalDx = machineX - truck.currentX;
+        final finalDy = machineY - truck.currentY;
+        final finalDistance = (finalDx * finalDx + finalDy * finalDy) * 0.5;
+        
+        // If very close to machine, mark as arrived
+        if (finalDistance < 0.15) {
+          // Truck arrived at machine - mark as restocking.
+          // IMPORTANT: Do NOT advance currentRouteIndex here.
+          // Restocking logic relies on truck.currentDestination (based on currentRouteIndex).
+          return truck.copyWith(
+            status: TruckStatus.restocking,
+            // Position truck at machine's location
+            currentX: machineX,
+            currentY: machineY,
+            targetX: machineX,
+            targetY: machineY,
+          );
+        }
+        
+        // Make final approach to machine (move off-road to machine position)
+        final approachSpeed = 0.2; // Faster approach speed
+        double newX = truck.currentX;
+        double newY = truck.currentY;
+        
+        if (finalDx.abs() > approachSpeed) {
+          newX += finalDx > 0 ? approachSpeed : -approachSpeed;
+        } else {
+          newX = machineX;
+        }
+        
+        if (finalDy.abs() > approachSpeed) {
+          newY += finalDy > 0 ? approachSpeed : -approachSpeed;
+        } else {
+          newY = machineY;
+        }
+        
         return truck.copyWith(
-          status: TruckStatus.restocking,
-          // Snap to destination road coordinates
-          currentX: destRoadX,
-          currentY: destRoadY,
-          targetX: destination.zone.x,
-          targetY: destination.zone.y,
+          status: TruckStatus.traveling,
+          currentX: newX,
+          currentY: newY,
+          targetX: machineX,
+          targetY: machineY,
         );
       }
 
