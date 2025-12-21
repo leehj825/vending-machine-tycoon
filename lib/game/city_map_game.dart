@@ -41,13 +41,13 @@ class CityMapGame extends FlameGame with ScaleDetector, ScrollDetector, TapDetec
     // Setup Camera
     camera.viewfinder.anchor = Anchor.center;
     camera.viewfinder.position = mapCenter;
-    camera.viewfinder.zoom = 0.5; // Start zoomed out slightly
 
     // Add Content
     add(GridComponent());
 
     _syncMachines();
     _syncTrucks();
+    _fitMapToScreen();
   }
 
   @override
