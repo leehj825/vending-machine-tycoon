@@ -374,13 +374,13 @@ class SimulationEngine extends StateNotifier<SimulationState> {
         orElse: () => machines.first, // Fallback
       );
 
-      // Calculate distance to destination
+      // Calculate Manhattan distance (for grid-based movement along roads)
       final dx = destination.zone.x - truck.currentX;
       final dy = destination.zone.y - truck.currentY;
-      final distance = (dx * dx + dy * dy) * 0.5; // Euclidean distance
+      final manhattanDistance = dx.abs() + dy.abs();
 
       // If truck is at destination, start restocking
-      if (distance < 5.0) {
+      if (manhattanDistance < 0.1) {
         // Truck arrived - mark as restocking.
         // IMPORTANT: Do NOT advance currentRouteIndex here.
         // Restocking logic relies on truck.currentDestination (based on currentRouteIndex).
@@ -394,13 +394,115 @@ class SimulationEngine extends StateNotifier<SimulationState> {
         );
       }
 
-      // Move truck towards destination
-      // Simple movement: move 5.0 units per tick towards target (appropriate for 1000x1000 grid)
-      final moveDistance = 5.0;
-      final moveRatio = (moveDistance / distance).clamp(0.0, 1.0);
+      // Grid-based pathfinding: move along roads (grid lines)
+      // Roads are at integer coordinates in zone space (1.0, 2.0, 3.0, etc.)
+      // Machines are centered in blocks at .5 positions (1.5, 2.5, 3.5, etc.)
+      // Strategy: Use Manhattan pathfinding - move along one axis, then the other
+      final moveDistance = 0.1; // Movement per tick in zone coordinates
+      double newX = truck.currentX;
+      double newY = truck.currentY;
       
-      final newX = truck.currentX + (dx * moveRatio);
-      final newY = truck.currentY + (dy * moveRatio);
+      // Check if truck is currently on a road (at integer coordinate)
+      final isOnRoadX = (truck.currentX - truck.currentX.round()).abs() < 0.01;
+      final isOnRoadY = (truck.currentY - truck.currentY.round()).abs() < 0.01;
+      
+      // Determine target road coordinates (snap destination to nearest road for pathfinding)
+      final targetRoadX = destination.zone.x.round().toDouble();
+      final targetRoadY = destination.zone.y.round().toDouble();
+      
+      // Calculate distance to target roads
+      final dxToRoad = targetRoadX - truck.currentX;
+      final dyToRoad = targetRoadY - truck.currentY;
+      
+      // If truck is on a road (integer coordinate), move along that road
+      if (isOnRoadX && isOnRoadY) {
+        // Truck is at intersection - move towards destination
+        // Prefer moving horizontally if horizontal distance is greater
+        if (dxToRoad.abs() > dyToRoad.abs()) {
+          // Move horizontally along road
+          if (dxToRoad.abs() > moveDistance) {
+            newX += dxToRoad > 0 ? moveDistance : -moveDistance;
+            newX = newX.round().toDouble(); // Keep on road
+          } else {
+            newX = targetRoadX;
+            // Then move vertically
+            if (dyToRoad.abs() > moveDistance) {
+              newY += dyToRoad > 0 ? moveDistance : -moveDistance;
+              newY = newY.round().toDouble(); // Keep on road
+            } else {
+              newY = targetRoadY;
+            }
+          }
+        } else {
+          // Move vertically along road
+          if (dyToRoad.abs() > moveDistance) {
+            newY += dyToRoad > 0 ? moveDistance : -moveDistance;
+            newY = newY.round().toDouble(); // Keep on road
+          } else {
+            newY = targetRoadY;
+            // Then move horizontally
+            if (dxToRoad.abs() > moveDistance) {
+              newX += dxToRoad > 0 ? moveDistance : -moveDistance;
+              newX = newX.round().toDouble(); // Keep on road
+            } else {
+              newX = targetRoadX;
+            }
+          }
+        }
+      } else if (isOnRoadX) {
+        // Truck is on horizontal road - move vertically to nearest road first
+        final nearestRoadY = truck.currentY.round().toDouble();
+        if ((truck.currentY - nearestRoadY).abs() > moveDistance) {
+          newY += (nearestRoadY - truck.currentY) > 0 ? moveDistance : -moveDistance;
+        } else {
+          newY = nearestRoadY; // Snap to road
+        }
+      } else if (isOnRoadY) {
+        // Truck is on vertical road - move horizontally to nearest road first
+        final nearestRoadX = truck.currentX.round().toDouble();
+        if ((truck.currentX - nearestRoadX).abs() > moveDistance) {
+          newX += (nearestRoadX - truck.currentX) > 0 ? moveDistance : -moveDistance;
+        } else {
+          newX = nearestRoadX; // Snap to road
+        }
+      } else {
+        // Truck is not on any road - move to nearest road first
+        final nearestRoadX = truck.currentX.round().toDouble();
+        final nearestRoadY = truck.currentY.round().toDouble();
+        final dxToNearestRoad = nearestRoadX - truck.currentX;
+        final dyToNearestRoad = nearestRoadY - truck.currentY;
+        
+        // Move towards nearest road intersection
+        if (dxToNearestRoad.abs() > dyToNearestRoad.abs()) {
+          if (dxToNearestRoad.abs() > moveDistance) {
+            newX += dxToNearestRoad > 0 ? moveDistance : -moveDistance;
+          } else {
+            newX = nearestRoadX;
+          }
+        } else {
+          if (dyToNearestRoad.abs() > moveDistance) {
+            newY += dyToNearestRoad > 0 ? moveDistance : -moveDistance;
+          } else {
+            newY = nearestRoadY;
+          }
+        }
+      }
+      
+      // Final step: if close to destination, move directly to it (off-road is OK for final approach)
+      final finalDx = destination.zone.x - newX;
+      final finalDy = destination.zone.y - newY;
+      final finalDistance = (finalDx * finalDx + finalDy * finalDy) * 0.5;
+      if (finalDistance < 0.2) {
+        // Close enough - move directly to destination
+        if (finalDistance > moveDistance) {
+          final moveRatio = (moveDistance / finalDistance).clamp(0.0, 1.0);
+          newX += finalDx * moveRatio;
+          newY += finalDy * moveRatio;
+        } else {
+          newX = destination.zone.x;
+          newY = destination.zone.y;
+        }
+      }
 
       return truck.copyWith(
         status: TruckStatus.traveling,
