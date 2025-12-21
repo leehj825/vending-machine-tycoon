@@ -75,6 +75,11 @@ class CityMapGame extends FlameGame with TapDetector {
     final scaleX = size.x / mapWidth;
     final scaleY = size.y / mapHeight;
     
+    // FIX: Multiply by a factor if the screen is high density?
+    // Flame uses logical pixels, so size.x should already be correct.
+    // If it's zoomed in, it means fitZoom is too large.
+    // Let's print out the values to debug on device.
+    
     // Use 0.8 to be VERY safe (20% padding)
     final fitZoom = math.min(scaleX, scaleY) * 0.8;
 
@@ -83,7 +88,8 @@ class CityMapGame extends FlameGame with TapDetector {
     
     // FIX: Safe access using '?'
     // If debugText hasn't been created yet, this line is simply skipped
-    debugText?.text = "Screen: ${size.x.toStringAsFixed(0)}x${size.y.toStringAsFixed(0)}\nZoom: ${fitZoom.toStringAsFixed(3)}";
+    final dpr = window.devicePixelRatio;
+    debugText?.text = "Screen: ${size.x.toStringAsFixed(0)}x${size.y.toStringAsFixed(0)}\nDPR: ${dpr.toStringAsFixed(2)}\nZoom: ${fitZoom.toStringAsFixed(3)}";
   }
 
   @override
