@@ -13,7 +13,7 @@ import 'components/map_truck.dart';
 import '../simulation/models/machine.dart';
 
 /// Main game class for the city map visualization
-class CityMapGame extends FlameGame with ScaleDetector, ScrollDetector, TapDetector {
+class CityMapGame extends FlameGame with PanDetector, ScaleDetector, ScrollDetector, TapDetector {
   final WidgetRef ref;
   final void Function(Machine)? onMachineTap;
   final Map<String, MapMachine> _machineComponents = {};
@@ -100,9 +100,11 @@ class CityMapGame extends FlameGame with ScaleDetector, ScrollDetector, TapDetec
     final minY = math.min(halfViewport.y, mapHeight - halfViewport.y);
     final maxY = math.max(halfViewport.y, mapHeight - halfViewport.y);
     
+    // Update local variable
     _cameraPosition.x = _cameraPosition.x.clamp(minX, maxX);
     _cameraPosition.y = _cameraPosition.y.clamp(minY, maxY);
     
+    // CRITICAL: Apply to camera
     camera.viewfinder.position = _cameraPosition;
   }
 
@@ -141,34 +143,45 @@ class CityMapGame extends FlameGame with ScaleDetector, ScrollDetector, TapDetec
 
   // Zoom (pinch) and Pan (drag) handling
   @override
+  void onPanStart(DragStartInfo info) {
+    // No specific start logic needed for simple pan, 
+    // but we need to override to consume the event if needed
+  }
+
+  @override
+  void onPanUpdate(DragUpdateInfo info) {
+    // Move camera opposite to drag direction (like Google Maps)
+    // Divide by zoom so drag speed matches finger speed at any zoom level
+    final delta = info.delta.global / camera.viewfinder.zoom;
+    
+    // Update position directly
+    _cameraPosition = camera.viewfinder.position - delta;
+    
+    // Clamp immediately
+    _clampCameraPosition();
+  }
+
+  @override
   void onScaleStart(ScaleStartInfo info) {
-    _startZoom = _currentZoom;
+    // Capture the zoom level when fingers first touch
+    _startZoom = camera.viewfinder.zoom;
   }
 
   @override
   void onScaleUpdate(ScaleUpdateInfo info) {
-    // Zoom
-    final scaleVector = info.scale.global;
-    final scaleFactor = (scaleVector.x + scaleVector.y) / 2.0;
-
-    // Apply zoom if scale factor is not 1.0
-    // Using a small threshold to avoid jitter
-    if ((scaleFactor - 1.0).abs() > 0.001) {
-        final newZoom = _startZoom * scaleFactor;
-        _currentZoom = newZoom.clamp(_minZoom, _maxZoom);
-        camera.viewfinder.zoom = _currentZoom;
-    }
-
-    // Pan
-    final deltaScreen = info.delta.global;
+    // Calculate new zoom based on the snapshot
+    // info.scale.global is the total scale of the gesture (starts at 1.0)
+    final scale = info.scale.global;
     
-    // Check if there is actual movement
-    if (deltaScreen.length2 > 0.0) {
-       // Apply pan
-       final delta = deltaScreen / _currentZoom;
-       _cameraPosition -= delta;
-       _clampCameraPosition();
-    }
+    // Use x component (usually uniform)
+    // We only update zoom if there is a significant change to avoid jitter
+    // But since we are using a snapshot, we can just apply it.
+    final newZoom = (_startZoom * scale.x).clamp(_minZoom, _maxZoom);
+    
+    camera.viewfinder.zoom = newZoom;
+    _currentZoom = newZoom; // Keep local var in sync
+    
+    _clampCameraPosition();
   }
 
   @override
