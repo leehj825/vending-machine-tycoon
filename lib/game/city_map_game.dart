@@ -13,7 +13,7 @@ import 'components/map_truck.dart';
 import '../simulation/models/machine.dart';
 
 /// Main game class for the city map visualization
-class CityMapGame extends FlameGame with PanDetector, ScaleDetector, ScrollDetector, TapDetector {
+class CityMapGame extends FlameGame with ScaleDetector, ScrollDetector, TapDetector {
   final WidgetRef ref;
   final void Function(Machine)? onMachineTap;
   final Map<String, MapMachine> _machineComponents = {};
@@ -145,31 +145,6 @@ class CityMapGame extends FlameGame with PanDetector, ScaleDetector, ScrollDetec
   }
 
   @override
-  bool onPanStart(DragStartInfo info) {
-    return true;
-  }
-
-  @override
-  bool onPanUpdate(DragUpdateInfo info) {
-    // Move camera opposite to drag direction (like Google Maps)
-    // Divide by zoom so drag speed matches finger speed at any zoom level
-    final delta = info.delta.global / camera.viewfinder.zoom;
-    
-    // Update position directly
-    _cameraPosition = camera.viewfinder.position - delta;
-    
-    // Clamp immediately
-    _clampCameraPosition();
-    
-    return true;
-  }
-
-  @override
-  bool onPanEnd(DragEndInfo info) {
-    return true;
-  }
-
-  @override
   bool onScaleStart(ScaleStartInfo info) {
     // Capture the zoom level when fingers first touch
     _startZoom = camera.viewfinder.zoom;
@@ -178,17 +153,27 @@ class CityMapGame extends FlameGame with PanDetector, ScaleDetector, ScrollDetec
 
   @override
   bool onScaleUpdate(ScaleUpdateInfo info) {
-    // Calculate new zoom based on the snapshot
-    // info.scale.global is the total scale of the gesture (starts at 1.0)
+    // --- 1. ZOOM LOGIC ---
+    // info.scale.global gives the scale factor (starts at 1.0)
     final scale = info.scale.global;
     
-    // Use x component (usually uniform)
+    // Calculate new zoom based on the snapshot we took in onScaleStart
     final newZoom = (_startZoom * scale.x).clamp(_minZoom, _maxZoom);
     
     camera.viewfinder.zoom = newZoom;
-    _currentZoom = newZoom; // Keep local var in sync
+    _currentZoom = newZoom;
     
+    // --- 2. PAN LOGIC ---
+    // info.delta.global gives the movement vector (for 1 finger OR the center of 2 fingers)
+    // We divide by zoom so the map moves exactly under the finger (1:1 ratio)
+    final delta = info.delta.global / camera.viewfinder.zoom;
+    
+    // Subtract delta to move camera opposite to drag direction
+    _cameraPosition = camera.viewfinder.position - delta;
+    
+    // --- 3. CLAMP ---
     _clampCameraPosition();
+    
     return true;
   }
 
