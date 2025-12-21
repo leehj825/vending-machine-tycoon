@@ -11,7 +11,7 @@ import 'components/map_machine.dart';
 import 'components/map_truck.dart';
 import '../simulation/models/machine.dart';
 
-class CityMapGame extends FlameGame with ScaleDetector, ScrollDetector, TapDetector {
+class CityMapGame extends FlameGame with ScaleDetector, ScrollDetector, TapDetector, PanDetector {
   final WidgetRef ref;
   
   final Map<String, MapMachine> _machineComponents = {};
@@ -27,6 +27,10 @@ class CityMapGame extends FlameGame with ScaleDetector, ScrollDetector, TapDetec
   double _lastScale = 1.0;
   double _startZoom = 1.0;
   bool _hasInitialized = false;
+  
+  // Mouse drag zoom state
+  Vector2? _dragStartPosition;
+  double _dragStartZoom = 1.0;
 
   // Legacy callback
   final void Function(Machine)? onMachineTap;
@@ -132,17 +136,58 @@ class CityMapGame extends FlameGame with ScaleDetector, ScrollDetector, TapDetec
 
   @override
   void onScroll(PointerScrollInfo info) {
-    // Mouse wheel zoom
+    // Mouse wheel zoom (kept for compatibility, but may not work on all platforms)
     final scrollDelta = info.scrollDelta.global.y;
     final zoomFactor = 1.0 - (scrollDelta / 1000.0);
     final oldZoom = camera.viewfinder.zoom;
     final newZoom = (oldZoom * zoomFactor).clamp(_minZoom, _maxZoom);
     camera.viewfinder.zoom = newZoom;
+    _clampCamera();
+  }
+
+  @override
+  void onPanStart(DragStartInfo info) {
+    // Check if this is a mouse event (not touch)
+    // For mouse drag zoom, we'll use vertical drag
+    _dragStartPosition = info.eventPosition.widget;
+    _dragStartZoom = camera.viewfinder.zoom;
+    
+    debugPrint('[Mouse Drag Zoom Start] position: $_dragStartPosition, startZoom: $_dragStartZoom');
+  }
+
+  @override
+  void onPanUpdate(DragUpdateInfo info) {
+    if (_dragStartPosition == null) return;
+    
+    // Calculate vertical drag delta
+    final currentPosition = info.eventPosition.widget;
+    final verticalDelta = currentPosition.y - _dragStartPosition!.y;
+    
+    // Convert vertical drag to zoom change
+    // Dragging down = zoom out, dragging up = zoom in
+    // Use a sensitivity factor (adjust as needed)
+    const zoomSensitivity = 0.002; // Adjust this to make zoom more/less sensitive
+    final zoomChange = 1.0 - (verticalDelta * zoomSensitivity);
+    final newZoom = (_dragStartZoom * zoomChange).clamp(_minZoom, _maxZoom);
+    
+    camera.viewfinder.zoom = newZoom;
     
     // Debug output
-    debugPrint('[Mouse Wheel Zoom] scrollDelta: $scrollDelta, zoomFactor: $zoomFactor, oldZoom: $oldZoom, newZoom: $newZoom');
+    debugPrint('[Mouse Drag Zoom] verticalDelta: $verticalDelta, zoomChange: $zoomChange, oldZoom: $_dragStartZoom, newZoom: $newZoom');
     
     _clampCamera();
+  }
+
+  @override
+  void onPanEnd(DragEndInfo info) {
+    _dragStartPosition = null;
+    debugPrint('[Mouse Drag Zoom End]');
+  }
+
+  @override
+  void onPanCancel() {
+    _dragStartPosition = null;
+    debugPrint('[Mouse Drag Zoom Cancel]');
   }
 
   @override
