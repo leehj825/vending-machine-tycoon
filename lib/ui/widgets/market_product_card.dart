@@ -83,10 +83,11 @@ class MarketProductCard extends ConsumerWidget {
           product.name,
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
-        subtitle: Row(
+        subtitle: Wrap(
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 4,
           children: [
             Icon(trendIcon, size: 16, color: priceColor),
-            const SizedBox(width: 4),
             Text(
               'Current: \$${price.toStringAsFixed(2)}',
               style: TextStyle(

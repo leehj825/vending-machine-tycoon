@@ -4,6 +4,7 @@ import 'package:flame/events.dart';
 import '../../simulation/models/machine.dart';
 import '../../simulation/models/zone.dart';
 import '../city_map_game.dart';
+import '../../state/providers.dart';
 
 /// Component that represents a machine on the city map
 class MapMachine extends PositionComponent with TapCallbacks, HasGameReference<CityMapGame> {
@@ -19,6 +20,15 @@ class MapMachine extends PositionComponent with TapCallbacks, HasGameReference<C
 
   @override
   void onTapUp(TapUpEvent event) {
+    // Update the selected machine in the state
+    try {
+      // Access the ref through the game instance
+      game.ref.read(selectedMachineIdProvider.notifier).state = machine.id;
+    } catch (e) {
+      print('Error selecting machine: $e');
+    }
+    
+    // Call the legacy callback if it exists (for debugging/toast)
     game.onMachineTap?.call(machine);
   }
 

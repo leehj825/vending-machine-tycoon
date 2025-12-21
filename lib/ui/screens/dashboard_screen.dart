@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../state/selectors.dart';
@@ -26,7 +27,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   void _buyTestMachine() {
     final controller = ref.read(gameControllerProvider.notifier);
-    controller.buyMachine(ZoneType.office, x: 0.0, y: 0.0);
+    final random = math.Random();
+    // Random position between 1.0 and 9.0 to stay within map bounds (10x10 grid)
+    final x = 1.0 + random.nextDouble() * 8.0;
+    final y = 1.0 + random.nextDouble() * 8.0;
+    controller.buyMachine(ZoneType.office, x: x, y: y);
   }
 
   String _formatTime(int day, int hour) {
