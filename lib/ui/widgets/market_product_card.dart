@@ -198,12 +198,26 @@ class _BuyStockBottomSheetState extends ConsumerState<_BuyStockBottomSheet> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _buildIncrementButton(context, -10, maxQuantity),
-                _buildIncrementButton(context, -5, maxQuantity),
-                _buildIncrementButton(context, -1, maxQuantity),
                 _buildIncrementButton(context, 1, maxQuantity),
                 _buildIncrementButton(context, 5, maxQuantity),
                 _buildIncrementButton(context, 10, maxQuantity),
+                SizedBox(
+                  child: OutlinedButton(
+                    onPressed: () {
+                      setState(() {
+                        _quantity = maxQuantity.toDouble();
+                      });
+                    },
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                      minimumSize: const Size(40, 36),
+                    ),
+                    child: Text(
+                      'Full ($maxQuantity)',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 16),

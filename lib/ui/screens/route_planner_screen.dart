@@ -724,12 +724,26 @@ class _LoadCargoDialogState extends ConsumerState<_LoadCargoDialog> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    _buildIncrementButton(-10, maxQuantity),
-                    _buildIncrementButton(-5, maxQuantity),
-                    _buildIncrementButton(-1, maxQuantity),
                     _buildIncrementButton(1, maxQuantity),
                     _buildIncrementButton(5, maxQuantity),
                     _buildIncrementButton(10, maxQuantity),
+                    SizedBox(
+                      child: OutlinedButton(
+                        onPressed: () {
+                          setState(() {
+                            _quantity = maxQuantity.toDouble();
+                          });
+                        },
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                          minimumSize: const Size(40, 36),
+                        ),
+                        child: Text(
+                          'Full ($maxQuantity)',
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ] else
