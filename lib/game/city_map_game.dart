@@ -55,7 +55,7 @@ class CityMapGame extends FlameGame with ScaleDetector, ScrollDetector, TapDetec
     camera.stop();
     
     debugPrint('[Camera Setup] position: ${camera.viewfinder.position}, zoom: ${camera.viewfinder.zoom}, anchor: ${camera.viewfinder.anchor}');
-    debugPrint('[Camera Setup] world: ${world.size}, viewport: ${camera.viewport.size}');
+    debugPrint('[Camera Setup] viewport: ${camera.viewport.size}');
 
     // Add Content to world (camera will automatically transform them)
     world.add(GridComponent());
