@@ -35,6 +35,7 @@ class CityMapGame extends FlameGame with ScaleDetector, ScrollDetector, TapDetec
   
   // Scale state for pinch-to-zoom
   bool _isScaling = false;
+  double _lastScaleFactor = 1.0;
 
   // Legacy callback
   final void Function(Machine)? onMachineTap;
@@ -112,8 +113,9 @@ class CityMapGame extends FlameGame with ScaleDetector, ScrollDetector, TapDetec
     
     _isScaling = true;
     _startZoom = camera.viewfinder.zoom;
+    _lastScaleFactor = 1.0;
     
-    debugPrint('[Scale] Started - initial zoom: $_startZoom, pointers: ${info.pointerCount}');
+    debugPrint('[Scale] Started - initial zoom: $_startZoom');
   }
 
   @override
@@ -127,19 +129,20 @@ class CityMapGame extends FlameGame with ScaleDetector, ScrollDetector, TapDetec
     if (!_isScaling) {
       _isScaling = true;
       _startZoom = camera.viewfinder.zoom;
+      _lastScaleFactor = 1.0;
     }
     
     // Handle pinch-to-zoom (2 fingers)
-    // Use the global scale factor
-    final scaleFactor = info.scale.global;
-    // Use average of x and y for more stable zoom
-    final avgScale = (scaleFactor.x + scaleFactor.y) / 2.0;
+    // The scale.global represents cumulative scale from gesture start
+    // Use .y component which is typically used for pinch gestures
+    final scaleFactor = info.scale.global.y;
     
-    // Process zoom if scale factor is valid
-    if (!avgScale.isNaN && avgScale > 0) {
-      final newZoom = (_startZoom * avgScale).clamp(_minZoom, _maxZoom);
+    // Process zoom if scale factor is valid and different from last
+    if (!scaleFactor.isNaN && scaleFactor > 0 && scaleFactor != _lastScaleFactor) {
+      final newZoom = (_startZoom * scaleFactor).clamp(_minZoom, _maxZoom);
       camera.viewfinder.zoom = newZoom;
-      debugPrint('[Scale] Update - scale: $avgScale, zoom: $newZoom, pointers: ${info.pointerCount}');
+      _lastScaleFactor = scaleFactor;
+      debugPrint('[Scale] Update - scale: $scaleFactor, zoom: $newZoom (from $_startZoom)');
     }
 
     // Also handle panning during pinch (when fingers move while pinching)
@@ -156,7 +159,8 @@ class CityMapGame extends FlameGame with ScaleDetector, ScrollDetector, TapDetec
   @override
   void onScaleEnd(ScaleEndInfo info) {
     _isScaling = false;
-    debugPrint('[Scale] Ended');
+    _lastScaleFactor = 1.0;
+    debugPrint('[Scale] Ended - final zoom: ${camera.viewfinder.zoom}');
   }
 
   void _clampCamera() {
@@ -175,14 +179,18 @@ class CityMapGame extends FlameGame with ScaleDetector, ScrollDetector, TapDetec
   void onScroll(PointerScrollInfo info) {
     // Mouse wheel zoom
     final scrollDelta = info.scrollDelta.global.y;
-    final zoomFactor = 1.0 - (scrollDelta / 1000.0);
+    
+    // Invert scroll direction: scroll up (negative) zooms in, scroll down (positive) zooms out
+    // Use a smaller divisor for more responsive zoom
+    final zoomFactor = 1.0 - (scrollDelta / 500.0);
     final oldZoom = camera.viewfinder.zoom;
     final newZoom = (oldZoom * zoomFactor).clamp(_minZoom, _maxZoom);
-    camera.viewfinder.zoom = newZoom;
     
-    debugPrint('[Mouse Wheel Zoom] scrollDelta: $scrollDelta, zoomFactor: $zoomFactor, oldZoom: $oldZoom, newZoom: $newZoom');
-    
-    _clampCamera();
+    if (newZoom != oldZoom) {
+      camera.viewfinder.zoom = newZoom;
+      debugPrint('[Mouse Wheel Zoom] scrollDelta: $scrollDelta, zoomFactor: $zoomFactor, oldZoom: $oldZoom, newZoom: $newZoom');
+      _clampCamera();
+    }
   }
 
   @override
