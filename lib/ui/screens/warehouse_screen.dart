@@ -397,6 +397,21 @@ class _LoadTruckDialogState extends State<_LoadTruckDialog> {
                 )
               else
                  const Text('No capacity or stock available', style: TextStyle(color: Colors.red)),
+              if (maxQuantity > 0) ...[
+                const SizedBox(height: 8),
+                // Quick increment buttons
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _buildIncrementButton(-10, maxQuantity),
+                    _buildIncrementButton(-5, maxQuantity),
+                    _buildIncrementButton(-1, maxQuantity),
+                    _buildIncrementButton(1, maxQuantity),
+                    _buildIncrementButton(5, maxQuantity),
+                    _buildIncrementButton(10, maxQuantity),
+                  ],
+                ),
+              ],
             ],
             
              if (selectedTruck.status != TruckStatus.idle && selectedTruck.status != TruckStatus.restocking)
@@ -422,6 +437,34 @@ class _LoadTruckDialogState extends State<_LoadTruckDialog> {
           child: const Text('Load'),
         ),
       ],
+    );
+  }
+
+  Widget _buildIncrementButton(int increment, int maxQuantity) {
+    final newQuantity = (_quantity + increment).clamp(1.0, maxQuantity.toDouble());
+    final isEnabled = increment > 0 
+        ? _quantity < maxQuantity 
+        : _quantity > 1;
+    
+    return SizedBox(
+      width: 50,
+      child: OutlinedButton(
+        onPressed: isEnabled
+            ? () {
+                setState(() {
+                  _quantity = newQuantity;
+                });
+              }
+            : null,
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          minimumSize: const Size(40, 36),
+        ),
+        child: Text(
+          increment > 0 ? '+$increment' : '$increment',
+          style: const TextStyle(fontSize: 12),
+        ),
+      ),
     );
   }
 }

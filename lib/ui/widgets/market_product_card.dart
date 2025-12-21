@@ -193,6 +193,19 @@ class _BuyStockBottomSheetState extends ConsumerState<_BuyStockBottomSheet> {
                 });
               },
             ),
+            const SizedBox(height: 8),
+            // Quick increment buttons
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _buildIncrementButton(context, -10, maxQuantity),
+                _buildIncrementButton(context, -5, maxQuantity),
+                _buildIncrementButton(context, -1, maxQuantity),
+                _buildIncrementButton(context, 1, maxQuantity),
+                _buildIncrementButton(context, 5, maxQuantity),
+                _buildIncrementButton(context, 10, maxQuantity),
+              ],
+            ),
             const SizedBox(height: 16),
             Container(
               padding: const EdgeInsets.all(16),
@@ -280,6 +293,34 @@ class _BuyStockBottomSheetState extends ConsumerState<_BuyStockBottomSheet> {
               ],
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildIncrementButton(BuildContext context, int increment, int maxQuantity) {
+    final newQuantity = (_quantity + increment).clamp(1.0, maxQuantity.toDouble());
+    final isEnabled = increment > 0 
+        ? _quantity < maxQuantity 
+        : _quantity > 1;
+    
+    return SizedBox(
+      width: 50,
+      child: OutlinedButton(
+        onPressed: isEnabled
+            ? () {
+                setState(() {
+                  _quantity = newQuantity;
+                });
+              }
+            : null,
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          minimumSize: const Size(40, 36),
+        ),
+        child: Text(
+          increment > 0 ? '+$increment' : '$increment',
+          style: const TextStyle(fontSize: 12),
         ),
       ),
     );

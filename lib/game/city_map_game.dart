@@ -4,13 +4,15 @@ import 'package:flutter/material.dart';
 import 'package:flame/components.dart';
 import 'package:flame/game.dart';
 import 'package:flame/input.dart';
-import 'package:flame/events.dart';
+import 'package:flame/events.dart'; // Import for PointerScrollInfo
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../state/providers.dart';
 import 'components/map_machine.dart';
 import 'components/map_truck.dart';
 import '../simulation/models/machine.dart';
+import '../simulation/models/truck.dart';
 
+// 1. REMOVED PanDetector. It conflicts with ScaleDetector.
 class CityMapGame extends FlameGame with ScaleDetector, ScrollDetector, TapDetector {
   final WidgetRef ref;
   
@@ -24,8 +26,9 @@ class CityMapGame extends FlameGame with ScaleDetector, ScrollDetector, TapDetec
   // Camera State
   double _minZoom = 0.1;
   double _maxZoom = 5.0;
-  double _lastScale = 1.0;
-
+  double _startZoom = 1.0;
+  bool _hasInitialized = false;
+  
   // Legacy callback
   final void Function(Machine)? onMachineTap;
 
@@ -41,10 +44,10 @@ class CityMapGame extends FlameGame with ScaleDetector, ScrollDetector, TapDetec
     // Setup Camera
     camera.viewfinder.anchor = Anchor.center;
     camera.viewfinder.position = mapCenter;
-    camera.viewfinder.zoom = 0.5; // Start zoomed out slightly
+    camera.viewfinder.zoom = 0.5;
+    camera.stop(); // Manual control
 
-    // Add Content
-    add(GridComponent());
+    world.add(GridComponent());
 
     _syncMachines();
     _syncTrucks();
@@ -53,22 +56,19 @@ class CityMapGame extends FlameGame with ScaleDetector, ScrollDetector, TapDetec
   @override
   void onGameResize(Vector2 size) {
     super.onGameResize(size);
-    _fitMapToScreen();
+    if (!_hasInitialized) {
+      _fitMapToScreen();
+      _hasInitialized = true;
+    }
   }
 
   void _fitMapToScreen() {
     if (size.x <= 0 || size.y <= 0) return;
-
     final scaleX = size.x / mapWidth;
     final scaleY = size.y / mapHeight;
-    
-    // Fit map to screen with margin
     final fitZoom = math.min(scaleX, scaleY) * 0.9;
-    
     camera.viewfinder.zoom = fitZoom;
     camera.viewfinder.position = mapCenter;
-    
-    // Set minimum zoom so user can't zoom out past the full map
     _minZoom = fitZoom;
   }
 
@@ -83,49 +83,60 @@ class CityMapGame extends FlameGame with ScaleDetector, ScrollDetector, TapDetec
 
   @override
   void onScaleStart(ScaleStartInfo info) {
-    // Reset scale tracker
-    _lastScale = 1.0;
+    // Record current zoom when user puts fingers down
+    _startZoom = camera.viewfinder.zoom;
   }
 
   @override
   void onScaleUpdate(ScaleUpdateInfo info) {
-    // 1. Zoom (Incremental)
-    final currentScale = info.scale.global.x;
-    if (!currentScale.isNaN && currentScale > 0) {
-      final scaleDelta = currentScale / _lastScale;
-      final newZoom = (camera.viewfinder.zoom * scaleDelta).clamp(_minZoom, _maxZoom);
+    // 1. Handle ZOOM (Pinch)
+    // info.scale.global returns the scale factor since the start of the gesture
+    final currentScale = info.scale.global;
+    
+    if (!currentScale.isIdentity()) {
+      // Use the average of x and y scale for uniformity, or just y
+      final scaleAmount = currentScale.y; 
+      final newZoom = (_startZoom * scaleAmount).clamp(_minZoom, _maxZoom);
       camera.viewfinder.zoom = newZoom;
-      _lastScale = currentScale;
     }
 
-    // 2. Pan
-    // Divide by zoom so movement is 1:1
-    final delta = info.delta.global / camera.viewfinder.zoom;
-    camera.viewfinder.position -= delta;
+    // 2. Handle PAN (Drag)
+    // ScaleDetector provides 'delta' which is the movement of the focal point.
+    // This works for 1 finger (pan) AND 2 fingers (pan while pinching).
+    final delta = info.delta.global;
+    
+    // Divide delta by zoom to ensure movement stays 1:1 with finger
+    final worldDelta = delta / camera.viewfinder.zoom;
+    camera.viewfinder.position -= worldDelta;
 
-    // 3. Clamp
     _clampCamera();
-  }
-
-  void _clampCamera() {
-    // Basic clamping to keep map in view
-    // Allow viewing slightly outside the map (padding)
-    const padding = 200.0;
-    
-    final x = camera.viewfinder.position.x;
-    final y = camera.viewfinder.position.y;
-    
-    camera.viewfinder.position.x = x.clamp(-padding, mapWidth + padding);
-    camera.viewfinder.position.y = y.clamp(-padding, mapHeight + padding);
   }
 
   @override
+  void onScaleEnd(ScaleEndInfo info) {
+    // No cleanup needed usually, but useful for debugging
+  }
+
+  // Mouse Wheel Zoom
+  @override
   void onScroll(PointerScrollInfo info) {
-    // Mouse wheel zoom
     final scrollDelta = info.scrollDelta.global.y;
-    final zoomFactor = 1.0 - (scrollDelta / 1000.0);
-    camera.viewfinder.zoom = (camera.viewfinder.zoom * zoomFactor).clamp(_minZoom, _maxZoom);
-    _clampCamera();
+    final zoomFactor = 1.0 - (scrollDelta / 500.0);
+    final oldZoom = camera.viewfinder.zoom;
+    final newZoom = (oldZoom * zoomFactor).clamp(_minZoom, _maxZoom);
+    
+    if (newZoom != oldZoom) {
+      camera.viewfinder.zoom = newZoom;
+      _clampCamera();
+    }
+  }
+
+  void _clampCamera() {
+    const padding = 200.0;
+    final x = camera.viewfinder.position.x;
+    final y = camera.viewfinder.position.y;
+    camera.viewfinder.position.x = x.clamp(-padding, mapWidth + padding);
+    camera.viewfinder.position.y = y.clamp(-padding, mapHeight + padding);
   }
 
   @override
@@ -140,8 +151,7 @@ class CityMapGame extends FlameGame with ScaleDetector, ScrollDetector, TapDetec
     }
   }
 
-  // --- SYNC LOGIC ---
-
+  // --- SYNC LOGIC (Unchanged) ---
   void _syncMachines() {
     try {
       final machines = ref.read(machinesProvider);
@@ -150,14 +160,19 @@ class CityMapGame extends FlameGame with ScaleDetector, ScrollDetector, TapDetec
          _machineComponents.remove(id)?.removeFromParent();
       });
       for (final m in machines) {
-         final pos = Vector2(m.zone.x * 100, m.zone.y * 100);
+         final blockX = (m.zone.x - 1.0).floor();
+         final blockY = (m.zone.y - 1.0).floor();
+         final posX = blockX * 100.0 + 50.0;
+         final posY = blockY * 100.0 + 50.0;
+         final pos = Vector2(posX, posY);
+         
          if (_machineComponents.containsKey(m.id)) {
             _machineComponents[m.id]!.updateMachine(m);
             _machineComponents[m.id]!.position = pos;
          } else {
             final c = MapMachine(machine: m, position: pos);
             _machineComponents[m.id] = c;
-            add(c);
+            world.add(c);
          }
       }
     } catch (_) {}
@@ -171,14 +186,28 @@ class CityMapGame extends FlameGame with ScaleDetector, ScrollDetector, TapDetec
          _truckComponents.remove(id)?.removeFromParent();
       });
       for (final t in trucks) {
-        final pos = Vector2(t.currentX * 100, t.currentY * 100);
+        // When truck is restocking, it should be at the machine's exact position (not on road)
+        // Otherwise, trucks should be on roads (integer coordinates)
+        double posX, posY;
+        if (t.status == TruckStatus.restocking) {
+          // Use exact coordinates when at machine (allows .5 positions for block centers)
+          posX = t.currentX * 100;
+          posY = t.currentY * 100;
+        } else {
+          // Round to road coordinates when traveling
+          final roadX = t.currentX.round().toDouble();
+          final roadY = t.currentY.round().toDouble();
+          posX = roadX * 100;
+          posY = roadY * 100;
+        }
+        final pos = Vector2(posX, posY);
         if (_truckComponents.containsKey(t.id)) {
            _truckComponents[t.id]!.updateTruck(t);
            _truckComponents[t.id]!.position = pos;
         } else {
            final c = MapTruck(truck: t, position: pos);
            _truckComponents[t.id] = c;
-           add(c);
+           world.add(c);
         }
       }
     } catch (_) {}
@@ -186,9 +215,13 @@ class CityMapGame extends FlameGame with ScaleDetector, ScrollDetector, TapDetec
 }
 
 class GridComponent extends PositionComponent {
+  GridComponent() : super(
+    position: Vector2.zero(),
+    size: Vector2(CityMapGame.mapWidth, CityMapGame.mapHeight),
+  );
+
   @override
   void render(Canvas canvas) {
-    // Normal Grid
     final paint = Paint()..color = const Color(0xFF757575)..strokeWidth = 20;
     for (double i = 0; i <= 1000; i += 100) {
       canvas.drawLine(Offset(i, 0), Offset(i, 1000), paint);
