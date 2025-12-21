@@ -28,11 +28,9 @@ class CityMapGame extends FlameGame with ScaleDetector, ScrollDetector, TapDetec
   double _startZoom = 1.0;
   bool _hasInitialized = false;
   
-  // Mouse drag zoom state
+  // Mouse drag pan state
   Vector2? _dragStartPosition;
   Vector2? _lastDragPosition;
-  double _dragStartZoom = 1.0;
-  bool _isMouseDragZoom = false;
 
   // Legacy callback
   final void Function(Machine)? onMachineTap;
@@ -102,9 +100,6 @@ class CityMapGame extends FlameGame with ScaleDetector, ScrollDetector, TapDetec
 
   @override
   void onScaleStart(ScaleStartInfo info) {
-    // Only handle scale gestures if not doing mouse drag zoom
-    if (_isMouseDragZoom) return;
-    
     // Store the initial zoom when gesture starts
     _startZoom = camera.viewfinder.zoom;
     _lastScale = 1.0;
@@ -112,9 +107,6 @@ class CityMapGame extends FlameGame with ScaleDetector, ScrollDetector, TapDetec
 
   @override
   void onScaleUpdate(ScaleUpdateInfo info) {
-    // Only handle scale gestures if not doing mouse drag zoom
-    if (_isMouseDragZoom) return;
-    
     // 1. Zoom (using cumulative scale factor)
     // Use the y component of scale (or average of x and y)
     final scaleFactor = info.scale.global.y;
@@ -150,79 +142,57 @@ class CityMapGame extends FlameGame with ScaleDetector, ScrollDetector, TapDetec
 
   @override
   void onScroll(PointerScrollInfo info) {
-    // Mouse wheel zoom (kept for compatibility, but may not work on all platforms)
+    // Mouse wheel zoom
     final scrollDelta = info.scrollDelta.global.y;
     final zoomFactor = 1.0 - (scrollDelta / 1000.0);
     final oldZoom = camera.viewfinder.zoom;
     final newZoom = (oldZoom * zoomFactor).clamp(_minZoom, _maxZoom);
     camera.viewfinder.zoom = newZoom;
+    
+    debugPrint('[Mouse Wheel Zoom] scrollDelta: $scrollDelta, zoomFactor: $zoomFactor, oldZoom: $oldZoom, newZoom: $newZoom');
+    
     _clampCamera();
   }
 
   @override
   void onPanStart(DragStartInfo info) {
-    // For mouse drag zoom, we'll use vertical drag
-    _isMouseDragZoom = true;
+    // Store drag start position for panning
     _dragStartPosition = info.eventPosition.widget;
     _lastDragPosition = info.eventPosition.widget;
-    _dragStartZoom = camera.viewfinder.zoom;
-    
-    debugPrint('[Mouse Drag Zoom Start] position: $_dragStartPosition, startZoom: $_dragStartZoom');
   }
 
   @override
   void onPanUpdate(DragUpdateInfo info) {
-    if (_dragStartPosition == null || _lastDragPosition == null) return;
+    if (_lastDragPosition == null) return;
     
-    // Calculate incremental vertical drag delta (from last position, not start position)
+    // Calculate drag delta (incremental from last position)
     final currentPosition = info.eventPosition.widget;
-    final verticalDelta = currentPosition.y - _lastDragPosition!.y;
+    final delta = currentPosition - _lastDragPosition!;
     
     // Skip if delta is too small (avoid jitter)
-    if (verticalDelta.abs() < 0.5) return;
+    if (delta.length < 0.5) return;
     
-    // Convert vertical drag to zoom change
-    // Dragging down (positive delta) = zoom out, dragging up (negative delta) = zoom in
-    // Use incremental updates for smoother zoom
-    const zoomSensitivity = 0.02; // Increased sensitivity
-    // Negative delta (dragging up) should increase zoom, positive delta (dragging down) should decrease zoom
-    final zoomFactor = 1.0 - (verticalDelta * zoomSensitivity);
-    final oldZoom = camera.viewfinder.zoom;
-    final newZoom = (oldZoom * zoomFactor).clamp(_minZoom, _maxZoom);
-    
-    // Only update if zoom actually changed
-    if ((newZoom - oldZoom).abs() > 0.001) {
-      // Set zoom directly on viewfinder
-      camera.viewfinder.zoom = newZoom;
-      
-      // Verify it was set
-      final verifyZoom = camera.viewfinder.zoom;
-      
-      // Debug output with camera state
-      debugPrint('[Mouse Drag Zoom] verticalDelta: $verticalDelta, zoomFactor: $zoomFactor');
-      debugPrint('  oldZoom: $oldZoom, newZoom: $newZoom, verifyZoom: $verifyZoom');
-      debugPrint('  camera.position: ${camera.viewfinder.position}, camera.anchor: ${camera.viewfinder.anchor}');
-      
-      _clampCamera();
-    }
+    // Convert screen delta to world space for panning
+    // Divide by zoom so movement is 1:1 with screen
+    final worldDelta = delta / camera.viewfinder.zoom;
+    camera.viewfinder.position -= worldDelta;
     
     _lastDragPosition = currentPosition;
+    
+    // Clamp camera to keep map in view
+    _clampCamera();
   }
 
   @override
   void onPanEnd(DragEndInfo info) {
-    _isMouseDragZoom = false;
     _dragStartPosition = null;
     _lastDragPosition = null;
-    debugPrint('[Mouse Drag Zoom End]');
   }
 
   @override
   void onPanCancel() {
-    _isMouseDragZoom = false;
     _dragStartPosition = null;
     _lastDragPosition = null;
-    debugPrint('[Mouse Drag Zoom Cancel]');
   }
 
   @override
