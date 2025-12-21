@@ -374,16 +374,74 @@ class SimulationEngine extends StateNotifier<SimulationState> {
         orElse: () => machines.first, // Fallback
       );
 
+      // Get machine position
+      final machineX = destination.zone.x;
+      final machineY = destination.zone.y;
+      
+      // Calculate direct distance to machine (not road)
+      final dxToMachine = machineX - truck.currentX;
+      final dyToMachine = machineY - truck.currentY;
+      final distanceToMachine = (dxToMachine * dxToMachine + dyToMachine * dyToMachine) * 0.5; // Euclidean distance
+      
+      // If truck is very close to machine, mark as arrived
+      if (distanceToMachine < 0.2) {
+        // Truck arrived at machine - mark as restocking.
+        // IMPORTANT: Do NOT advance currentRouteIndex here.
+        // Restocking logic relies on truck.currentDestination (based on currentRouteIndex).
+        return truck.copyWith(
+          status: TruckStatus.restocking,
+          // Position truck at machine's location
+          currentX: machineX,
+          currentY: machineY,
+          targetX: machineX,
+          targetY: machineY,
+        );
+      }
+      
+      // Check if truck is already making final approach (close to machine but not at road)
+      // If truck is within 1.0 units of machine, make direct approach
+      if (distanceToMachine < 1.0) {
+        // Make final approach to machine (move off-road to machine position)
+        final approachSpeed = 0.5; // Speed for final approach
+        double newX = truck.currentX;
+        double newY = truck.currentY;
+        
+        // If very close, snap to machine position
+        if (distanceToMachine < approachSpeed) {
+          newX = machineX;
+          newY = machineY;
+        } else {
+          // Move directly towards machine
+          final normalizedDx = dxToMachine / distanceToMachine;
+          final normalizedDy = dyToMachine / distanceToMachine;
+          newX += normalizedDx * approachSpeed;
+          newY += normalizedDy * approachSpeed;
+          
+          // Clamp to machine position if we overshoot
+          if ((dxToMachine > 0 && newX > machineX) || (dxToMachine < 0 && newX < machineX)) {
+            newX = machineX;
+          }
+          if ((dyToMachine > 0 && newY > machineY) || (dyToMachine < 0 && newY < machineY)) {
+            newY = machineY;
+          }
+        }
+        
+        return truck.copyWith(
+          status: TruckStatus.traveling,
+          currentX: newX,
+          currentY: newY,
+          targetX: machineX,
+          targetY: machineY,
+        );
+      }
+      
+      // Truck is still far from machine, use road-based pathfinding
       // Calculate Manhattan distance to destination road
-      // Machines are at .5 coordinates (block centers), roads are at integer coordinates
-      // We need to find the nearest road to the machine, then approach the machine
       final truckRoadX = truck.currentX.round().toDouble();
       final truckRoadY = truck.currentY.round().toDouble();
       
-      // For machines at .5 positions, find the nearest road (could be floor or ceil)
+      // For machines at .5 positions, find the nearest road
       // Use floor to get the road on the lower side, which is more predictable
-      final machineX = destination.zone.x;
-      final machineY = destination.zone.y;
       final destRoadX = machineX.floor().toDouble(); // Road on the left/bottom side of block
       final destRoadY = machineY.floor().toDouble();
       
@@ -391,55 +449,25 @@ class SimulationEngine extends StateNotifier<SimulationState> {
       final dy = destRoadY - truckRoadY;
       final manhattanDistance = dx.abs() + dy.abs();
 
-      // If truck is at destination road, make final approach to machine
+      // If truck is at destination road, start final approach
       if (manhattanDistance == 0) {
-        // Truck is at the road near the machine
-        // Now make final approach to machine's actual position (block center)
-        final finalDx = machineX - truck.currentX;
-        final finalDy = machineY - truck.currentY;
-        final finalDistance = (finalDx * finalDx + finalDy * finalDy);
-        
-        // If very close to machine, mark as arrived
-        if (finalDistance < 0.1) {
-          // Truck arrived at machine - mark as restocking.
-          // IMPORTANT: Do NOT advance currentRouteIndex here.
-          // Restocking logic relies on truck.currentDestination (based on currentRouteIndex).
-          return truck.copyWith(
-            status: TruckStatus.restocking,
-            // Position truck at machine's location
-            currentX: machineX,
-            currentY: machineY,
-            targetX: machineX,
-            targetY: machineY,
-          );
-        }
-        
-        // Make final approach to machine (move off-road to machine position)
-        // Move directly towards machine at a reasonable speed
-        final approachSpeed = 0.5; // Speed for final approach (faster to reach machine)
-        final distance = (finalDx * finalDx + finalDy * finalDy) * 0.5; // Euclidean distance
-        
+        // Truck is at the road near the machine, start final approach
+        final approachSpeed = 0.5;
         double newX = truck.currentX;
         double newY = truck.currentY;
         
-        // If very close, snap to machine position
-        if (distance < approachSpeed) {
+        // Move directly towards machine
+        final normalizedDx = dxToMachine / distanceToMachine;
+        final normalizedDy = dyToMachine / distanceToMachine;
+        newX += normalizedDx * approachSpeed;
+        newY += normalizedDy * approachSpeed;
+        
+        // Clamp to machine position if we overshoot
+        if ((dxToMachine > 0 && newX > machineX) || (dxToMachine < 0 && newX < machineX)) {
           newX = machineX;
+        }
+        if ((dyToMachine > 0 && newY > machineY) || (dyToMachine < 0 && newY < machineY)) {
           newY = machineY;
-        } else {
-          // Move directly towards machine
-          final normalizedDx = finalDx / distance;
-          final normalizedDy = finalDy / distance;
-          newX += normalizedDx * approachSpeed;
-          newY += normalizedDy * approachSpeed;
-          
-          // Clamp to machine position if we overshoot
-          if ((finalDx > 0 && newX > machineX) || (finalDx < 0 && newX < machineX)) {
-            newX = machineX;
-          }
-          if ((finalDy > 0 && newY > machineY) || (finalDy < 0 && newY < machineY)) {
-            newY = machineY;
-          }
         }
         
         return truck.copyWith(
