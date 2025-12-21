@@ -144,7 +144,6 @@ class CityMapGame extends FlameGame with PanDetector, ScaleDetector, ScrollDetec
     _syncTrucks();
   }
 
-  // Zoom (pinch) and Pan (drag) handling
   @override
   bool onPanStart(DragStartInfo info) {
     return true;
@@ -162,6 +161,11 @@ class CityMapGame extends FlameGame with PanDetector, ScaleDetector, ScrollDetec
     // Clamp immediately
     _clampCameraPosition();
     
+    return true;
+  }
+
+  @override
+  bool onPanEnd(DragEndInfo info) {
     return true;
   }
 
@@ -189,8 +193,8 @@ class CityMapGame extends FlameGame with PanDetector, ScaleDetector, ScrollDetec
   }
 
   @override
-  void onScaleEnd(ScaleEndInfo info) {
-    // Nothing needed
+  bool onScaleEnd(ScaleEndInfo info) {
+    return true;
   }
   
   @override
