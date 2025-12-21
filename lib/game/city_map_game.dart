@@ -113,14 +113,10 @@ class CityMapGame extends FlameGame with PanDetector, ScaleDetector, ScrollDetec
     // Check for taps on machines
     final touchedComponents = componentsAtPoint(info.eventPosition.widget);
     
-    // We already have MapMachine.onTapUp handling the selection. 
-    // This top-level handler might be redundant if we want to rely on the component's tap callback.
-    // However, if we want to allow clicking *off* a machine to deselect, we can do that here.
-    
     bool machineTapped = false;
     for (final component in touchedComponents) {
       if (component is MapMachine) {
-        // Component handles its own tap
+        // Component handles its own tap via TapCallbacks
         machineTapped = true;
         break; 
       }
@@ -128,7 +124,14 @@ class CityMapGame extends FlameGame with PanDetector, ScaleDetector, ScrollDetec
     
     // If no machine was tapped, deselect
     if (!machineTapped) {
-       ref.read(selectedMachineIdProvider.notifier).state = null;
+       // We need to access the provider container to clear selection
+       // Since we don't have direct access to the specific ProviderContainer of the widget tree here
+       // (ref is a WidgetRef passed in constructor, which is fine)
+       try {
+         ref.read(selectedMachineIdProvider.notifier).state = null;
+       } catch (e) {
+         // ignore if provider not found (e.g. during test)
+       }
     }
   }
 
@@ -143,13 +146,12 @@ class CityMapGame extends FlameGame with PanDetector, ScaleDetector, ScrollDetec
 
   // Zoom (pinch) and Pan (drag) handling
   @override
-  void onPanStart(DragStartInfo info) {
-    // No specific start logic needed for simple pan, 
-    // but we need to override to consume the event if needed
+  bool onPanStart(DragStartInfo info) {
+    return true;
   }
 
   @override
-  void onPanUpdate(DragUpdateInfo info) {
+  bool onPanUpdate(DragUpdateInfo info) {
     // Move camera opposite to drag direction (like Google Maps)
     // Divide by zoom so drag speed matches finger speed at any zoom level
     final delta = info.delta.global / camera.viewfinder.zoom;
@@ -159,29 +161,31 @@ class CityMapGame extends FlameGame with PanDetector, ScaleDetector, ScrollDetec
     
     // Clamp immediately
     _clampCameraPosition();
+    
+    return true;
   }
 
   @override
-  void onScaleStart(ScaleStartInfo info) {
+  bool onScaleStart(ScaleStartInfo info) {
     // Capture the zoom level when fingers first touch
     _startZoom = camera.viewfinder.zoom;
+    return true;
   }
 
   @override
-  void onScaleUpdate(ScaleUpdateInfo info) {
+  bool onScaleUpdate(ScaleUpdateInfo info) {
     // Calculate new zoom based on the snapshot
     // info.scale.global is the total scale of the gesture (starts at 1.0)
     final scale = info.scale.global;
     
     // Use x component (usually uniform)
-    // We only update zoom if there is a significant change to avoid jitter
-    // But since we are using a snapshot, we can just apply it.
     final newZoom = (_startZoom * scale.x).clamp(_minZoom, _maxZoom);
     
     camera.viewfinder.zoom = newZoom;
     _currentZoom = newZoom; // Keep local var in sync
     
     _clampCameraPosition();
+    return true;
   }
 
   @override
