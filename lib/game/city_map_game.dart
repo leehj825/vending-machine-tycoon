@@ -24,7 +24,11 @@ class CityMapGame extends FlameGame with ScaleDetector, ScrollDetector, TapDetec
   // Camera State
   double _minZoom = 0.1;
   double _maxZoom = 5.0;
-  double _lastScale = 1.0;
+  double _startZoom = 1.0;
+
+  // Sync throttling (avoid heavy churn every frame)
+  static const double _syncIntervalSeconds = 0.2;
+  double _syncAccumulatorSeconds = 0.0;
 
   // Legacy callback
   final void Function(Machine)? onMachineTap;
@@ -41,13 +45,15 @@ class CityMapGame extends FlameGame with ScaleDetector, ScrollDetector, TapDetec
     // Setup Camera
     camera.viewfinder.anchor = Anchor.center;
     camera.viewfinder.position = mapCenter;
-    camera.viewfinder.zoom = 0.5; // Start zoomed out slightly
 
     // Add Content
     add(GridComponent());
 
     _syncMachines();
     _syncTrucks();
+
+    // Ensure initial zoom is the fitted zoom (avoids onLoad overriding onGameResize)
+    _fitMapToScreen();
   }
 
   @override
@@ -75,27 +81,28 @@ class CityMapGame extends FlameGame with ScaleDetector, ScrollDetector, TapDetec
   @override
   void update(double dt) {
     super.update(dt);
-    _syncMachines();
-    _syncTrucks();
+    _syncAccumulatorSeconds += dt;
+    if (_syncAccumulatorSeconds >= _syncIntervalSeconds) {
+      _syncAccumulatorSeconds = 0.0;
+      _syncMachines();
+      _syncTrucks();
+    }
   }
 
   // --- GESTURES ---
 
   @override
   void onScaleStart(ScaleStartInfo info) {
-    // Reset scale tracker
-    _lastScale = 1.0;
+    _startZoom = camera.viewfinder.zoom;
   }
 
   @override
   void onScaleUpdate(ScaleUpdateInfo info) {
-    // 1. Zoom (Incremental)
+    // 1. Zoom (stable: based on zoom at gesture start)
     final currentScale = info.scale.global.x;
     if (!currentScale.isNaN && currentScale > 0) {
-      final scaleDelta = currentScale / _lastScale;
-      final newZoom = (camera.viewfinder.zoom * scaleDelta).clamp(_minZoom, _maxZoom);
-      camera.viewfinder.zoom = newZoom;
-      _lastScale = currentScale;
+      camera.viewfinder.zoom =
+          (_startZoom * currentScale).clamp(_minZoom, _maxZoom);
     }
 
     // 2. Pan
