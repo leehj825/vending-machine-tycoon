@@ -981,10 +981,10 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
     final top = positionedY + (tileHeight / 2) - truckSize;
 
     // Determine truck direction based on movement
-    // truck_front faces left down (no flip)
-    // truck_front flipped faces right down
-    // truck_back faces left up (no flip)
-    // truck_back flipped faces right up
+    // truck_front faces left down (no flip) - used for South
+    // truck_front flipped faces right down - used for East
+    // truck_back faces left up (no flip) - used for West
+    // truck_back flipped faces right up - used for North
     String asset = 'assets/images/tiles/truck_front.png';
     bool flip = false;
     
@@ -1009,24 +1009,24 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
       if (dx.abs() > dy.abs()) {
         // Moving primarily horizontally
         if (dx > 0) {
-          // Moving right (east) - use truck_front flipped (right down)
+          // Moving right (East) - use truck_front flipped (right down)
           asset = 'assets/images/tiles/truck_front.png';
           flip = true;
         } else {
-          // Moving left (west) - use truck_front (left down)
-          asset = 'assets/images/tiles/truck_front.png';
+          // Moving left (West) - use truck_back (left up)
+          asset = 'assets/images/tiles/truck_back.png';
           flip = false;
         }
       } else {
         // Moving primarily vertically
         if (dy > 0) {
-          // Moving down (south) - use truck_front (left down)
+          // Moving down (South) - use truck_front (left down)
           asset = 'assets/images/tiles/truck_front.png';
           flip = false;
         } else {
-          // Moving up (north) - use truck_back (left up)
+          // Moving up (North) - use truck_back flipped (right up)
           asset = 'assets/images/tiles/truck_back.png';
-          flip = false;
+          flip = true;
         }
       }
     }
