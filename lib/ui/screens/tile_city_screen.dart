@@ -706,28 +706,35 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
       final positionedX = data['positionedX'] as double;
       final positionedY = data['positionedY'] as double;
 
-        // Ground tile (grass or road) - anchored at base
-        // For warehouse, render it as the ground tile (replacing grass) with scaling
+        // --- UPDATED WAREHOUSE LOGIC START ---
         if (tileType == TileType.warehouse) {
-          // Apply warehouse scale using Transform.scale to actually scale the visual appearance
+          // Use building-style dimensions so the tall image fits
           final warehouseScaleFactor = warehouseScale;
-          final centerOffsetX = (tileWidth * (1.0 - warehouseScaleFactor)) / 2;
-          final centerOffsetY = (tileHeight * (1.0 - warehouseScaleFactor)) / 2;
           
-          // Render warehouse as ground tile, raised slightly and scaled
+          // 1. Calculate scaled dimensions (using buildingImageHeight, not tileHeight)
+          final scaledHeight = buildingImageHeight * warehouseScaleFactor;
+          final scaledWidth = tileWidth * warehouseScaleFactor;
+          
+          // 2. Center horizontally
+          final centerOffsetX = (tileWidth - scaledWidth) / 2;
+          
+          // 3. Calculate Top Position
+          // Anchored at bottom (positionedY) but raised by the height difference
+          // and the specific warehouseVerticalOffset
+          final top = positionedY - (scaledHeight - tileHeight) - warehouseVerticalOffset;
+          
           tiles.add(
             Positioned(
               left: positionedX + centerOffsetX,
-              top: positionedY - warehouseVerticalOffset + centerOffsetY,
-              width: tileWidth,
-              height: tileHeight,
-              child: Transform.scale(
-                scale: warehouseScaleFactor,
-                alignment: Alignment.center,
-                child: _buildGroundTile(tileType, roadDir),
-              ),
+              top: top,
+              width: scaledWidth,
+              height: scaledHeight,
+              // Reuse _buildGroundTile as it sets up the image correctly
+              child: _buildGroundTile(tileType, roadDir),
             ),
           );
+        // --- UPDATED WAREHOUSE LOGIC END ---
+        
         } else if (!_isBuilding(tileType)) {
           // Regular ground tiles (grass, road)
           tiles.add(
