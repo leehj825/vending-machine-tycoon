@@ -29,7 +29,7 @@ class TileCityScreen extends StatefulWidget {
 }
 
 class _TileCityScreenState extends State<TileCityScreen> {
-  static const int gridSize = 20;
+  static const int gridSize = 15;
   
   // Isometric tile dimensions (tweakable constants)
   static const double tileWidth = 64.0;
@@ -38,10 +38,9 @@ class _TileCityScreenState extends State<TileCityScreen> {
   // Building image height (assumed taller than ground tiles)
   static const double buildingImageHeight = 80.0;
   
-  // Block dimensions
-  static const int minBlockWidth = 2;
-  static const int maxBlockWidth = 4;
-  static const int minBlockHeight = 2;
+  // Block dimensions - only 2x3 or 2x4
+  static const int blockWidth = 2;
+  static const int minBlockHeight = 3;
   static const int maxBlockHeight = 4;
   
   late List<List<TileType>> _grid;
@@ -78,8 +77,6 @@ class _TileCityScreenState extends State<TileCityScreen> {
 
   /// Generate a grid-based road system that forms rectangular blocks
   void _generateRoadGrid() {
-    final random = math.Random();
-    
     // Create a grid pattern with roads every few tiles
     // This creates rectangular blocks
     const int roadSpacing = 4; // Roads every 4 tiles (creates ~3x3 blocks)
@@ -87,26 +84,13 @@ class _TileCityScreenState extends State<TileCityScreen> {
     // Horizontal roads (running East-West in grid, diagonal in isometric)
     for (int y = roadSpacing; y < gridSize - roadSpacing; y += roadSpacing) {
       for (int x = 0; x < gridSize; x++) {
-        if (x >= 0 && x < gridSize) {
-          _grid[y][x] = TileType.road;
-        }
+        _grid[y][x] = TileType.road;
       }
     }
     
     // Vertical roads (running North-South in grid, diagonal in isometric)
     for (int x = roadSpacing; x < gridSize - roadSpacing; x += roadSpacing) {
       for (int y = 0; y < gridSize; y++) {
-        if (y >= 0 && y < gridSize) {
-          _grid[y][x] = TileType.road;
-        }
-      }
-    }
-    
-    // Add some random additional roads for variety
-    for (int i = 0; i < 10; i++) {
-      final x = random.nextInt(gridSize);
-      final y = random.nextInt(gridSize);
-      if (_grid[y][x] != TileType.road) {
         _grid[y][x] = TileType.road;
       }
     }
@@ -154,6 +138,7 @@ class _TileCityScreenState extends State<TileCityScreen> {
   }
 
   /// Place building blocks (2x3 or 2x4 tiles) in areas between roads
+  /// Maximum 2 of each building type
   void _placeBuildingBlocks() {
     final random = math.Random();
     final buildingTypes = [
@@ -163,22 +148,28 @@ class _TileCityScreenState extends State<TileCityScreen> {
       TileType.school,
     ];
 
-    // Find all rectangular areas that can fit building blocks
+    // Track building type counts
+    final buildingCounts = <TileType, int>{
+      TileType.shop: 0,
+      TileType.gym: 0,
+      TileType.office: 0,
+      TileType.school: 0,
+    };
+
+    // Find all rectangular areas that can fit building blocks (2x3 or 2x4)
     final validBlocks = <Map<String, dynamic>>[];
     
     for (int startY = 0; startY < gridSize; startY++) {
       for (int startX = 0; startX < gridSize; startX++) {
-        // Try different block sizes
-        for (int blockWidth = minBlockWidth; blockWidth <= maxBlockWidth; blockWidth++) {
-          for (int blockHeight = minBlockHeight; blockHeight <= maxBlockHeight; blockHeight++) {
-            if (_canPlaceBlock(startX, startY, blockWidth, blockHeight)) {
-              validBlocks.add({
-                'x': startX,
-                'y': startY,
-                'width': blockWidth,
-                'height': blockHeight,
-              });
-            }
+        // Try 2x3 and 2x4 blocks only
+        for (int blockHeight = minBlockHeight; blockHeight <= maxBlockHeight; blockHeight++) {
+          if (_canPlaceBlock(startX, startY, blockWidth, blockHeight)) {
+            validBlocks.add({
+              'x': startX,
+              'y': startY,
+              'width': blockWidth,
+              'height': blockHeight,
+            });
           }
         }
       }
@@ -207,8 +198,15 @@ class _TileCityScreenState extends State<TileCityScreen> {
       
       if (overlaps) continue;
       
-      // Determine building type and orientation (50% chance of flipping)
-      final buildingType = buildingTypes[random.nextInt(buildingTypes.length)];
+      // Determine building type - ensure max 2 of each type
+      TileType? buildingType;
+      final availableTypes = buildingTypes.where((type) => buildingCounts[type]! < 2).toList();
+      
+      if (availableTypes.isEmpty) break; // All building types have reached max count
+      
+      buildingType = availableTypes[random.nextInt(availableTypes.length)];
+      buildingCounts[buildingType] = buildingCounts[buildingType]! + 1;
+      
       final orientation = random.nextBool() 
           ? BuildingOrientation.normal 
           : BuildingOrientation.flippedHorizontal;
@@ -287,12 +285,12 @@ class _TileCityScreenState extends State<TileCityScreen> {
   }
 
   /// Convert grid coordinates to isometric screen coordinates
-  /// Adjusted to ensure proper alignment between adjacent tiles
+  /// Uses base tile as anchor point for alignment
   Offset _gridToScreen(int gridX, int gridY) {
-    // Center the tile at the calculated position for better alignment
+    // Isometric projection formula
+    // The base of the tile (bottom) is at this position
     final screenX = (gridX - gridY) * (tileWidth / 2);
     final screenY = (gridX + gridY) * (tileHeight / 2);
-    // Small adjustment to ensure tiles align perfectly
     return Offset(screenX, screenY);
   }
 
@@ -339,8 +337,6 @@ class _TileCityScreenState extends State<TileCityScreen> {
     double maxY = math.max(math.max(topLeft.dy, topRight.dy), math.max(bottomLeft.dy, bottomRight.dy));
     
     // Account for building heights that extend above ground tiles
-    // Buildings are positioned at: positionedY - (buildingImageHeight - tileHeight)
-    // So we need to subtract the extra height from minY
     final buildingOverhang = buildingImageHeight - tileHeight;
     minY -= buildingOverhang;
     
@@ -398,11 +394,13 @@ class _TileCityScreenState extends State<TileCityScreen> {
     );
   }
 
-  /// Build all tiles in correct render order (Y loop, then X loop for painter's algorithm)
+  /// Build all tiles in correct render order
+  /// Render from farthest (top) to closest (bottom) using painter's algorithm
+  /// Sort by depth: (x+y) ascending, then y ascending, then x ascending
   List<Widget> _buildTiles(Offset centerOffset) {
-    final tiles = <Widget>[];
+    final tileData = <Map<String, dynamic>>[];
 
-    // Render in depth order: Y from 0 to max, then X from 0 to max
+    // Collect all tile data with their positions
     for (int y = 0; y < gridSize; y++) {
       for (int x = 0; x < gridSize; x++) {
         final tileType = _grid[y][x];
@@ -412,32 +410,62 @@ class _TileCityScreenState extends State<TileCityScreen> {
         final positionedX = screenPos.dx + centerOffset.dx;
         final positionedY = screenPos.dy + centerOffset.dy;
 
-        // Ground tile (grass or road)
-        // Adjust positioning to center the tile properly for better alignment
+        tileData.add({
+          'x': x,
+          'y': y,
+          'tileType': tileType,
+          'roadDir': roadDir,
+          'buildingOrientation': buildingOrientation,
+          'positionedX': positionedX,
+          'positionedY': positionedY,
+        });
+      }
+    }
+
+    // Sort by depth: farthest (lowest x+y) to closest (highest x+y)
+    // Then by y, then by x for consistent ordering
+    tileData.sort((a, b) {
+      final depthA = (a['x'] as int) + (a['y'] as int);
+      final depthB = (b['x'] as int) + (b['y'] as int);
+      if (depthA != depthB) return depthA.compareTo(depthB);
+      final yA = a['y'] as int;
+      final yB = b['y'] as int;
+      if (yA != yB) return yA.compareTo(yB);
+      return (a['x'] as int).compareTo(b['x'] as int);
+    });
+
+    // Build tiles in sorted order (farthest to closest)
+    final tiles = <Widget>[];
+    for (final data in tileData) {
+      final tileType = data['tileType'] as TileType;
+      final roadDir = data['roadDir'] as RoadDirection?;
+      final buildingOrientation = data['buildingOrientation'] as BuildingOrientation?;
+      final positionedX = data['positionedX'] as double;
+      final positionedY = data['positionedY'] as double;
+
+      // Ground tile (grass or road) - anchored at base
+      tiles.add(
+        Positioned(
+          left: positionedX,
+          top: positionedY,
+          width: tileWidth,
+          height: tileHeight,
+          child: _buildGroundTile(tileType, roadDir),
+        ),
+      );
+
+      // Building tile (if applicable) - anchored at bottom-center, extends upward
+      if (_isBuilding(tileType)) {
+        final buildingTop = positionedY - (buildingImageHeight - tileHeight);
         tiles.add(
           Positioned(
             left: positionedX,
-            top: positionedY,
+            top: buildingTop,
             width: tileWidth,
-            height: tileHeight,
-            child: _buildGroundTile(tileType, roadDir),
+            height: buildingImageHeight,
+            child: _buildBuildingTile(tileType, buildingOrientation),
           ),
         );
-
-        // Building tile (if applicable) - anchored at bottom-center
-        if (_isBuilding(tileType)) {
-          // Building extends upward from the ground tile
-          final buildingTop = positionedY - (buildingImageHeight - tileHeight);
-          tiles.add(
-            Positioned(
-              left: positionedX,
-              top: buildingTop,
-              width: tileWidth,
-              height: buildingImageHeight,
-              child: _buildBuildingTile(tileType, buildingOrientation),
-            ),
-          );
-        }
       }
     }
 
@@ -451,14 +479,14 @@ class _TileCityScreenState extends State<TileCityScreen> {
     Widget imageWidget = Image.asset(
       _getTileAssetPath(tileType, roadDir),
       fit: BoxFit.cover,
+      alignment: Alignment.bottomCenter, // Anchor at bottom
       errorBuilder: (context, error, stackTrace) {
         return Container(
           color: _getFallbackColor(tileType),
-          child: Center(
-            child: Text(
-              _getTileLabel(tileType),
-              style: const TextStyle(fontSize: 8),
-            ),
+          alignment: Alignment.bottomCenter,
+          child: Text(
+            _getTileLabel(tileType),
+            style: const TextStyle(fontSize: 8),
           ),
         );
       },
@@ -467,7 +495,7 @@ class _TileCityScreenState extends State<TileCityScreen> {
     // Flip road sprites instead of rotating
     if (needsFlip) {
       return Transform(
-        alignment: Alignment.center,
+        alignment: Alignment.bottomCenter, // Flip around bottom center
         transform: Matrix4.identity()..scale(-1.0, 1.0), // Flip horizontally
         child: imageWidget,
       );
@@ -480,7 +508,7 @@ class _TileCityScreenState extends State<TileCityScreen> {
     Widget imageWidget = Image.asset(
       _getTileAssetPath(tileType, null),
       fit: BoxFit.contain,
-      alignment: Alignment.bottomCenter,
+      alignment: Alignment.bottomCenter, // Anchor at bottom-center
       errorBuilder: (context, error, stackTrace) {
         return Container(
           color: _getFallbackColor(tileType),
@@ -499,7 +527,7 @@ class _TileCityScreenState extends State<TileCityScreen> {
     // Apply horizontal flip based on orientation
     if (orientation == BuildingOrientation.flippedHorizontal) {
       return Transform(
-        alignment: Alignment.bottomCenter,
+        alignment: Alignment.bottomCenter, // Flip around bottom center
         transform: Matrix4.identity()..scale(-1.0, 1.0), // Flip horizontally
         child: imageWidget,
       );
