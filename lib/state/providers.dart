@@ -160,9 +160,79 @@ class GameController extends StateNotifier<GlobalGameState> {
       machines: updatedMachines,
     );
     state = state.addLogMessage("Bought ${newMachine.name}");
-
+    
     // Sync cash to simulation engine to prevent reversion on next tick
     simulationEngine.updateCash(newCash);
+  }
+
+  /// Buy a new vending machine with automatic initial stocking
+  void buyMachineWithStock(ZoneType zoneType, {required double x, required double y}) {
+    print('🟢 CONTROLLER ACTION: Attempting to buy machine with stock...');
+    final price = MachinePrices.getPrice(zoneType);
+    if (state.cash < price) {
+      state = state.addLogMessage('Insufficient funds');
+      return;
+    }
+
+    // 1. Create Data
+    final zone = _createZoneForType(zoneType, x: x, y: y);
+    
+    // 2. Get initial products for this zone type
+    final initialProducts = _getInitialProductsForZone(zoneType);
+    
+    // 3. Create initial inventory
+    final currentDay = simulationEngine.state.time.day;
+    final initialInventory = <Product, InventoryItem>{};
+    for (final product in initialProducts) {
+      initialInventory[product] = InventoryItem(
+        product: product,
+        quantity: 20, // Start with 20 of each product
+        dayAdded: currentDay,
+      );
+    }
+    
+    // Create machine with initial inventory
+    final newMachine = Machine(
+      id: _uuid.v4(),
+      name: '${zoneType.name.toUpperCase()} Machine ${state.machines.length + 1}',
+      zone: zone,
+      condition: MachineCondition.excellent,
+      inventory: initialInventory,
+      currentCash: 0.0,
+    );
+
+    // Update simulation engine
+    final updatedMachines = [...state.machines, newMachine];
+    simulationEngine.updateMachines(updatedMachines);
+
+    // UPDATE STATE DIRECTLY
+    final newCash = state.cash - price;
+    state = state.copyWith(
+      cash: newCash,
+      machines: updatedMachines,
+    );
+    
+    final productNames = initialProducts.map((p) => p.name).join(', ');
+    state = state.addLogMessage("Bought ${newMachine.name} (stocked with: $productNames)");
+    
+    // Sync cash to simulation engine to prevent reversion on next tick
+    simulationEngine.updateCash(newCash);
+  }
+
+  /// Get initial products for a zone type based on progression rules
+  List<Product> _getInitialProductsForZone(ZoneType zoneType) {
+    switch (zoneType) {
+      case ZoneType.park: // Shop
+        return [Product.soda, Product.chips];
+      case ZoneType.school:
+        return [Product.soda, Product.chips, Product.sandwich];
+      case ZoneType.gym:
+        return [Product.proteinBar];
+      case ZoneType.office:
+        return [Product.coffee, Product.techGadget];
+      case ZoneType.subway:
+        return [Product.soda, Product.chips]; // Default for subway
+    }
   }
 
   /// Create a zone based on zone type

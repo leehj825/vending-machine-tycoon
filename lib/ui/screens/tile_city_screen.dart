@@ -1,6 +1,11 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:async';
+import '../../state/providers.dart';
+import '../../simulation/models/zone.dart';
+import '../../simulation/models/product.dart';
+import '../../simulation/models/machine.dart';
 
 enum TileType {
   grass,
@@ -41,14 +46,14 @@ class Truck {
   Truck(this.x, this.y, this.direction);
 }
 
-class TileCityScreen extends StatefulWidget {
+class TileCityScreen extends ConsumerStatefulWidget {
   const TileCityScreen({super.key});
 
   @override
-  State<TileCityScreen> createState() => _TileCityScreenState();
+  ConsumerState<TileCityScreen> createState() => _TileCityScreenState();
 }
 
-class _TileCityScreenState extends State<TileCityScreen> {
+class _TileCityScreenState extends ConsumerState<TileCityScreen> {
   static const int gridSize = 10;
   
   // Isometric tile dimensions (tweakable constants)
@@ -1012,7 +1017,10 @@ class _TileCityScreenState extends State<TileCityScreen> {
             top: buildingTop,
             width: scaledWidth,
             height: scaledBuildingHeight,
-            child: _buildBuildingTile(tileType, buildingOrientation),
+            child: GestureDetector(
+              onTap: () => _handleBuildingTap(data['x'] as int, data['y'] as int, tileType),
+              child: _buildBuildingTile(tileType, buildingOrientation),
+            ),
           ),
         );
       }
@@ -1214,6 +1222,100 @@ class _TileCityScreenState extends State<TileCityScreen> {
         return 'H';
       case TileType.warehouse:
         return 'W';
+    }
+  }
+
+  /// Handle building tap - purchase machine at this location
+  void _handleBuildingTap(int gridX, int gridY, TileType tileType) {
+    // Convert grid coordinates to zone coordinates
+    // Grid: 0-9, Zone: 1.0-10.0 (machines at .5 positions)
+    final zoneX = (gridX + 1).toDouble() + 0.5;
+    final zoneY = (gridY + 1).toDouble() + 0.5;
+
+    // Map TileType to ZoneType
+    final zoneType = _tileTypeToZoneType(tileType);
+    if (zoneType == null) {
+      // Building type doesn't support machines
+      return;
+    }
+
+    // Check if this building type can be purchased (progression check)
+    if (!_canPurchaseMachine(zoneType)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_getProgressionMessage(zoneType)),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    // Check if there's already a machine at this location
+    final controller = ref.read(gameControllerProvider.notifier);
+    final machines = ref.read(machinesProvider);
+    final hasExistingMachine = machines.any(
+      (m) => (m.zone.x - zoneX).abs() < 0.1 && (m.zone.y - zoneY).abs() < 0.1,
+    );
+    
+    if (hasExistingMachine) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('A machine already exists at this location'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    // Purchase machine with auto-stocking
+    controller.buyMachineWithStock(zoneType, x: zoneX, y: zoneY);
+  }
+
+  /// Map TileType to ZoneType
+  ZoneType? _tileTypeToZoneType(TileType tileType) {
+    switch (tileType) {
+      case TileType.shop:
+        return ZoneType.park; // Shop maps to park zone
+      case TileType.school:
+        return ZoneType.school;
+      case TileType.gym:
+        return ZoneType.gym;
+      case TileType.office:
+        return ZoneType.office;
+      default:
+        return null; // Other building types don't support machines
+    }
+  }
+
+  /// Check if machine type can be purchased based on progression
+  bool _canPurchaseMachine(ZoneType zoneType) {
+    final machines = ref.read(machinesProvider);
+    final shopMachines = machines.where((m) => m.zone.type == ZoneType.park).length;
+
+    switch (zoneType) {
+      case ZoneType.park: // Shop
+        return true; // Always available
+      case ZoneType.school:
+      case ZoneType.gym:
+      case ZoneType.office:
+        return shopMachines >= 2; // Need 2 shops first
+      default:
+        return false;
+    }
+  }
+
+  /// Get progression message for locked machine types
+  String _getProgressionMessage(ZoneType zoneType) {
+    final machines = ref.read(machinesProvider);
+    final shopMachines = machines.where((m) => m.zone.type == ZoneType.park).length;
+    
+    switch (zoneType) {
+      case ZoneType.school:
+      case ZoneType.gym:
+      case ZoneType.office:
+        return 'Need 2 shop machines first (have $shopMachines)';
+      default:
+        return 'Cannot purchase this machine type';
     }
   }
 }
