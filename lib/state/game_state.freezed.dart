@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$GlobalGameState {
 
- double get cash;// Starting cash: $1000 (enough for 1 shop machine + 1 truck)
+ double get cash;// Starting cash: $2000
  int get reputation;// Starting reputation: 100
  int get dayCount;// Current day number
  int get hourOfDay;// Current hour (0-23), starts at 8 AM
@@ -230,11 +230,11 @@ return $default(_that.cash,_that.reputation,_that.dayCount,_that.hourOfDay,_that
 
 
 class _GlobalGameState extends GlobalGameState {
-  const _GlobalGameState({this.cash = 1000.0, this.reputation = 100, this.dayCount = 1, this.hourOfDay = 8, final  List<String> logMessages = const [], final  List<Machine> machines = const [], final  List<Truck> trucks = const [], this.warehouse = const Warehouse(), this.warehouseRoadX = null, this.warehouseRoadY = null}): _logMessages = logMessages,_machines = machines,_trucks = trucks,super._();
+  const _GlobalGameState({this.cash = 2000.0, this.reputation = 100, this.dayCount = 1, this.hourOfDay = 8, final  List<String> logMessages = const [], final  List<Machine> machines = const [], final  List<Truck> trucks = const [], this.warehouse = const Warehouse(), this.warehouseRoadX = null, this.warehouseRoadY = null}): _logMessages = logMessages,_machines = machines,_trucks = trucks,super._();
   
 
 @override@JsonKey() final  double cash;
-// Starting cash: $1000 (enough for 1 shop machine + 1 truck)
+// Starting cash: $2000
 @override@JsonKey() final  int reputation;
 // Starting reputation: 100
 @override@JsonKey() final  int dayCount;
