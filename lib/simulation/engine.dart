@@ -753,11 +753,16 @@ class SimulationEngine extends StateNotifier<SimulationState> {
   /// Process fuel costs for trucks
   double _processFuelCosts(List<Truck> trucks, double currentCash) {
     double totalFuelCost = 0.0;
+    
+    // Movement speed: 0.2 units per tick = 5 ticks per road tile
+    const double movementSpeed = 0.2;
 
     for (final truck in trucks) {
-      if (truck.status == TruckStatus.traveling) {
-        final distance = truck.distanceToTarget;
-        final fuelCost = distance * SimulationConstants.gasPrice;
+      // Only charge fuel when truck is actually moving
+      // Check if truck is traveling AND has meaningful distance to travel
+      if (truck.status == TruckStatus.traveling && truck.distanceToTarget > 0.1) {
+        // Charge based on actual distance moved per tick (movement speed)
+        final fuelCost = movementSpeed * SimulationConstants.gasPrice;
         totalFuelCost += fuelCost;
       }
     }
