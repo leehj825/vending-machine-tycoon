@@ -372,6 +372,31 @@ class SimulationEngine extends StateNotifier<SimulationState> {
     List<Truck> trucks,
     List<Machine> machines,
   ) {
+    // Valid road coordinates (roads are at grid positions 3, 6, 9 = zone 4.0, 7.0, 10.0, plus edge at 1.0)
+    const validRoads = [1.0, 4.0, 7.0, 10.0];
+    
+    // Helper function to snap to nearest valid road coordinate
+    double snapToNearestRoad(double coord) {
+      final rounded = coord.round().toDouble();
+      double nearest = validRoads[0];
+      double minDist = (rounded - nearest).abs();
+      for (final road in validRoads) {
+        final dist = (rounded - road).abs();
+        if (dist < minDist) {
+          minDist = dist;
+          nearest = road;
+        }
+      }
+      return nearest;
+    }
+    
+    // Helper function to check if a position is on a road
+    bool isOnRoad(double x, double y) {
+      final roundedX = x.round().toDouble();
+      final roundedY = y.round().toDouble();
+      return validRoads.contains(roundedX) || validRoads.contains(roundedY);
+    }
+    
     return trucks.map((truck) {
       // If route is complete, check if truck needs to return to warehouse
       if (truck.isRouteComplete) {
@@ -396,30 +421,84 @@ class SimulationEngine extends StateNotifier<SimulationState> {
             targetY: warehouseRoadY,
           );
         } else {
-          // Not at warehouse yet - continue traveling to warehouse
-          // Use same pathfinding logic to move towards warehouse
+          // Not at warehouse yet - continue traveling to warehouse using road-only pathfinding
           final dxToRoad = warehouseRoadX - currentX;
           final dyToRoad = warehouseRoadY - currentY;
           
+          // Move along valid roads only using the same pathfinding logic
           double newX = currentX;
           double newY = currentY;
           
+          // Ensure current position is on a road
+          if (!isOnRoad(currentX, currentY)) {
+            newX = snapToNearestRoad(currentX);
+            newY = snapToNearestRoad(currentY);
+          }
+          
+          // Move towards warehouse along roads
           if (dxToRoad.abs() > dyToRoad.abs()) {
             if (dxToRoad != 0) {
-              newX += dxToRoad > 0 ? 1.0 : -1.0;
+              final direction = dxToRoad > 0 ? 1 : -1;
+              double bestX = newX;
+              double bestDist = (newX - warehouseRoadX).abs();
+              for (final roadX in validRoads) {
+                if ((direction > 0 && roadX >= newX) || (direction < 0 && roadX <= newX)) {
+                  if ((roadX - warehouseRoadX).abs() < bestDist && isOnRoad(roadX, newY)) {
+                    bestX = roadX;
+                    bestDist = (roadX - warehouseRoadX).abs();
+                  }
+                }
+              }
+              newX = bestX;
             } else if (dyToRoad != 0) {
-              newY += dyToRoad > 0 ? 1.0 : -1.0;
+              final direction = dyToRoad > 0 ? 1 : -1;
+              double bestY = newY;
+              double bestDist = (newY - warehouseRoadY).abs();
+              for (final roadY in validRoads) {
+                if ((direction > 0 && roadY >= newY) || (direction < 0 && roadY <= newY)) {
+                  if ((roadY - warehouseRoadY).abs() < bestDist && isOnRoad(newX, roadY)) {
+                    bestY = roadY;
+                    bestDist = (roadY - warehouseRoadY).abs();
+                  }
+                }
+              }
+              newY = bestY;
             }
           } else {
             if (dyToRoad != 0) {
-              newY += dyToRoad > 0 ? 1.0 : -1.0;
+              final direction = dyToRoad > 0 ? 1 : -1;
+              double bestY = newY;
+              double bestDist = (newY - warehouseRoadY).abs();
+              for (final roadY in validRoads) {
+                if ((direction > 0 && roadY >= newY) || (direction < 0 && roadY <= newY)) {
+                  if ((roadY - warehouseRoadY).abs() < bestDist && isOnRoad(newX, roadY)) {
+                    bestY = roadY;
+                    bestDist = (roadY - warehouseRoadY).abs();
+                  }
+                }
+              }
+              newY = bestY;
             } else if (dxToRoad != 0) {
-              newX += dxToRoad > 0 ? 1.0 : -1.0;
+              final direction = dxToRoad > 0 ? 1 : -1;
+              double bestX = newX;
+              double bestDist = (newX - warehouseRoadX).abs();
+              for (final roadX in validRoads) {
+                if ((direction > 0 && roadX >= newX) || (direction < 0 && roadX <= newX)) {
+                  if ((roadX - warehouseRoadX).abs() < bestDist && isOnRoad(roadX, newY)) {
+                    bestX = roadX;
+                    bestDist = (roadX - warehouseRoadX).abs();
+                  }
+                }
+              }
+              newX = bestX;
             }
           }
           
-          newX = newX.round().toDouble().clamp(1.0, 10.0);
-          newY = newY.round().toDouble().clamp(1.0, 10.0);
+          // Ensure final position is on a road
+          if (!isOnRoad(newX, newY)) {
+            newX = snapToNearestRoad(newX);
+            newY = snapToNearestRoad(newY);
+          }
           
           return truck.copyWith(
             status: TruckStatus.traveling,
@@ -463,41 +542,48 @@ class SimulationEngine extends StateNotifier<SimulationState> {
       double currentX = truck.currentX.round().toDouble();
       double currentY = truck.currentY.round().toDouble();
       
-      // For machines at .5 positions, find the closest road corner
-      // Machines are at .5 positions (1.5, 2.5, etc.), roads are at integers
-      // Find the closest road by checking all four corners
-      final floorX = machineX.floor().toDouble();
-      final floorY = machineY.floor().toDouble();
-      final ceilX = machineX.ceil().toDouble();
-      final ceilY = machineY.ceil().toDouble();
+      // For machines at .5 positions, find the closest VALID road position
+      // Roads are only at specific positions: 1.0, 4.0, 7.0, 10.0
+      // Find the closest valid road to the machine
+      double destRoadX = validRoads[0];
+      double destRoadY = validRoads[0];
+      double minDist = double.infinity;
       
-      // Calculate distances to all four road corners
-      final distToFloorFloor = (machineX - floorX).abs() + (machineY - floorY).abs();
-      final distToFloorCeil = (machineX - floorX).abs() + (machineY - ceilY).abs();
-      final distToCeilFloor = (machineX - ceilX).abs() + (machineY - floorY).abs();
-      final distToCeilCeil = (machineX - ceilX).abs() + (machineY - ceilY).abs();
-      
-      // Find the closest road corner
-      double destRoadX, destRoadY;
-      if (distToFloorFloor <= distToFloorCeil && 
-          distToFloorFloor <= distToCeilFloor && 
-          distToFloorFloor <= distToCeilCeil) {
-        destRoadX = floorX;
-        destRoadY = floorY;
-      } else if (distToFloorCeil <= distToCeilFloor && distToFloorCeil <= distToCeilCeil) {
-        destRoadX = floorX;
-        destRoadY = ceilY;
-      } else if (distToCeilFloor <= distToCeilCeil) {
-        destRoadX = ceilX;
-        destRoadY = floorY;
-      } else {
-        destRoadX = ceilX;
-        destRoadY = ceilY;
+      // Check all valid road positions to find the closest to the machine
+      for (final roadX in validRoads) {
+        for (final roadY in validRoads) {
+          // Calculate Manhattan distance from machine to this road intersection
+          final dist = (machineX - roadX).abs() + (machineY - roadY).abs();
+          if (dist < minDist) {
+            minDist = dist;
+            destRoadX = roadX;
+            destRoadY = roadY;
+          }
+        }
       }
       
-      // Clamp to valid road range (1.0 to 10.0)
-      destRoadX = destRoadX.clamp(1.0, 10.0);
-      destRoadY = destRoadY.clamp(1.0, 10.0);
+      // Also check if we can use a road line (horizontal or vertical) that's closer
+      // Check horizontal roads (Y is road coordinate, X can be any valid road)
+      for (final roadY in validRoads) {
+        final closestRoadX = snapToNearestRoad(machineX);
+        final dist = (machineX - closestRoadX).abs() + (machineY - roadY).abs();
+        if (dist < minDist) {
+          minDist = dist;
+          destRoadX = closestRoadX;
+          destRoadY = roadY;
+        }
+      }
+      
+      // Check vertical roads (X is road coordinate, Y can be any valid road)
+      for (final roadX in validRoads) {
+        final closestRoadY = snapToNearestRoad(machineY);
+        final dist = (machineX - roadX).abs() + (machineY - closestRoadY).abs();
+        if (dist < minDist) {
+          minDist = dist;
+          destRoadX = roadX;
+          destRoadY = closestRoadY;
+        }
+      }
       
       // Calculate Manhattan distance to destination road
       final dxToRoad = destRoadX - currentX;
@@ -527,45 +613,112 @@ class SimulationEngine extends StateNotifier<SimulationState> {
       // IMPORTANT: Trucks must ALWAYS stay on roads (integer coordinates)
       // dxToRoad and dyToRoad are already calculated above
       
-      // Helper function to snap coordinate to nearest valid road position
-      // Roads in the tile map are typically at positions 3, 6, 9 (grid) = 4.0, 7.0, 10.0 (zone)
-      // But to be flexible, we allow any integer coordinate as long as it's within bounds
-      double snapToRoad(double coord) {
-        // Snap to nearest integer and clamp to valid zone range (1.0 to 10.0)
-        final snapped = coord.round().toDouble();
-        return snapped.clamp(1.0, 10.0);
-      }
-      
-      // Manhattan pathfinding: move along one axis, then the other
-      // Move in integer steps (1.0 per tick) since trucks must stay on roads
+      // Manhattan pathfinding: move along roads only
+      // Trucks can move along horizontal roads (Y is road coordinate) or vertical roads (X is road coordinate)
       double newX = currentX;
       double newY = currentY;
       
+      // Ensure current position is on a road (at least one coordinate must be a road)
+      if (!isOnRoad(currentX, currentY)) {
+        // If not on a road, snap to nearest road position
+        // Prefer keeping one coordinate if it's already close to a road
+        final distToRoadX = (currentX - snapToNearestRoad(currentX)).abs();
+        final distToRoadY = (currentY - snapToNearestRoad(currentY)).abs();
+        
+        if (distToRoadX < distToRoadY) {
+          // X is closer to a road, snap X and keep Y on a road
+          newX = snapToNearestRoad(currentX);
+          newY = snapToNearestRoad(currentY);
+        } else {
+          // Y is closer to a road, snap Y and keep X on a road
+          newY = snapToNearestRoad(currentY);
+          newX = snapToNearestRoad(currentX);
+        }
+      }
+      
+      // Now move towards destination, but only to positions that are on roads
+      
+      // Try to move towards destination along roads
       if (dxToRoad.abs() > dyToRoad.abs()) {
         // Move horizontally first
         if (dxToRoad != 0) {
-          newX += dxToRoad > 0 ? 1.0 : -1.0; // Move one road segment at a time
+          // We're on a horizontal road (Y is road coordinate), move to a vertical road (X becomes road coordinate)
+          // Or stay on horizontal road but move X towards destination
+          final direction = dxToRoad > 0 ? 1 : -1;
+          double bestX = newX;
+          double bestDist = (newX - destRoadX).abs();
+          
+          // Try moving to each valid road X coordinate in the right direction
+          for (final roadX in validRoads) {
+            if ((direction > 0 && roadX >= newX) || (direction < 0 && roadX <= newX)) {
+              if ((roadX - destRoadX).abs() < bestDist && isOnRoad(roadX, newY)) {
+                bestX = roadX;
+                bestDist = (roadX - destRoadX).abs();
+              }
+            }
+          }
+          newX = bestX;
         } else {
-          // Horizontal is aligned, move vertically
+          // Horizontal aligned, move vertically
           if (dyToRoad != 0) {
-            newY += dyToRoad > 0 ? 1.0 : -1.0; // Move one road segment at a time
+            // We're on a vertical road (X is road coordinate), move to a horizontal road (Y becomes road coordinate)
+            final direction = dyToRoad > 0 ? 1 : -1;
+            double bestY = newY;
+            double bestDist = (newY - destRoadY).abs();
+            
+            for (final roadY in validRoads) {
+              if ((direction > 0 && roadY >= newY) || (direction < 0 && roadY <= newY)) {
+                if ((roadY - destRoadY).abs() < bestDist && isOnRoad(newX, roadY)) {
+                  bestY = roadY;
+                  bestDist = (roadY - destRoadY).abs();
+                }
+              }
+            }
+            newY = bestY;
           }
         }
       } else {
         // Move vertically first
         if (dyToRoad != 0) {
-          newY += dyToRoad > 0 ? 1.0 : -1.0; // Move one road segment at a time
+          final direction = dyToRoad > 0 ? 1 : -1;
+          double bestY = newY;
+          double bestDist = (newY - destRoadY).abs();
+          
+          for (final roadY in validRoads) {
+            if ((direction > 0 && roadY >= newY) || (direction < 0 && roadY <= newY)) {
+              if ((roadY - destRoadY).abs() < bestDist && isOnRoad(newX, roadY)) {
+                bestY = roadY;
+                bestDist = (roadY - destRoadY).abs();
+              }
+            }
+          }
+          newY = bestY;
         } else {
-          // Vertical is aligned, move horizontally
+          // Vertical aligned, move horizontally
           if (dxToRoad != 0) {
-            newX += dxToRoad > 0 ? 1.0 : -1.0; // Move one road segment at a time
+            final direction = dxToRoad > 0 ? 1 : -1;
+            double bestX = newX;
+            double bestDist = (newX - destRoadX).abs();
+            
+            for (final roadX in validRoads) {
+              if ((direction > 0 && roadX >= newX) || (direction < 0 && roadX <= newX)) {
+                if ((roadX - destRoadX).abs() < bestDist && isOnRoad(roadX, newY)) {
+                  bestX = roadX;
+                  bestDist = (roadX - destRoadX).abs();
+                }
+              }
+            }
+            newX = bestX;
           }
         }
       }
       
-      // Ensure we're still on roads (snap to nearest integer and clamp to valid range)
-      newX = snapToRoad(newX);
-      newY = snapToRoad(newY);
+      // Final validation: ensure we're on a road
+      if (!isOnRoad(newX, newY)) {
+        // If somehow not on a road, snap both coordinates
+        newX = snapToNearestRoad(newX);
+        newY = snapToNearestRoad(newY);
+      }
 
       return truck.copyWith(
         status: TruckStatus.traveling,
