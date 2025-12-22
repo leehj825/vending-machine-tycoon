@@ -239,7 +239,7 @@ class SimulationEngine extends StateNotifier<SimulationState> {
     final reputationPenalty = _calculateReputationPenalty(updatedMachines);
     var updatedReputation = (currentState.reputation - reputationPenalty).clamp(0, 1000);
     var updatedCash = currentState.cash;
-    updatedCash = _processFuelCosts(updatedTrucks, updatedCash);
+    updatedCash = _processFuelCosts(updatedTrucks, currentState.trucks, updatedCash);
 
     // Update State
     final newState = currentState.copyWith(
@@ -882,16 +882,25 @@ class SimulationEngine extends StateNotifier<SimulationState> {
   }
 
   /// Process fuel costs for trucks
-  double _processFuelCosts(List<Truck> trucks, double currentCash) {
+  double _processFuelCosts(List<Truck> updatedTrucks, List<Truck> oldTrucks, double currentCash) {
     double totalFuelCost = 0.0;
     
     // Movement speed: 1.0 units per tick = 1 tick per road tile (matches truck movement speed)
     const double movementSpeed = 1.0;
 
-    for (final truck in trucks) {
+    for (final truck in updatedTrucks) {
+      // Find the previous state of this truck
+      final oldTruck = oldTrucks.firstWhere(
+        (t) => t.id == truck.id,
+        orElse: () => truck, // Fallback if new truck
+      );
+
+      // Check if truck has actually moved
+      final hasMoved = (truck.currentX - oldTruck.currentX).abs() > 0.001 || 
+                       (truck.currentY - oldTruck.currentY).abs() > 0.001;
+
       // Only charge fuel when truck is actually moving
-      // Check if truck is traveling AND has meaningful distance to travel
-      if (truck.status == TruckStatus.traveling && truck.distanceToTarget > 0.1) {
+      if (hasMoved) {
         // Charge based on actual distance moved per tick (movement speed)
         final fuelCost = movementSpeed * SimulationConstants.gasPrice;
         totalFuelCost += fuelCost;
