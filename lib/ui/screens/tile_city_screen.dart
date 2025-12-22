@@ -953,62 +953,87 @@ class _TileCityScreenState extends State<TileCityScreen> {
 
     // Add trucks on top of tiles
     for (final truck in _trucks) {
-      final screenPos = _gridToScreenDouble(truck.x, truck.y);
-      final positionedX = screenPos.dx + centerOffset.dx;
-      final positionedY = screenPos.dy + centerOffset.dy;
-      
-      tiles.add(
-        Positioned(
-          left: positionedX,
-          top: positionedY - 20, // Slightly above the road
-          width: tileWidth * 0.6,
-          height: tileHeight * 0.8,
-          child: _buildTruck(truck),
-        ),
-      );
+      tiles.add(_buildTruckPositioned(truck, centerOffset));
     }
 
     return tiles;
   }
 
-  /// Build truck widget with front/back assets and flipping
-  Widget _buildTruck(Truck truck) {
-    // Determine which asset to use (front or back) based on direction
-    final bool useFront = truck.direction == TruckDirection.north || truck.direction == TruckDirection.south;
-    final String assetPath = useFront 
-        ? 'assets/images/tiles/truck_front.png'
-        : 'assets/images/tiles/truck_back.png';
+  /// Build positioned truck widget with proper centering on road
+  Widget _buildTruckPositioned(Truck truck, Offset centerOffset) {
+    // 1. Get exact screen coordinates
+    final pos = _gridToScreenDouble(truck.x, truck.y);
+    final positionedX = pos.dx + centerOffset.dx;
+    final positionedY = pos.dy + centerOffset.dy;
     
-    // Determine if truck should be flipped horizontally
-    // Flip if moving west (left) or south (down in isometric)
-    final bool shouldFlip = truck.direction == TruckDirection.west || truck.direction == TruckDirection.south;
+    // 2. Size & Centering Logic
+    // Make truck half the size of a tile so it fits in the lane
+    final double truckSize = tileWidth * 0.5; 
     
-    Widget truckWidget = Image.asset(
-      assetPath,
+    // Center logic:
+    // X: Tile Left + (TileWidth - TruckWidth) / 2
+    // Y: Tile Top + (TileHeight / 2) - TruckHeight (sit on middle of diamond)
+    final left = positionedX + (tileWidth - truckSize) / 2;
+    final top = positionedY + (tileHeight / 2) - truckSize;
+
+    return Positioned(
+      left: left,
+      top: top,
+      width: truckSize,
+      height: truckSize,
+      child: _buildTruckImage(truck),
+    );
+  }
+
+  /// Build truck image with correct asset and orientation for isometric view
+  Widget _buildTruckImage(Truck truck) {
+    String asset = 'assets/images/tiles/truck_front.png';
+    bool flip = false;
+
+    // Orientation Logic for Isometric View:
+    switch (truck.direction) {
+      case TruckDirection.south: // Moves Down-Left in isometric
+        asset = 'assets/images/tiles/truck_front.png';
+        flip = false;
+        break;
+      case TruckDirection.west: // Moves Up-Left in isometric
+        asset = 'assets/images/tiles/truck_back.png';
+        flip = false;
+        break;
+      case TruckDirection.north: // Moves Up-Right in isometric (Mirror of West)
+        asset = 'assets/images/tiles/truck_back.png';
+        flip = true;
+        break;
+      case TruckDirection.east: // Moves Down-Right in isometric (Mirror of South)
+        asset = 'assets/images/tiles/truck_front.png';
+        flip = true;
+        break;
+    }
+
+    Widget img = Image.asset(
+      asset,
       fit: BoxFit.contain,
-      alignment: Alignment.center,
+      alignment: Alignment.bottomCenter,
       errorBuilder: (context, error, stackTrace) {
         return Container(
           color: Colors.blue.shade300,
-          child: Center(
-            child: Text(
-              'T',
-              style: const TextStyle(fontSize: 12, color: Colors.white),
-            ),
+          alignment: Alignment.bottomCenter,
+          child: Text(
+            'T',
+            style: const TextStyle(fontSize: 12, color: Colors.white),
           ),
         );
       },
     );
-    
-    if (shouldFlip) {
+
+    if (flip) {
       return Transform(
-        alignment: Alignment.center,
-        transform: Matrix4.identity()..scale(-1.0, 1.0), // Flip horizontally
-        child: truckWidget,
+        alignment: Alignment.center, 
+        transform: Matrix4.identity()..scale(-1.0, 1.0), 
+        child: img
       );
     }
-    
-    return truckWidget;
+    return img;
   }
 
   Widget _buildGroundTile(TileType tileType, RoadDirection? roadDir) {
