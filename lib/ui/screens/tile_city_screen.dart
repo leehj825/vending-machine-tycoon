@@ -35,12 +35,12 @@ class _TileCityScreenState extends State<TileCityScreen> {
   // Reduced spacing to make tiles closer together
   static const double tileWidth = 64.0;
   static const double tileHeight = 32.0;
-  static const double tileSpacingFactor = 0.95; // Reduce spacing between tiles
+  static const double tileSpacingFactor = 0.88; // Reduced further to make tiles closer
   
   // Building image height (assumed taller than ground tiles)
-  // Scaled down to fit better within tile bounds
-  static const double buildingImageHeight = 60.0; // Reduced from 80.0
-  static const double buildingScale = 0.75; // Scale down buildings to 75% of original size
+  // Adjusted to make buildings larger
+  static const double buildingImageHeight = 75.0; // Increased from 60.0
+  static const double buildingScale = 0.95; // Increased from 0.75 to make buildings larger
   
   // Block dimensions - only 2x3 or 2x4
   static const int blockWidth = 2;
