@@ -652,20 +652,6 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
               ),
             ),
           ),
-          // Floating refresh button
-          Positioned(
-            top: 16,
-            right: 16,
-            child: FloatingActionButton.small(
-              onPressed: () {
-                setState(() {
-                  _generateMap();
-                });
-              },
-              child: const Icon(Icons.refresh),
-              tooltip: 'Refresh Map',
-            ),
-          ),
         ],
       ),
     );
@@ -756,6 +742,44 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
             ),
           ),
         );
+
+        // Add "+" purchase button indicator above building if machine can be purchased
+        if (_shouldShowPurchaseButton(data['x'] as int, data['y'] as int, tileType)) {
+          final buttonSize = 24.0;
+          final buttonTop = buildingTop - verticalOffset - buttonSize - 4.0; // 4px above building
+          final buttonLeft = positionedX + (tileWidth / 2) - (buttonSize / 2); // Centered above building
+          
+          tiles.add(
+            Positioned(
+              left: buttonLeft,
+              top: buttonTop,
+              width: buttonSize,
+              height: buttonSize,
+              child: GestureDetector(
+                onTap: () => _handleBuildingTap(data['x'] as int, data['y'] as int, tileType),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.green,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 2),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.3),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.add,
+                    color: Colors.white,
+                    size: 18,
+                  ),
+                ),
+              ),
+            ),
+          );
+        }
       }
     }
 
@@ -1091,6 +1115,32 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
 
     // Purchase machine with auto-stocking
     controller.buyMachineWithStock(zoneType, x: zoneX, y: zoneY);
+  }
+
+  /// Check if a building should show the "+" purchase indicator
+  bool _shouldShowPurchaseButton(int gridX, int gridY, TileType tileType) {
+    // Convert grid coordinates to zone coordinates
+    final zoneX = (gridX + 1).toDouble() + 0.5;
+    final zoneY = (gridY + 1).toDouble() + 0.5;
+
+    // Check if building type supports machines
+    final zoneType = _tileTypeToZoneType(tileType);
+    if (zoneType == null) {
+      return false;
+    }
+
+    // Check if machine can be purchased (progression check)
+    if (!_canPurchaseMachine(zoneType)) {
+      return false;
+    }
+
+    // Check if there's already a machine at this location
+    final machines = ref.watch(machinesProvider);
+    final hasExistingMachine = machines.any(
+      (m) => (m.zone.x - zoneX).abs() < 0.1 && (m.zone.y - zoneY).abs() < 0.1,
+    );
+
+    return !hasExistingMachine;
   }
 
   /// Map TileType to ZoneType
