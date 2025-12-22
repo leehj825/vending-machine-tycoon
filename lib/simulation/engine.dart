@@ -358,7 +358,62 @@ class SimulationEngine extends StateNotifier<SimulationState> {
     List<Machine> machines,
   ) {
     return trucks.map((truck) {
-      if (!truck.hasRoute || truck.isRouteComplete) {
+      // If route is complete, check if truck needs to return to warehouse
+      if (truck.isRouteComplete) {
+        const warehouseRoadX = 4.0;
+        const warehouseRoadY = 4.0;
+        final currentX = truck.currentX.round().toDouble();
+        final currentY = truck.currentY.round().toDouble();
+        final dxToWarehouse = warehouseRoadX - currentX;
+        final dyToWarehouse = warehouseRoadY - currentY;
+        final manhattanDistToWarehouse = dxToWarehouse.abs() + dyToWarehouse.abs();
+        
+        if (manhattanDistToWarehouse == 0) {
+          // At warehouse - mark as idle
+          return truck.copyWith(
+            status: TruckStatus.idle,
+            currentX: warehouseRoadX,
+            currentY: warehouseRoadY,
+            targetX: warehouseRoadX,
+            targetY: warehouseRoadY,
+          );
+        } else {
+          // Not at warehouse yet - continue traveling to warehouse
+          // Use same pathfinding logic to move towards warehouse
+          final dxToRoad = warehouseRoadX - currentX;
+          final dyToRoad = warehouseRoadY - currentY;
+          
+          double newX = currentX;
+          double newY = currentY;
+          
+          if (dxToRoad.abs() > dyToRoad.abs()) {
+            if (dxToRoad != 0) {
+              newX += dxToRoad > 0 ? 1.0 : -1.0;
+            } else if (dyToRoad != 0) {
+              newY += dyToRoad > 0 ? 1.0 : -1.0;
+            }
+          } else {
+            if (dyToRoad != 0) {
+              newY += dyToRoad > 0 ? 1.0 : -1.0;
+            } else if (dxToRoad != 0) {
+              newX += dxToRoad > 0 ? 1.0 : -1.0;
+            }
+          }
+          
+          newX = newX.round().toDouble().clamp(1.0, 10.0);
+          newY = newY.round().toDouble().clamp(1.0, 10.0);
+          
+          return truck.copyWith(
+            status: TruckStatus.traveling,
+            currentX: newX,
+            currentY: newY,
+            targetX: warehouseRoadX,
+            targetY: warehouseRoadY,
+          );
+        }
+      }
+      
+      if (!truck.hasRoute) {
         return truck.copyWith(status: TruckStatus.idle);
       }
 
@@ -383,10 +438,41 @@ class SimulationEngine extends StateNotifier<SimulationState> {
       double currentX = truck.currentX.round().toDouble();
       double currentY = truck.currentY.round().toDouble();
       
-      // For machines at .5 positions, find the nearest road for pathfinding
-      // Use floor to get the road on the lower side, which is more predictable
-      final destRoadX = machineX.floor().toDouble(); // Road on the left/bottom side of block
-      final destRoadY = machineY.floor().toDouble();
+      // For machines at .5 positions, find the closest road corner
+      // Machines are at .5 positions (1.5, 2.5, etc.), roads are at integers
+      // Find the closest road by checking all four corners
+      final floorX = machineX.floor().toDouble();
+      final floorY = machineY.floor().toDouble();
+      final ceilX = machineX.ceil().toDouble();
+      final ceilY = machineY.ceil().toDouble();
+      
+      // Calculate distances to all four road corners
+      final distToFloorFloor = (machineX - floorX).abs() + (machineY - floorY).abs();
+      final distToFloorCeil = (machineX - floorX).abs() + (machineY - ceilY).abs();
+      final distToCeilFloor = (machineX - ceilX).abs() + (machineY - floorY).abs();
+      final distToCeilCeil = (machineX - ceilX).abs() + (machineY - ceilY).abs();
+      
+      // Find the closest road corner
+      double destRoadX, destRoadY;
+      if (distToFloorFloor <= distToFloorCeil && 
+          distToFloorFloor <= distToCeilFloor && 
+          distToFloorFloor <= distToCeilCeil) {
+        destRoadX = floorX;
+        destRoadY = floorY;
+      } else if (distToFloorCeil <= distToCeilFloor && distToFloorCeil <= distToCeilCeil) {
+        destRoadX = floorX;
+        destRoadY = ceilY;
+      } else if (distToCeilFloor <= distToCeilCeil) {
+        destRoadX = ceilX;
+        destRoadY = floorY;
+      } else {
+        destRoadX = ceilX;
+        destRoadY = ceilY;
+      }
+      
+      // Clamp to valid road range (1.0 to 10.0)
+      destRoadX = destRoadX.clamp(1.0, 10.0);
+      destRoadY = destRoadY.clamp(1.0, 10.0);
       
       // Calculate Manhattan distance to destination road
       final dxToRoad = destRoadX - currentX;
@@ -611,11 +697,47 @@ class SimulationEngine extends StateNotifier<SimulationState> {
 
         // Update truck inventory
         final updatedTruckInventory = itemsToTransfer;
-        updatedTrucks[i] = truck.copyWith(
-          inventory: updatedTruckInventory,
-          status: TruckStatus.traveling, // Done restocking, continue route
-          currentRouteIndex: truck.currentRouteIndex + 1,
-        );
+        
+        // Check if truck still has items to stock
+        final hasMoreItems = updatedTruckInventory.isNotEmpty;
+        final hasMoreDestinations = truck.currentRouteIndex + 1 < truck.route.length;
+        
+        if (hasMoreItems && hasMoreDestinations) {
+          // Truck has more items and more destinations - continue to next machine
+          updatedTrucks[i] = truck.copyWith(
+            inventory: updatedTruckInventory,
+            status: TruckStatus.traveling,
+            currentRouteIndex: truck.currentRouteIndex + 1,
+          );
+        } else if (hasMoreItems && !hasMoreDestinations) {
+          // Truck has items but no more destinations - this shouldn't happen, but continue route
+          updatedTrucks[i] = truck.copyWith(
+            inventory: updatedTruckInventory,
+            status: TruckStatus.traveling,
+            currentRouteIndex: truck.currentRouteIndex + 1,
+          );
+        } else {
+          // Truck is empty - return to warehouse or mark as idle if route complete
+          if (hasMoreDestinations) {
+            // Still have destinations but no items - continue route (might reload at warehouse later)
+            updatedTrucks[i] = truck.copyWith(
+              inventory: updatedTruckInventory,
+              status: TruckStatus.traveling,
+              currentRouteIndex: truck.currentRouteIndex + 1,
+            );
+          } else {
+            // Route complete and empty - return to warehouse
+            const warehouseRoadX = 4.0;
+            const warehouseRoadY = 4.0;
+            updatedTrucks[i] = truck.copyWith(
+              inventory: updatedTruckInventory,
+              status: TruckStatus.traveling,
+              currentRouteIndex: truck.currentRouteIndex + 1, // Mark route as complete
+              targetX: warehouseRoadX,
+              targetY: warehouseRoadY,
+            );
+          }
+        }
 
         // Update machine
         updatedMachines[machineIndex] = machine.copyWith(

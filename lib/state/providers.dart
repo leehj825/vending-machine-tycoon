@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart' show StateNotifierProvider, StateProvider;
@@ -452,18 +451,20 @@ class GameController extends StateNotifier<GlobalGameState> {
       return;
     }
 
-    final random = math.Random();
-    // Place truck on a road (integer coordinates between 1 and 9)
-    // Roads are at integer coordinates in zone space
-    final startX = (1 + random.nextInt(9)).toDouble(); // Random integer 1-9
-    final startY = (1 + random.nextInt(9)).toDouble(); // Random integer 1-9
+    // Warehouse is typically at a fixed position or near center
+    // For now, use road position (4.0, 4.0) as warehouse road
+    // This should be a road tile next to where warehouse is placed
+    const warehouseRoadX = 4.0;
+    const warehouseRoadY = 4.0;
 
     final truck = Truck(
       id: _uuid.v4(),
       name: 'Truck ${state.trucks.length + 1}',
       inventory: {},
-      currentX: startX,
-      currentY: startY,
+      currentX: warehouseRoadX,
+      currentY: warehouseRoadY,
+      targetX: warehouseRoadX,
+      targetY: warehouseRoadY,
     );
 
     // Update state
