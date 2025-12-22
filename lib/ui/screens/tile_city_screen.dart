@@ -44,12 +44,12 @@ class _TileCityScreenState extends State<TileCityScreen> {
   // Building image height (assumed taller than ground tiles)
   // Adjusted to make buildings larger
   static const double buildingImageHeight = 65.0; // Increased from 60.0
-  static const double buildingScale = 0.83; // Increased from 0.75 to make buildings larger
+  static const double buildingScale = 0.81; // Increased from 0.75 to make buildings larger
   
   // Individual building scales (adjustable separately for different image sizes)
-  static const double gasStationScale = 0.83; // Adjust for gas_station.png
-  static const double parkScale = 0.83; // Adjust for park.png
-  static const double houseScale = 0.83; // Adjust for house.png
+  static const double gasStationScale = 0.72; // Adjust for gas_station.png
+  static const double parkScale = 0.72; // Adjust for park.png
+  static const double houseScale = 0.72; // Adjust for house.png
   
   // Block dimensions - minimum 2x2, maximum 2x3 or 3x2
   static const int minBlockSize = 2;
@@ -197,6 +197,7 @@ class _TileCityScreenState extends State<TileCityScreen> {
     ];
 
     // Track building type counts globally
+    // Houses and parks can have more instances (up to 5 each)
     final buildingCounts = <TileType, int>{
       TileType.shop: 0,
       TileType.gym: 0,
@@ -205,6 +206,17 @@ class _TileCityScreenState extends State<TileCityScreen> {
       TileType.gasStation: 0,
       TileType.park: 0,
       TileType.house: 0,
+    };
+    
+    // Maximum counts for each building type
+    final maxBuildingCounts = <TileType, int>{
+      TileType.shop: 2,
+      TileType.gym: 2,
+      TileType.office: 2,
+      TileType.school: 2,
+      TileType.gasStation: 2,
+      TileType.park: 4, // More parks
+      TileType.house: 4, // More houses
     };
 
     // Find all rectangular areas that can fit building blocks (2x3 or 3x2)
@@ -295,15 +307,22 @@ class _TileCityScreenState extends State<TileCityScreen> {
         // Get available building types (not used in this block, and under global limit)
         // Prioritize types that haven't been placed yet
         final availableTypes = buildingTypes.where((type) => 
-          !blockBuildingTypes.contains(type) && buildingCounts[type]! < 2
+          !blockBuildingTypes.contains(type) && buildingCounts[type]! < maxBuildingCounts[type]!
         ).toList();
         
         if (availableTypes.isEmpty) break; // No more types available
         
-        // Prefer priority types (gas_station, park, house) if they haven't been placed yet
-        final priorityAvailable = availableTypes.where((type) => 
-          priorityTypes.contains(type) && buildingCounts[type]! < 2
+        // Prefer houses and parks first (they can have more instances)
+        final housesAndParks = availableTypes.where((type) => 
+          (type == TileType.house || type == TileType.park) && buildingCounts[type]! < maxBuildingCounts[type]!
         ).toList();
+        
+        // Use houses and parks if available, otherwise use other priority types
+        final priorityAvailable = housesAndParks.isNotEmpty 
+            ? housesAndParks
+            : availableTypes.where((type) => 
+                priorityTypes.contains(type) && buildingCounts[type]! < maxBuildingCounts[type]!
+              ).toList();
         
         // Use priority types if available, otherwise use any available type
         final buildingType = priorityAvailable.isNotEmpty 
