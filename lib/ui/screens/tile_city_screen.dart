@@ -4,8 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:async';
 import '../../state/providers.dart';
 import '../../simulation/models/zone.dart';
-import '../../simulation/models/product.dart';
-import '../../simulation/models/machine.dart';
 
 enum TileType {
   grass,
@@ -81,6 +79,10 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
   late List<List<TileType>> _grid;
   late List<List<RoadDirection?>> _roadDirections;
   late List<List<BuildingOrientation?>> _buildingOrientations;
+  
+  // Warehouse position (grid coordinates)
+  int? _warehouseX;
+  int? _warehouseY;
   
   // Truck state
   final List<Truck> _trucks = [];
@@ -174,29 +176,53 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
     
     if (validSpots.isNotEmpty) {
       final spot = validSpots[random.nextInt(validSpots.length)];
+      _warehouseX = spot[0];
+      _warehouseY = spot[1];
       _grid[spot[1]][spot[0]] = TileType.warehouse;
     }
   }
 
-  /// Initialize trucks on roads (only one truck)
+  /// Initialize trucks on roads near warehouse
   void _initializeTrucks() {
     _trucks.clear();
-    final random = math.Random();
-    final roadTiles = <List<int>>[];
     
-    // Find all road tiles
-    for (int y = 0; y < gridSize; y++) {
-      for (int x = 0; x < gridSize; x++) {
-        if (_grid[y][x] == TileType.road) {
-          roadTiles.add([x, y]);
+    // Find road tiles adjacent to warehouse
+    final roadTilesNearWarehouse = <List<int>>[];
+    
+    if (_warehouseX != null && _warehouseY != null) {
+      final wx = _warehouseX!;
+      final wy = _warehouseY!;
+      
+      // Check all four directions around warehouse for roads
+      if (wx > 0 && _grid[wy][wx - 1] == TileType.road) {
+        roadTilesNearWarehouse.add([wx - 1, wy]);
+      }
+      if (wx < gridSize - 1 && _grid[wy][wx + 1] == TileType.road) {
+        roadTilesNearWarehouse.add([wx + 1, wy]);
+      }
+      if (wy > 0 && _grid[wy - 1][wx] == TileType.road) {
+        roadTilesNearWarehouse.add([wx, wy - 1]);
+      }
+      if (wy < gridSize - 1 && _grid[wy + 1][wx] == TileType.road) {
+        roadTilesNearWarehouse.add([wx, wy + 1]);
+      }
+    }
+    
+    // If no roads found near warehouse, find any road tiles
+    if (roadTilesNearWarehouse.isEmpty) {
+      for (int y = 0; y < gridSize; y++) {
+        for (int x = 0; x < gridSize; x++) {
+          if (_grid[y][x] == TileType.road) {
+            roadTilesNearWarehouse.add([x, y]);
+          }
         }
       }
     }
     
-    // Place only one truck on a road tile
-    if (roadTiles.isNotEmpty) {
-      roadTiles.shuffle(random);
-      final tile = roadTiles[0];
+    // Place truck on a road tile near warehouse (or any road if warehouse has no adjacent roads)
+    if (roadTilesNearWarehouse.isNotEmpty) {
+      final random = math.Random();
+      final tile = roadTilesNearWarehouse[random.nextInt(roadTilesNearWarehouse.length)];
       
       // Determine initial direction based on road connections
       final x = tile[0];
@@ -239,7 +265,16 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
   }
 
   /// Move trucks along roads - trucks explore different roads, especially at intersections
+  /// Only moves trucks when simulation is running
   void _moveTrucks() {
+    // Check if simulation is running
+    final controller = ref.read(gameControllerProvider.notifier);
+    if (!controller.isSimulationRunning) {
+      // When simulation is not running, keep trucks near warehouse
+      _keepTrucksNearWarehouse();
+      return;
+    }
+    
     final random = math.Random();
     
     for (final truck in _trucks) {
@@ -406,6 +441,104 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
         return TruckDirection.west;
       case TruckDirection.west:
         return TruckDirection.east;
+    }
+  }
+
+  /// Keep trucks on roads near warehouse when simulation is not running
+  void _keepTrucksNearWarehouse() {
+    if (_warehouseX == null || _warehouseY == null) {
+      return; // No warehouse, can't position trucks
+    }
+
+    final wx = _warehouseX!;
+    final wy = _warehouseY!;
+    final roadTilesNearWarehouse = <List<int>>[];
+
+    // Find all road tiles adjacent to warehouse
+    if (wx > 0 && _grid[wy][wx - 1] == TileType.road) {
+      roadTilesNearWarehouse.add([wx - 1, wy]);
+    }
+    if (wx < gridSize - 1 && _grid[wy][wx + 1] == TileType.road) {
+      roadTilesNearWarehouse.add([wx + 1, wy]);
+    }
+    if (wy > 0 && _grid[wy - 1][wx] == TileType.road) {
+      roadTilesNearWarehouse.add([wx, wy - 1]);
+    }
+    if (wy < gridSize - 1 && _grid[wy + 1][wx] == TileType.road) {
+      roadTilesNearWarehouse.add([wx, wy + 1]);
+    }
+
+    // If no roads found near warehouse, find nearest road
+    if (roadTilesNearWarehouse.isEmpty) {
+      // Find nearest road tile to warehouse
+      for (int radius = 1; radius < gridSize; radius++) {
+        for (int dy = -radius; dy <= radius; dy++) {
+          for (int dx = -radius; dx <= radius; dx++) {
+            if (dx.abs() + dy.abs() != radius) continue;
+            
+            final checkX = wx + dx;
+            final checkY = wy + dy;
+            
+            if (checkX >= 0 && checkX < gridSize && 
+                checkY >= 0 && checkY < gridSize &&
+                _grid[checkY][checkX] == TileType.road) {
+              roadTilesNearWarehouse.add([checkX, checkY]);
+              break;
+            }
+          }
+          if (roadTilesNearWarehouse.isNotEmpty) break;
+        }
+        if (roadTilesNearWarehouse.isNotEmpty) break;
+      }
+    }
+
+    // Position each truck on a road near warehouse
+    for (int i = 0; i < _trucks.length; i++) {
+      final truck = _trucks[i];
+      
+      // Check if truck is already on a road near warehouse
+      bool isNearWarehouse = false;
+      for (final roadTile in roadTilesNearWarehouse) {
+        final roadX = roadTile[0].toDouble();
+        final roadY = roadTile[1].toDouble();
+        if ((truck.x - roadX).abs() < 0.1 && (truck.y - roadY).abs() < 0.1) {
+          isNearWarehouse = true;
+          break;
+        }
+      }
+
+      // If not near warehouse, move truck to nearest road tile
+      if (!isNearWarehouse && roadTilesNearWarehouse.isNotEmpty) {
+        // Use modulo to distribute trucks across available road tiles
+        final targetTile = roadTilesNearWarehouse[i % roadTilesNearWarehouse.length];
+        truck.x = targetTile[0].toDouble();
+        truck.y = targetTile[1].toDouble();
+        
+        // Set direction based on road connections
+        final x = targetTile[0];
+        final y = targetTile[1];
+        if (y > 0 && _grid[y - 1][x] == TileType.road) {
+          truck.direction = TruckDirection.north;
+        } else if (y < gridSize - 1 && _grid[y + 1][x] == TileType.road) {
+          truck.direction = TruckDirection.south;
+        } else if (x < gridSize - 1 && _grid[y][x + 1] == TileType.road) {
+          truck.direction = TruckDirection.east;
+        } else if (x > 0 && _grid[y][x - 1] == TileType.road) {
+          truck.direction = TruckDirection.west;
+        }
+      } else {
+        // Truck is already near warehouse, just ensure it's on a road
+        final currentXInt = truck.x.round();
+        final currentYInt = truck.y.round();
+        
+        if (currentXInt >= 0 && currentXInt < gridSize && 
+            currentYInt >= 0 && currentYInt < gridSize &&
+            _grid[currentYInt][currentXInt] == TileType.road) {
+          // Snap to exact road position
+          truck.x = currentXInt.toDouble();
+          truck.y = currentYInt.toDouble();
+        }
+      }
     }
   }
 
@@ -1288,17 +1421,26 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
   }
 
   /// Check if machine type can be purchased based on progression
+  /// Progression: Shop (2) -> School (2) -> Gym (2) -> Office (unlimited)
   bool _canPurchaseMachine(ZoneType zoneType) {
     final machines = ref.read(machinesProvider);
     final shopMachines = machines.where((m) => m.zone.type == ZoneType.park).length;
+    final schoolMachines = machines.where((m) => m.zone.type == ZoneType.school).length;
+    final gymMachines = machines.where((m) => m.zone.type == ZoneType.gym).length;
 
     switch (zoneType) {
       case ZoneType.park: // Shop
-        return true; // Always available
+        // Shops available until we have 2
+        return shopMachines < 2;
       case ZoneType.school:
+        // Schools available after 2 shops, until we have 2 schools
+        return shopMachines >= 2 && schoolMachines < 2;
       case ZoneType.gym:
+        // Gyms available after 2 schools, until we have 2 gyms
+        return schoolMachines >= 2 && gymMachines < 2;
       case ZoneType.office:
-        return shopMachines >= 2; // Need 2 shops first
+        // Offices available after 2 gyms (unlimited)
+        return gymMachines >= 2;
       default:
         return false;
     }
@@ -1308,12 +1450,37 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
   String _getProgressionMessage(ZoneType zoneType) {
     final machines = ref.read(machinesProvider);
     final shopMachines = machines.where((m) => m.zone.type == ZoneType.park).length;
+    final schoolMachines = machines.where((m) => m.zone.type == ZoneType.school).length;
+    final gymMachines = machines.where((m) => m.zone.type == ZoneType.gym).length;
     
     switch (zoneType) {
+      case ZoneType.park: // Shop
+        if (shopMachines >= 2) {
+          return 'Shop limit reached (have $shopMachines/2). Buy 2 school machines next.';
+        }
+        return 'Can purchase shop machines ($shopMachines/2)';
       case ZoneType.school:
+        if (shopMachines < 2) {
+          return 'Need 2 shop machines first (have $shopMachines/2)';
+        }
+        if (schoolMachines >= 2) {
+          return 'School limit reached (have $schoolMachines/2). Buy 2 gym machines next.';
+        }
+        return 'Can purchase school machines ($schoolMachines/2)';
       case ZoneType.gym:
+        if (schoolMachines < 2) {
+          return 'Need 2 school machines first (have $schoolMachines/2)';
+        }
+        if (gymMachines >= 2) {
+          return 'Gym limit reached (have $gymMachines/2). Buy office machines next.';
+        }
+        return 'Can purchase gym machines ($gymMachines/2)';
       case ZoneType.office:
-        return 'Need 2 shop machines first (have $shopMachines)';
+        if (gymMachines < 2) {
+          return 'Need 2 gym machines first (have $gymMachines/2)';
+        }
+        final officeMachines = machines.where((m) => m.zone.type == ZoneType.office).length;
+        return 'Can purchase office machines (have $officeMachines)';
       default:
         return 'Cannot purchase this machine type';
     }
