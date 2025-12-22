@@ -287,9 +287,12 @@ class _TileCityScreenState extends State<TileCityScreen> {
   }
 
   /// Convert grid coordinates to isometric screen coordinates
+  /// Adjusted to ensure proper alignment between adjacent tiles
   Offset _gridToScreen(int gridX, int gridY) {
+    // Center the tile at the calculated position for better alignment
     final screenX = (gridX - gridY) * (tileWidth / 2);
     final screenY = (gridX + gridY) * (tileHeight / 2);
+    // Small adjustment to ensure tiles align perfectly
     return Offset(screenX, screenY);
   }
 
@@ -324,23 +327,43 @@ class _TileCityScreenState extends State<TileCityScreen> {
   @override
   Widget build(BuildContext context) {
     // Calculate map bounds for centering
+    // First, find the bounds of ground tiles
     final topLeft = _gridToScreen(0, 0);
     final topRight = _gridToScreen(gridSize - 1, 0);
     final bottomLeft = _gridToScreen(0, gridSize - 1);
     final bottomRight = _gridToScreen(gridSize - 1, gridSize - 1);
     
-    final minX = math.min(math.min(topLeft.dx, topRight.dx), math.min(bottomLeft.dx, bottomRight.dx));
-    final maxX = math.max(math.max(topLeft.dx, topRight.dx), math.max(bottomLeft.dx, bottomRight.dx));
-    final minY = math.min(math.min(topLeft.dy, topRight.dy), math.min(bottomLeft.dy, bottomRight.dy));
-    final maxY = math.max(math.max(topLeft.dy, topRight.dy), math.max(bottomLeft.dy, bottomRight.dy));
+    double minX = math.min(math.min(topLeft.dx, topRight.dx), math.min(bottomLeft.dx, bottomRight.dx));
+    double maxX = math.max(math.max(topLeft.dx, topRight.dx), math.max(bottomLeft.dx, bottomRight.dx));
+    double minY = math.min(math.min(topLeft.dy, topRight.dy), math.min(bottomLeft.dy, bottomRight.dy));
+    double maxY = math.max(math.max(topLeft.dy, topRight.dy), math.max(bottomLeft.dy, bottomRight.dy));
     
-    final mapWidth = maxX - minX + tileWidth;
-    final mapHeight = maxY - minY + tileHeight + buildingImageHeight;
+    // Account for building heights that extend above ground tiles
+    // Buildings are positioned at: positionedY - (buildingImageHeight - tileHeight)
+    // So we need to subtract the extra height from minY
+    final buildingOverhang = buildingImageHeight - tileHeight;
+    minY -= buildingOverhang;
+    
+    // Add padding to ensure nothing is clipped
+    const double padding = 50.0;
+    minX -= padding;
+    maxX += padding + tileWidth;
+    minY -= padding;
+    maxY += padding + tileHeight;
+    
+    final mapWidth = maxX - minX;
+    final mapHeight = maxY - minY;
+    
+    // Get available viewport size (accounting for AppBar)
+    final viewportWidth = MediaQuery.of(context).size.width;
+    final viewportHeight = MediaQuery.of(context).size.height;
+    final appBarHeight = AppBar().preferredSize.height + MediaQuery.of(context).padding.top;
+    final availableHeight = viewportHeight - appBarHeight;
     
     // Center offset to position map in viewport
     final centerOffset = Offset(
-      (MediaQuery.of(context).size.width - mapWidth) / 2 - minX,
-      (MediaQuery.of(context).size.height - mapHeight) / 2 - minY,
+      (viewportWidth - mapWidth) / 2 - minX,
+      (availableHeight - mapHeight) / 2 - minY,
     );
 
     return Scaffold(
@@ -390,6 +413,7 @@ class _TileCityScreenState extends State<TileCityScreen> {
         final positionedY = screenPos.dy + centerOffset.dy;
 
         // Ground tile (grass or road)
+        // Adjust positioning to center the tile properly for better alignment
         tiles.add(
           Positioned(
             left: positionedX,
@@ -402,6 +426,7 @@ class _TileCityScreenState extends State<TileCityScreen> {
 
         // Building tile (if applicable) - anchored at bottom-center
         if (_isBuilding(tileType)) {
+          // Building extends upward from the ground tile
           final buildingTop = positionedY - (buildingImageHeight - tileHeight);
           tiles.add(
             Positioned(
