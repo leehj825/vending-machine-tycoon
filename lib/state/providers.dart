@@ -56,6 +56,7 @@ class GameController extends StateNotifier<GlobalGameState> {
           initialReputation: 100,
         ),
         super(const GlobalGameState(
+          cash: 400.0, // Starting cash: $400 (enough for 1 shop machine)
           machines: [],
           trucks: [],
           warehouse: Warehouse(),
