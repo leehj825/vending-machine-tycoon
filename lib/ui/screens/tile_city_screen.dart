@@ -1104,26 +1104,23 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
   }
 
   /// Check if machine type can be purchased based on progression
-  /// Progression: Shop (2) -> School (2) -> Gym (2) -> Office (unlimited)
+  /// Progression: Shop (2) -> School (2) -> Gym (2) -> Office (2)
   bool _canPurchaseMachine(ZoneType zoneType) {
     final machines = ref.read(machinesProvider);
     final shopMachines = machines.where((m) => m.zone.type == ZoneType.park).length;
     final schoolMachines = machines.where((m) => m.zone.type == ZoneType.school).length;
     final gymMachines = machines.where((m) => m.zone.type == ZoneType.gym).length;
+    final officeMachines = machines.where((m) => m.zone.type == ZoneType.office).length;
 
     switch (zoneType) {
       case ZoneType.park: // Shop
-        // Shops available until we have 2
         return shopMachines < 2;
       case ZoneType.school:
-        // Schools available after 2 shops, until we have 2 schools
         return shopMachines >= 2 && schoolMachines < 2;
       case ZoneType.gym:
-        // Gyms available after 2 schools, until we have 2 gyms
         return schoolMachines >= 2 && gymMachines < 2;
       case ZoneType.office:
-        // Offices available after 2 gyms (unlimited)
-        return gymMachines >= 2;
+        return gymMachines >= 2 && officeMachines < 2;
       default:
         return false;
     }
@@ -1135,35 +1132,24 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
     final shopMachines = machines.where((m) => m.zone.type == ZoneType.park).length;
     final schoolMachines = machines.where((m) => m.zone.type == ZoneType.school).length;
     final gymMachines = machines.where((m) => m.zone.type == ZoneType.gym).length;
+    final officeMachines = machines.where((m) => m.zone.type == ZoneType.office).length;
     
     switch (zoneType) {
       case ZoneType.park: // Shop
-        if (shopMachines >= 2) {
-          return 'Shop limit reached (have $shopMachines/2). Buy 2 school machines next.';
-        }
+        if (shopMachines >= 2) return 'Shop limit reached (have $shopMachines/2). Buy 2 school machines next.';
         return 'Can purchase shop machines ($shopMachines/2)';
       case ZoneType.school:
-        if (shopMachines < 2) {
-          return 'Need 2 shop machines first (have $shopMachines/2)';
-        }
-        if (schoolMachines >= 2) {
-          return 'School limit reached (have $schoolMachines/2). Buy 2 gym machines next.';
-        }
+        if (shopMachines < 2) return 'Need 2 shop machines first (have $shopMachines/2)';
+        if (schoolMachines >= 2) return 'School limit reached (have $schoolMachines/2). Buy 2 gym machines next.';
         return 'Can purchase school machines ($schoolMachines/2)';
       case ZoneType.gym:
-        if (schoolMachines < 2) {
-          return 'Need 2 school machines first (have $schoolMachines/2)';
-        }
-        if (gymMachines >= 2) {
-          return 'Gym limit reached (have $gymMachines/2). Buy office machines next.';
-        }
+        if (schoolMachines < 2) return 'Need 2 school machines first (have $schoolMachines/2)';
+        if (gymMachines >= 2) return 'Gym limit reached (have $gymMachines/2). Buy office machines next.';
         return 'Can purchase gym machines ($gymMachines/2)';
       case ZoneType.office:
-        if (gymMachines < 2) {
-          return 'Need 2 gym machines first (have $gymMachines/2)';
-        }
-        final officeMachines = machines.where((m) => m.zone.type == ZoneType.office).length;
-        return 'Can purchase office machines (have $officeMachines)';
+        if (gymMachines < 2) return 'Need 2 gym machines first (have $gymMachines/2)';
+        if (officeMachines >= 2) return 'Office limit reached (have $officeMachines/2). Maximum machines reached.';
+        return 'Can purchase office machines ($officeMachines/2)';
       default:
         return 'Cannot purchase this machine type';
     }

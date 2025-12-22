@@ -1,9 +1,7 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../state/selectors.dart';
 import '../../state/providers.dart';
-import '../../simulation/models/zone.dart';
 import '../widgets/machine_status_card.dart';
 
 /// Main dashboard screen displaying simulation state and machine status
@@ -25,14 +23,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     });
   }
 
-  void _buyTestMachine() {
-    final controller = ref.read(gameControllerProvider.notifier);
-    final random = math.Random();
-    // Random position between 1.0 and 9.0 to stay within map bounds (10x10 grid)
-    final x = 1.0 + random.nextDouble() * 8.0;
-    final y = 1.0 + random.nextDouble() * 8.0;
-    controller.buyMachine(ZoneType.office, x: x, y: y);
-  }
 
   String _formatTime(int day, int hour) {
     final hour12 = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
@@ -53,23 +43,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       // AppBar removed - managed by MainScreen
       body: CustomScrollView(
         slivers: [
-          // Debug/Test Button moved to top
-          SliverToBoxAdapter(
-            child: Container(
-              padding: const EdgeInsets.all(8),
-              color: Theme.of(context).colorScheme.surfaceContainerHighest,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.add_business),
-                    tooltip: 'Buy Machine (Test)',
-                    onPressed: _buyTestMachine,
-                  ),
-                ],
-              ),
-            ),
-          ),
           // Top Section: Status Bar
           SliverToBoxAdapter(
             child: Container(
@@ -170,7 +143,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Tap the + button to buy your first machine',
+                      'Go to the Map to purchase machines',
                       style: TextStyle(
                         fontSize: 14,
                         color: Colors.grey[500],
