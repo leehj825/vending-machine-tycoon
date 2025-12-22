@@ -1033,7 +1033,7 @@ class SimulationEngine extends StateNotifier<SimulationState> {
           updatedTrucks[i] = truck.copyWith(
             inventory: updatedTruckInventory,
             status: TruckStatus.traveling,
-            currentRouteIndex: truck.currentRouteIndex + 1, // Mark route as complete
+            currentRouteIndex: truck.route.length, // Mark route as complete
             targetX: warehouseRoadX,
             targetY: warehouseRoadY,
             path: [], // Clear path so it recalculates to warehouse
@@ -1075,7 +1075,7 @@ class SimulationEngine extends StateNotifier<SimulationState> {
           // Truck is empty OR last destination - return to warehouse
           updatedTrucks[i] = truck.copyWith(
             status: TruckStatus.traveling,
-            currentRouteIndex: truck.currentRouteIndex + 1, // Mark route as complete
+            currentRouteIndex: truck.route.length, // Mark route as complete
             targetX: warehouseRoadX,
             targetY: warehouseRoadY,
             path: [], // Clear path so it recalculates to warehouse
