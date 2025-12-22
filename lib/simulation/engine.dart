@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:math';
+import 'dart:math' as math;
 import 'package:state_notifier/state_notifier.dart';
 import 'models/product.dart';
 import 'models/machine.dart';
@@ -67,7 +67,9 @@ class SimulationState {
   final List<Truck> trucks;
   final double cash;
   final int reputation;
-  final Random random;
+  final math.Random random;
+  final double? warehouseRoadX; // Road tile X coordinate next to warehouse
+  final double? warehouseRoadY; // Road tile Y coordinate next to warehouse
 
   const SimulationState({
     required this.time,
@@ -76,6 +78,8 @@ class SimulationState {
     required this.cash,
     required this.reputation,
     required this.random,
+    this.warehouseRoadX,
+    this.warehouseRoadY,
   });
 
   SimulationState copyWith({
@@ -84,7 +88,9 @@ class SimulationState {
     List<Truck>? trucks,
     double? cash,
     int? reputation,
-    Random? random,
+    math.Random? random,
+    double? warehouseRoadX,
+    double? warehouseRoadY,
   }) {
     return SimulationState(
       time: time ?? this.time,
@@ -93,6 +99,8 @@ class SimulationState {
       cash: cash ?? this.cash,
       reputation: reputation ?? this.reputation,
       random: random ?? this.random,
+      warehouseRoadX: warehouseRoadX ?? this.warehouseRoadX,
+      warehouseRoadY: warehouseRoadY ?? this.warehouseRoadY,
     );
   }
 }
@@ -100,7 +108,7 @@ class SimulationState {
 /// The Simulation Engine - The Heartbeat of the Game
 class SimulationEngine extends StateNotifier<SimulationState> {
   Timer? _tickTimer;
-  final Random _random = Random();
+  final math.Random _random = math.Random();
   final StreamController<SimulationState> _streamController = StreamController<SimulationState>.broadcast();
 
   SimulationEngine({
@@ -115,7 +123,7 @@ class SimulationEngine extends StateNotifier<SimulationState> {
             trucks: initialTrucks,
             cash: initialCash,
             reputation: initialReputation,
-            random: Random(),
+            random: math.Random(),
           ),
         );
 
@@ -124,21 +132,21 @@ class SimulationEngine extends StateNotifier<SimulationState> {
 
   /// Add a machine to the simulation
   void addMachine(Machine machine) {
-    print('閥 ENGINE: Adding machine ${machine.name}');
+    print('🔴 ENGINE: Adding machine ${machine.name}');
     state = state.copyWith(machines: [...state.machines, machine]);
     _streamController.add(state);
   }
 
   /// Update cash in the simulation
   void updateCash(double amount) {
-    print('閥 ENGINE: Updating cash to \$${amount.toStringAsFixed(2)}');
+    print('🔴 ENGINE: Updating cash to \$${amount.toStringAsFixed(2)}');
     state = state.copyWith(cash: amount);
     _streamController.add(state);
   }
 
   /// Update trucks in the simulation
   void updateTrucks(List<Truck> trucks) {
-    print('閥 ENGINE: Updating trucks list');
+    print('🔴 ENGINE: Updating trucks list');
     state = state.copyWith(trucks: trucks);
     _streamController.add(state);
   }
@@ -148,14 +156,21 @@ class SimulationEngine extends StateNotifier<SimulationState> {
   /// This is used by the UI/controller to sync changes (e.g. buying a machine)
   /// so that the next engine tick doesn't overwrite local state.
   void updateMachines(List<Machine> machines) {
-    print('閥 ENGINE: Updating machines list');
+    print('🔴 ENGINE: Updating machines list');
     state = state.copyWith(machines: machines);
+    _streamController.add(state);
+  }
+
+  /// Update warehouse road position in the simulation
+  void updateWarehouseRoadPosition(double roadX, double roadY) {
+    print('🔴 ENGINE: Updating warehouse road position to ($roadX, $roadY)');
+    state = state.copyWith(warehouseRoadX: roadX, warehouseRoadY: roadY);
     _streamController.add(state);
   }
 
   /// Start the simulation (ticks every 1 second)
   void start() {
-    print('閥 ENGINE: Start requested');
+    print('🔴 ENGINE: Start requested');
     _tickTimer?.cancel();
     _tickTimer = Timer.periodic(
       const Duration(seconds: 1),
@@ -202,7 +217,7 @@ class SimulationEngine extends StateNotifier<SimulationState> {
     final currentState = state;
     
     // DEBUG PRINT
-    print('閥 ENGINE TICK: Day ${currentState.time.day} ${currentState.time.hour}:00 | Machines: ${currentState.machines.length} | Cash: \$${currentState.cash.toStringAsFixed(2)}');
+    print('🔴 ENGINE TICK: Day ${currentState.time.day} ${currentState.time.hour}:00 | Machines: ${currentState.machines.length} | Cash: \$${currentState.cash.toStringAsFixed(2)}');
 
     final nextTime = currentState.time.nextTick();
 
@@ -241,9 +256,11 @@ class SimulationEngine extends StateNotifier<SimulationState> {
   }
 
   /// Process machine sales based on demand math
+  /// Implements: SaleChance = BaseDemand * ZoneMultiplier * HourMultiplier * Traffic
   List<Machine> _processMachineSales(List<Machine> machines, GameTime time) {
     return machines.map((machine) {
       if (machine.isBroken || machine.isEmpty) {
+        // Increment hours since restock if empty
         return machine.copyWith(
           hoursSinceRestock: machine.hoursSinceRestock + (10 / 60), // 10 minutes
         );
@@ -264,6 +281,11 @@ class SimulationEngine extends StateNotifier<SimulationState> {
         final zoneMultiplier = machine.zone.getDemandMultiplier(time.hour);
         final trafficMultiplier = machine.zone.trafficMultiplier;
         
+        // Example: Coffee at Office at 8 AM
+        // baseDemand = 0.10 (coffee)
+        // zoneMultiplier = 2.0 (office at 8 AM)
+        // trafficMultiplier = 1.2 (office traffic)
+        // SaleChance = 0.10 * 2.0 * 1.2 = 0.24 (24% chance per tick)
         final saleChance = baseDemand * zoneMultiplier * trafficMultiplier;
         
         // Clamp to reasonable range (0.0 to 1.0)
@@ -286,7 +308,7 @@ class SimulationEngine extends StateNotifier<SimulationState> {
         }
       }
 
-      // Update hours since restock
+      // Update hours since restock (increment by 10 minutes = 1/6 hour)
       hoursSinceRestock += (10 / 60);
 
       return machine.copyWith(
@@ -298,25 +320,29 @@ class SimulationEngine extends StateNotifier<SimulationState> {
     }).toList();
   }
 
-  /// Process spoilage
+  /// Process spoilage - remove expired items and charge disposal cost
   List<Machine> _processSpoilage(List<Machine> machines, GameTime time) {
     return machines.map((machine) {
       var updatedInventory = Map<Product, InventoryItem>.from(machine.inventory);
       var disposalCost = 0.0;
 
+      // Check each inventory item for expiration
       final itemsToRemove = <Product>[];
       for (final entry in updatedInventory.entries) {
         final item = entry.value;
         if (item.isExpired(time.day)) {
+          // Item expired - remove and charge disposal
           disposalCost += SimulationConstants.disposalCostPerExpiredItem * item.quantity;
           itemsToRemove.add(entry.key);
         }
       }
 
+      // Remove expired items
       for (final product in itemsToRemove) {
         updatedInventory.remove(product);
       }
 
+      // Deduct disposal cost from machine cash
       final updatedCash = machine.currentCash - disposalCost;
 
       return machine.copyWith(
@@ -341,34 +367,241 @@ class SimulationEngine extends StateNotifier<SimulationState> {
     return totalPenalty;
   }
 
-  /// Helper to find the nearest valid road line to a target coordinate
-  /// Based on TileCityScreen generation, roads are at indices 3 and 6
-  double _getNearestRoad(double target) {
-    // These specific coordinates match the _generateRoadGrid logic in TileCityScreen
-    // starting at 3, stepping by 3, up to gridSize 10 -> [3.0, 6.0]
-    const validRoads = [3.0, 6.0];
-    
-    double nearest = validRoads[0];
-    double minDiff = (target - nearest).abs();
-    
-    for (int i = 1; i < validRoads.length; i++) {
-      final diff = (target - validRoads[i]).abs();
-      if (diff < minDiff) {
-        minDiff = diff;
-        nearest = validRoads[i];
-      }
-    }
-    return nearest;
-  }
-
   /// Process truck movement and route logic
   List<Truck> _processTruckMovement(
     List<Truck> trucks,
     List<Machine> machines,
   ) {
+    // Valid road coordinates (roads are at grid positions 3, 6, 9 = zone 4.0, 7.0, 10.0, plus edge at 1.0)
+    const validRoads = [1.0, 4.0, 7.0, 10.0];
+    
+    // Movement speed: 0.2 units per tick = 5 ticks per road tile
+    const double movementSpeed = 0.2;
+    
+    // Helper function to snap to nearest valid road coordinate
+    double snapToNearestRoad(double coord) {
+      final rounded = coord.round().toDouble();
+      double nearest = validRoads[0];
+      double minDist = (rounded - nearest).abs();
+      for (final road in validRoads) {
+        final dist = (rounded - road).abs();
+        if (dist < minDist) {
+          minDist = dist;
+          nearest = road;
+        }
+      }
+      return nearest;
+    }
+    
+    
+    // A* pathfinding to find shortest path through road network
+    List<({double x, double y})> findPath(
+      double startX, double startY,
+      double endX, double endY,
+    ) {
+      // Round to nearest road positions
+      final start = (x: snapToNearestRoad(startX), y: snapToNearestRoad(startY));
+      final end = (x: snapToNearestRoad(endX), y: snapToNearestRoad(endY));
+      
+      // If already at destination, return path with just destination
+      if (start.x == end.x && start.y == end.y) {
+        return [end];
+      }
+      
+      // Build graph: roads form a grid where:
+      // - Horizontal roads: Y is fixed (1.0, 4.0, 7.0, 10.0), X can be any road coordinate
+      // - Vertical roads: X is fixed (1.0, 4.0, 7.0, 10.0), Y can be any road coordinate
+      // - Intersections: both X and Y are road coordinates
+      final graph = <({double x, double y}), List<({double x, double y})>>{};
+      
+      // Add all road intersections
+      for (final roadX in validRoads) {
+        for (final roadY in validRoads) {
+          final node = (x: roadX, y: roadY);
+          graph[node] = [];
+          
+          // Connect to all nodes on the same horizontal road (same Y)
+          for (final otherRoadX in validRoads) {
+            if (otherRoadX != roadX) {
+              graph[node]!.add((x: otherRoadX, y: roadY));
+            }
+          }
+          
+          // Connect to all nodes on the same vertical road (same X)
+          for (final otherRoadY in validRoads) {
+            if (otherRoadY != roadY) {
+              graph[node]!.add((x: roadX, y: otherRoadY));
+            }
+          }
+        }
+      }
+      
+      // A* algorithm
+      final openSet = <({double x, double y})>{start};
+      final cameFrom = <({double x, double y}), ({double x, double y})>{};
+      final gScore = <({double x, double y}), double>{start: 0.0};
+      final fScore = <({double x, double y}), double>{start: (end.x - start.x).abs() + (end.y - start.y).abs()};
+      
+      while (openSet.isNotEmpty) {
+        // Find node with lowest fScore
+        ({double x, double y})? current;
+        double lowestF = double.infinity;
+        for (final node in openSet) {
+          final f = fScore[node] ?? double.infinity;
+          if (f < lowestF) {
+            lowestF = f;
+            current = node;
+          }
+        }
+        
+        if (current == null) break;
+        
+        if (current.x == end.x && current.y == end.y) {
+          // Reconstruct path
+          final path = <({double x, double y})>[end];
+          var node = end;
+          while (cameFrom.containsKey(node)) {
+            node = cameFrom[node]!;
+            path.insert(0, node);
+          }
+          return path;
+        }
+        
+        openSet.remove(current);
+        final neighbors = graph[current] ?? [];
+        
+        for (final neighbor in neighbors) {
+          // Manhattan distance as edge cost
+          final edgeCost = (neighbor.x - current.x).abs() + (neighbor.y - current.y).abs();
+          final tentativeG = (gScore[current] ?? double.infinity) + edgeCost;
+          
+          if (tentativeG < (gScore[neighbor] ?? double.infinity)) {
+            cameFrom[neighbor] = current;
+            gScore[neighbor] = tentativeG;
+            // Heuristic: Manhattan distance to goal
+            fScore[neighbor] = tentativeG + ((end.x - neighbor.x).abs() + (end.y - neighbor.y).abs());
+            if (!openSet.contains(neighbor)) {
+              openSet.add(neighbor);
+            }
+          }
+        }
+      }
+      
+      // No path found, return direct path
+      return [start, end];
+    }
+    
     return trucks.map((truck) {
-      if (!truck.hasRoute || truck.isRouteComplete) {
-        return truck.copyWith(status: TruckStatus.idle);
+      // If route is complete, check if truck needs to return to warehouse
+      if (truck.isRouteComplete) {
+        // Get warehouse position from simulation state
+        final warehouseRoadX = state.warehouseRoadX ?? 4.0; // Fallback if not set
+        final warehouseRoadY = state.warehouseRoadY ?? 4.0; // Fallback if not set
+        final currentX = truck.currentX.round().toDouble();
+        final currentY = truck.currentY.round().toDouble();
+        final dxToWarehouse = warehouseRoadX - currentX;
+        final dyToWarehouse = warehouseRoadY - currentY;
+        final manhattanDistToWarehouse = dxToWarehouse.abs() + dyToWarehouse.abs();
+        
+        if (manhattanDistToWarehouse == 0) {
+          // At warehouse road - mark as idle and ensure truck is on the road
+          final roadX = truck.currentX.round().toDouble();
+          final roadY = truck.currentY.round().toDouble();
+          return truck.copyWith(
+            status: TruckStatus.idle,
+            currentX: roadX,
+            currentY: roadY,
+            targetX: warehouseRoadX,
+            targetY: warehouseRoadY,
+          );
+        } else {
+          // Not at warehouse yet - continue traveling to warehouse using smooth pathfinding
+          final dxToWarehouse = warehouseRoadX - truck.currentX;
+          final dyToWarehouse = warehouseRoadY - truck.currentY;
+          final distanceToWarehouse = math.sqrt(dxToWarehouse * dxToWarehouse + dyToWarehouse * dyToWarehouse);
+          
+          // Check if we've arrived
+          if (distanceToWarehouse < 0.1) {
+            return truck.copyWith(
+              status: TruckStatus.idle,
+              currentX: warehouseRoadX,
+              currentY: warehouseRoadY,
+              targetX: warehouseRoadX,
+              targetY: warehouseRoadY,
+              path: [],
+              pathIndex: 0,
+            );
+          }
+          
+          // Get or calculate path to warehouse
+          List<({double x, double y})> path = truck.path;
+          int pathIndex = truck.pathIndex;
+          
+          // Recalculate path if needed
+          if (path.isEmpty || 
+              (path.isNotEmpty && (path.last.x != warehouseRoadX || path.last.y != warehouseRoadY)) ||
+              pathIndex >= path.length) {
+            path = findPath(truck.currentX, truck.currentY, warehouseRoadX, warehouseRoadY);
+            pathIndex = 0;
+          }
+          
+          // Move along the path smoothly
+          if (pathIndex < path.length) {
+            final targetWaypoint = path[pathIndex];
+            final dx = targetWaypoint.x - truck.currentX;
+            final dy = targetWaypoint.y - truck.currentY;
+            final distance = math.sqrt(dx * dx + dy * dy);
+            
+            if (distance < 0.1) {
+              // Reached waypoint, move to next
+              return truck.copyWith(
+                status: TruckStatus.traveling,
+                currentX: targetWaypoint.x,
+                currentY: targetWaypoint.y,
+                targetX: warehouseRoadX,
+                targetY: warehouseRoadY,
+                path: path,
+                pathIndex: pathIndex + 1,
+              );
+            } else {
+              // Move towards waypoint incrementally
+              final moveDistance = movementSpeed.clamp(0.0, distance);
+              final ratio = moveDistance / distance;
+              final newX = truck.currentX + dx * ratio;
+              final newY = truck.currentY + dy * ratio;
+              
+              return truck.copyWith(
+                status: TruckStatus.traveling,
+                currentX: newX,
+                currentY: newY,
+                targetX: warehouseRoadX,
+                targetY: warehouseRoadY,
+                path: path,
+                pathIndex: pathIndex,
+              );
+            }
+          }
+          
+          // Fallback
+          return truck.copyWith(
+            status: TruckStatus.traveling,
+            currentX: warehouseRoadX,
+            currentY: warehouseRoadY,
+            targetX: warehouseRoadX,
+            targetY: warehouseRoadY,
+          );
+        }
+      }
+      
+      if (!truck.hasRoute) {
+        // Idle truck - ensure it stays on road (snap to nearest road)
+        final roadX = truck.currentX.round().toDouble();
+        final roadY = truck.currentY.round().toDouble();
+        return truck.copyWith(
+          status: TruckStatus.idle,
+          currentX: roadX,
+          currentY: roadY,
+        );
       }
 
       // Get current destination
@@ -380,170 +613,139 @@ class SimulationEngine extends StateNotifier<SimulationState> {
       // Find destination machine
       final destination = machines.firstWhere(
         (m) => m.id == destinationId,
-        orElse: () => machines.first,
+        orElse: () => machines.first, // Fallback
       );
 
       // Get machine position
       final machineX = destination.zone.x;
       final machineY = destination.zone.y;
       
-      // Calculate direct distance to machine (not road)
-      final dxToMachine = machineX - truck.currentX;
-      final dyToMachine = machineY - truck.currentY;
-      final distanceToMachine = (dxToMachine * dxToMachine + dyToMachine * dyToMachine) * 0.5; // Euclidean distance
+      // Ensure truck is always on a road (integer coordinates)
+      // Snap current position to nearest road if not already on one
+      double currentX = truck.currentX.round().toDouble();
+      double currentY = truck.currentY.round().toDouble();
       
-      // If truck is very close to machine, mark as arrived
-      if (distanceToMachine < 0.2) {
+      // For machines at .5 positions, find the closest VALID road position
+      // Roads are only at specific positions: 1.0, 4.0, 7.0, 10.0
+      // Find the closest valid road to the machine
+      double destRoadX = validRoads[0];
+      double destRoadY = validRoads[0];
+      double minDist = double.infinity;
+      
+      // Check all valid road positions to find the closest to the machine
+      for (final roadX in validRoads) {
+        for (final roadY in validRoads) {
+          // Calculate Manhattan distance from machine to this road intersection
+          final dist = (machineX - roadX).abs() + (machineY - roadY).abs();
+          if (dist < minDist) {
+            minDist = dist;
+            destRoadX = roadX;
+            destRoadY = roadY;
+          }
+        }
+      }
+      
+      // Also check if we can use a road line (horizontal or vertical) that's closer
+      // Check horizontal roads (Y is road coordinate, X can be any valid road)
+      for (final roadY in validRoads) {
+        final closestRoadX = snapToNearestRoad(machineX);
+        final dist = (machineX - closestRoadX).abs() + (machineY - roadY).abs();
+        if (dist < minDist) {
+          minDist = dist;
+          destRoadX = closestRoadX;
+          destRoadY = roadY;
+        }
+      }
+      
+      // Check vertical roads (X is road coordinate, Y can be any valid road)
+      for (final roadX in validRoads) {
+        final closestRoadY = snapToNearestRoad(machineY);
+        final dist = (machineX - roadX).abs() + (machineY - closestRoadY).abs();
+        if (dist < minDist) {
+          minDist = dist;
+          destRoadX = roadX;
+          destRoadY = closestRoadY;
+        }
+      }
+      
+      // Calculate Manhattan distance to destination road
+      final dxToRoad = destRoadX - currentX;
+      final dyToRoad = destRoadY - currentY;
+      final manhattanDistance = dxToRoad.abs() + dyToRoad.abs();
+
+      // If truck is at the road adjacent to the machine, mark as arrived for restocking
+      if (manhattanDistance < 0.1) {
+        // Truck is at the road next to the machine - can restock from here
         return truck.copyWith(
           status: TruckStatus.restocking,
-          currentX: machineX,
-          currentY: machineY,
-          targetX: machineX,
-          targetY: machineY,
-        );
-      }
-      
-      // Calculate the nearest valid road coordinates to the target machine
-      // This is the "Parking Spot" on the road nearest to the machine
-      final roadTargetX = _getNearestRoad(machineX);
-      final roadTargetY = _getNearestRoad(machineY);
-
-      // We want to navigate to the point on the road network closest to the machine
-      // This point will share either the X or Y coordinate of a road line
-      // And the other coordinate will be the machine's projected coordinate onto that road
-      
-      // Determine if we should target the X-road or Y-road
-      // Logic: Pick the road line that is physically closer to the machine
-      final distToXRoad = (machineX - roadTargetX).abs();
-      final distToYRoad = (machineY - roadTargetY).abs();
-      
-      double targetPathX, targetPathY;
-      
-      if (distToXRoad <= distToYRoad) {
-        // Target is on the vertical road (x = roadTargetX)
-        // Y coordinate is the machine's Y (projected onto the road)
-        targetPathX = roadTargetX;
-        targetPathY = machineY; // Stay on road at this Y? No, roads are grid.
-        
-        // Wait, roads are a Grid.
-        // Vertical roads are at x=3, x=6. They exist for ALL Y.
-        // So (3, 4.5) IS a valid point on the road network? Yes.
-        // It's effectively on the "Vertical Road" at Y=4.5.
-        // However, movement logic moves in integers (1.0).
-        // If we move to Y=4.5, we might get stuck if we need to turn.
-        // Let's stick to integer movement for pathfinding until the final approach.
-        
-        // Target the nearest integer point on the road grid?
-        // Or simply: Navigate to (roadTargetX, machineY)
-        targetPathY = machineY;
-      } else {
-        // Target is on the horizontal road (y = roadTargetY)
-        targetPathX = machineX;
-        targetPathY = roadTargetY;
-      }
-      
-      // Check distance to this "Parking Spot" on the road
-      final dxToSpot = targetPathX - truck.currentX;
-      final dyToSpot = targetPathY - truck.currentY;
-      final distToSpot = dxToSpot.abs() + dyToSpot.abs(); // Manhattan to parking spot
-
-      // If we are AT the parking spot (or very close), initiate final approach
-      if (distToSpot < 0.2) {
-        // Final approach: Move directly from road to machine (off-road driving)
-        final approachSpeed = 0.5;
-        double newX = truck.currentX;
-        double newY = truck.currentY;
-        
-        final normalizedDx = dxToMachine / distanceToMachine;
-        final normalizedDy = dyToMachine / distanceToMachine;
-        newX += normalizedDx * approachSpeed;
-        newY += normalizedDy * approachSpeed;
-        
-        // Snap if close
-        if ((dxToMachine > 0 && newX > machineX) || (dxToMachine < 0 && newX < machineX)) newX = machineX;
-        if ((dyToMachine > 0 && newY > machineY) || (dyToMachine < 0 && newY < machineY)) newY = machineY;
-        
-        return truck.copyWith(
-          status: TruckStatus.traveling,
-          currentX: newX,
-          currentY: newY,
-          targetX: machineX,
-          targetY: machineY,
+          currentX: destRoadX,
+          currentY: destRoadY,
+          targetX: destRoadX,
+          targetY: destRoadY,
+          path: [],
+          pathIndex: 0,
         );
       }
 
-      // Grid-based pathfinding: move along valid roads
-      double currentX = truck.currentX;
-      double currentY = truck.currentY;
+      // Get or calculate path to destination
+      List<({double x, double y})> path = truck.path;
+      int pathIndex = truck.pathIndex;
       
-      // Manhattan movement logic: Prioritize the axis with larger distance
-      // But constrain movement to the road network
-      
-      double newX = currentX;
-      double newY = currentY;
-      
-      // Are we currently on a road?
-      // Helper to check if a coordinate is "on a road line"
-      bool onVerticalRoad(double x) => (x - 3.0).abs() < 0.1 || (x - 6.0).abs() < 0.1;
-      bool onHorizontalRoad(double y) => (y - 3.0).abs() < 0.1 || (y - 6.0).abs() < 0.1;
-      
-      bool currentlyOnVert = onVerticalRoad(currentX);
-      bool currentlyOnHorz = onHorizontalRoad(currentY);
-      
-      // If we are off-road (and not near machine), we should panic/snap? 
-      // Assuming we start on road.
-      
-      // Determine movement direction
-      // We want to reduce dxToSpot and dyToSpot
-      
-      if (dxToSpot.abs() > dyToSpot.abs()) {
-        // Wants to move Horizontal
-        if (currentlyOnHorz) {
-          // Safe to move Horizontal
-           newX += dxToSpot > 0 ? 1.0 : -1.0;
-        } else if (currentlyOnVert) {
-          // We are on a vertical road, but want to move horizontal.
-          // We must move Vertical to reach a Horizontal intersection.
-          // Find nearest horizontal road line
-          final nearestH = _getNearestRoad(currentY);
-          final dyToH = nearestH - currentY;
-          if (dyToH.abs() > 0.1) {
-             newY += dyToH > 0 ? 1.0 : -1.0;
-          } else {
-            // We are at an intersection! Now we can move Horizontal.
-             newX += dxToSpot > 0 ? 1.0 : -1.0;
-          }
-        }
-      } else {
-        // Wants to move Vertical
-        if (currentlyOnVert) {
-          // Safe to move Vertical
-          newY += dyToSpot > 0 ? 1.0 : -1.0;
-        } else if (currentlyOnHorz) {
-          // On horizontal road, want to move vertical.
-          // Move Horizontal to reach Vertical intersection.
-          final nearestV = _getNearestRoad(currentX);
-          final dxToV = nearestV - currentX;
-          if (dxToV.abs() > 0.1) {
-            newX += dxToV > 0 ? 1.0 : -1.0;
-          } else {
-             newY += dyToSpot > 0 ? 1.0 : -1.0;
-          }
-        }
+      // Recalculate path if:
+      // 1. Path is empty
+      // 2. Target has changed
+      // 3. We've reached the end of the current path
+      if (path.isEmpty || 
+          (path.isNotEmpty && (path.last.x != destRoadX || path.last.y != destRoadY)) ||
+          pathIndex >= path.length) {
+        path = findPath(currentX, currentY, destRoadX, destRoadY);
+        pathIndex = 0;
       }
       
-      // Fallback: If we didn't move (e.g. alignment issues), force a step towards target
-      if (newX == currentX && newY == currentY) {
-         if (dxToSpot.abs() > dyToSpot.abs()) newX += dxToSpot > 0 ? 1.0 : -1.0;
-         else newY += dyToSpot > 0 ? 1.0 : -1.0;
+      // Move along the path smoothly
+      if (pathIndex < path.length) {
+        final targetWaypoint = path[pathIndex];
+        final dx = targetWaypoint.x - truck.currentX;
+        final dy = targetWaypoint.y - truck.currentY;
+          final distance = math.sqrt(dx * dx + dy * dy);
+        
+        if (distance < 0.1) {
+          // Reached waypoint, move to next
+          return truck.copyWith(
+            status: TruckStatus.traveling,
+            currentX: targetWaypoint.x,
+            currentY: targetWaypoint.y,
+            targetX: destRoadX,
+            targetY: destRoadY,
+            path: path,
+            pathIndex: pathIndex + 1,
+          );
+        } else {
+          // Move towards waypoint incrementally
+          final moveDistance = movementSpeed.clamp(0.0, distance);
+          final ratio = moveDistance / distance;
+          final newX = truck.currentX + dx * ratio;
+          final newY = truck.currentY + dy * ratio;
+          
+          return truck.copyWith(
+            status: TruckStatus.traveling,
+            currentX: newX,
+            currentY: newY,
+            targetX: destRoadX,
+            targetY: destRoadY,
+            path: path,
+            pathIndex: pathIndex,
+          );
+        }
       }
 
+      // Should not reach here, but fallback
       return truck.copyWith(
         status: TruckStatus.traveling,
-        currentX: newX,
-        currentY: newY,
-        targetX: destination.zone.x,
-        targetY: destination.zone.y,
+        currentX: currentX,
+        currentY: currentY,
+        targetX: destRoadX,
+        targetY: destRoadY,
       );
     }).toList();
   }
@@ -632,6 +834,10 @@ class SimulationEngine extends StateNotifier<SimulationState> {
       // Only process trucks that are restocking
       if (truck.status != TruckStatus.restocking) continue;
       
+      // Ensure truck stays on road (snap to nearest road coordinate)
+      final roadX = truck.currentX.round().toDouble();
+      final roadY = truck.currentY.round().toDouble();
+      
       final destinationId = truck.currentDestination;
       if (destinationId == null) continue;
 
@@ -692,11 +898,60 @@ class SimulationEngine extends StateNotifier<SimulationState> {
 
         // Update truck inventory
         final updatedTruckInventory = itemsToTransfer;
-        updatedTrucks[i] = truck.copyWith(
-          inventory: updatedTruckInventory,
-          status: TruckStatus.traveling, // Done restocking, continue route
-          currentRouteIndex: truck.currentRouteIndex + 1,
-        );
+        
+        // Check if truck still has items to stock
+        final hasMoreItems = updatedTruckInventory.isNotEmpty;
+        final hasMoreDestinations = truck.currentRouteIndex + 1 < truck.route.length;
+        
+        if (hasMoreItems && hasMoreDestinations) {
+          // Truck has more items and more destinations - continue to next machine
+          updatedTrucks[i] = truck.copyWith(
+            inventory: updatedTruckInventory,
+            status: TruckStatus.traveling,
+            currentRouteIndex: truck.currentRouteIndex + 1,
+            // Keep truck on road
+            currentX: roadX,
+            currentY: roadY,
+          );
+        } else if (hasMoreItems && !hasMoreDestinations) {
+          // Truck has items but no more destinations - this shouldn't happen, but continue route
+          updatedTrucks[i] = truck.copyWith(
+            inventory: updatedTruckInventory,
+            status: TruckStatus.traveling,
+            currentRouteIndex: truck.currentRouteIndex + 1,
+            // Keep truck on road
+            currentX: roadX,
+            currentY: roadY,
+          );
+        } else {
+          // Truck is empty - return to warehouse or mark as idle if route complete
+          if (hasMoreDestinations) {
+            // Still have destinations but no items - continue route (might reload at warehouse later)
+            updatedTrucks[i] = truck.copyWith(
+              inventory: updatedTruckInventory,
+              status: TruckStatus.traveling,
+              currentRouteIndex: truck.currentRouteIndex + 1,
+              // Keep truck on road
+              currentX: roadX,
+              currentY: roadY,
+            );
+          } else {
+            // Route complete and empty - return to warehouse
+            // Get warehouse position from simulation state
+            final warehouseRoadX = state.warehouseRoadX ?? 4.0; // Fallback if not set
+            final warehouseRoadY = state.warehouseRoadY ?? 4.0; // Fallback if not set
+            updatedTrucks[i] = truck.copyWith(
+              inventory: updatedTruckInventory,
+              status: TruckStatus.traveling,
+              currentRouteIndex: truck.currentRouteIndex + 1, // Mark route as complete
+              targetX: warehouseRoadX,
+              targetY: warehouseRoadY,
+              // Keep truck on road while transitioning
+              currentX: roadX,
+              currentY: roadY,
+            );
+          }
+        }
 
         // Update machine
         updatedMachines[machineIndex] = machine.copyWith(
@@ -705,9 +960,14 @@ class SimulationEngine extends StateNotifier<SimulationState> {
         );
       } else {
         // No space or no items, still advance route so the truck doesn't get stuck.
+        // Keep truck on road
+        final roadX = truck.currentX.round().toDouble();
+        final roadY = truck.currentY.round().toDouble();
         updatedTrucks[i] = truck.copyWith(
           status: TruckStatus.traveling,
           currentRouteIndex: truck.currentRouteIndex + 1,
+          currentX: roadX,
+          currentY: roadY,
         );
       }
     }
@@ -715,3 +975,4 @@ class SimulationEngine extends StateNotifier<SimulationState> {
     return (machines: updatedMachines, trucks: updatedTrucks);
   }
 }
+
