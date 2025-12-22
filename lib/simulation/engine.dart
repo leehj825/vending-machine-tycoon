@@ -530,7 +530,7 @@ class SimulationEngine extends StateNotifier<SimulationState> {
     }
     
     return trucks.map((truck) {
-      // If route is complete, check if truck needs to return to warehouse
+      // If route is complete, always return to warehouse (regardless of current status)
       if (truck.isRouteComplete) {
         // Get warehouse position from simulation state
         final warehouseRoadX = state.warehouseRoadX ?? 4.0; // Fallback if not set
@@ -645,6 +645,72 @@ class SimulationEngine extends StateNotifier<SimulationState> {
       // Get current destination
       final destinationId = truck.currentDestination;
       if (destinationId == null) {
+        // No destination - if route is complete, return to warehouse
+        if (truck.isRouteComplete) {
+          final warehouseRoadX = state.warehouseRoadX ?? 4.0;
+          final warehouseRoadY = state.warehouseRoadY ?? 4.0;
+          final dxToWarehouse = warehouseRoadX - truck.currentX;
+          final dyToWarehouse = warehouseRoadY - truck.currentY;
+          final distanceToWarehouse = math.sqrt(dxToWarehouse * dxToWarehouse + dyToWarehouse * dyToWarehouse);
+          
+          if (distanceToWarehouse < 0.1) {
+            return truck.copyWith(
+              status: TruckStatus.idle,
+              currentX: warehouseRoadX,
+              currentY: warehouseRoadY,
+              targetX: warehouseRoadX,
+              targetY: warehouseRoadY,
+              path: [],
+              pathIndex: 0,
+            );
+          }
+          
+          // Calculate path to warehouse
+          List<({double x, double y})> path = truck.path;
+          int pathIndex = truck.pathIndex;
+          
+          if (path.isEmpty || 
+              (path.isNotEmpty && (path.last.x != warehouseRoadX || path.last.y != warehouseRoadY)) ||
+              pathIndex >= path.length) {
+            path = findPath(truck.currentX, truck.currentY, warehouseRoadX, warehouseRoadY);
+            pathIndex = 0;
+          }
+          
+          // Move along the path
+          if (pathIndex < path.length) {
+            final targetWaypoint = path[pathIndex];
+            final dx = targetWaypoint.x - truck.currentX;
+            final dy = targetWaypoint.y - truck.currentY;
+            final distance = math.sqrt(dx * dx + dy * dy);
+            
+            if (distance < 0.1) {
+              return truck.copyWith(
+                status: TruckStatus.traveling,
+                currentX: targetWaypoint.x,
+                currentY: targetWaypoint.y,
+                targetX: warehouseRoadX,
+                targetY: warehouseRoadY,
+                path: path,
+                pathIndex: pathIndex + 1,
+              );
+            } else {
+              final moveDistance = movementSpeed.clamp(0.0, distance);
+              final ratio = moveDistance / distance;
+              final newX = truck.currentX + dx * ratio;
+              final newY = truck.currentY + dy * ratio;
+              
+              return truck.copyWith(
+                status: TruckStatus.traveling,
+                currentX: newX,
+                currentY: newY,
+                targetX: warehouseRoadX,
+                targetY: warehouseRoadY,
+                path: path,
+                pathIndex: pathIndex,
+              );
+            }
+          }
+        }
         return truck.copyWith(status: TruckStatus.idle);
       }
 
