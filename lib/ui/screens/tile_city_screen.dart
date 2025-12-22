@@ -60,8 +60,8 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
   static const double houseScale = 0.72; // Adjust for house.png
   static const double warehouseScale = 0.72; // Adjust for warehouse.png
   
-  // Vertical offset to raise warehouse to match other buildings
-  static const double warehouseVerticalOffset = 10.0;
+  // Vertical offset for warehouse (negative to lower it, positive to raise it)
+  static const double warehouseVerticalOffset = -5.0; // Lower warehouse to sit on ground properly
   
   // Block dimensions - minimum 2x2, maximum 2x3 or 3x2
   static const int minBlockSize = 2;
@@ -707,15 +707,29 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
       final positionedY = data['positionedY'] as double;
 
         // Ground tile (grass or road) - anchored at base
-        tiles.add(
-          Positioned(
-            left: positionedX,
-            top: positionedY,
-            width: tileWidth,
-            height: tileHeight,
-            child: _buildGroundTile(tileType, roadDir),
-          ),
-        );
+        // Skip ground tile for buildings - they should show grass/road underneath
+        if (!_isBuilding(tileType)) {
+          tiles.add(
+            Positioned(
+              left: positionedX,
+              top: positionedY,
+              width: tileWidth,
+              height: tileHeight,
+              child: _buildGroundTile(tileType, roadDir),
+            ),
+          );
+        } else {
+          // For buildings, show grass as the ground tile underneath
+          tiles.add(
+            Positioned(
+              left: positionedX,
+              top: positionedY,
+              width: tileWidth,
+              height: tileHeight,
+              child: _buildGroundTile(TileType.grass, null),
+            ),
+          );
+        }
 
       // Building tile (if applicable) - anchored at bottom-center, extends upward
       // Scaled down to fit better within tile bounds
