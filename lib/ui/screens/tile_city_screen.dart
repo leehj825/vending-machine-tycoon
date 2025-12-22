@@ -43,7 +43,7 @@ class _TileCityScreenState extends State<TileCityScreen> {
   static const double buildingImageHeight = 65.0; // Increased from 60.0
   static const double buildingScale = 0.83; // Increased from 0.75 to make buildings larger
   
-  // Block dimensions - maximum 2x3 or 3x2
+  // Block dimensions - minimum 2x2, maximum 2x3 or 3x2
   static const int minBlockSize = 2;
   static const int maxBlockSize = 3;
   
@@ -131,12 +131,34 @@ class _TileCityScreenState extends State<TileCityScreen> {
     final bool hasEast = x < gridSize - 1 && _grid[y][x + 1] == TileType.road;
     final bool hasWest = x > 0 && _grid[y][x - 1] == TileType.road;
 
+    final bool isAtEdge = x == 0 || x == gridSize - 1 || y == 0 || y == gridSize - 1;
+
     final int connections = (hasNorth ? 1 : 0) +
         (hasSouth ? 1 : 0) +
         (hasEast ? 1 : 0) +
         (hasWest ? 1 : 0);
 
-    // Intersection or corner (3+ connections)
+    // At edges, don't use intersection - continue with 2-way road
+    if (isAtEdge) {
+      // Straight roads at edges
+      if (hasNorth && hasSouth) {
+        return RoadDirection.vertical;
+      }
+      if (hasEast && hasWest) {
+        return RoadDirection.horizontal;
+      }
+      // If only one direction, use that direction
+      if (hasNorth || hasSouth) {
+        return RoadDirection.vertical;
+      }
+      if (hasEast || hasWest) {
+        return RoadDirection.horizontal;
+      }
+      // Default to horizontal for edge roads
+      return RoadDirection.horizontal;
+    }
+
+    // Intersection or corner (3+ connections) - only for non-edge tiles
     if (connections >= 3) {
       return RoadDirection.intersection;
     }
@@ -149,7 +171,7 @@ class _TileCityScreenState extends State<TileCityScreen> {
       return RoadDirection.horizontal;
     }
 
-    // Default to intersection for corners and dead ends
+    // Default to intersection for corners and dead ends (non-edge only)
     return RoadDirection.intersection;
   }
 
