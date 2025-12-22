@@ -746,7 +746,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
         // Add "+" purchase button indicator above building if machine can be purchased
         if (_shouldShowPurchaseButton(data['x'] as int, data['y'] as int, tileType)) {
           final buttonSize = 24.0;
-          final buttonTop = buildingTop - verticalOffset - buttonSize - 4.0; // 4px above building
+          final buttonTop = buildingTop - verticalOffset - buttonSize + 8.0; // Lowered: 8px above building (was -4px)
           final buttonLeft = positionedX + (tileWidth / 2) - (buttonSize / 2); // Centered above building
           
           tiles.add(

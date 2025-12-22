@@ -17,13 +17,13 @@ const _uuid = Uuid();
 
 /// Machine prices by zone type
 class MachinePrices {
-  static const double basePrice = 500.0;
+  static const double basePrice = 400.0; // Reduced from 500.0
   static const Map<ZoneType, double> zoneMultipliers = {
-    ZoneType.office: 1.5,
-    ZoneType.school: 1.2,
-    ZoneType.gym: 1.0,
+    ZoneType.office: 1.75, // $700 (was $750)
+    ZoneType.school: 1.5,  // $600 (was $600)
+    ZoneType.gym: 1.25,    // $500 (was $500)
     ZoneType.subway: 1.3,
-    ZoneType.park: 0.8,
+    ZoneType.park: 1.0,    // $400 (was $400) - shop machines
   };
 
   static double getPrice(ZoneType zoneType) {
