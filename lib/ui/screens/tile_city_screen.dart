@@ -222,7 +222,8 @@ class _TileCityScreenState extends State<TileCityScreen> {
 
   /// Start truck movement animation
   void _startTruckMovement() {
-    _truckMovementTimer = Timer.periodic(const Duration(milliseconds: 500), (timer) {
+    // Faster updates for smoother movement
+    _truckMovementTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
       if (mounted) {
         setState(() {
           _moveTrucks();
@@ -231,61 +232,67 @@ class _TileCityScreenState extends State<TileCityScreen> {
     });
   }
 
-  /// Move trucks along roads - trucks move in the direction they're facing
+  /// Move trucks along roads - trucks move forward in the direction they're facing
   void _moveTrucks() {
     final random = math.Random();
+    const double moveSpeed = 0.5; // Faster movement speed
     
     for (final truck in _trucks) {
-      // Calculate next position based on current facing direction
+      // Get current grid position
+      final currentXInt = truck.x.round();
+      final currentYInt = truck.y.round();
+      
+      // Verify current position is on road
+      if (currentXInt < 0 || currentXInt >= gridSize || 
+          currentYInt < 0 || currentYInt >= gridSize ||
+          _grid[currentYInt][currentXInt] != TileType.road) {
+        // Truck is off road, reposition it
+        _repositionTruckOnRoad(truck);
+        continue;
+      }
+      
+      // Calculate next position based on current facing direction (forward only)
       double nextX = truck.x;
       double nextY = truck.y;
       
       switch (truck.direction) {
         case TruckDirection.north:
-          nextY -= 0.2; // Move in small increments for smooth animation
+          nextY -= moveSpeed; // Move forward (north)
           break;
         case TruckDirection.south:
-          nextY += 0.2;
+          nextY += moveSpeed; // Move forward (south)
           break;
         case TruckDirection.east:
-          nextX += 0.2;
+          nextX += moveSpeed; // Move forward (east)
           break;
         case TruckDirection.west:
-          nextX -= 0.2;
+          nextX -= moveSpeed; // Move forward (west)
           break;
       }
       
-      // Check if next position is valid (on road and within bounds)
+      // Check if next position would be on a road tile
       final nextXInt = nextX.round();
       final nextYInt = nextY.round();
       
-      // Verify current position is still on road
-      final currentXInt = truck.x.round();
-      final currentYInt = truck.y.round();
-      
-      if (currentXInt >= 0 && currentXInt < gridSize && 
-          currentYInt >= 0 && currentYInt < gridSize &&
-          _grid[currentYInt][currentXInt] != TileType.road) {
-        // Truck is off road, find nearest road and place it there
-        _repositionTruckOnRoad(truck);
-        continue;
-      }
-      
+      // Only move if next tile is a road
       if (nextXInt >= 0 && nextXInt < gridSize && 
           nextYInt >= 0 && nextYInt < gridSize &&
           _grid[nextYInt][nextXInt] == TileType.road) {
-        // Move truck in the direction it's facing
+        // Move truck forward in its facing direction
         truck.x = nextX;
         truck.y = nextY;
       } else {
-        // Can't move forward in current direction, find a new direction that continues forward
-        // Only change direction if we've reached a tile boundary
-        if ((nextXInt != currentXInt || nextYInt != currentYInt)) {
+        // Can't move forward - need to change direction
+        // Only change direction when we're at or near a tile center
+        final distanceFromCenter = math.sqrt(
+          math.pow(truck.x - currentXInt, 2) + math.pow(truck.y - currentYInt, 2)
+        );
+        
+        if (distanceFromCenter < 0.3) {
+          // Close to tile center, can change direction
           final possibleDirections = <TruckDirection>[];
-          final currentX = truck.x.round();
-          final currentY = truck.y.round();
           
-          // Check all four directions for valid roads
+          // Check all four directions for valid roads (forward directions only)
           if (currentY > 0 && _grid[currentY - 1][currentX] == TileType.road) {
             possibleDirections.add(TruckDirection.north);
           }
@@ -299,16 +306,18 @@ class _TileCityScreenState extends State<TileCityScreen> {
             possibleDirections.add(TruckDirection.west);
           }
           
-          // Prefer continuing in current direction if possible
-          if (possibleDirections.contains(truck.direction)) {
-            // Keep current direction, just snap to grid
-            truck.x = currentX.toDouble();
-            truck.y = currentY.toDouble();
-          } else if (possibleDirections.isNotEmpty) {
-            // Change to a valid direction
-            truck.direction = possibleDirections[random.nextInt(possibleDirections.length)];
-            truck.x = currentX.toDouble();
-            truck.y = currentY.toDouble();
+          if (possibleDirections.isNotEmpty) {
+            // Prefer continuing forward if possible, otherwise choose random valid direction
+            if (possibleDirections.contains(truck.direction)) {
+              // Can continue forward, snap to center of current tile
+              truck.x = currentXInt.toDouble();
+              truck.y = currentYInt.toDouble();
+            } else {
+              // Must change direction - choose a valid forward direction
+              truck.direction = possibleDirections[random.nextInt(possibleDirections.length)];
+              truck.x = currentXInt.toDouble();
+              truck.y = currentYInt.toDouble();
+            }
           }
         }
       }
