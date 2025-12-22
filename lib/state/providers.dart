@@ -192,9 +192,11 @@ class GameController extends StateNotifier<GlobalGameState> {
     }
     
     // Create machine with initial inventory
+    // Map zone type to building name for display
+    final buildingName = _getBuildingNameForZone(zoneType);
     final newMachine = Machine(
       id: _uuid.v4(),
-      name: '${zoneType.name.toUpperCase()} Machine ${state.machines.length + 1}',
+      name: '$buildingName Machine ${state.machines.length + 1}',
       zone: zone,
       condition: MachineCondition.excellent,
       inventory: initialInventory,
@@ -232,6 +234,22 @@ class GameController extends StateNotifier<GlobalGameState> {
         return [Product.coffee, Product.techGadget];
       case ZoneType.subway:
         return [Product.soda, Product.chips]; // Default for subway
+    }
+  }
+
+  /// Get building name for zone type (for machine naming)
+  String _getBuildingNameForZone(ZoneType zoneType) {
+    switch (zoneType) {
+      case ZoneType.park:
+        return 'Shop';
+      case ZoneType.school:
+        return 'School';
+      case ZoneType.gym:
+        return 'Gym';
+      case ZoneType.office:
+        return 'Office';
+      case ZoneType.subway:
+        return 'Subway';
     }
   }
 

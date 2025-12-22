@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../state/providers.dart';
 import '../../simulation/models/zone.dart';
 import '../../simulation/models/truck.dart' as sim;
+import '../../simulation/models/machine.dart' as sim;
 
 enum TileType {
   grass,
@@ -752,13 +753,77 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
       }
     }
 
-    // Add real trucks from simulation on top of tiles
+    // Add real machines from simulation on top of tiles
+    final gameMachines = ref.watch(machinesProvider);
+    for (final machine in gameMachines) {
+      tiles.add(_buildGameMachine(machine, centerOffset));
+    }
+
+    // Add real trucks from simulation on top of tiles (above machines)
     final gameTrucks = ref.watch(trucksProvider);
     for (final truck in gameTrucks) {
       tiles.add(_buildGameTruck(truck, centerOffset));
     }
 
     return tiles;
+  }
+
+  /// Build positioned game machine widget
+  Widget _buildGameMachine(sim.Machine machine, Offset centerOffset) {
+    // Convert zone coordinates to grid coordinates
+    final gridPos = _zoneToGrid(machine.zone.x, machine.zone.y);
+    
+    // Get screen coordinates from grid position
+    final pos = _gridToScreenDouble(gridPos.dx, gridPos.dy);
+    final positionedX = pos.dx + centerOffset.dx;
+    final positionedY = pos.dy + centerOffset.dy;
+    
+    // Machine indicator size
+    final double machineSize = tileWidth * 0.3;
+    
+    // Center on tile
+    final left = positionedX + (tileWidth - machineSize) / 2;
+    final top = positionedY + (tileHeight / 2) - machineSize;
+
+    // Determine machine color based on type
+    Color machineColor;
+    switch (machine.zone.type) {
+      case ZoneType.park: // Shop
+        machineColor = Colors.blue;
+        break;
+      case ZoneType.school:
+        machineColor = Colors.purple;
+        break;
+      case ZoneType.gym:
+        machineColor = Colors.red;
+        break;
+      case ZoneType.office:
+        machineColor = Colors.orange;
+        break;
+      default:
+        machineColor = Colors.grey;
+    }
+
+    return Positioned(
+      left: left,
+      top: top,
+      width: machineSize,
+      height: machineSize,
+      child: Container(
+        decoration: BoxDecoration(
+          color: machineColor,
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.white, width: 2),
+        ),
+        child: Center(
+          child: Icon(
+            Icons.shopping_cart,
+            color: Colors.white,
+            size: machineSize * 0.6,
+          ),
+        ),
+      ),
+    );
   }
 
   /// Convert zone coordinates (1.0-10.0) to grid coordinates (0-9)
