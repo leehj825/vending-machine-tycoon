@@ -378,104 +378,34 @@ class SimulationEngine extends StateNotifier<SimulationState> {
       final machineX = destination.zone.x;
       final machineY = destination.zone.y;
       
-      // Calculate direct distance to machine (not road)
-      final dxToMachine = machineX - truck.currentX;
-      final dyToMachine = machineY - truck.currentY;
-      final distanceToMachine = (dxToMachine * dxToMachine + dyToMachine * dyToMachine) * 0.5; // Euclidean distance
+      // Ensure truck is always on a road (integer coordinates)
+      // Snap current position to nearest road if not already on one
+      double currentX = truck.currentX.round().toDouble();
+      double currentY = truck.currentY.round().toDouble();
       
-      // If truck is very close to machine, mark as arrived
-      if (distanceToMachine < 0.2) {
-        // Truck arrived at machine - mark as restocking.
-        // IMPORTANT: Do NOT advance currentRouteIndex here.
-        // Restocking logic relies on truck.currentDestination (based on currentRouteIndex).
-        return truck.copyWith(
-          status: TruckStatus.restocking,
-          // Position truck at machine's location
-          currentX: machineX,
-          currentY: machineY,
-          targetX: machineX,
-          targetY: machineY,
-        );
-      }
-      
-      // Check if truck is already making final approach (close to machine but not at road)
-      // If truck is within 1.0 units of machine, make direct approach
-      if (distanceToMachine < 1.0) {
-        // Make final approach to machine (move off-road to machine position)
-        final approachSpeed = 0.5; // Speed for final approach
-        double newX = truck.currentX;
-        double newY = truck.currentY;
-        
-        // If very close, snap to machine position
-        if (distanceToMachine < approachSpeed) {
-          newX = machineX;
-          newY = machineY;
-        } else {
-          // Move directly towards machine
-          final normalizedDx = dxToMachine / distanceToMachine;
-          final normalizedDy = dyToMachine / distanceToMachine;
-          newX += normalizedDx * approachSpeed;
-          newY += normalizedDy * approachSpeed;
-          
-          // Clamp to machine position if we overshoot
-          if ((dxToMachine > 0 && newX > machineX) || (dxToMachine < 0 && newX < machineX)) {
-            newX = machineX;
-          }
-          if ((dyToMachine > 0 && newY > machineY) || (dyToMachine < 0 && newY < machineY)) {
-            newY = machineY;
-          }
-        }
-        
-        return truck.copyWith(
-          status: TruckStatus.traveling,
-          currentX: newX,
-          currentY: newY,
-          targetX: machineX,
-          targetY: machineY,
-        );
-      }
-      
-      // Truck is still far from machine, use road-based pathfinding
-      // Calculate Manhattan distance to destination road
-      final truckRoadX = truck.currentX.round().toDouble();
-      final truckRoadY = truck.currentY.round().toDouble();
-      
-      // For machines at .5 positions, find the nearest road
+      // For machines at .5 positions, find the nearest road for pathfinding
       // Use floor to get the road on the lower side, which is more predictable
       final destRoadX = machineX.floor().toDouble(); // Road on the left/bottom side of block
       final destRoadY = machineY.floor().toDouble();
       
-      final dx = destRoadX - truckRoadX;
-      final dy = destRoadY - truckRoadY;
-      final manhattanDistance = dx.abs() + dy.abs();
+      // Calculate Manhattan distance to destination road
+      final dxToRoad = destRoadX - currentX;
+      final dyToRoad = destRoadY - currentY;
+      final manhattanDistance = dxToRoad.abs() + dyToRoad.abs();
 
-      // If truck is at destination road, start final approach
+      // If truck is at the road adjacent to the machine, mark as arrived for restocking
+      // Trucks stay on roads - they don't move off-road to reach machines
       if (manhattanDistance == 0) {
-        // Truck is at the road near the machine, start final approach
-        final approachSpeed = 0.5;
-        double newX = truck.currentX;
-        double newY = truck.currentY;
-        
-        // Move directly towards machine
-        final normalizedDx = dxToMachine / distanceToMachine;
-        final normalizedDy = dyToMachine / distanceToMachine;
-        newX += normalizedDx * approachSpeed;
-        newY += normalizedDy * approachSpeed;
-        
-        // Clamp to machine position if we overshoot
-        if ((dxToMachine > 0 && newX > machineX) || (dxToMachine < 0 && newX < machineX)) {
-          newX = machineX;
-        }
-        if ((dyToMachine > 0 && newY > machineY) || (dyToMachine < 0 && newY < machineY)) {
-          newY = machineY;
-        }
-        
+        // Truck is at the road next to the machine - can restock from here
+        // IMPORTANT: Do NOT advance currentRouteIndex here.
+        // Restocking logic relies on truck.currentDestination (based on currentRouteIndex).
         return truck.copyWith(
-          status: TruckStatus.traveling,
-          currentX: newX,
-          currentY: newY,
-          targetX: machineX,
-          targetY: machineY,
+          status: TruckStatus.restocking,
+          // Keep truck on the road (integer coordinates), not at machine position
+          currentX: currentX,
+          currentY: currentY,
+          targetX: destRoadX,
+          targetY: destRoadY,
         );
       }
 
@@ -484,20 +414,7 @@ class SimulationEngine extends StateNotifier<SimulationState> {
       // Machines are centered in blocks at .5 positions (1.5, 2.5, 3.5, etc.)
       // Strategy: Use Manhattan pathfinding - move along one axis, then the other
       // IMPORTANT: Trucks must ALWAYS stay on roads (integer coordinates)
-      
-      // First, ensure truck is on a road (snap to nearest road if not)
-      double currentX = truck.currentX.round().toDouble();
-      double currentY = truck.currentY.round().toDouble();
-      
-      // Determine target road coordinates (snap destination to nearest road for pathfinding)
-      // Machines are at .5 positions, so use floor to get the road on the lower side
-      // This ensures trucks approach from a consistent direction
-      final targetRoadX = destination.zone.x.floor().toDouble();
-      final targetRoadY = destination.zone.y.floor().toDouble();
-      
-      // Calculate distance to target roads
-      final dxToRoad = targetRoadX - currentX;
-      final dyToRoad = targetRoadY - currentY;
+      // dxToRoad and dyToRoad are already calculated above
       
       // Manhattan pathfinding: move along one axis, then the other
       // Move in integer steps (1.0 per tick) since trucks must stay on roads
@@ -534,8 +451,9 @@ class SimulationEngine extends StateNotifier<SimulationState> {
         status: TruckStatus.traveling,
         currentX: newX,
         currentY: newY,
-        targetX: destination.zone.x,
-        targetY: destination.zone.y,
+        // Target is the road next to the machine, not the machine itself
+        targetX: destRoadX,
+        targetY: destRoadY,
       );
     }).toList();
   }
