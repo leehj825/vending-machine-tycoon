@@ -32,11 +32,15 @@ class _TileCityScreenState extends State<TileCityScreen> {
   static const int gridSize = 15;
   
   // Isometric tile dimensions (tweakable constants)
+  // Reduced spacing to make tiles closer together
   static const double tileWidth = 64.0;
   static const double tileHeight = 32.0;
+  static const double tileSpacingFactor = 0.95; // Reduce spacing between tiles
   
   // Building image height (assumed taller than ground tiles)
-  static const double buildingImageHeight = 80.0;
+  // Scaled down to fit better within tile bounds
+  static const double buildingImageHeight = 60.0; // Reduced from 80.0
+  static const double buildingScale = 0.75; // Scale down buildings to 75% of original size
   
   // Block dimensions - only 2x3 or 2x4
   static const int blockWidth = 2;
@@ -307,11 +311,12 @@ class _TileCityScreenState extends State<TileCityScreen> {
 
   /// Convert grid coordinates to isometric screen coordinates
   /// Uses base tile as anchor point for alignment
+  /// Reduced spacing factor to make tiles closer together
   Offset _gridToScreen(int gridX, int gridY) {
-    // Isometric projection formula
+    // Isometric projection formula with spacing reduction
     // The base of the tile (bottom) is at this position
-    final screenX = (gridX - gridY) * (tileWidth / 2);
-    final screenY = (gridX + gridY) * (tileHeight / 2);
+    final screenX = (gridX - gridY) * (tileWidth / 2) * tileSpacingFactor;
+    final screenY = (gridX + gridY) * (tileHeight / 2) * tileSpacingFactor;
     return Offset(screenX, screenY);
   }
 
@@ -397,34 +402,37 @@ class _TileCityScreenState extends State<TileCityScreen> {
     );
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Tile City Map'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () {
-              setState(() {
-                _generateMap();
-              });
-            },
-            tooltip: 'Refresh Map',
+      // AppBar removed - MainScreen already provides one
+      body: Stack(
+        children: [
+          InteractiveViewer(
+            boundaryMargin: const EdgeInsets.all(200),
+            minScale: 0.3,
+            maxScale: 3.0,
+            child: SizedBox(
+              width: mapWidth,
+              height: mapHeight,
+              child: Stack(
+                clipBehavior: Clip.none, // Don't clip content
+                children: _buildTiles(centerOffset),
+              ),
+            ),
+          ),
+          // Floating refresh button
+          Positioned(
+            top: 16,
+            right: 16,
+            child: FloatingActionButton.small(
+              onPressed: () {
+                setState(() {
+                  _generateMap();
+                });
+              },
+              child: const Icon(Icons.refresh),
+              tooltip: 'Refresh Map',
+            ),
           ),
         ],
-      ),
-      body: InteractiveViewer(
-        boundaryMargin: const EdgeInsets.all(200),
-        minScale: 0.3,
-        maxScale: 3.0,
-        child: SizedBox(
-          width: mapWidth,
-          height: mapHeight,
-          child: Stack(
-            clipBehavior: Clip.none, // Don't clip content
-            children: _buildTiles(centerOffset),
-          ),
-        ),
       ),
     );
   }
@@ -490,14 +498,19 @@ class _TileCityScreenState extends State<TileCityScreen> {
         );
 
       // Building tile (if applicable) - anchored at bottom-center, extends upward
+      // Scaled down to fit better within tile bounds
       if (_isBuilding(tileType)) {
-        final buildingTop = positionedY - (buildingImageHeight - tileHeight);
+        final scaledBuildingHeight = buildingImageHeight * buildingScale;
+        final buildingTop = positionedY - (scaledBuildingHeight - tileHeight);
+        final scaledWidth = tileWidth * buildingScale;
+        final centerOffsetX = (tileWidth - scaledWidth) / 2; // Center the scaled building
+        
         tiles.add(
           Positioned(
-            left: positionedX,
+            left: positionedX + centerOffsetX,
             top: buildingTop,
-            width: tileWidth,
-            height: buildingImageHeight,
+            width: scaledWidth,
+            height: scaledBuildingHeight,
             child: _buildBuildingTile(tileType, buildingOrientation),
           ),
         );
