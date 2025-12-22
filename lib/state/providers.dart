@@ -52,7 +52,7 @@ class GameController extends StateNotifier<GlobalGameState> {
       : simulationEngine = SimulationEngine(
           initialMachines: [],
           initialTrucks: [],
-          initialCash: 5000.0,
+          initialCash: 400.0,
           initialReputation: 100,
         ),
         super(const GlobalGameState(

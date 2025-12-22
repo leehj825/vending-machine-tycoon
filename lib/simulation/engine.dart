@@ -416,6 +416,15 @@ class SimulationEngine extends StateNotifier<SimulationState> {
       // IMPORTANT: Trucks must ALWAYS stay on roads (integer coordinates)
       // dxToRoad and dyToRoad are already calculated above
       
+      // Helper function to snap coordinate to nearest valid road position
+      // Roads in the tile map are typically at positions 3, 6, 9 (grid) = 4.0, 7.0, 10.0 (zone)
+      // But to be flexible, we allow any integer coordinate as long as it's within bounds
+      double snapToRoad(double coord) {
+        // Snap to nearest integer and clamp to valid zone range (1.0 to 10.0)
+        final snapped = coord.round().toDouble();
+        return snapped.clamp(1.0, 10.0);
+      }
+      
       // Manhattan pathfinding: move along one axis, then the other
       // Move in integer steps (1.0 per tick) since trucks must stay on roads
       double newX = currentX;
@@ -443,9 +452,9 @@ class SimulationEngine extends StateNotifier<SimulationState> {
         }
       }
       
-      // Ensure we're still on roads (safety check)
-      newX = newX.round().toDouble();
-      newY = newY.round().toDouble();
+      // Ensure we're still on roads (snap to nearest integer and clamp to valid range)
+      newX = snapToRoad(newX);
+      newY = snapToRoad(newY);
 
       return truck.copyWith(
         status: TruckStatus.traveling,
