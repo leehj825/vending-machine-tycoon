@@ -491,6 +491,8 @@ class GameController extends StateNotifier<GlobalGameState> {
       warehouseRoadX: roadX,
       warehouseRoadY: roadY,
     );
+    // Also update simulation engine so trucks can use it
+    simulationEngine.updateWarehouseRoadPosition(roadX, roadY);
   }
 
   /// Get current trucks list

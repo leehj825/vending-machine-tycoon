@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dashboard_screen.dart';
-import 'map_screen.dart';
 import 'route_planner_screen.dart';
 import 'warehouse_screen.dart';
+import 'tile_city_screen.dart';
 
 /// Main navigation screen with bottom navigation bar
 class MainScreen extends ConsumerStatefulWidget {
@@ -19,7 +19,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   /// List of screens for the IndexedStack
   final List<Widget> _screens = const [
     DashboardScreen(),
-    MapScreen(),
+    TileCityScreen(),
     RoutePlannerScreen(),
     WarehouseScreen(),
   ];
