@@ -481,34 +481,6 @@ class GameController extends StateNotifier<GlobalGameState> {
       'Loaded $quantity ${product.name} onto ${truck.name}',
     );
     
-    // Auto-route: If truck is at warehouse, has inventory, and no route, assign route to all machines
-    final warehouseRoadX = state.warehouseRoadX ?? 4.0;
-    final warehouseRoadY = state.warehouseRoadY ?? 4.0;
-    final truckX = updatedTruck.currentX.round().toDouble();
-    final truckY = updatedTruck.currentY.round().toDouble();
-    final distanceToWarehouse = (truckX - warehouseRoadX).abs() + (truckY - warehouseRoadY).abs();
-    final isAtWarehouse = distanceToWarehouse < 0.5; // Close to warehouse
-    
-    if (isAtWarehouse && updatedTruck.inventory.isNotEmpty && !updatedTruck.hasRoute) {
-      // Get all machine IDs
-      final allMachineIds = state.machines.map((m) => m.id).toList();
-      
-      if (allMachineIds.isNotEmpty) {
-        // Assign route to all machines
-        final autoRoutedTruck = updatedTruck.copyWith(
-          route: allMachineIds,
-          currentRouteIndex: 0,
-          status: TruckStatus.traveling,
-        );
-        updatedTrucks[truckIndex] = autoRoutedTruck;
-        
-        state = state.copyWith(trucks: updatedTrucks);
-        state = state.addLogMessage(
-          'Auto-assigned route to ${truck.name}: ${allMachineIds.length} machines',
-        );
-      }
-    }
-    
     // Sync to simulation engine to prevent reversion on next tick
     simulationEngine.updateTrucks(updatedTrucks);
   }
