@@ -1047,7 +1047,8 @@ class SimulationEngine extends StateNotifier<SimulationState> {
           updatedTrucks[i] = truck.copyWith(
             inventory: updatedTruckInventory,
             status: TruckStatus.traveling,
-            currentRouteIndex: truck.currentRouteIndex + 1,
+            currentRouteIndex: truck.route.length,
+
             // Keep truck on road
             currentX: roadX,
             currentY: roadY,
