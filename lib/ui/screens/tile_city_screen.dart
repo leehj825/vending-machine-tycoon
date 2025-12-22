@@ -35,12 +35,13 @@ class _TileCityScreenState extends State<TileCityScreen> {
   // Reduced spacing to make tiles closer together
   static const double tileWidth = 64.0;
   static const double tileHeight = 32.0;
-  static const double tileSpacingFactor = 0.88; // Reduced further to make tiles closer
+  static const double tileSpacingFactor = 0.80; // Vertical spacing (up/down)
+  static const double horizontalSpacingFactor = 0.75; // Horizontal spacing (side to side) - reduced more
   
   // Building image height (assumed taller than ground tiles)
   // Adjusted to make buildings larger
-  static const double buildingImageHeight = 75.0; // Increased from 60.0
-  static const double buildingScale = 0.95; // Increased from 0.75 to make buildings larger
+  static const double buildingImageHeight = 65.0; // Increased from 60.0
+  static const double buildingScale = 0.83; // Increased from 0.75 to make buildings larger
   
   // Block dimensions - only 2x3 or 2x4
   static const int blockWidth = 2;
@@ -311,11 +312,13 @@ class _TileCityScreenState extends State<TileCityScreen> {
 
   /// Convert grid coordinates to isometric screen coordinates
   /// Uses base tile as anchor point for alignment
-  /// Reduced spacing factor to make tiles closer together
+  /// Separate spacing factors for horizontal and vertical to control side-to-side spacing independently
   Offset _gridToScreen(int gridX, int gridY) {
-    // Isometric projection formula with spacing reduction
+    // Isometric projection formula with separate spacing factors
     // The base of the tile (bottom) is at this position
-    final screenX = (gridX - gridY) * (tileWidth / 2) * tileSpacingFactor;
+    // screenX controls horizontal (side-to-side) spacing
+    // screenY controls vertical (up-down) spacing
+    final screenX = (gridX - gridY) * (tileWidth / 2) * horizontalSpacingFactor;
     final screenY = (gridX + gridY) * (tileHeight / 2) * tileSpacingFactor;
     return Offset(screenX, screenY);
   }
