@@ -584,41 +584,48 @@ class SimulationEngine extends StateNotifier<SimulationState> {
           }
           
           // Move along the path smoothly
-          if (pathIndex < path.length) {
-            final targetWaypoint = path[pathIndex];
-            final dx = targetWaypoint.x - truck.currentX;
-            final dy = targetWaypoint.y - truck.currentY;
+          var currentPathIndex = pathIndex;
+          var currentX = truck.currentX;
+          var currentY = truck.currentY;
+          var newStatus = TruckStatus.traveling;
+
+          while (currentPathIndex < path.length) {
+            final targetWaypoint = path[currentPathIndex];
+            final dx = targetWaypoint.x - currentX;
+            final dy = targetWaypoint.y - currentY;
             final distance = math.sqrt(dx * dx + dy * dy);
             
             if (distance < 0.1) {
-              // Reached waypoint, move to next
-              return truck.copyWith(
-                status: TruckStatus.traveling,
-                currentX: targetWaypoint.x,
-                currentY: targetWaypoint.y,
-                targetX: warehouseRoadX,
-                targetY: warehouseRoadY,
-                path: path,
-                pathIndex: pathIndex + 1,
-              );
+              // Reached waypoint, snap and move to next
+              currentX = targetWaypoint.x;
+              currentY = targetWaypoint.y;
+              currentPathIndex++;
             } else {
-              // Move towards waypoint incrementally
+              // Move towards waypoint
               final moveDistance = movementSpeed.clamp(0.0, distance);
               final ratio = moveDistance / distance;
-              final newX = truck.currentX + dx * ratio;
-              final newY = truck.currentY + dy * ratio;
-              
-              return truck.copyWith(
-                status: TruckStatus.traveling,
-                currentX: newX,
-                currentY: newY,
-                targetX: warehouseRoadX,
-                targetY: warehouseRoadY,
-                path: path,
-                pathIndex: pathIndex,
-              );
+              currentX += dx * ratio;
+              currentY += dy * ratio;
+              break;
             }
           }
+          
+          // Check if we reached the end of the path (warehouse)
+          if (currentPathIndex >= path.length) {
+             newStatus = TruckStatus.idle;
+             currentX = warehouseRoadX;
+             currentY = warehouseRoadY;
+          }
+
+          return truck.copyWith(
+            status: newStatus,
+            currentX: currentX,
+            currentY: currentY,
+            targetX: warehouseRoadX,
+            targetY: warehouseRoadY,
+            path: path,
+            pathIndex: currentPathIndex,
+          );
           
           // Fallback
           return truck.copyWith(
@@ -834,41 +841,40 @@ class SimulationEngine extends StateNotifier<SimulationState> {
       }
       
       // Move along the path smoothly
-      if (pathIndex < path.length) {
-        final targetWaypoint = path[pathIndex];
-        final dx = targetWaypoint.x - truck.currentX;
-        final dy = targetWaypoint.y - truck.currentY;
-          final distance = math.sqrt(dx * dx + dy * dy);
+      var currentPathIndex = pathIndex;
+      var simX = truck.currentX;
+      var simY = truck.currentY;
+
+      while (currentPathIndex < path.length) {
+        final targetWaypoint = path[currentPathIndex];
+        final dx = targetWaypoint.x - simX;
+        final dy = targetWaypoint.y - simY;
+        final distance = math.sqrt(dx * dx + dy * dy);
         
         if (distance < 0.1) {
-          // Reached waypoint, move to next
-          return truck.copyWith(
-            status: TruckStatus.traveling,
-            currentX: targetWaypoint.x,
-            currentY: targetWaypoint.y,
-            targetX: destRoadX,
-            targetY: destRoadY,
-            path: path,
-            pathIndex: pathIndex + 1,
-          );
+          // Reached waypoint, snap and move to next
+          simX = targetWaypoint.x;
+          simY = targetWaypoint.y;
+          currentPathIndex++;
         } else {
-          // Move towards waypoint incrementally
+          // Move towards waypoint
           final moveDistance = movementSpeed.clamp(0.0, distance);
           final ratio = moveDistance / distance;
-          final newX = truck.currentX + dx * ratio;
-          final newY = truck.currentY + dy * ratio;
-          
-          return truck.copyWith(
-            status: TruckStatus.traveling,
-            currentX: newX,
-            currentY: newY,
-            targetX: destRoadX,
-            targetY: destRoadY,
-            path: path,
-            pathIndex: pathIndex,
-          );
+          simX += dx * ratio;
+          simY += dy * ratio;
+          break;
         }
       }
+
+      return truck.copyWith(
+        status: TruckStatus.traveling,
+        currentX: simX,
+        currentY: simY,
+        targetX: destRoadX,
+        targetY: destRoadY,
+        path: path,
+        pathIndex: currentPathIndex,
+      );
 
       // Should not reach here, but fallback
       return truck.copyWith(
