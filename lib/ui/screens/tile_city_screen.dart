@@ -981,36 +981,56 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
     final top = positionedY + (tileHeight / 2) - truckSize;
 
     // Determine truck direction based on movement
+    // truck_front faces left down (no flip)
+    // truck_front flipped faces right down
+    // truck_back faces left up (no flip)
+    // truck_back flipped faces right up
     String asset = 'assets/images/tiles/truck_front.png';
     bool flip = false;
     
-    // Calculate direction from current and target position
-    final dx = truck.targetX - truck.currentX;
-    final dy = truck.targetY - truck.currentY;
+    // Calculate direction - prefer using path waypoints if available for more accurate direction
+    double dx = 0.0;
+    double dy = 0.0;
     
-    if (dx.abs() > dy.abs()) {
-      // Moving horizontally
-      if (dx > 0) {
-        // Moving east (right)
-        asset = 'assets/images/tiles/truck_front.png';
-        flip = true;
-      } else {
-        // Moving west (left)
-        asset = 'assets/images/tiles/truck_back.png';
-        flip = false;
-      }
+    if (truck.path.isNotEmpty && truck.pathIndex < truck.path.length) {
+      // Use next waypoint in path for direction
+      final nextWaypoint = truck.path[truck.pathIndex];
+      dx = nextWaypoint.x - truck.currentX;
+      dy = nextWaypoint.y - truck.currentY;
     } else {
-      // Moving vertically
-      if (dy > 0) {
-        // Moving south (down)
-        asset = 'assets/images/tiles/truck_front.png';
-        flip = false;
+      // Fall back to target direction
+      dx = truck.targetX - truck.currentX;
+      dy = truck.targetY - truck.currentY;
+    }
+    
+    // Only update direction if truck is actually moving
+    if (dx.abs() > 0.01 || dy.abs() > 0.01) {
+      // Determine primary direction (horizontal vs vertical)
+      if (dx.abs() > dy.abs()) {
+        // Moving primarily horizontally
+        if (dx > 0) {
+          // Moving right (east) - use truck_front flipped (right down)
+          asset = 'assets/images/tiles/truck_front.png';
+          flip = true;
+        } else {
+          // Moving left (west) - use truck_front (left down)
+          asset = 'assets/images/tiles/truck_front.png';
+          flip = false;
+        }
       } else {
-        // Moving north (up)
-        asset = 'assets/images/tiles/truck_back.png';
-        flip = true;
+        // Moving primarily vertically
+        if (dy > 0) {
+          // Moving down (south) - use truck_front (left down)
+          asset = 'assets/images/tiles/truck_front.png';
+          flip = false;
+        } else {
+          // Moving up (north) - use truck_back (left up)
+          asset = 'assets/images/tiles/truck_back.png';
+          flip = false;
+        }
       }
     }
+    // If not moving (dx and dy are both near 0), keep last direction
 
     Widget img = Image.asset(
       asset,
