@@ -20,7 +20,9 @@ mixin _$Truck {
  List<String> get route;/// Current position in the route (index)
  int get currentRouteIndex; TruckStatus get status;/// Current position (x, y) on the grid
  double get currentX; double get currentY;/// Target position (x, y) when traveling
- double get targetX; double get targetY; Map<Product, int> get inventory;
+ double get targetX; double get targetY;/// Path waypoints for smooth movement (list of (x, y) positions)
+ List<({double x, double y})> get path;/// Current index in the path
+ int get pathIndex; Map<Product, int> get inventory;
 /// Create a copy of Truck
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -31,16 +33,16 @@ $TruckCopyWith<Truck> get copyWith => _$TruckCopyWithImpl<Truck>(this as Truck, 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Truck&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.fuel, fuel) || other.fuel == fuel)&&(identical(other.capacity, capacity) || other.capacity == capacity)&&const DeepCollectionEquality().equals(other.route, route)&&(identical(other.currentRouteIndex, currentRouteIndex) || other.currentRouteIndex == currentRouteIndex)&&(identical(other.status, status) || other.status == status)&&(identical(other.currentX, currentX) || other.currentX == currentX)&&(identical(other.currentY, currentY) || other.currentY == currentY)&&(identical(other.targetX, targetX) || other.targetX == targetX)&&(identical(other.targetY, targetY) || other.targetY == targetY)&&const DeepCollectionEquality().equals(other.inventory, inventory));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Truck&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.fuel, fuel) || other.fuel == fuel)&&(identical(other.capacity, capacity) || other.capacity == capacity)&&const DeepCollectionEquality().equals(other.route, route)&&(identical(other.currentRouteIndex, currentRouteIndex) || other.currentRouteIndex == currentRouteIndex)&&(identical(other.status, status) || other.status == status)&&(identical(other.currentX, currentX) || other.currentX == currentX)&&(identical(other.currentY, currentY) || other.currentY == currentY)&&(identical(other.targetX, targetX) || other.targetX == targetX)&&(identical(other.targetY, targetY) || other.targetY == targetY)&&const DeepCollectionEquality().equals(other.path, path)&&(identical(other.pathIndex, pathIndex) || other.pathIndex == pathIndex)&&const DeepCollectionEquality().equals(other.inventory, inventory));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,name,fuel,capacity,const DeepCollectionEquality().hash(route),currentRouteIndex,status,currentX,currentY,targetX,targetY,const DeepCollectionEquality().hash(inventory));
+int get hashCode => Object.hash(runtimeType,id,name,fuel,capacity,const DeepCollectionEquality().hash(route),currentRouteIndex,status,currentX,currentY,targetX,targetY,const DeepCollectionEquality().hash(path),pathIndex,const DeepCollectionEquality().hash(inventory));
 
 @override
 String toString() {
-  return 'Truck(id: $id, name: $name, fuel: $fuel, capacity: $capacity, route: $route, currentRouteIndex: $currentRouteIndex, status: $status, currentX: $currentX, currentY: $currentY, targetX: $targetX, targetY: $targetY, inventory: $inventory)';
+  return 'Truck(id: $id, name: $name, fuel: $fuel, capacity: $capacity, route: $route, currentRouteIndex: $currentRouteIndex, status: $status, currentX: $currentX, currentY: $currentY, targetX: $targetX, targetY: $targetY, path: $path, pathIndex: $pathIndex, inventory: $inventory)';
 }
 
 
@@ -51,7 +53,7 @@ abstract mixin class $TruckCopyWith<$Res>  {
   factory $TruckCopyWith(Truck value, $Res Function(Truck) _then) = _$TruckCopyWithImpl;
 @useResult
 $Res call({
- String id, String name, double fuel, int capacity, List<String> route, int currentRouteIndex, TruckStatus status, double currentX, double currentY, double targetX, double targetY, Map<Product, int> inventory
+ String id, String name, double fuel, int capacity, List<String> route, int currentRouteIndex, TruckStatus status, double currentX, double currentY, double targetX, double targetY, List<({double x, double y})> path, int pathIndex, Map<Product, int> inventory
 });
 
 
@@ -68,7 +70,7 @@ class _$TruckCopyWithImpl<$Res>
 
 /// Create a copy of Truck
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? fuel = null,Object? capacity = null,Object? route = null,Object? currentRouteIndex = null,Object? status = null,Object? currentX = null,Object? currentY = null,Object? targetX = null,Object? targetY = null,Object? inventory = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? fuel = null,Object? capacity = null,Object? route = null,Object? currentRouteIndex = null,Object? status = null,Object? currentX = null,Object? currentY = null,Object? targetX = null,Object? targetY = null,Object? path = null,Object? pathIndex = null,Object? inventory = null,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
@@ -81,7 +83,9 @@ as TruckStatus,currentX: null == currentX ? _self.currentX : currentX // ignore:
 as double,currentY: null == currentY ? _self.currentY : currentY // ignore: cast_nullable_to_non_nullable
 as double,targetX: null == targetX ? _self.targetX : targetX // ignore: cast_nullable_to_non_nullable
 as double,targetY: null == targetY ? _self.targetY : targetY // ignore: cast_nullable_to_non_nullable
-as double,inventory: null == inventory ? _self.inventory : inventory // ignore: cast_nullable_to_non_nullable
+as double,path: null == path ? _self.path : path // ignore: cast_nullable_to_non_nullable
+as List<({double x, double y})>,pathIndex: null == pathIndex ? _self.pathIndex : pathIndex // ignore: cast_nullable_to_non_nullable
+as int,inventory: null == inventory ? _self.inventory : inventory // ignore: cast_nullable_to_non_nullable
 as Map<Product, int>,
   ));
 }
@@ -167,10 +171,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String name,  double fuel,  int capacity,  List<String> route,  int currentRouteIndex,  TruckStatus status,  double currentX,  double currentY,  double targetX,  double targetY,  Map<Product, int> inventory)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String name,  double fuel,  int capacity,  List<String> route,  int currentRouteIndex,  TruckStatus status,  double currentX,  double currentY,  double targetX,  double targetY,  List<({double x, double y})> path,  int pathIndex,  Map<Product, int> inventory)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _Truck() when $default != null:
-return $default(_that.id,_that.name,_that.fuel,_that.capacity,_that.route,_that.currentRouteIndex,_that.status,_that.currentX,_that.currentY,_that.targetX,_that.targetY,_that.inventory);case _:
+return $default(_that.id,_that.name,_that.fuel,_that.capacity,_that.route,_that.currentRouteIndex,_that.status,_that.currentX,_that.currentY,_that.targetX,_that.targetY,_that.path,_that.pathIndex,_that.inventory);case _:
   return orElse();
 
 }
@@ -188,10 +192,10 @@ return $default(_that.id,_that.name,_that.fuel,_that.capacity,_that.route,_that.
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String name,  double fuel,  int capacity,  List<String> route,  int currentRouteIndex,  TruckStatus status,  double currentX,  double currentY,  double targetX,  double targetY,  Map<Product, int> inventory)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String name,  double fuel,  int capacity,  List<String> route,  int currentRouteIndex,  TruckStatus status,  double currentX,  double currentY,  double targetX,  double targetY,  List<({double x, double y})> path,  int pathIndex,  Map<Product, int> inventory)  $default,) {final _that = this;
 switch (_that) {
 case _Truck():
-return $default(_that.id,_that.name,_that.fuel,_that.capacity,_that.route,_that.currentRouteIndex,_that.status,_that.currentX,_that.currentY,_that.targetX,_that.targetY,_that.inventory);case _:
+return $default(_that.id,_that.name,_that.fuel,_that.capacity,_that.route,_that.currentRouteIndex,_that.status,_that.currentX,_that.currentY,_that.targetX,_that.targetY,_that.path,_that.pathIndex,_that.inventory);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -208,10 +212,10 @@ return $default(_that.id,_that.name,_that.fuel,_that.capacity,_that.route,_that.
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String name,  double fuel,  int capacity,  List<String> route,  int currentRouteIndex,  TruckStatus status,  double currentX,  double currentY,  double targetX,  double targetY,  Map<Product, int> inventory)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String name,  double fuel,  int capacity,  List<String> route,  int currentRouteIndex,  TruckStatus status,  double currentX,  double currentY,  double targetX,  double targetY,  List<({double x, double y})> path,  int pathIndex,  Map<Product, int> inventory)?  $default,) {final _that = this;
 switch (_that) {
 case _Truck() when $default != null:
-return $default(_that.id,_that.name,_that.fuel,_that.capacity,_that.route,_that.currentRouteIndex,_that.status,_that.currentX,_that.currentY,_that.targetX,_that.targetY,_that.inventory);case _:
+return $default(_that.id,_that.name,_that.fuel,_that.capacity,_that.route,_that.currentRouteIndex,_that.status,_that.currentX,_that.currentY,_that.targetX,_that.targetY,_that.path,_that.pathIndex,_that.inventory);case _:
   return null;
 
 }
@@ -223,7 +227,7 @@ return $default(_that.id,_that.name,_that.fuel,_that.capacity,_that.route,_that.
 
 
 class _Truck extends Truck {
-  const _Truck({required this.id, required this.name, this.fuel = 100.0, this.capacity = 50, final  List<String> route = const [], this.currentRouteIndex = 0, this.status = TruckStatus.idle, this.currentX = 0.0, this.currentY = 0.0, this.targetX = 0.0, this.targetY = 0.0, final  Map<Product, int> inventory = const {}}): _route = route,_inventory = inventory,super._();
+  const _Truck({required this.id, required this.name, this.fuel = 100.0, this.capacity = 50, final  List<String> route = const [], this.currentRouteIndex = 0, this.status = TruckStatus.idle, this.currentX = 0.0, this.currentY = 0.0, this.targetX = 0.0, this.targetY = 0.0, final  List<({double x, double y})> path = const [], this.pathIndex = 0, final  Map<Product, int> inventory = const {}}): _route = route,_path = path,_inventory = inventory,super._();
   
 
 @override final  String id;
@@ -251,6 +255,17 @@ class _Truck extends Truck {
 /// Target position (x, y) when traveling
 @override@JsonKey() final  double targetX;
 @override@JsonKey() final  double targetY;
+/// Path waypoints for smooth movement (list of (x, y) positions)
+ final  List<({double x, double y})> _path;
+/// Path waypoints for smooth movement (list of (x, y) positions)
+@override@JsonKey() List<({double x, double y})> get path {
+  if (_path is EqualUnmodifiableListView) return _path;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_path);
+}
+
+/// Current index in the path
+@override@JsonKey() final  int pathIndex;
  final  Map<Product, int> _inventory;
 @override@JsonKey() Map<Product, int> get inventory {
   if (_inventory is EqualUnmodifiableMapView) return _inventory;
@@ -269,16 +284,16 @@ _$TruckCopyWith<_Truck> get copyWith => __$TruckCopyWithImpl<_Truck>(this, _$ide
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Truck&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.fuel, fuel) || other.fuel == fuel)&&(identical(other.capacity, capacity) || other.capacity == capacity)&&const DeepCollectionEquality().equals(other._route, _route)&&(identical(other.currentRouteIndex, currentRouteIndex) || other.currentRouteIndex == currentRouteIndex)&&(identical(other.status, status) || other.status == status)&&(identical(other.currentX, currentX) || other.currentX == currentX)&&(identical(other.currentY, currentY) || other.currentY == currentY)&&(identical(other.targetX, targetX) || other.targetX == targetX)&&(identical(other.targetY, targetY) || other.targetY == targetY)&&const DeepCollectionEquality().equals(other._inventory, _inventory));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Truck&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.fuel, fuel) || other.fuel == fuel)&&(identical(other.capacity, capacity) || other.capacity == capacity)&&const DeepCollectionEquality().equals(other._route, _route)&&(identical(other.currentRouteIndex, currentRouteIndex) || other.currentRouteIndex == currentRouteIndex)&&(identical(other.status, status) || other.status == status)&&(identical(other.currentX, currentX) || other.currentX == currentX)&&(identical(other.currentY, currentY) || other.currentY == currentY)&&(identical(other.targetX, targetX) || other.targetX == targetX)&&(identical(other.targetY, targetY) || other.targetY == targetY)&&const DeepCollectionEquality().equals(other._path, _path)&&(identical(other.pathIndex, pathIndex) || other.pathIndex == pathIndex)&&const DeepCollectionEquality().equals(other._inventory, _inventory));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,name,fuel,capacity,const DeepCollectionEquality().hash(_route),currentRouteIndex,status,currentX,currentY,targetX,targetY,const DeepCollectionEquality().hash(_inventory));
+int get hashCode => Object.hash(runtimeType,id,name,fuel,capacity,const DeepCollectionEquality().hash(_route),currentRouteIndex,status,currentX,currentY,targetX,targetY,const DeepCollectionEquality().hash(_path),pathIndex,const DeepCollectionEquality().hash(_inventory));
 
 @override
 String toString() {
-  return 'Truck(id: $id, name: $name, fuel: $fuel, capacity: $capacity, route: $route, currentRouteIndex: $currentRouteIndex, status: $status, currentX: $currentX, currentY: $currentY, targetX: $targetX, targetY: $targetY, inventory: $inventory)';
+  return 'Truck(id: $id, name: $name, fuel: $fuel, capacity: $capacity, route: $route, currentRouteIndex: $currentRouteIndex, status: $status, currentX: $currentX, currentY: $currentY, targetX: $targetX, targetY: $targetY, path: $path, pathIndex: $pathIndex, inventory: $inventory)';
 }
 
 
@@ -289,7 +304,7 @@ abstract mixin class _$TruckCopyWith<$Res> implements $TruckCopyWith<$Res> {
   factory _$TruckCopyWith(_Truck value, $Res Function(_Truck) _then) = __$TruckCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String name, double fuel, int capacity, List<String> route, int currentRouteIndex, TruckStatus status, double currentX, double currentY, double targetX, double targetY, Map<Product, int> inventory
+ String id, String name, double fuel, int capacity, List<String> route, int currentRouteIndex, TruckStatus status, double currentX, double currentY, double targetX, double targetY, List<({double x, double y})> path, int pathIndex, Map<Product, int> inventory
 });
 
 
@@ -306,7 +321,7 @@ class __$TruckCopyWithImpl<$Res>
 
 /// Create a copy of Truck
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? fuel = null,Object? capacity = null,Object? route = null,Object? currentRouteIndex = null,Object? status = null,Object? currentX = null,Object? currentY = null,Object? targetX = null,Object? targetY = null,Object? inventory = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? fuel = null,Object? capacity = null,Object? route = null,Object? currentRouteIndex = null,Object? status = null,Object? currentX = null,Object? currentY = null,Object? targetX = null,Object? targetY = null,Object? path = null,Object? pathIndex = null,Object? inventory = null,}) {
   return _then(_Truck(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
@@ -319,7 +334,9 @@ as TruckStatus,currentX: null == currentX ? _self.currentX : currentX // ignore:
 as double,currentY: null == currentY ? _self.currentY : currentY // ignore: cast_nullable_to_non_nullable
 as double,targetX: null == targetX ? _self.targetX : targetX // ignore: cast_nullable_to_non_nullable
 as double,targetY: null == targetY ? _self.targetY : targetY // ignore: cast_nullable_to_non_nullable
-as double,inventory: null == inventory ? _self._inventory : inventory // ignore: cast_nullable_to_non_nullable
+as double,path: null == path ? _self._path : path // ignore: cast_nullable_to_non_nullable
+as List<({double x, double y})>,pathIndex: null == pathIndex ? _self.pathIndex : pathIndex // ignore: cast_nullable_to_non_nullable
+as int,inventory: null == inventory ? _self._inventory : inventory // ignore: cast_nullable_to_non_nullable
 as Map<Product, int>,
   ));
 }
