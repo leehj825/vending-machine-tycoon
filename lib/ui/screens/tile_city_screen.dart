@@ -60,6 +60,9 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
   static const double houseScale = 0.72; // Adjust for house.png
   static const double warehouseScale = 0.72; // Adjust for warehouse.png
   
+  // Vertical offset to raise warehouse to match other buildings
+  static const double warehouseVerticalOffset = 10.0;
+  
   // Block dimensions - minimum 2x2, maximum 2x3 or 3x2
   static const int minBlockSize = 2;
   static const int maxBlockSize = 3;
@@ -738,10 +741,13 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
         final scaledWidth = tileWidth * buildingScaleFactor;
         final centerOffsetX = (tileWidth - scaledWidth) / 2; // Center the scaled building
         
+        // Apply vertical offset for warehouse to raise it to match other buildings
+        final verticalOffset = tileType == TileType.warehouse ? warehouseVerticalOffset : 0.0;
+        
         tiles.add(
           Positioned(
             left: positionedX + centerOffsetX,
-            top: buildingTop,
+            top: buildingTop - verticalOffset,
             width: scaledWidth,
             height: scaledBuildingHeight,
             child: GestureDetector(
