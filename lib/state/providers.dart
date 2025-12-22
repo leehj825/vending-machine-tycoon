@@ -381,6 +381,48 @@ class GameController extends StateNotifier<GlobalGameState> {
     simulationEngine.updateTrucks(updatedTrucks);
   }
 
+  /// Start truck on route to stock machines (reset route index and start traveling)
+  void goStock(String truckId) {
+    // Find truck in list
+    final truckIndex = state.trucks.indexWhere((t) => t.id == truckId);
+    if (truckIndex == -1) {
+      state = state.addLogMessage('Truck not found');
+      return;
+    }
+
+    final truck = state.trucks[truckIndex];
+
+    // Check if truck has items
+    if (truck.inventory.isEmpty) {
+      state = state.addLogMessage('${truck.name} has no items to stock');
+      return;
+    }
+
+    // Check if truck has a route
+    if (truck.route.isEmpty) {
+      state = state.addLogMessage('${truck.name} has no route assigned');
+      return;
+    }
+
+    // Reset route index to 0 and set status to traveling
+    final updatedTruck = truck.copyWith(
+      currentRouteIndex: 0,
+      status: TruckStatus.traveling,
+    );
+
+    final updatedTrucks = [...state.trucks];
+    updatedTrucks[truckIndex] = updatedTruck;
+
+    // Update state
+    state = state.copyWith(trucks: updatedTrucks);
+    state = state.addLogMessage(
+      '${truck.name} starting route to stock ${truck.route.length} machines',
+    );
+    
+    // Sync to simulation engine to prevent reversion on next tick
+    simulationEngine.updateTrucks(updatedTrucks);
+  }
+
   /// Load cargo onto a truck from warehouse
   void loadTruck(String truckId, Product product, int quantity) {
     // Find the truck

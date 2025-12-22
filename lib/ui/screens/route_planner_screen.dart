@@ -231,6 +231,45 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> {
     );
   }
 
+  /// Check if truck can go stock (has items and machines have room)
+  bool _canGoStock(Truck truck, List<Machine> routeMachines) {
+    // Check if truck has items
+    if (truck.inventory.isEmpty) return false;
+    
+    // Check if route has machines
+    if (routeMachines.isEmpty) return false;
+    
+    // Check if any machine in the route has room for any product the truck is carrying
+    const maxItemsPerProduct = 20;
+    for (final machine in routeMachines) {
+      for (final entry in truck.inventory.entries) {
+        final product = entry.key;
+        final truckQuantity = entry.value;
+        if (truckQuantity > 0) {
+          final machineStock = machine.getStock(product);
+          if (machineStock < maxItemsPerProduct) {
+            // Found at least one machine with room for at least one product
+            return true;
+          }
+        }
+      }
+    }
+    
+    return false;
+  }
+
+  /// Start truck on route to stock machines
+  void _goStock(Truck truck) {
+    final controller = ref.read(gameControllerProvider.notifier);
+    controller.goStock(truck.id);
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${truck.name} starting route to stock machines'),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final trucks = ref.watch(trucksProvider);
@@ -476,6 +515,18 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> {
                               _showAddStopDialog(selectedTruck, machines),
                           icon: const Icon(Icons.add, size: 18),
                           label: const Text('Add Stop'),
+                        ),
+                        const SizedBox(width: 8),
+                        ElevatedButton.icon(
+                          onPressed: _canGoStock(selectedTruck, routeMachines)
+                              ? () => _goStock(selectedTruck)
+                              : null,
+                          icon: const Icon(Icons.local_shipping, size: 18),
+                          label: const Text('Go Stock'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue,
+                            foregroundColor: Colors.white,
+                          ),
                         ),
                       ],
                     ),
