@@ -401,70 +401,100 @@ class SimulationEngine extends StateNotifier<SimulationState> {
       double startX, double startY,
       double endX, double endY,
     ) {
-      // Round to nearest road positions
-      final start = (x: snapToNearestRoad(startX), y: snapToNearestRoad(startY));
+      // Don't snap start position immediately - treat it as a potential point on a road line
+      final start = (x: startX, y: startY);
+      // Snap end position (destinations are always on valid roads or intersections)
       final end = (x: snapToNearestRoad(endX), y: snapToNearestRoad(endY));
       
-      // If already at destination, return path with just destination
-      if (start.x == end.x && start.y == end.y) {
+      // If close to destination, return simple path
+      if ((start.x - end.x).abs() < 0.1 && (start.y - end.y).abs() < 0.1) {
         return [end];
       }
       
-      // Build graph: roads form a grid where:
-      // - Horizontal roads: Y is fixed (1.0, 4.0, 7.0, 10.0), X can be any road coordinate
-      // - Vertical roads: X is fixed (1.0, 4.0, 7.0, 10.0), Y can be any road coordinate
-      // - Intersections: both X and Y are road coordinates
-      // - Prefer inward roads (4.0, 7.0) and avoid outward roads (1.0, 10.0) when possible
       final graph = <({double x, double y}), List<({double x, double y})>>{};
       
       // Helper to check if a coordinate is on an outward road
       bool isOutwardRoad(double coord) => outwardRoads.contains(coord);
       
-      // Add all road intersections
+      // 1. Build basic grid graph (intersections)
       for (final roadX in validRoads) {
         for (final roadY in validRoads) {
           final node = (x: roadX, y: roadY);
           graph[node] = [];
           
-          // Connect to nodes on the same horizontal road (same Y)
-          // Prefer inward roads, only connect to outward roads if necessary
+          // Connect horizontally
           for (final otherRoadX in validRoads) {
             if (otherRoadX != roadX) {
-              // Only connect to outward roads if:
-              // 1. Current node is on an outward road, OR
-              // 2. Target node is the start or end, OR
-              // 3. Both are inward roads (always allow)
               final targetNode = (x: otherRoadX, y: roadY);
               final isCurrentOutward = isOutwardRoad(roadX);
               final isTargetOutward = isOutwardRoad(otherRoadX);
-              final isTargetStartOrEnd = (targetNode.x == start.x && targetNode.y == start.y) ||
-                                        (targetNode.x == end.x && targetNode.y == end.y);
-              
-              if (!isTargetOutward || isCurrentOutward || isTargetStartOrEnd) {
+              // Avoid outward roads unless already on one or target is there
+              if (!isTargetOutward || isCurrentOutward || 
+                  (targetNode.x == end.x && targetNode.y == end.y)) {
                 graph[node]!.add(targetNode);
               }
             }
           }
           
-          // Connect to nodes on the same vertical road (same X)
-          // Prefer inward roads, only connect to outward roads if necessary
+          // Connect vertically
           for (final otherRoadY in validRoads) {
             if (otherRoadY != roadY) {
-              // Only connect to outward roads if:
-              // 1. Current node is on an outward road, OR
-              // 2. Target node is the start or end, OR
-              // 3. Both are inward roads (always allow)
               final targetNode = (x: roadX, y: otherRoadY);
               final isCurrentOutward = isOutwardRoad(roadY);
               final isTargetOutward = isOutwardRoad(otherRoadY);
-              final isTargetStartOrEnd = (targetNode.x == start.x && targetNode.y == start.y) ||
-                                        (targetNode.x == end.x && targetNode.y == end.y);
-              
-              if (!isTargetOutward || isCurrentOutward || isTargetStartOrEnd) {
+              if (!isTargetOutward || isCurrentOutward ||
+                  (targetNode.x == end.x && targetNode.y == end.y)) {
                 graph[node]!.add(targetNode);
               }
             }
           }
+        }
+      }
+
+      // 2. Add Start Node to Graph
+      // Find neighbors for start node based on its position
+      graph[start] = [];
+      
+      // Snap start to nearest road lines to find valid neighbors
+      final snappedStartX = snapToNearestRoad(startX);
+      final snappedStartY = snapToNearestRoad(startY);
+      
+      // Check if start is close to a horizontal road (y is fixed)
+      if ((startY - snappedStartY).abs() < 0.1) {
+        // We are on horizontal road y=snappedStartY. Connect to road nodes on this line.
+        for (final roadX in validRoads) {
+           final neighbor = (x: roadX, y: snappedStartY);
+           if (graph.containsKey(neighbor)) {
+             graph[start]!.add(neighbor);
+             // Also add reverse connection for A* to work
+             graph[neighbor]!.add(start); 
+           }
+        }
+      }
+      
+      // Check if start is close to a vertical road (x is fixed)
+      if ((startX - snappedStartX).abs() < 0.1) {
+        // We are on vertical road x=snappedStartX. Connect to road nodes on this line.
+         for (final roadY in validRoads) {
+           final neighbor = (x: snappedStartX, y: roadY);
+           if (graph.containsKey(neighbor)) {
+             graph[start]!.add(neighbor);
+             graph[neighbor]!.add(start);
+           }
+        }
+      }
+      
+      // 3. Add End Node to Graph (if not already an intersection)
+      if (!graph.containsKey(end)) {
+        graph[end] = [];
+        // Connect end node to neighbors similarly
+        // (Though usually end node IS an intersection or snapped to one)
+         for (final roadX in validRoads) {
+            if ((end.y - roadX).abs() < 0.1) continue; // Skip if same
+             // ... Logic for end node connecting to grid ...
+             // Simplified: End is usually a road intersection or snapped to one by caller
+             // But if it's not, we should connect it.
+             // Given snapToNearestRoad used for end, it IS an intersection or close enough.
         }
       }
       
@@ -488,14 +518,17 @@ class SimulationEngine extends StateNotifier<SimulationState> {
         
         if (current == null) break;
         
-        if (current.x == end.x && current.y == end.y) {
+        if ((current.x - end.x).abs() < 0.1 && (current.y - end.y).abs() < 0.1) {
           // Reconstruct path
           final path = <({double x, double y})>[end];
-          var node = end;
+          var node = current!; // Use current as it matches end
           while (cameFrom.containsKey(node)) {
             node = cameFrom[node]!;
+            if (node == start) break; // Don't include start in path
             path.insert(0, node);
           }
+           // Ensure end is in path
+          if (path.isEmpty || path.last != end) path.add(end);
           return path;
         }
         
@@ -507,8 +540,11 @@ class SimulationEngine extends StateNotifier<SimulationState> {
           double edgeCost = (neighbor.x - current.x).abs() + (neighbor.y - current.y).abs();
           
           // Add penalty for using outward roads (encourages using inward roads)
-          if (isOutwardRoad(neighbor.x) || isOutwardRoad(neighbor.y)) {
-            edgeCost += 10.0; // Large penalty to prefer inward roads
+          // Don't penalize moving FROM start or TO end
+          if (current != start && neighbor != end) {
+             if (isOutwardRoad(neighbor.x) || isOutwardRoad(neighbor.y)) {
+               edgeCost += 10.0; 
+             }
           }
           
           final tentativeG = (gScore[current] ?? double.infinity) + edgeCost;
@@ -525,8 +561,8 @@ class SimulationEngine extends StateNotifier<SimulationState> {
         }
       }
       
-      // No path found, return direct path
-      return [start, end];
+      // Fallback
+      return [end];
     }
     
     return trucks.map((truck) {
