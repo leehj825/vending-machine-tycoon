@@ -631,6 +631,19 @@ class SimulationEngine extends StateNotifier<SimulationState> {
         }
       }
       
+      // If truck is in restocking status but route is complete, transition to traveling to warehouse
+      if (truck.status == TruckStatus.restocking && truck.isRouteComplete) {
+        final warehouseRoadX = state.warehouseRoadX ?? 4.0;
+        final warehouseRoadY = state.warehouseRoadY ?? 4.0;
+        return truck.copyWith(
+          status: TruckStatus.traveling,
+          targetX: warehouseRoadX,
+          targetY: warehouseRoadY,
+          path: [], // Clear path so it recalculates to warehouse
+          pathIndex: 0,
+        );
+      }
+      
       if (!truck.hasRoute) {
         // Idle truck - ensure it stays on road (snap to nearest road)
         final roadX = truck.currentX.round().toDouble();
@@ -1047,8 +1060,7 @@ class SimulationEngine extends StateNotifier<SimulationState> {
           updatedTrucks[i] = truck.copyWith(
             inventory: updatedTruckInventory,
             status: TruckStatus.traveling,
-            currentRouteIndex: truck.route.length,
-
+            currentRouteIndex: truck.currentRouteIndex + 1,
             // Keep truck on road
             currentX: roadX,
             currentY: roadY,
