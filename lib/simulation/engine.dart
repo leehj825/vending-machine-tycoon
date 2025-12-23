@@ -192,12 +192,12 @@ class SimulationEngine extends StateNotifier<SimulationState> {
     _streamController.add(state);
   }
 
-  /// Start the simulation (ticks every 1 second)
+  /// Start the simulation (ticks 10 times per second)
   void start() {
     print('🔴 ENGINE: Start requested');
     _tickTimer?.cancel();
     _tickTimer = Timer.periodic(
-      const Duration(seconds: 1),
+      const Duration(milliseconds: 100), // 10 ticks per second
       (timer) {
         // Safe check to ensure we don't tick if disposed
         if (!mounted) {
@@ -415,8 +415,8 @@ class SimulationEngine extends StateNotifier<SimulationState> {
     // Outward roads (edges - avoid unless necessary, prefer inward roads 4.0, 7.0)
     const outwardRoads = [1.0, 10.0];
     
-    // Movement speed: 1.0 units per tick = 1 tick per road tile (5x faster)
-    const double movementSpeed = 1.0;
+    // Movement speed: 0.1 units per tick = 1 tile per second (10 ticks per second)
+    const double movementSpeed = 0.1;
     
     // Helper function to snap to nearest valid road coordinate
     double snapToNearestRoad(double coord) {
@@ -850,8 +850,8 @@ class SimulationEngine extends StateNotifier<SimulationState> {
   double _processFuelCosts(List<Truck> updatedTrucks, List<Truck> oldTrucks, double currentCash) {
     double totalFuelCost = 0.0;
     
-    // Movement speed: 1.0 units per tick = 1 tick per road tile (matches truck movement speed)
-    const double movementSpeed = 1.0;
+    // Movement speed: 0.1 units per tick = 1 tile per second (matches truck movement speed)
+    const double movementSpeed = 0.1;
 
     for (final truck in updatedTrucks) {
       // Find the previous state of this truck

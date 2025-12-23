@@ -71,7 +71,7 @@ class _CustomBottomNavigationBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: kBottomNavigationBarHeight,
+      height: kBottomNavigationBarHeight * 1.5,
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
@@ -127,8 +127,9 @@ class _CustomBottomNavigationBar extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 8),
           child: LayoutBuilder(
             builder: (context, constraints) {
-              // Limit tab width to a maximum of 120 pixels or 25% of screen width, whichever is smaller
-              final maxWidth = (constraints.maxWidth * 0.25).clamp(60.0, 120.0);
+              // Limit tab width to a maximum of 180 pixels (50% larger) or 25% of screen width, whichever is smaller
+              // Minimum width increased to 90 pixels (50% larger)
+              final maxWidth = (constraints.maxWidth * 0.25).clamp(90.0, 180.0);
               return Center(
                 child: SizedBox(
                   width: maxWidth,
@@ -140,7 +141,7 @@ class _CustomBottomNavigationBar extends StatelessWidget {
                       return Icon(
                         _getIconForIndex(index),
                         color: isSelected ? Colors.green : Colors.grey,
-                        size: 24,
+                        size: 36, // Increased from 24 to 36 (50% larger)
                       );
                     },
                   ),

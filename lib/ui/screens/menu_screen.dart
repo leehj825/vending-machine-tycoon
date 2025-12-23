@@ -26,6 +26,9 @@ class MenuScreen extends ConsumerWidget {
 
     // Load the game state into the controller
     ref.read(gameControllerProvider.notifier).loadGameState(savedState);
+    
+    // Start simulation after loading
+    ref.read(gameControllerProvider.notifier).startSimulation();
 
     // Navigate to main game screen
     if (context.mounted) {
@@ -90,6 +93,8 @@ class MenuScreen extends ConsumerWidget {
                           width: screenWidth * 0.7,
                           child: GestureDetector(
                             onTap: () {
+                              // Start simulation before navigating
+                              ref.read(gameControllerProvider.notifier).startSimulation();
                               // Navigate to main game screen
                               Navigator.of(context).pushReplacement(
                                 MaterialPageRoute(

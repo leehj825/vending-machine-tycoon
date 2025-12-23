@@ -15,13 +15,15 @@ class DashboardScreen extends ConsumerStatefulWidget {
 }
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
-  bool _isSimulationRunning = false;
-
-  void _toggleSimulation() {
-    final controller = ref.read(gameControllerProvider.notifier);
-    controller.toggleSimulation();
-    setState(() {
-      _isSimulationRunning = !_isSimulationRunning;
+  @override
+  void initState() {
+    super.initState();
+    // Auto-start simulation when screen loads
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final controller = ref.read(gameControllerProvider.notifier);
+      if (!controller.isSimulationRunning) {
+        controller.startSimulation();
+      }
     });
   }
 
@@ -72,18 +74,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
 
-  String _formatTime(int day, int hour) {
-    final hour12 = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
-    final amPm = hour < 12 ? 'AM' : 'PM';
-    return 'Day $day, ${hour12.toString().padLeft(2, '0')}:00 $amPm';
-  }
 
   @override
   Widget build(BuildContext context) {
     final cash = ref.watch(cashProvider);
     final reputation = ref.watch(reputationProvider);
-    final dayCount = ref.watch(dayCountProvider);
-    final hourOfDay = ref.watch(hourOfDayProvider);
     final alertCount = ref.watch(alertCountProvider);
     final machines = ref.watch(machinesProvider);
 
@@ -121,18 +116,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         label: 'Reputation',
                         value: reputation.toString(),
                         valueColor: Colors.amber,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    // Time Card
-                    SizedBox(
-                      width: 160,
-                      child: _StatusCard(
-                        icon: Icons.access_time,
-                        iconColor: Colors.blue,
-                        label: 'Time',
-                        value: _formatTime(dayCount, hourOfDay),
-                        valueColor: Colors.blue,
                       ),
                     ),
                   ],
@@ -217,102 +200,55 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       floatingActionButton: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Play/Pause Button (top)
-          GestureDetector(
-            onTap: _toggleSimulation,
-            child: Container(
-              width: 64,
-              height: 64,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.2),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Image.asset(
-                'assets/images/play_button.png',
-                fit: BoxFit.contain,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    color: Colors.green,
-                    child: Icon(
-                      _isSimulationRunning ? Icons.pause : Icons.play_arrow,
-                      color: Colors.white,
-                      size: 32,
-                    ),
-                  );
-                },
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          // Save Button (middle)
+          // Save Button (top)
           GestureDetector(
             onTap: _saveGame,
-            child: Container(
+            child: Image.asset(
+              'assets/images/save_button.png',
               width: 64,
               height: 64,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.2),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Image.asset(
-                'assets/images/save_button.png',
-                fit: BoxFit.contain,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
+              fit: BoxFit.contain,
+              errorBuilder: (context, error, stackTrace) {
+                return Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
                     color: Colors.blue,
-                    child: const Icon(
-                      Icons.save,
-                      color: Colors.white,
-                      size: 32,
-                    ),
-                  );
-                },
-              ),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.save,
+                    color: Colors.white,
+                    size: 32,
+                  ),
+                );
+              },
             ),
           ),
           const SizedBox(height: 16),
-          // Exit Button (bottom)
+          // Exit Button
           GestureDetector(
             onTap: _exitToMenu,
-            child: Container(
+            child: Image.asset(
+              'assets/images/exit_button.png',
               width: 64,
               height: 64,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.2),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Image.asset(
-                'assets/images/exit_button.png',
-                fit: BoxFit.contain,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
+              fit: BoxFit.contain,
+              errorBuilder: (context, error, stackTrace) {
+                return Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
                     color: Colors.red,
-                    child: const Icon(
-                      Icons.exit_to_app,
-                      color: Colors.white,
-                      size: 32,
-                    ),
-                  );
-                },
-              ),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.exit_to_app,
+                    color: Colors.white,
+                    size: 32,
+                  ),
+                );
+              },
             ),
           ),
         ],

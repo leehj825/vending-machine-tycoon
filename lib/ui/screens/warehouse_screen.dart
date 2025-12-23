@@ -60,7 +60,6 @@ class WarehouseScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final warehouse = ref.watch(warehouseProvider);
     final cash = ref.watch(cashProvider);
-    final dayCount = ref.watch(dayCountProvider);
 
     // Calculate warehouse capacity
     const maxCapacity = 1000;
@@ -234,7 +233,7 @@ class WarehouseScreen extends ConsumerWidget {
                               ),
                         ),
                         Text(
-                          'Day $dayCount - Prices reset daily',
+                          'Prices update automatically',
                           style: TextStyle(
                             fontSize: 12,
                             color: Colors.grey[600],
@@ -245,12 +244,12 @@ class WarehouseScreen extends ConsumerWidget {
                   ),
                   IconButton(
                     icon: const Icon(Icons.refresh),
-                    tooltip: 'Prices update automatically each day',
+                    tooltip: 'Prices update automatically',
                     onPressed: () {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text(
-                            'Prices update automatically when the day changes',
+                            'Prices update automatically',
                           ),
                         ),
                       );
