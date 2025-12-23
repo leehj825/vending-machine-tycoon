@@ -217,29 +217,103 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       floatingActionButton: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          FloatingActionButton(
-            onPressed: _saveGame,
-            tooltip: 'Save Game',
-            heroTag: 'save',
-            backgroundColor: Colors.blue,
-            child: const Icon(Icons.save),
-          ),
-          const SizedBox(height: 16),
-          FloatingActionButton(
-            onPressed: _toggleSimulation,
-            tooltip: _isSimulationRunning ? 'Pause Simulation' : 'Start Simulation',
-            heroTag: 'simulation',
-            child: Icon(
-              _isSimulationRunning ? Icons.pause : Icons.play_arrow,
+          // Play/Pause Button (top)
+          GestureDetector(
+            onTap: _toggleSimulation,
+            child: Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.2),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Image.asset(
+                'assets/images/play_button.png',
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    color: Colors.green,
+                    child: Icon(
+                      _isSimulationRunning ? Icons.pause : Icons.play_arrow,
+                      color: Colors.white,
+                      size: 32,
+                    ),
+                  );
+                },
+              ),
             ),
           ),
           const SizedBox(height: 16),
-          FloatingActionButton(
-            onPressed: _exitToMenu,
-            tooltip: 'Exit to Menu',
-            heroTag: 'exit',
-            backgroundColor: Colors.red,
-            child: const Icon(Icons.exit_to_app),
+          // Save Button (middle)
+          GestureDetector(
+            onTap: _saveGame,
+            child: Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.2),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Image.asset(
+                'assets/images/save_button.png',
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    color: Colors.blue,
+                    child: const Icon(
+                      Icons.save,
+                      color: Colors.white,
+                      size: 32,
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Exit Button (bottom)
+          GestureDetector(
+            onTap: _exitToMenu,
+            child: Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.2),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Image.asset(
+                'assets/images/exit_button.png',
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    color: Colors.red,
+                    child: const Icon(
+                      Icons.exit_to_app,
+                      color: Colors.white,
+                      size: 32,
+                    ),
+                  );
+                },
+              ),
+            ),
           ),
         ],
       ),

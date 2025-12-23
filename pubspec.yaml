@@ -84,6 +84,9 @@ flutter:
     - assets/images/fleet_tab_unpress.png
     - assets/images/market_tab_press.png
     - assets/images/market_tab_unpress.png
+    - assets/images/play_button.png
+    - assets/images/save_button.png
+    - assets/images/exit_button.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
