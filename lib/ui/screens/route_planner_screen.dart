@@ -534,21 +534,20 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> {
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.all(16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Flexible(
-                      child: Text(
-                        'Current Route (Drag to Reorder)',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        overflow: TextOverflow.ellipsis,
+                    const Text(
+                      'Current Route (Drag to Reorder)',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
                       children: [
                         ElevatedButton.icon(
                           onPressed: () => _showLoadCargoDialog(selectedTruck),
@@ -559,14 +558,12 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> {
                             foregroundColor: Colors.white,
                           ),
                         ),
-                        const SizedBox(width: 8),
                         ElevatedButton.icon(
                           onPressed: () =>
                               _showAddStopDialog(selectedTruck, machines),
                           icon: const Icon(Icons.add, size: 18),
                           label: const Text('Add Stop'),
                         ),
-                        const SizedBox(width: 8),
                         ElevatedButton.icon(
                           onPressed: _canGoStock(selectedTruck, routeMachines)
                               ? () => _goStock(selectedTruck)
