@@ -185,8 +185,7 @@ class _StatusCard extends StatelessWidget {
     // Icon size scales with card width, but smaller - clamped between 20 and 32
     final iconSize = (cardWidth * 0.18).clamp(20.0, 32.0);
     
-    // Font sizes scale with card width, but smaller relative to card
-    final labelFontSize = (cardWidth * 0.071).clamp(8.0, 12.0);
+    // Font size for value - scales with card width, clamped to fit within status_icon
     final valueFontSize = (cardWidth * 0.1).clamp(12.0, 18.0);
     
     // Padding scales with card size
@@ -214,14 +213,14 @@ class _StatusCard extends StatelessWidget {
               );
             },
           ),
-          // Content overlay - icons positioned inside the status_icon
+          // Content overlay - icons at center top, values at center bottom
           Positioned.fill(
             child: Stack(
               children: [
-                // Icon positioned to overlap/be inside the status_icon (top-left)
+                // Icon positioned at center upper part
                 Positioned(
-                  left: -padding * 0.3,
-                  top: -padding * 0.3,
+                  left: (cardWidth - iconSize) / 2,
+                  top: padding,
                   child: Image.asset(
                     iconAsset,
                     width: iconSize,
@@ -235,41 +234,24 @@ class _StatusCard extends StatelessWidget {
                     },
                   ),
                 ),
-                // Text content
-                Padding(
-                  padding: EdgeInsets.all(padding),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Label row - offset to account for icon
-                      Padding(
-                        padding: EdgeInsets.only(left: iconSize * 0.6, top: padding * 0.2),
-                        child: Text(
-                          label,
-                          style: TextStyle(
-                            fontSize: labelFontSize,
-                            color: Colors.grey[600],
-                            fontWeight: FontWeight.w500,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 1,
+                // Value positioned at center bottom
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: padding,
+                  child: Center(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        value,
+                        style: TextStyle(
+                          fontSize: valueFontSize,
+                          fontWeight: FontWeight.bold,
+                          color: valueColor,
                         ),
+                        maxLines: 1,
                       ),
-                      SizedBox(height: padding * 0.5),
-                      Flexible(
-                        child: Text(
-                          value,
-                          style: TextStyle(
-                            fontSize: valueFontSize,
-                            fontWeight: FontWeight.bold,
-                            color: valueColor,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 1,
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
               ],
