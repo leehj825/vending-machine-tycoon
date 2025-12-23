@@ -180,7 +180,6 @@ class _CustomBottomNavigationBar extends ConsumerWidget {
         final buttonHeight = (tabButtonHeight * 0.5).clamp(20.0, 60.0);
         
         return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8),
           // Anchor the container by aligning buttons
           // The Column will be centered vertically, with save button bottom and exit button top as anchors
           child: Column(
