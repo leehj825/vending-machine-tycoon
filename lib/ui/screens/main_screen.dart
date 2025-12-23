@@ -44,7 +44,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
         elevation: 0,
         toolbarHeight: 0,
         bottom: PreferredSize(
-          preferredSize: Size.fromHeight(ScreenUtils.relativeSize(context, 0.085)),
+          preferredSize: Size.fromHeight(_calculateStatusBarHeight(context)),
           child: _StatusBar(),
         ),
       ),
@@ -58,6 +58,26 @@ class _MainScreenState extends ConsumerState<MainScreen> {
       ),
     );
   }
+}
+
+/// Calculate the required height for the status bar
+double _calculateStatusBarHeight(BuildContext context) {
+  final smallerDim = ScreenUtils.getSmallerDimension(context);
+  
+  // Calculate card dimensions (same logic as in _StatusBar)
+  final cardWidth = ScreenUtils.relativeSizeClamped(
+    context,
+    (0.25 * 3.0),
+    min: smallerDim * 0.25,
+    max: smallerDim * 0.312,
+  );
+  final cardHeight = (cardWidth * 0.714);
+  
+  // Container padding
+  final containerPadding = ScreenUtils.relativeSize(context, 0.0034);
+  
+  // Total height needed: card height + vertical padding on both sides
+  return cardHeight + (containerPadding * 2);
 }
 
 /// Status bar showing cash, reputation, and time - always visible
