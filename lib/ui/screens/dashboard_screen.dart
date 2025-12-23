@@ -53,36 +53,27 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 child: Row(
                   children: [
                     // Cash Card
-                    SizedBox(
-                      width: 140,
-                      child: _StatusCard(
-                        iconAsset: 'assets/images/cash_icon.png',
-                        label: 'Cash',
-                        value: '\$${cash.toStringAsFixed(2)}',
-                        valueColor: Colors.green,
-                      ),
+                    _StatusCard(
+                      iconAsset: 'assets/images/cash_icon.png',
+                      label: 'Cash',
+                      value: '\$${cash.toStringAsFixed(2)}',
+                      valueColor: Colors.green,
                     ),
                     const SizedBox(width: 12),
                     // Reputation Card
-                    SizedBox(
-                      width: 140,
-                      child: _StatusCard(
-                        iconAsset: 'assets/images/star_icon.png',
-                        label: 'Reputation',
-                        value: reputation.toString(),
-                        valueColor: Colors.amber,
-                      ),
+                    _StatusCard(
+                      iconAsset: 'assets/images/star_icon.png',
+                      label: 'Reputation',
+                      value: reputation.toString(),
+                      valueColor: Colors.amber,
                     ),
                     const SizedBox(width: 12),
                     // Time Card
-                    SizedBox(
-                      width: 140,
-                      child: _StatusCard(
-                        iconAsset: 'assets/images/clock_icon.png',
-                        label: 'Time',
-                        value: timeString,
-                        valueColor: Colors.blue,
-                      ),
+                    _StatusCard(
+                      iconAsset: 'assets/images/clock_icon.png',
+                      label: 'Time',
+                      value: timeString,
+                      valueColor: Colors.blue,
                     ),
                   ],
                 ),
@@ -183,21 +174,39 @@ class _StatusCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    
+    // Calculate responsive sizes based on screen width
+    // Base card width scales with screen, but clamped between 120 and 180
+    final cardWidth = (screenWidth * 0.35).clamp(120.0, 180.0);
+    // Card height scales proportionally
+    final cardHeight = (cardWidth * 0.714).clamp(85.0, 128.0);
+    
+    // Icon size scales with card width, clamped between 24 and 40
+    final iconSize = (cardWidth * 0.23).clamp(24.0, 40.0);
+    
+    // Font sizes scale with card width
+    final labelFontSize = (cardWidth * 0.086).clamp(10.0, 14.0);
+    final valueFontSize = (cardWidth * 0.129).clamp(14.0, 24.0);
+    
+    // Padding scales with card size
+    final padding = (cardWidth * 0.086).clamp(10.0, 14.0);
+    
     return SizedBox(
-      width: 140,
-      height: 80,
+      width: cardWidth,
+      height: cardHeight,
       child: Stack(
         children: [
-          // Background icon - show the whole thing
+          // Background icon - show the whole thing without squashing
           Image.asset(
             'assets/images/status_icon.png',
-            width: 140,
-            height: 80,
-            fit: BoxFit.fill,
+            width: cardWidth,
+            height: cardHeight,
+            fit: BoxFit.contain,
             errorBuilder: (context, error, stackTrace) {
               return Container(
-                width: 140,
-                height: 80,
+                width: cardWidth,
+                height: cardHeight,
                 decoration: BoxDecoration(
                   color: Colors.grey[200],
                   borderRadius: BorderRadius.circular(8),
@@ -208,7 +217,7 @@ class _StatusCard extends StatelessWidget {
           // Content overlay
           Positioned.fill(
             child: Padding(
-              padding: const EdgeInsets.all(12),
+              padding: EdgeInsets.all(padding),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
@@ -218,22 +227,22 @@ class _StatusCard extends StatelessWidget {
                     children: [
                       Image.asset(
                         iconAsset,
-                        width: 32,
-                        height: 32,
+                        width: iconSize,
+                        height: iconSize,
                         fit: BoxFit.contain,
                         errorBuilder: (context, error, stackTrace) {
-                          return const SizedBox(
-                            width: 32,
-                            height: 32,
+                          return SizedBox(
+                            width: iconSize,
+                            height: iconSize,
                           );
                         },
                       ),
-                      const SizedBox(width: 8),
+                      SizedBox(width: padding * 0.67),
                       Flexible(
                         child: Text(
                           label,
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: labelFontSize,
                             color: Colors.grey[600],
                             fontWeight: FontWeight.w500,
                           ),
@@ -243,12 +252,12 @@ class _StatusCard extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: padding * 0.67),
                   Flexible(
                     child: Text(
                       value,
                       style: TextStyle(
-                        fontSize: 18,
+                        fontSize: valueFontSize,
                         fontWeight: FontWeight.bold,
                         color: valueColor,
                       ),
