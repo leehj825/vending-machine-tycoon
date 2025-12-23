@@ -225,18 +225,28 @@ class GameController extends StateNotifier<GlobalGameState> {
     simulationEngine.updateCash(newCash);
   }
 
-  /// Get initial products for a zone type based on progression rules
-  List<Product> _getInitialProductsForZone(ZoneType zoneType) {
+  /// Get allowed products for a zone type
+  List<Product> getAllowedProductsForZone(ZoneType zoneType) {
     switch (zoneType) {
       case ZoneType.shop:
         return [Product.soda, Product.chips];
       case ZoneType.school:
         return [Product.soda, Product.chips, Product.sandwich];
       case ZoneType.gym:
-        return [Product.proteinBar];
+        return [Product.proteinBar, Product.soda, Product.chips];
       case ZoneType.office:
         return [Product.coffee, Product.techGadget];
     }
+  }
+
+  /// Get initial products for a zone type based on progression rules
+  List<Product> _getInitialProductsForZone(ZoneType zoneType) {
+    return getAllowedProductsForZone(zoneType);
+  }
+
+  /// Check if a product is allowed in a zone type
+  bool isProductAllowedInZone(Product product, ZoneType zoneType) {
+    return getAllowedProductsForZone(zoneType).contains(product);
   }
 
   /// Get building name for zone type (for machine naming)

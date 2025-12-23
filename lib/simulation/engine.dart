@@ -4,6 +4,7 @@ import 'package:state_notifier/state_notifier.dart';
 import 'models/product.dart';
 import 'models/machine.dart';
 import 'models/truck.dart';
+import 'models/zone.dart';
 
 /// Simulation constants
 class SimulationConstants {
@@ -233,6 +234,20 @@ class SimulationEngine extends StateNotifier<SimulationState> {
     // SimulationEngine is a StateNotifier, so we must call super.dispose()
     // However, if we are manually managing it inside another notifier, we need to be careful.
     super.dispose();
+  }
+
+  /// Get allowed products for a zone type
+  List<Product> _getAllowedProductsForZone(ZoneType zoneType) {
+    switch (zoneType) {
+      case ZoneType.shop:
+        return [Product.soda, Product.chips];
+      case ZoneType.school:
+        return [Product.soda, Product.chips, Product.sandwich];
+      case ZoneType.gym:
+        return [Product.proteinBar, Product.soda, Product.chips];
+      case ZoneType.office:
+        return [Product.coffee, Product.techGadget];
+    }
   }
 
   /// Main tick function - called every 1 second (10 minutes in-game)
@@ -957,11 +972,24 @@ class SimulationEngine extends StateNotifier<SimulationState> {
           final truckQuantity = entry.value;
           if (truckQuantity <= 0) continue;
 
+          // Check if product is allowed in this machine's zone type
+          final allowedProducts = _getAllowedProductsForZone(machine.zone.type);
+          if (!allowedProducts.contains(product)) {
+            // Skip this product - not allowed in this zone type
+            // Keep it in truck inventory for other machines
+            itemsToTransfer[product] = truckQuantity;
+            continue;
+          }
+
           // Check current stock of this product in machine
           final currentProductStock = machineInventory[product]?.quantity ?? 0;
           final availableSpaceForProduct = maxItemsPerProduct - currentProductStock;
           
-          if (availableSpaceForProduct <= 0) continue; // This product is already at limit
+          if (availableSpaceForProduct <= 0) {
+            // Machine is full for this product, keep it in truck
+            itemsToTransfer[product] = truckQuantity;
+            continue;
+          }
 
           // Transfer up to the limit for this product
           final transferAmount = (truckQuantity < availableSpaceForProduct)
@@ -982,7 +1010,7 @@ class SimulationEngine extends StateNotifier<SimulationState> {
             );
           }
 
-          // Update truck inventory
+          // Update truck inventory - keep remaining quantity
           final remainingTruckQuantity = truckQuantity - transferAmount;
           if (remainingTruckQuantity > 0) {
             itemsToTransfer[product] = remainingTruckQuantity;
