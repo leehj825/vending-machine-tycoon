@@ -433,58 +433,6 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> {
                                         ],
                                       ),
                                       const SizedBox(height: 4),
-                                      // Cargo display
-                                      if (truck.inventory.isNotEmpty)
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 6,
-                                            vertical: 2,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: Colors.blue.withValues(alpha: 0.1),
-                                            borderRadius: BorderRadius.circular(4),
-                                          ),
-                                          child: Column(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Text(
-                                                'Cargo: ${truck.currentLoad}/${truck.capacity}',
-                                                style: const TextStyle(
-                                                  fontSize: 9,
-                                                  fontWeight: FontWeight.w500,
-                                                ),
-                                              ),
-                                              if (truck.inventory.length <= 2)
-                                                ...truck.inventory.entries.map((entry) => Text(
-                                                  '${entry.key.name}: ${entry.value}',
-                                                  style: const TextStyle(
-                                                    fontSize: 8,
-                                                    color: Colors.blue,
-                                                  ),
-                                                  overflow: TextOverflow.ellipsis,
-                                                  maxLines: 1,
-                                                ))
-                                              else
-                                                Text(
-                                                  '${truck.inventory.length} items',
-                                                  style: const TextStyle(
-                                                    fontSize: 8,
-                                                    color: Colors.blue,
-                                                  ),
-                                                ),
-                                            ],
-                                          ),
-                                        )
-                                      else
-                                        Text(
-                                          'Empty',
-                                          style: TextStyle(
-                                            fontSize: 9,
-                                            color: Colors.grey[600],
-                                            fontStyle: FontStyle.italic,
-                                          ),
-                                        ),
-                                      const SizedBox(height: 4),
                                       Flexible(
                                         child: Container(
                                           padding: const EdgeInsets.symmetric(
