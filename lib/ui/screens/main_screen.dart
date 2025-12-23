@@ -166,75 +166,80 @@ class _CustomBottomNavigationBar extends ConsumerWidget {
   }
 
   Widget _buildActionButtons(BuildContext context, WidgetRef ref) {
-    // Calculate button size: half of tab button size
-    // Tab buttons: (screenWidth * 0.25).clamp(90.0, 180.0)
-    // Action buttons: half of that = (screenWidth * 0.125).clamp(45.0, 90.0)
-    final screenWidth = MediaQuery.of(context).size.width;
-    final buttonSize = (screenWidth * 0.125).clamp(45.0, 90.0);
-    
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          // Save Button
-          GestureDetector(
-            onTap: () => _saveGame(context, ref),
-            child: SizedBox(
-              width: buttonSize,
-              height: buttonSize,
-              child: Image.asset(
-                'assets/images/save_button.png',
-                fit: BoxFit.contain,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    width: buttonSize,
-                    height: buttonSize,
-                    decoration: BoxDecoration(
-                      color: Colors.blue,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.save,
-                      color: Colors.white,
-                      size: buttonSize * 0.5,
-                    ),
-                  );
-                },
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Calculate button size: half of tab button size
+        // Tab buttons: (constraints.maxWidth * 0.25).clamp(90.0, 180.0)
+        // Action buttons: half of that, fixed max at 90.0
+        final buttonSize = ((constraints.maxWidth * 0.25) * 0.5).clamp(45.0, 90.0);
+        
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          // Anchor the container by aligning buttons
+          // The Column will be centered vertically, with save button bottom and exit button top as anchors
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Save Button - bottom anchor point
+              GestureDetector(
+                onTap: () => _saveGame(context, ref),
+                child: SizedBox(
+                  width: buttonSize,
+                  height: buttonSize,
+                  child: Image.asset(
+                    'assets/images/save_button.png',
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        width: buttonSize,
+                        height: buttonSize,
+                        decoration: BoxDecoration(
+                          color: Colors.blue,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.save,
+                          color: Colors.white,
+                          size: buttonSize * 0.5,
+                        ),
+                      );
+                    },
+                  ),
+                ),
               ),
-            ),
-          ),
-          const SizedBox(height: 4),
-          // Exit Button
-          GestureDetector(
-            onTap: () => _exitToMenu(context, ref),
-            child: SizedBox(
-              width: buttonSize,
-              height: buttonSize,
-              child: Image.asset(
-                'assets/images/exit_button.png',
-                fit: BoxFit.contain,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    width: buttonSize,
-                    height: buttonSize,
-                    decoration: BoxDecoration(
-                      color: Colors.red,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.exit_to_app,
-                      color: Colors.white,
-                      size: buttonSize * 0.5,
-                    ),
-                  );
-                },
+              const SizedBox(height: 4),
+              // Exit Button - top anchor point
+              GestureDetector(
+                onTap: () => _exitToMenu(context, ref),
+                child: SizedBox(
+                  width: buttonSize,
+                  height: buttonSize,
+                  child: Image.asset(
+                    'assets/images/exit_button.png',
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        width: buttonSize,
+                        height: buttonSize,
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.exit_to_app,
+                          color: Colors.white,
+                          size: buttonSize * 0.5,
+                        ),
+                      );
+                    },
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
