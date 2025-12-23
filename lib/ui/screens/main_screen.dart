@@ -81,8 +81,9 @@ class _StatusBar extends ConsumerWidget {
     
     // Size similar to tab buttons: (screenWidth * 0.25).clamp(90.0, 180.0)
     // Each status card gets similar width calculation, but with max size limit
-    final cardWidth = (screenWidth * 0.25).clamp(90.0, 120.0);
-    final cardHeight = (cardWidth * 0.714).clamp(64.0, 86.0);
+    // Make width 1.2x larger
+    final cardWidth = ((screenWidth * 0.25) * 1.2).clamp(108.0, 144.0);
+    final cardHeight = (cardWidth * 0.714).clamp(77.0, 103.0);
     
     // Icon size scales with card width - 2x larger, clamped
     final iconSize = (cardWidth * 0.36).clamp(32.0, 43.0);
