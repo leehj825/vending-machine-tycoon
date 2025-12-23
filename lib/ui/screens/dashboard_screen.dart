@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../state/selectors.dart';
 import '../../state/providers.dart';
 import '../widgets/machine_status_card.dart';
+import '../utils/screen_utils.dart';
 
 /// Main dashboard screen displaying simulation state and machine status
 class DashboardScreen extends ConsumerStatefulWidget {
@@ -42,22 +43,27 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             SliverToBoxAdapter(
               child: Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(16),
+                padding: ScreenUtils.relativePadding(context, 0.007),
                 color: Colors.red,
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.warning,
                       color: Colors.white,
-                      size: 24,
+                      size: ScreenUtils.relativeSize(context, 0.01),
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: ScreenUtils.relativeSize(context, 0.0034)),
                     Text(
                       'Warning: $alertCount Machine${alertCount > 1 ? 's' : ''} Empty!',
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Colors.white,
-                        fontSize: 16,
+                        fontSize: ScreenUtils.relativeFontSize(
+                          context,
+                          0.007,
+                          min: ScreenUtils.getSmallerDimension(context) * 0.007,
+                          max: ScreenUtils.getSmallerDimension(context) * 0.01,
+                        ),
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -75,22 +81,32 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   children: [
                     Icon(
                       Icons.inventory_2_outlined,
-                      size: 64,
+                      size: ScreenUtils.relativeSize(context, 0.027),
                       color: Colors.grey[400],
                     ),
-                    const SizedBox(height: 16),
+                    SizedBox(height: ScreenUtils.relativeSize(context, 0.007)),
                     Text(
                       'No machines yet',
                       style: TextStyle(
-                        fontSize: 18,
+                        fontSize: ScreenUtils.relativeFontSize(
+                          context,
+                          0.008,
+                          min: ScreenUtils.getSmallerDimension(context) * 0.008,
+                          max: ScreenUtils.getSmallerDimension(context) * 0.012,
+                        ),
                         color: Colors.grey[600],
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: ScreenUtils.relativeSize(context, 0.0034)),
                     Text(
                       'Go to the Map to purchase machines',
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: ScreenUtils.relativeFontSize(
+                          context,
+                          0.006,
+                          min: ScreenUtils.getSmallerDimension(context) * 0.006,
+                          max: ScreenUtils.getSmallerDimension(context) * 0.009,
+                        ),
                         color: Colors.grey[500],
                       ),
                     ),

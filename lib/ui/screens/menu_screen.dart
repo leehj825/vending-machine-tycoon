@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'main_screen.dart';
 import '../../state/save_load_service.dart';
 import '../../state/providers.dart';
+import '../utils/screen_utils.dart';
 
 /// Main menu screen shown at app startup
 class MenuScreen extends ConsumerWidget {
@@ -55,6 +56,7 @@ class MenuScreen extends ConsumerWidget {
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
+            final smallerDim = ScreenUtils.getSmallerDimension(context);
             final screenWidth = constraints.maxWidth;
             final screenHeight = constraints.maxHeight;
             final isPortrait = screenHeight > screenWidth;
@@ -66,17 +68,18 @@ class MenuScreen extends ConsumerWidget {
                 ),
                 child: Center(
                   child: Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: screenWidth * 0.05,
-                      vertical: screenHeight * 0.05,
+                    padding: ScreenUtils.relativePaddingSymmetric(
+                      context,
+                      horizontal: 0.043,
+                      vertical: 0.021,
                     ),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        // Game Title Image - width relative to screen
+                        // Game Title Image - width relative to smaller dimension
                         SizedBox(
-                          width: screenWidth * 0.85,
+                          width: smallerDim * 0.85,
                           child: Image.asset(
                             'assets/images/title.png',
                             fit: BoxFit.contain,
@@ -86,11 +89,15 @@ class MenuScreen extends ConsumerWidget {
                           ),
                         ),
                         
-                        SizedBox(height: isPortrait ? screenHeight * 0.05 : screenHeight * 0.08),
-                        
-                        // Start Game Button - width relative to screen
                         SizedBox(
-                          width: screenWidth * 0.7,
+                          height: isPortrait 
+                            ? ScreenUtils.relativeSize(context, 0.021)
+                            : ScreenUtils.relativeSize(context, 0.034),
+                        ),
+                        
+                        // Start Game Button - width relative to smaller dimension
+                        SizedBox(
+                          width: smallerDim * 0.7,
                           child: GestureDetector(
                             onTap: () {
                               // Reset game to initial state
@@ -109,15 +116,20 @@ class MenuScreen extends ConsumerWidget {
                               fit: BoxFit.fitWidth,
                               errorBuilder: (context, error, stackTrace) {
                                 return Container(
-                                  width: screenWidth * 0.7,
-                                  height: 80,
+                                  width: smallerDim * 0.7,
+                                  height: ScreenUtils.relativeSize(context, 0.034),
                                   color: Colors.red,
-                                  child: const Center(
+                                  child: Center(
                                     child: Text(
                                       'START GAME',
                                       style: TextStyle(
                                         color: Colors.white,
-                                        fontSize: 24,
+                                        fontSize: ScreenUtils.relativeFontSize(
+                                          context,
+                                          0.01,
+                                          min: smallerDim * 0.01,
+                                          max: smallerDim * 0.015,
+                                        ),
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
@@ -128,11 +140,15 @@ class MenuScreen extends ConsumerWidget {
                           ),
                         ),
                         
-                        SizedBox(height: isPortrait ? screenHeight * 0.08 : screenHeight * 0.12),
-                        
-                        // Bottom Buttons Row - width relative to screen
                         SizedBox(
-                          width: screenWidth * 0.85,
+                          height: isPortrait
+                            ? ScreenUtils.relativeSize(context, 0.034)
+                            : ScreenUtils.relativeSize(context, 0.051),
+                        ),
+                        
+                        // Bottom Buttons Row - width relative to smaller dimension
+                        SizedBox(
+                          width: smallerDim * 0.85,
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                             children: [
@@ -151,14 +167,19 @@ class MenuScreen extends ConsumerWidget {
                                           fit: BoxFit.fitWidth,
                                           errorBuilder: (context, error, stackTrace) {
                                             return Container(
-                                              height: 60,
+                                              height: ScreenUtils.relativeSize(context, 0.026),
                                               color: Colors.yellow,
-                                              child: const Center(
+                                              child: Center(
                                                 child: Text(
                                                   'LOAD GAME',
                                                   style: TextStyle(
                                                     color: Colors.white,
-                                                    fontSize: 16,
+                                                    fontSize: ScreenUtils.relativeFontSize(
+                                                      context,
+                                                      0.007,
+                                                      min: smallerDim * 0.007,
+                                                      max: smallerDim * 0.01,
+                                                    ),
                                                     fontWeight: FontWeight.bold,
                                                   ),
                                                 ),
@@ -172,7 +193,9 @@ class MenuScreen extends ConsumerWidget {
                                 ),
                               ),
                               
-                              SizedBox(width: screenWidth * 0.02),
+                              SizedBox(
+                                width: ScreenUtils.relativeSize(context, 0.0085),
+                              ),
                               
                               // Options Button
                               Expanded(
@@ -180,9 +203,9 @@ class MenuScreen extends ConsumerWidget {
                                   onTap: () {
                                     // TODO: Implement options screen
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Options feature coming soon!'),
-                                        duration: Duration(seconds: 2),
+                                      SnackBar(
+                                        content: const Text('Options feature coming soon!'),
+                                        duration: const Duration(seconds: 2),
                                       ),
                                     );
                                   },
@@ -191,14 +214,19 @@ class MenuScreen extends ConsumerWidget {
                                     fit: BoxFit.fitWidth,
                                     errorBuilder: (context, error, stackTrace) {
                                       return Container(
-                                        height: 60,
+                                        height: ScreenUtils.relativeSize(context, 0.026),
                                         color: Colors.yellow,
-                                        child: const Center(
+                                        child: Center(
                                           child: Text(
                                             'OPTIONS',
                                             style: TextStyle(
                                               color: Colors.white,
-                                              fontSize: 16,
+                                              fontSize: ScreenUtils.relativeFontSize(
+                                                context,
+                                                0.007,
+                                                min: smallerDim * 0.007,
+                                                max: smallerDim * 0.01,
+                                              ),
                                               fontWeight: FontWeight.bold,
                                             ),
                                           ),
@@ -209,7 +237,9 @@ class MenuScreen extends ConsumerWidget {
                                 ),
                               ),
                               
-                              SizedBox(width: screenWidth * 0.02),
+                              SizedBox(
+                                width: ScreenUtils.relativeSize(context, 0.0085),
+                              ),
                               
                               // Credits Button
                               Expanded(
@@ -228,14 +258,19 @@ class MenuScreen extends ConsumerWidget {
                                     fit: BoxFit.fitWidth,
                                     errorBuilder: (context, error, stackTrace) {
                                       return Container(
-                                        height: 60,
+                                        height: ScreenUtils.relativeSize(context, 0.026),
                                         color: Colors.yellow,
-                                        child: const Center(
+                                        child: Center(
                                           child: Text(
                                             'CREDITS',
                                             style: TextStyle(
                                               color: Colors.white,
-                                              fontSize: 16,
+                                              fontSize: ScreenUtils.relativeFontSize(
+                                                context,
+                                                0.007,
+                                                min: smallerDim * 0.007,
+                                                max: smallerDim * 0.01,
+                                              ),
                                               fontWeight: FontWeight.bold,
                                             ),
                                           ),

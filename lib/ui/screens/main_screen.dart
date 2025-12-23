@@ -8,6 +8,7 @@ import '../../state/providers.dart';
 import '../../state/save_load_service.dart';
 import '../../state/selectors.dart';
 import 'menu_screen.dart';
+import '../utils/screen_utils.dart';
 
 /// Main navigation screen with bottom navigation bar
 class MainScreen extends ConsumerStatefulWidget {
@@ -28,14 +29,6 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     WarehouseScreen(),
   ];
 
-  /// App bar titles for each tab
-  final List<String> _appBarTitles = const [
-    'Vending Machine Tycoon',
-    'City View',
-    'Fleet Manager',
-    'Wholesale Market',
-  ];
-
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
@@ -46,11 +39,12 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(_appBarTitles[_selectedIndex]),
+        automaticallyImplyLeading: false,
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         elevation: 0,
+        toolbarHeight: 0,
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(100),
+          preferredSize: Size.fromHeight(ScreenUtils.relativeSize(context, 0.108)),
           child: _StatusBar(),
         ),
       ),
@@ -77,25 +71,49 @@ class _StatusBar extends ConsumerWidget {
     final dayCount = ref.watch(dayCountProvider);
     final timeString = 'Day $dayCount';
     
-    final screenWidth = MediaQuery.of(context).size.width;
+    final smallerDim = ScreenUtils.getSmallerDimension(context);
     
-    // Size similar to tab buttons: (screenWidth * 0.25).clamp(90.0, 180.0)
-    // Each status card gets similar width calculation, but with max size limit
-    // Make width 1.2x larger
-    final cardWidth = ((screenWidth * 0.25) * 1.2).clamp(108.0, 144.0);
-    final cardHeight = (cardWidth * 0.714).clamp(77.0, 103.0);
+    // Size similar to tab buttons: 25% of smaller dimension, clamped
+    // Make width 3x larger (doubled from 1.5x)
+    final cardWidth = ScreenUtils.relativeSizeClamped(
+      context,
+      (0.25 * 3.0),
+      min: smallerDim * 0.25,
+      max: smallerDim * 0.312,
+    );
+    final cardHeight = (cardWidth * 0.714);
     
-    // Icon size scales with card width - 2x larger, clamped
-    final iconSize = (cardWidth * 0.36).clamp(32.0, 43.0);
+    // Icon size scales with card width - 2x larger, clamped (doubled)
+    final iconSize = ScreenUtils.relativeSizeClamped(
+      context,
+      (cardWidth / smallerDim * 0.9),
+      min: smallerDim * 0.07,
+      max: smallerDim * 0.092,
+    );
     
-    // Font size for value - scales with card width
-    final valueFontSize = (cardWidth * 0.1).clamp(9.0, 12.0);
+    // Font size for value - scales with card width (doubled)
+    final valueFontSize = ScreenUtils.relativeSizeClamped(
+      context,
+      (cardWidth / smallerDim * 0.25),
+      min: smallerDim * 0.02,
+      max: smallerDim * 0.025,
+    );
     
-    // Padding scales with card size
-    final padding = (cardWidth * 0.071).clamp(6.0, 8.0);
+    // Padding scales with card size (doubled)
+    final padding = ScreenUtils.relativeSizeClamped(
+      context,
+      (cardWidth / smallerDim * 0.178),
+      min: smallerDim * 0.012,
+      max: smallerDim * 0.018,
+    );
+    
+    final containerPadding = ScreenUtils.relativeSize(context, 0.0034);
     
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      padding: EdgeInsets.symmetric(
+        horizontal: containerPadding,
+        vertical: containerPadding,
+      ),
       color: Theme.of(context).colorScheme.surface,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -244,15 +262,17 @@ class _CustomBottomNavigationBar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final barHeight = ScreenUtils.relativeSize(context, 0.16);
+    
     return Container(
-      height: kBottomNavigationBarHeight * 1.5,
+      height: barHeight,
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.1),
-            blurRadius: 4,
-            offset: const Offset(0, -2),
+            blurRadius: ScreenUtils.relativeSize(context, 0.0017),
+            offset: Offset(0, -ScreenUtils.relativeSize(context, 0.00085)),
           ),
         ],
       ),
@@ -263,6 +283,7 @@ class _CustomBottomNavigationBar extends ConsumerWidget {
           children: [
             Expanded(
               child: _buildTabItem(
+                context,
                 index: 0,
                 pressAsset: 'assets/images/hq_tab_press.png',
                 unpressAsset: 'assets/images/hq_tab_unpress.png',
@@ -270,6 +291,7 @@ class _CustomBottomNavigationBar extends ConsumerWidget {
             ),
             Expanded(
               child: _buildTabItem(
+                context,
                 index: 1,
                 pressAsset: 'assets/images/city_tab_press.png',
                 unpressAsset: 'assets/images/city_tab_unpress.png',
@@ -277,6 +299,7 @@ class _CustomBottomNavigationBar extends ConsumerWidget {
             ),
             Expanded(
               child: _buildTabItem(
+                context,
                 index: 2,
                 pressAsset: 'assets/images/fleet_tab_press.png',
                 unpressAsset: 'assets/images/fleet_tab_unpress.png',
@@ -284,6 +307,7 @@ class _CustomBottomNavigationBar extends ConsumerWidget {
             ),
             Expanded(
               child: _buildTabItem(
+                context,
                 index: 3,
                 pressAsset: 'assets/images/market_tab_press.png',
                 unpressAsset: 'assets/images/market_tab_unpress.png',
@@ -297,7 +321,8 @@ class _CustomBottomNavigationBar extends ConsumerWidget {
     );
   }
 
-  Widget _buildTabItem({
+  Widget _buildTabItem(
+    BuildContext context, {
     required int index,
     required String pressAsset,
     required String unpressAsset,
@@ -307,12 +332,19 @@ class _CustomBottomNavigationBar extends ConsumerWidget {
       onTap: () => onTap(index),
       behavior: HitTestBehavior.opaque,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8),
+        padding: EdgeInsets.symmetric(
+          vertical: ScreenUtils.relativeSize(context, 0.0034),
+        ),
         child: LayoutBuilder(
           builder: (context, constraints) {
-            // Limit tab width to a maximum of 180 pixels (50% larger) or 25% of screen width, whichever is smaller
-            // Minimum width increased to 90 pixels (50% larger)
-            final maxWidth = (constraints.maxWidth * 0.25).clamp(90.0, 180.0);
+            final smallerDim = ScreenUtils.getSmallerDimension(context);
+            // Limit tab width to 62% of smaller dimension, clamped (doubled from 31%)
+            final maxWidth = ScreenUtils.relativeSizeClamped(
+              context,
+              0.62,
+              min: smallerDim * 0.195,
+              max: smallerDim * 0.39,
+            );
             return Center(
               child: SizedBox(
                 width: maxWidth,
@@ -324,7 +356,7 @@ class _CustomBottomNavigationBar extends ConsumerWidget {
                     return Icon(
                       _getIconForIndex(index),
                       color: isSelected ? Colors.green : Colors.grey,
-                      size: 36, // Increased from 24 to 36 (50% larger)
+                      size: ScreenUtils.relativeSize(context, 0.078),
                     );
                   },
                 ),
@@ -339,16 +371,22 @@ class _CustomBottomNavigationBar extends ConsumerWidget {
   Widget _buildActionButtons(BuildContext context, WidgetRef ref) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Calculate button width: half of tab button width
-        // Tab buttons: (constraints.maxWidth * 0.25).clamp(90.0, 180.0)
-        final buttonWidth = ((constraints.maxWidth * 0.25) * 0.5).clamp(45.0, 90.0);
+        final smallerDim = ScreenUtils.getSmallerDimension(context);
+        // Calculate button width: half of tab button width (doubled)
+        final buttonWidth = ScreenUtils.relativeSizeClamped(
+          context,
+          0.31, // 62% * 0.5
+          min: smallerDim * 0.0975,
+          max: smallerDim * 0.195,
+        );
         
-        // Calculate button height: half of tab button height
-        // Tab buttons are in a container with vertical padding of 8, so available height is constraints.maxHeight - 16
-        // Tab button height would be approximately the available height
-        // Action button height should be half of that
-        final tabButtonHeight = constraints.maxHeight - 16; // Account for tab button's vertical padding
-        final buttonHeight = (tabButtonHeight * 0.5).clamp(20.0, 60.0);
+        // Calculate button height: half of tab button height (doubled)
+        final tabButtonPadding = ScreenUtils.relativeSize(context, 0.0034);
+        final tabButtonHeight = constraints.maxHeight - (tabButtonPadding * 2);
+        final buttonHeight = (tabButtonHeight * 0.5).clamp(
+          smallerDim * 0.042,
+          smallerDim * 0.13,
+        );
         
         return Container(
           // Anchor the container by aligning buttons
@@ -384,7 +422,7 @@ class _CustomBottomNavigationBar extends ConsumerWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: 4),
+              SizedBox(height: ScreenUtils.relativeSize(context, 0.0017)),
               // Exit Button - top anchor point
               GestureDetector(
                 onTap: () => _exitToMenu(context, ref),
@@ -430,7 +468,7 @@ class _CustomBottomNavigationBar extends ConsumerWidget {
             ? 'Game saved successfully!' 
             : 'Failed to save game'),
           backgroundColor: success ? Colors.green : Colors.red,
-          duration: const Duration(seconds: 2),
+          duration: Duration(seconds: 2),
         ),
       );
     }
