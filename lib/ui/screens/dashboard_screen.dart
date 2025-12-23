@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../state/selectors.dart';
 import '../../state/providers.dart';
-import '../../state/save_load_service.dart';
 import '../widgets/machine_status_card.dart';
-import 'menu_screen.dart';
 
 /// Main dashboard screen displaying simulation state and machine status
 class DashboardScreen extends ConsumerStatefulWidget {
@@ -27,53 +25,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     });
   }
 
-  Future<void> _saveGame() async {
-    final gameState = ref.read(gameControllerProvider);
-    final success = await SaveLoadService.saveGame(gameState);
-    
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(success 
-            ? 'Game saved successfully!' 
-            : 'Failed to save game'),
-          backgroundColor: success ? Colors.green : Colors.red,
-          duration: const Duration(seconds: 2),
-        ),
-      );
-    }
-  }
-
-  void _exitToMenu() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Exit to Menu'),
-        content: const Text('Are you sure you want to exit to the main menu? Your progress will be saved.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              // Stop simulation before exiting
-              ref.read(gameControllerProvider.notifier).stopSimulation();
-              // Navigate back to menu screen
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(
-                  builder: (context) => const MenuScreen(),
-                ),
-                (route) => false,
-              );
-            },
-            child: const Text('Exit'),
-          ),
-        ],
-      ),
-    );
-  }
 
 
 
@@ -197,62 +148,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 childCount: machines.length,
               ),
             ),
-        ],
-      ),
-      floatingActionButton: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Save Button (top)
-          GestureDetector(
-            onTap: _saveGame,
-            child: Image.asset(
-              'assets/images/save_button.png',
-              width: 64,
-              height: 64,
-              fit: BoxFit.contain,
-              errorBuilder: (context, error, stackTrace) {
-                return Container(
-                  width: 64,
-                  height: 64,
-                  decoration: BoxDecoration(
-                    color: Colors.blue,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.save,
-                    color: Colors.white,
-                    size: 32,
-                  ),
-                );
-              },
-            ),
-          ),
-          const SizedBox(height: 16),
-          // Exit Button
-          GestureDetector(
-            onTap: _exitToMenu,
-            child: Image.asset(
-              'assets/images/exit_button.png',
-              width: 64,
-              height: 64,
-              fit: BoxFit.contain,
-              errorBuilder: (context, error, stackTrace) {
-                return Container(
-                  width: 64,
-                  height: 64,
-                  decoration: BoxDecoration(
-                    color: Colors.red,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.exit_to_app,
-                    color: Colors.white,
-                    size: 32,
-                  ),
-                );
-              },
-            ),
-          ),
         ],
       ),
     );

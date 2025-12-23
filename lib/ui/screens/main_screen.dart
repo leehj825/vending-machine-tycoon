@@ -4,6 +4,9 @@ import 'dashboard_screen.dart';
 import 'route_planner_screen.dart';
 import 'warehouse_screen.dart';
 import 'tile_city_screen.dart';
+import '../../state/providers.dart';
+import '../../state/save_load_service.dart';
+import 'menu_screen.dart';
 
 /// Main navigation screen with bottom navigation bar
 class MainScreen extends ConsumerStatefulWidget {
@@ -59,7 +62,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
 }
 
 /// Custom bottom navigation bar using image assets
-class _CustomBottomNavigationBar extends StatelessWidget {
+class _CustomBottomNavigationBar extends ConsumerWidget {
   final int currentIndex;
   final Function(int) onTap;
 
@@ -69,7 +72,7 @@ class _CustomBottomNavigationBar extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Container(
       height: kBottomNavigationBarHeight * 1.5,
       decoration: BoxDecoration(
@@ -87,26 +90,36 @@ class _CustomBottomNavigationBar extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            _buildTabItem(
-              index: 0,
-              pressAsset: 'assets/images/hq_tab_press.png',
-              unpressAsset: 'assets/images/hq_tab_unpress.png',
+            Expanded(
+              child: _buildTabItem(
+                index: 0,
+                pressAsset: 'assets/images/hq_tab_press.png',
+                unpressAsset: 'assets/images/hq_tab_unpress.png',
+              ),
             ),
-            _buildTabItem(
-              index: 1,
-              pressAsset: 'assets/images/city_tab_press.png',
-              unpressAsset: 'assets/images/city_tab_unpress.png',
+            Expanded(
+              child: _buildTabItem(
+                index: 1,
+                pressAsset: 'assets/images/city_tab_press.png',
+                unpressAsset: 'assets/images/city_tab_unpress.png',
+              ),
             ),
-            _buildTabItem(
-              index: 2,
-              pressAsset: 'assets/images/fleet_tab_press.png',
-              unpressAsset: 'assets/images/fleet_tab_unpress.png',
+            Expanded(
+              child: _buildTabItem(
+                index: 2,
+                pressAsset: 'assets/images/fleet_tab_press.png',
+                unpressAsset: 'assets/images/fleet_tab_unpress.png',
+              ),
             ),
-            _buildTabItem(
-              index: 3,
-              pressAsset: 'assets/images/market_tab_press.png',
-              unpressAsset: 'assets/images/market_tab_unpress.png',
+            Expanded(
+              child: _buildTabItem(
+                index: 3,
+                pressAsset: 'assets/images/market_tab_press.png',
+                unpressAsset: 'assets/images/market_tab_unpress.png',
+              ),
             ),
+            // Save and Exit buttons on the right
+            _buildActionButtons(context, ref),
           ],
         ),
       ),
@@ -119,37 +132,156 @@ class _CustomBottomNavigationBar extends StatelessWidget {
     required String unpressAsset,
   }) {
     final isSelected = currentIndex == index;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () => onTap(index),
-        behavior: HitTestBehavior.opaque,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              // Limit tab width to a maximum of 180 pixels (50% larger) or 25% of screen width, whichever is smaller
-              // Minimum width increased to 90 pixels (50% larger)
-              final maxWidth = (constraints.maxWidth * 0.25).clamp(90.0, 180.0);
-              return Center(
-                child: SizedBox(
-                  width: maxWidth,
-                  child: Image.asset(
-                    isSelected ? pressAsset : unpressAsset,
-                    fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) {
-                      // Fallback to icon if image fails to load
-                      return Icon(
-                        _getIconForIndex(index),
-                        color: isSelected ? Colors.green : Colors.grey,
-                        size: 36, // Increased from 24 to 36 (50% larger)
-                      );
-                    },
-                  ),
+    return GestureDetector(
+      onTap: () => onTap(index),
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            // Limit tab width to a maximum of 180 pixels (50% larger) or 25% of screen width, whichever is smaller
+            // Minimum width increased to 90 pixels (50% larger)
+            final maxWidth = (constraints.maxWidth * 0.25).clamp(90.0, 180.0);
+            return Center(
+              child: SizedBox(
+                width: maxWidth,
+                child: Image.asset(
+                  isSelected ? pressAsset : unpressAsset,
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) {
+                    // Fallback to icon if image fails to load
+                    return Icon(
+                      _getIconForIndex(index),
+                      color: isSelected ? Colors.green : Colors.grey,
+                      size: 36, // Increased from 24 to 36 (50% larger)
+                    );
+                  },
                 ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionButtons(BuildContext context, WidgetRef ref) {
+    // Calculate button size: half of tab button size
+    // Tab buttons: (screenWidth * 0.25).clamp(90.0, 180.0)
+    // Action buttons: half of that = (screenWidth * 0.125).clamp(45.0, 90.0)
+    final screenWidth = MediaQuery.of(context).size.width;
+    final buttonSize = (screenWidth * 0.125).clamp(45.0, 90.0);
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // Save Button
+          GestureDetector(
+            onTap: () => _saveGame(context, ref),
+            child: SizedBox(
+              width: buttonSize,
+              height: buttonSize,
+              child: Image.asset(
+                'assets/images/save_button.png',
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    width: buttonSize,
+                    height: buttonSize,
+                    decoration: BoxDecoration(
+                      color: Colors.blue,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.save,
+                      color: Colors.white,
+                      size: buttonSize * 0.5,
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          // Exit Button
+          GestureDetector(
+            onTap: () => _exitToMenu(context, ref),
+            child: SizedBox(
+              width: buttonSize,
+              height: buttonSize,
+              child: Image.asset(
+                'assets/images/exit_button.png',
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    width: buttonSize,
+                    height: buttonSize,
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.exit_to_app,
+                      color: Colors.white,
+                      size: buttonSize * 0.5,
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _saveGame(BuildContext context, WidgetRef ref) async {
+    final gameState = ref.read(gameControllerProvider);
+    final success = await SaveLoadService.saveGame(gameState);
+    
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(success 
+            ? 'Game saved successfully!' 
+            : 'Failed to save game'),
+          backgroundColor: success ? Colors.green : Colors.red,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  void _exitToMenu(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Exit to Menu'),
+        content: const Text('Are you sure you want to exit to the main menu? Your progress will be saved.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              // Stop simulation before exiting
+              ref.read(gameControllerProvider.notifier).stopSimulation();
+              // Navigate back to menu screen
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(
+                  builder: (context) => const MenuScreen(),
+                ),
+                (route) => false,
               );
             },
+            child: const Text('Exit'),
           ),
-        ),
+        ],
       ),
     );
   }

@@ -433,6 +433,58 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> {
                                         ],
                                       ),
                                       const SizedBox(height: 4),
+                                      // Cargo display
+                                      if (truck.inventory.isNotEmpty)
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 6,
+                                            vertical: 2,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Colors.blue.withValues(alpha: 0.1),
+                                            borderRadius: BorderRadius.circular(4),
+                                          ),
+                                          child: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Text(
+                                                'Cargo: ${truck.currentLoad}/${truck.capacity}',
+                                                style: const TextStyle(
+                                                  fontSize: 9,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                              if (truck.inventory.length <= 2)
+                                                ...truck.inventory.entries.map((entry) => Text(
+                                                  '${entry.key.name}: ${entry.value}',
+                                                  style: const TextStyle(
+                                                    fontSize: 8,
+                                                    color: Colors.blue,
+                                                  ),
+                                                  overflow: TextOverflow.ellipsis,
+                                                  maxLines: 1,
+                                                ))
+                                              else
+                                                Text(
+                                                  '${truck.inventory.length} items',
+                                                  style: const TextStyle(
+                                                    fontSize: 8,
+                                                    color: Colors.blue,
+                                                  ),
+                                                ),
+                                            ],
+                                          ),
+                                        )
+                                      else
+                                        Text(
+                                          'Empty',
+                                          style: TextStyle(
+                                            fontSize: 9,
+                                            color: Colors.grey[600],
+                                            fontStyle: FontStyle.italic,
+                                          ),
+                                        ),
+                                      const SizedBox(height: 4),
                                       Flexible(
                                         child: Container(
                                           padding: const EdgeInsets.symmetric(
@@ -480,6 +532,56 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> {
               ),
             )
           else ...[
+            // Truck Cargo Info
+            if (selectedTruck.inventory.isNotEmpty)
+              SliverToBoxAdapter(
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: Colors.blue.withValues(alpha: 0.3),
+                      width: 1,
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.inventory_2, size: 16, color: Colors.blue),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Cargo: ${selectedTruck.currentLoad}/${selectedTruck.capacity}',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 4,
+                        children: selectedTruck.inventory.entries.map((entry) {
+                          return Chip(
+                            label: Text(
+                              '${entry.key.name}: ${entry.value}',
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                            backgroundColor: Colors.blue.shade50,
+                            side: BorderSide(color: Colors.blue.shade200),
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             // Route Header with Buttons
             SliverToBoxAdapter(
               child: Padding(
