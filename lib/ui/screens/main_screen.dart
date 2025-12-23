@@ -88,7 +88,7 @@ class _CustomBottomNavigationBar extends ConsumerWidget {
       child: SafeArea(
         top: false,
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          mainAxisAlignment: MainAxisAlignment.start,
           children: [
             Expanded(
               child: _buildTabItem(
@@ -118,7 +118,7 @@ class _CustomBottomNavigationBar extends ConsumerWidget {
                 unpressAsset: 'assets/images/market_tab_unpress.png',
               ),
             ),
-            // Save and Exit buttons on the right
+            // Save and Exit buttons on the right - no margin
             _buildActionButtons(context, ref),
           ],
         ),
