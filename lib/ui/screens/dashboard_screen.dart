@@ -43,7 +43,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             SliverToBoxAdapter(
               child: Container(
                 width: double.infinity,
-                padding: ScreenUtils.relativePadding(context, 0.007),
+                padding: ScreenUtils.relativePadding(context, 0.02),
                 color: Colors.red,
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -51,18 +51,23 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     Icon(
                       Icons.warning,
                       color: Colors.white,
-                      size: ScreenUtils.relativeSize(context, 0.01),
+                      size: ScreenUtils.relativeSizeClamped(
+                        context,
+                        0.06, // Increased from 0.01
+                        min: ScreenUtils.getSmallerDimension(context) * 0.05,
+                        max: ScreenUtils.getSmallerDimension(context) * 0.08,
+                      ),
                     ),
-                    SizedBox(width: ScreenUtils.relativeSize(context, 0.0034)),
+                    SizedBox(width: ScreenUtils.relativeSize(context, 0.015)),
                     Text(
                       'Warning: $alertCount Machine${alertCount > 1 ? 's' : ''} Empty!',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: ScreenUtils.relativeFontSize(
                           context,
-                          0.007,
-                          min: ScreenUtils.getSmallerDimension(context) * 0.007,
-                          max: ScreenUtils.getSmallerDimension(context) * 0.01,
+                          0.045, // Increased from 0.007 to match dashboard text
+                          min: ScreenUtils.getSmallerDimension(context) * 0.035,
+                          max: ScreenUtils.getSmallerDimension(context) * 0.065,
                         ),
                         fontWeight: FontWeight.bold,
                       ),

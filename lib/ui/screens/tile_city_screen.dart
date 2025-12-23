@@ -1113,12 +1113,14 @@ class _MachineViewDialog extends ConsumerWidget {
     } catch (e) {
       return Dialog(
         backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.all(20),
+        insetPadding: EdgeInsets.all(ScreenUtils.relativeSize(context, 0.04)),
         child: Container(
-          padding: const EdgeInsets.all(20),
+          padding: EdgeInsets.all(ScreenUtils.relativeSize(context, 0.04)),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(
+              ScreenUtils.relativeSize(context, 0.03),
+            ),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -1196,12 +1198,27 @@ class _MachineViewDialog extends ConsumerWidget {
     
     return Dialog(
       backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.all(20),
+      insetPadding: EdgeInsets.all(ScreenUtils.relativeSize(context, 0.04)),
       child: Container(
-        constraints: const BoxConstraints(maxWidth: 400, maxHeight: 600),
+        constraints: BoxConstraints(
+          maxWidth: ScreenUtils.relativeSizeClamped(
+            context,
+            0.9, // 90% of screen width
+            min: 300,
+            max: 600,
+          ),
+          maxHeight: ScreenUtils.relativeSizeClamped(
+            context,
+            0.8, // 80% of screen height
+            min: 400,
+            max: 800,
+          ),
+        ),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(
+            ScreenUtils.relativeSize(context, 0.03),
+          ),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -1209,9 +1226,13 @@ class _MachineViewDialog extends ConsumerWidget {
             Stack(
               children: [
                 ClipRRect(
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(16),
-                    topRight: Radius.circular(16),
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(
+                      ScreenUtils.relativeSize(context, 0.03),
+                    ),
+                    topRight: Radius.circular(
+                      ScreenUtils.relativeSize(context, 0.03),
+                    ),
                   ),
                   child: Image.asset(
                     imagePath,
@@ -1277,7 +1298,9 @@ class _MachineViewDialog extends ConsumerWidget {
             Flexible(
               child: SingleChildScrollView(
                 child: Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.all(
+                    ScreenUtils.relativeSize(context, 0.03),
+                  ),
                   child: _MachineStatusSection(machine: machine),
                 ),
               ),
@@ -1380,21 +1403,23 @@ class _MachineStatusSection extends ConsumerWidget {
                 color: Colors.grey[600],
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: ScreenUtils.relativeSize(context, 0.01)),
             LinearProgressIndicator(
               value: stockLevel,
               backgroundColor: Colors.grey[300],
               valueColor: AlwaysStoppedAnimation<Color>(stockColor),
-              minHeight: 8,
+              minHeight: ScreenUtils.relativeSize(context, 0.015),
             ),
           ],
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: ScreenUtils.relativeSize(context, 0.02)),
         Container(
-          padding: const EdgeInsets.all(12),
+          padding: EdgeInsets.all(ScreenUtils.relativeSize(context, 0.025)),
           decoration: BoxDecoration(
             color: Colors.green.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(
+              ScreenUtils.relativeSize(context, 0.015),
+            ),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1432,9 +1457,9 @@ class _MachineStatusSection extends ConsumerWidget {
             ],
           ),
         ),
-        const SizedBox(height: 16),
-        const Divider(),
-        const SizedBox(height: 16),
+        SizedBox(height: ScreenUtils.relativeSize(context, 0.02)),
+        Divider(height: ScreenUtils.relativeSize(context, 0.002)),
+        SizedBox(height: ScreenUtils.relativeSize(context, 0.02)),
         Text(
           'Stock Details:',
           style: TextStyle(
