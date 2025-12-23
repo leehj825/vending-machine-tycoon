@@ -56,10 +56,6 @@ class MenuScreen extends ConsumerWidget {
             final screenHeight = constraints.maxHeight;
             final isPortrait = screenHeight > screenWidth;
             
-            // Calculate scale factor based on screen width (smaller screens = smaller buttons)
-            // Use a base width of 800 for reference
-            final scaleFactor = (screenWidth / 800).clamp(0.5, 1.2);
-            
             return SingleChildScrollView(
               child: ConstrainedBox(
                 constraints: BoxConstraints(
@@ -75,9 +71,9 @@ class MenuScreen extends ConsumerWidget {
                       mainAxisAlignment: MainAxisAlignment.center,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        // Game Title Image
-                        Transform.scale(
-                          scale: scaleFactor,
+                        // Game Title Image - width relative to screen
+                        SizedBox(
+                          width: screenWidth * 0.85,
                           child: Image.asset(
                             'assets/images/title.png',
                             fit: BoxFit.contain,
@@ -89,9 +85,9 @@ class MenuScreen extends ConsumerWidget {
                         
                         SizedBox(height: isPortrait ? screenHeight * 0.05 : screenHeight * 0.08),
                         
-                        // Start Game Button
-                        Transform.scale(
-                          scale: scaleFactor,
+                        // Start Game Button - width relative to screen
+                        SizedBox(
+                          width: screenWidth * 0.7,
                           child: GestureDetector(
                             onTap: () {
                               // Navigate to main game screen
@@ -103,18 +99,18 @@ class MenuScreen extends ConsumerWidget {
                             },
                             child: Image.asset(
                               'assets/images/start_button.png',
-                              fit: BoxFit.contain,
+                              fit: BoxFit.fitWidth,
                               errorBuilder: (context, error, stackTrace) {
                                 return Container(
                                   width: screenWidth * 0.7,
-                                  height: 80 * scaleFactor,
+                                  height: 80,
                                   color: Colors.red,
-                                  child: Center(
+                                  child: const Center(
                                     child: Text(
                                       'START GAME',
                                       style: TextStyle(
                                         color: Colors.white,
-                                        fontSize: 24 * scaleFactor,
+                                        fontSize: 24,
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
@@ -127,9 +123,9 @@ class MenuScreen extends ConsumerWidget {
                         
                         SizedBox(height: isPortrait ? screenHeight * 0.08 : screenHeight * 0.12),
                         
-                        // Bottom Buttons Row
-                        Transform.scale(
-                          scale: scaleFactor,
+                        // Bottom Buttons Row - width relative to screen
+                        SizedBox(
+                          width: screenWidth * 0.85,
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                             children: [
@@ -145,17 +141,17 @@ class MenuScreen extends ConsumerWidget {
                                         opacity: hasSave ? 1.0 : 0.5,
                                         child: Image.asset(
                                           'assets/images/load_game_button.png',
-                                          fit: BoxFit.contain,
+                                          fit: BoxFit.fitWidth,
                                           errorBuilder: (context, error, stackTrace) {
                                             return Container(
-                                              height: 60 * scaleFactor,
+                                              height: 60,
                                               color: Colors.yellow,
-                                              child: Center(
+                                              child: const Center(
                                                 child: Text(
                                                   'LOAD GAME',
                                                   style: TextStyle(
                                                     color: Colors.white,
-                                                    fontSize: 16 * scaleFactor,
+                                                    fontSize: 16,
                                                     fontWeight: FontWeight.bold,
                                                   ),
                                                 ),
@@ -185,17 +181,17 @@ class MenuScreen extends ConsumerWidget {
                                   },
                                   child: Image.asset(
                                     'assets/images/options_button.png',
-                                    fit: BoxFit.contain,
+                                    fit: BoxFit.fitWidth,
                                     errorBuilder: (context, error, stackTrace) {
                                       return Container(
-                                        height: 60 * scaleFactor,
+                                        height: 60,
                                         color: Colors.yellow,
-                                        child: Center(
+                                        child: const Center(
                                           child: Text(
                                             'OPTIONS',
                                             style: TextStyle(
                                               color: Colors.white,
-                                              fontSize: 16 * scaleFactor,
+                                              fontSize: 16,
                                               fontWeight: FontWeight.bold,
                                             ),
                                           ),
@@ -222,17 +218,17 @@ class MenuScreen extends ConsumerWidget {
                                   },
                                   child: Image.asset(
                                     'assets/images/credits_button.png',
-                                    fit: BoxFit.contain,
+                                    fit: BoxFit.fitWidth,
                                     errorBuilder: (context, error, stackTrace) {
                                       return Container(
-                                        height: 60 * scaleFactor,
+                                        height: 60,
                                         color: Colors.yellow,
-                                        child: Center(
+                                        child: const Center(
                                           child: Text(
                                             'CREDITS',
                                             style: TextStyle(
                                               color: Colors.white,
-                                              fontSize: 16 * scaleFactor,
+                                              fontSize: 16,
                                               fontWeight: FontWeight.bold,
                                             ),
                                           ),
