@@ -6,6 +6,7 @@ import 'warehouse_screen.dart';
 import 'tile_city_screen.dart';
 import '../../state/providers.dart';
 import '../../state/save_load_service.dart';
+import '../../state/selectors.dart';
 import 'menu_screen.dart';
 
 /// Main navigation screen with bottom navigation bar
@@ -48,6 +49,10 @@ class _MainScreenState extends ConsumerState<MainScreen> {
         title: Text(_appBarTitles[_selectedIndex]),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         elevation: 0,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(100),
+          child: _StatusBar(),
+        ),
       ),
       body: IndexedStack(
         index: _selectedIndex,
@@ -56,6 +61,171 @@ class _MainScreenState extends ConsumerState<MainScreen> {
       bottomNavigationBar: _CustomBottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
+      ),
+    );
+  }
+}
+
+/// Status bar showing cash, reputation, and time - always visible
+class _StatusBar extends ConsumerWidget {
+  const _StatusBar();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cash = ref.watch(cashProvider);
+    final reputation = ref.watch(reputationProvider);
+    final dayCount = ref.watch(dayCountProvider);
+    final timeString = 'Day $dayCount';
+    
+    final screenWidth = MediaQuery.of(context).size.width;
+    
+    // Size similar to tab buttons: (screenWidth * 0.25).clamp(90.0, 180.0)
+    // Each status card gets similar width calculation, but with max size limit
+    final cardWidth = (screenWidth * 0.25).clamp(90.0, 120.0);
+    final cardHeight = (cardWidth * 0.714).clamp(64.0, 86.0);
+    
+    // Icon size scales with card width - 2x larger, clamped
+    final iconSize = (cardWidth * 0.36).clamp(32.0, 43.0);
+    
+    // Font size for value - scales with card width
+    final valueFontSize = (cardWidth * 0.1).clamp(9.0, 12.0);
+    
+    // Padding scales with card size
+    final padding = (cardWidth * 0.071).clamp(6.0, 8.0);
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      color: Theme.of(context).colorScheme.surface,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          _StatusCard(
+            iconAsset: 'assets/images/cash_icon.png',
+            value: '\$${cash.toStringAsFixed(2)}',
+            valueColor: Colors.green,
+            cardWidth: cardWidth,
+            cardHeight: cardHeight,
+            iconSize: iconSize,
+            valueFontSize: valueFontSize,
+            padding: padding,
+          ),
+          _StatusCard(
+            iconAsset: 'assets/images/star_icon.png',
+            value: reputation.toString(),
+            valueColor: Colors.amber,
+            cardWidth: cardWidth,
+            cardHeight: cardHeight,
+            iconSize: iconSize,
+            valueFontSize: valueFontSize,
+            padding: padding,
+          ),
+          _StatusCard(
+            iconAsset: 'assets/images/clock_icon.png',
+            value: timeString,
+            valueColor: Colors.blue,
+            cardWidth: cardWidth,
+            cardHeight: cardHeight,
+            iconSize: iconSize,
+            valueFontSize: valueFontSize,
+            padding: padding,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Compact status card for main screen status bar
+class _StatusCard extends StatelessWidget {
+  final String iconAsset;
+  final String value;
+  final Color valueColor;
+  final double cardWidth;
+  final double cardHeight;
+  final double iconSize;
+  final double valueFontSize;
+  final double padding;
+
+  const _StatusCard({
+    required this.iconAsset,
+    required this.value,
+    required this.valueColor,
+    required this.cardWidth,
+    required this.cardHeight,
+    required this.iconSize,
+    required this.valueFontSize,
+    required this.padding,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: cardWidth,
+      height: cardHeight,
+      child: Stack(
+        children: [
+          // Background icon
+          Image.asset(
+            'assets/images/status_icon.png',
+            width: cardWidth,
+            height: cardHeight,
+            fit: BoxFit.contain,
+            errorBuilder: (context, error, stackTrace) {
+              return Container(
+                width: cardWidth,
+                height: cardHeight,
+                decoration: BoxDecoration(
+                  color: Colors.grey[200],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              );
+            },
+          ),
+          // Content overlay - icons at center top, values at center bottom
+          Positioned.fill(
+            child: Stack(
+              children: [
+                // Icon positioned at center upper part
+                Positioned(
+                  left: (cardWidth - iconSize) / 2,
+                  top: padding,
+                  child: Image.asset(
+                    iconAsset,
+                    width: iconSize,
+                    height: iconSize,
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) {
+                      return SizedBox(
+                        width: iconSize,
+                        height: iconSize,
+                      );
+                    },
+                  ),
+                ),
+                // Value positioned at center bottom
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: padding,
+                  child: Center(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        value,
+                        style: TextStyle(
+                          fontSize: valueFontSize,
+                          fontWeight: FontWeight.bold,
+                          color: valueColor,
+                        ),
+                        maxLines: 1,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -30,56 +30,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final cash = ref.watch(cashProvider);
-    final reputation = ref.watch(reputationProvider);
-    final dayCount = ref.watch(dayCountProvider);
     final alertCount = ref.watch(alertCountProvider);
     final machines = ref.watch(machinesProvider);
-    
-    // Format time as "Day X"
-    final timeString = 'Day $dayCount';
 
     return Scaffold(
       // AppBar removed - managed by MainScreen
       body: CustomScrollView(
         slivers: [
-          // Top Section: Status Bar
-          SliverToBoxAdapter(
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              color: Theme.of(context).colorScheme.surface,
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    // Cash Card
-                    _StatusCard(
-                      iconAsset: 'assets/images/cash_icon.png',
-                      label: 'Cash',
-                      value: '\$${cash.toStringAsFixed(2)}',
-                      valueColor: Colors.green,
-                    ),
-                    const SizedBox(width: 1),
-                    // Reputation Card
-                    _StatusCard(
-                      iconAsset: 'assets/images/star_icon.png',
-                      label: 'Reputation',
-                      value: reputation.toString(),
-                      valueColor: Colors.amber,
-                    ),
-                    const SizedBox(width: 1),
-                    // Time Card
-                    _StatusCard(
-                      iconAsset: 'assets/images/clock_icon.png',
-                      label: 'Time',
-                      value: timeString,
-                      valueColor: Colors.blue,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
           // Middle Section: Alerts
           if (alertCount > 0)
             SliverToBoxAdapter(
@@ -152,111 +109,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 childCount: machines.length,
               ),
             ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Reusable status card widget for the top status bar
-class _StatusCard extends StatelessWidget {
-  final String iconAsset;
-  final String label;
-  final String value;
-  final Color valueColor;
-
-  const _StatusCard({
-    required this.iconAsset,
-    required this.label,
-    required this.value,
-    required this.valueColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    
-    // Calculate responsive sizes based on screen width
-    // Base card width scales with screen, but clamped between 120 and 180
-    final cardWidth = (screenWidth * 0.35).clamp(120.0, 180.0);
-    // Card height scales proportionally
-    final cardHeight = (cardWidth * 0.714).clamp(85.0, 128.0);
-    
-    // Icon size scales with card width - 2x larger, clamped between 40 and 64
-    final iconSize = (cardWidth * 0.36).clamp(40.0, 64.0);
-    
-    // Font size for value - scales with card width, clamped to fit within status_icon
-    final valueFontSize = (cardWidth * 0.1).clamp(12.0, 18.0);
-    
-    // Padding scales with card size
-    final padding = (cardWidth * 0.071).clamp(8.0, 12.0);
-    
-    return SizedBox(
-      width: cardWidth,
-      height: cardHeight,
-      child: Stack(
-        children: [
-          // Background icon - show the whole thing without squashing
-          Image.asset(
-            'assets/images/status_icon.png',
-            width: cardWidth,
-            height: cardHeight,
-            fit: BoxFit.contain,
-            errorBuilder: (context, error, stackTrace) {
-              return Container(
-                width: cardWidth,
-                height: cardHeight,
-                decoration: BoxDecoration(
-                  color: Colors.grey[200],
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              );
-            },
-          ),
-          // Content overlay - icons at center top, values at center bottom
-          Positioned.fill(
-            child: Stack(
-              children: [
-                // Icon positioned at center upper part
-                Positioned(
-                  left: (cardWidth - iconSize) / 2,
-                  top: padding,
-                  child: Image.asset(
-                    iconAsset,
-                    width: iconSize,
-                    height: iconSize,
-                    fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) {
-                      return SizedBox(
-                        width: iconSize,
-                        height: iconSize,
-                      );
-                    },
-                  ),
-                ),
-                // Value positioned at center bottom
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: padding,
-                  child: Center(
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        value,
-                        style: TextStyle(
-                          fontSize: valueFontSize,
-                          fontWeight: FontWeight.bold,
-                          color: valueColor,
-                        ),
-                        maxLines: 1,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
         ],
       ),
     );
