@@ -663,8 +663,13 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
         );
 
         if (_shouldShowPurchaseButton(data['x'] as int, data['y'] as int, tileType)) {
-          final buttonSize = 24.0;
-          final buttonTop = buildingTop - verticalOffset - buttonSize + 8.0;
+          final buttonSize = ScreenUtils.relativeSizeClamped(
+            context,
+            0.05, // Relative to screen width
+            min: ScreenUtils.getSmallerDimension(context) * 0.04,
+            max: ScreenUtils.getSmallerDimension(context) * 0.08,
+          );
+          final buttonTop = buildingTop - verticalOffset - buttonSize + ScreenUtils.relativeSize(context, 0.015);
           final buttonLeft = positionedX + (tileWidth / 2) - (buttonSize / 2);
           
           tiles.add(
@@ -679,19 +684,22 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
                   decoration: BoxDecoration(
                     color: Colors.green,
                     shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 2),
+                    border: Border.all(
+                      color: Colors.white,
+                      width: ScreenUtils.relativeSize(context, 0.004),
+                    ),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withOpacity(0.3),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
+                        blurRadius: ScreenUtils.relativeSize(context, 0.008),
+                        offset: Offset(0, ScreenUtils.relativeSize(context, 0.004)),
                       ),
                     ],
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.add,
                     color: Colors.white,
-                    size: 18,
+                    size: buttonSize * 0.75, // 75% of button size
                   ),
                 ),
               ),
@@ -850,7 +858,15 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
           alignment: Alignment.bottomCenter,
           child: Text(
             'T',
-            style: const TextStyle(fontSize: 12, color: Colors.white),
+            style: TextStyle(
+              fontSize: ScreenUtils.relativeFontSize(
+                context,
+                0.032, // Relative to screen width
+                min: ScreenUtils.getSmallerDimension(context) * 0.025,
+                max: ScreenUtils.getSmallerDimension(context) * 0.045,
+              ),
+              color: Colors.white,
+            ),
           ),
         );
       },
@@ -1107,25 +1123,70 @@ class _MachineViewDialog extends ConsumerWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
+              Text(
                 'Machine not found',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  fontSize: ScreenUtils.relativeFontSize(
+                    context,
+                    0.045,
+                    min: ScreenUtils.getSmallerDimension(context) * 0.035,
+                    max: ScreenUtils.getSmallerDimension(context) * 0.065,
+                  ),
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-              const SizedBox(height: 8),
-              Text('Looking for ID: $machineId'),
-              const SizedBox(height: 8),
-              Text('Total machines: ${machines.length}'),
+              SizedBox(height: ScreenUtils.relativeSize(context, 0.01)),
+              Text(
+                'Looking for ID: $machineId',
+                style: TextStyle(
+                  fontSize: ScreenUtils.relativeFontSize(
+                    context,
+                    0.032,
+                    min: ScreenUtils.getSmallerDimension(context) * 0.025,
+                    max: ScreenUtils.getSmallerDimension(context) * 0.045,
+                  ),
+                ),
+              ),
+              SizedBox(height: ScreenUtils.relativeSize(context, 0.01)),
+              Text(
+                'Total machines: ${machines.length}',
+                style: TextStyle(
+                  fontSize: ScreenUtils.relativeFontSize(
+                    context,
+                    0.032,
+                    min: ScreenUtils.getSmallerDimension(context) * 0.025,
+                    max: ScreenUtils.getSmallerDimension(context) * 0.045,
+                  ),
+                ),
+              ),
               if (machines.isNotEmpty) ...[
-                const SizedBox(height: 8),
+                SizedBox(height: ScreenUtils.relativeSize(context, 0.01)),
                 Text(
                   'Available IDs: ${machines.map((m) => m.id).join(', ')}',
-                  style: const TextStyle(fontSize: 10),
+                  style: TextStyle(
+                    fontSize: ScreenUtils.relativeFontSize(
+                      context,
+                      0.025,
+                      min: ScreenUtils.getSmallerDimension(context) * 0.02,
+                      max: ScreenUtils.getSmallerDimension(context) * 0.035,
+                    ),
+                  ),
                 ),
               ],
-              const SizedBox(height: 16),
+              SizedBox(height: ScreenUtils.relativeSize(context, 0.02)),
               ElevatedButton(
                 onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Close'),
+                child: Text(
+                  'Close',
+                  style: TextStyle(
+                    fontSize: ScreenUtils.relativeFontSize(
+                      context,
+                      0.032,
+                      min: ScreenUtils.getSmallerDimension(context) * 0.025,
+                      max: ScreenUtils.getSmallerDimension(context) * 0.045,
+                    ),
+                  ),
+                ),
               ),
             ],
           ),
@@ -1156,16 +1217,34 @@ class _MachineViewDialog extends ConsumerWidget {
                     imagePath,
                     fit: BoxFit.cover,
                     width: double.infinity,
-                    height: 200,
+                    height: ScreenUtils.relativeSizeClamped(
+                      context,
+                      0.4, // Relative to screen width
+                      min: ScreenUtils.getSmallerDimension(context) * 0.3,
+                      max: ScreenUtils.getSmallerDimension(context) * 0.5,
+                    ),
                     errorBuilder: (context, error, stackTrace) {
                       return Container(
                         width: double.infinity,
-                        height: 200,
+                        height: ScreenUtils.relativeSizeClamped(
+                          context,
+                          0.4,
+                          min: ScreenUtils.getSmallerDimension(context) * 0.3,
+                          max: ScreenUtils.getSmallerDimension(context) * 0.5,
+                        ),
                         color: Colors.grey[800],
-                        child: const Center(
+                        child: Center(
                           child: Text(
                             'View image not found',
-                            style: TextStyle(color: Colors.white),
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: ScreenUtils.relativeFontSize(
+                                context,
+                                0.032,
+                                min: ScreenUtils.getSmallerDimension(context) * 0.025,
+                                max: ScreenUtils.getSmallerDimension(context) * 0.045,
+                              ),
+                            ),
                           ),
                         ),
                       );
@@ -1173,10 +1252,19 @@ class _MachineViewDialog extends ConsumerWidget {
                   ),
                 ),
                 Positioned(
-                  top: 8,
-                  right: 8,
+                  top: ScreenUtils.relativeSize(context, 0.015),
+                  right: ScreenUtils.relativeSize(context, 0.015),
                   child: IconButton(
-                    icon: const Icon(Icons.close, color: Colors.white, size: 28),
+                    icon: Icon(
+                      Icons.close,
+                      color: Colors.white,
+                      size: ScreenUtils.relativeSizeClamped(
+                        context,
+                        0.06,
+                        min: ScreenUtils.getSmallerDimension(context) * 0.05,
+                        max: ScreenUtils.getSmallerDimension(context) * 0.08,
+                      ),
+                    ),
                     onPressed: () => Navigator.of(context).pop(),
                     style: IconButton.styleFrom(
                       backgroundColor: Colors.black.withOpacity(0.5),
@@ -1232,8 +1320,18 @@ class _MachineStatusSection extends ConsumerWidget {
         Row(
           children: [
             Container(
-              width: 48,
-              height: 48,
+              width: ScreenUtils.relativeSizeClamped(
+                context,
+                0.12,
+                min: ScreenUtils.getSmallerDimension(context) * 0.1,
+                max: ScreenUtils.getSmallerDimension(context) * 0.15,
+              ),
+              height: ScreenUtils.relativeSizeClamped(
+                context,
+                0.12,
+                min: ScreenUtils.getSmallerDimension(context) * 0.1,
+                max: ScreenUtils.getSmallerDimension(context) * 0.15,
+              ),
               decoration: BoxDecoration(
                 color: zoneColor.withOpacity(0.2),
                 shape: BoxShape.circle,
@@ -1241,29 +1339,44 @@ class _MachineStatusSection extends ConsumerWidget {
               child: Icon(
                 zoneIcon,
                 color: zoneColor,
-                size: 24,
+                size: ScreenUtils.relativeSizeClamped(
+                  context,
+                  0.06,
+                  min: ScreenUtils.getSmallerDimension(context) * 0.05,
+                  max: ScreenUtils.getSmallerDimension(context) * 0.08,
+                ),
               ),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: ScreenUtils.relativeSize(context, 0.02)),
             Expanded(
               child: Text(
                 machine.name,
-                style: const TextStyle(
-                  fontSize: 18,
+                style: TextStyle(
+                  fontSize: ScreenUtils.relativeFontSize(
+                    context,
+                    0.045,
+                    min: ScreenUtils.getSmallerDimension(context) * 0.035,
+                    max: ScreenUtils.getSmallerDimension(context) * 0.065,
+                  ),
                   fontWeight: FontWeight.bold,
                 ),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: ScreenUtils.relativeSize(context, 0.02)),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               'Stock: ${machine.totalInventory} items',
               style: TextStyle(
-                fontSize: 14,
+                fontSize: ScreenUtils.relativeFontSize(
+                  context,
+                  0.032,
+                  min: ScreenUtils.getSmallerDimension(context) * 0.025,
+                  max: ScreenUtils.getSmallerDimension(context) * 0.045,
+                ),
                 color: Colors.grey[600],
               ),
             ),
@@ -1292,14 +1405,24 @@ class _MachineStatusSection extends ConsumerWidget {
                   Text(
                     'Cash',
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: ScreenUtils.relativeFontSize(
+                        context,
+                        0.025,
+                        min: ScreenUtils.getSmallerDimension(context) * 0.02,
+                        max: ScreenUtils.getSmallerDimension(context) * 0.035,
+                      ),
                       color: Colors.grey[600],
                     ),
                   ),
                   Text(
                     '\$${machine.currentCash.toStringAsFixed(2)}',
-                    style: const TextStyle(
-                      fontSize: 20,
+                    style: TextStyle(
+                      fontSize: ScreenUtils.relativeFontSize(
+                        context,
+                        0.05,
+                        min: ScreenUtils.getSmallerDimension(context) * 0.04,
+                        max: ScreenUtils.getSmallerDimension(context) * 0.07,
+                      ),
                       fontWeight: FontWeight.bold,
                       color: Colors.green,
                     ),
@@ -1312,10 +1435,15 @@ class _MachineStatusSection extends ConsumerWidget {
         const SizedBox(height: 16),
         const Divider(),
         const SizedBox(height: 16),
-        const Text(
+        Text(
           'Stock Details:',
           style: TextStyle(
-            fontSize: 16,
+            fontSize: ScreenUtils.relativeFontSize(
+              context,
+              0.045,
+              min: ScreenUtils.getSmallerDimension(context) * 0.035,
+              max: ScreenUtils.getSmallerDimension(context) * 0.065,
+            ),
             fontWeight: FontWeight.bold,
           ),
         ),

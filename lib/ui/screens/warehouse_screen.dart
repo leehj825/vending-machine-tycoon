@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../simulation/models/product.dart';
 import '../../state/providers.dart';
 import '../widgets/market_product_card.dart';
+import '../utils/screen_utils.dart';
 
 /// Warehouse & Market Screen
 class WarehouseScreen extends ConsumerWidget {
@@ -34,11 +35,17 @@ class WarehouseScreen extends ConsumerWidget {
                 children: [
                   Text(
                     'Warehouse Status',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                    style: TextStyle(
+                      fontSize: ScreenUtils.relativeFontSize(
+                        context,
+                        0.045, // Match dashboard screen
+                        min: ScreenUtils.getSmallerDimension(context) * 0.035,
+                        max: ScreenUtils.getSmallerDimension(context) * 0.065,
+                      ),
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: ScreenUtils.relativeSize(context, 0.02)),
                   // Capacity indicator
                   Row(
                     children: [
@@ -48,7 +55,14 @@ class WarehouseScreen extends ConsumerWidget {
                           children: [
                             Text(
                               'Capacity: $currentTotal / $maxCapacity items',
-                              style: const TextStyle(fontSize: 16),
+                              style: TextStyle(
+                                fontSize: ScreenUtils.relativeFontSize(
+                                  context,
+                                  0.032, // Match dashboard subtitle
+                                  min: ScreenUtils.getSmallerDimension(context) * 0.025,
+                                  max: ScreenUtils.getSmallerDimension(context) * 0.045,
+                                ),
+                              ),
                             ),
                             const SizedBox(height: 8),
                             LinearProgressIndicator(
@@ -73,9 +87,15 @@ class WarehouseScreen extends ConsumerWidget {
                   if (warehouse.inventory.isNotEmpty) ...[
                     Text(
                       'Current Stock',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
+                      style: TextStyle(
+                        fontSize: ScreenUtils.relativeFontSize(
+                          context,
+                          0.045, // Match dashboard screen
+                          min: ScreenUtils.getSmallerDimension(context) * 0.035,
+                          max: ScreenUtils.getSmallerDimension(context) * 0.065,
+                        ),
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Wrap(
@@ -98,11 +118,29 @@ class WarehouseScreen extends ConsumerWidget {
                         color: Colors.grey[200],
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Row(
+                      child: Row(
                         children: [
-                          Icon(Icons.inventory_2_outlined, size: 24),
-                          SizedBox(width: 8),
-                          Text('Warehouse is empty'),
+                          Icon(
+                            Icons.inventory_2_outlined,
+                            size: ScreenUtils.relativeSizeClamped(
+                              context,
+                              0.08, // Match dashboard icon size
+                              min: ScreenUtils.getSmallerDimension(context) * 0.06,
+                              max: ScreenUtils.getSmallerDimension(context) * 0.12,
+                            ),
+                          ),
+                          SizedBox(width: ScreenUtils.relativeSize(context, 0.01)),
+                          Text(
+                            'Warehouse is empty',
+                            style: TextStyle(
+                              fontSize: ScreenUtils.relativeFontSize(
+                                context,
+                                0.032, // Match dashboard subtitle
+                                min: ScreenUtils.getSmallerDimension(context) * 0.025,
+                                max: ScreenUtils.getSmallerDimension(context) * 0.045,
+                              ),
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -127,17 +165,25 @@ class WarehouseScreen extends ConsumerWidget {
                       children: [
                         Text(
                           'Daily Prices',
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleMedium
-                              ?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
+                          style: TextStyle(
+                            fontSize: ScreenUtils.relativeFontSize(
+                              context,
+                              0.045, // Match dashboard screen
+                              min: ScreenUtils.getSmallerDimension(context) * 0.035,
+                              max: ScreenUtils.getSmallerDimension(context) * 0.065,
+                            ),
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                         Text(
                           'Prices update automatically',
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: ScreenUtils.relativeFontSize(
+                              context,
+                              0.032, // Match dashboard subtitle
+                              min: ScreenUtils.getSmallerDimension(context) * 0.025,
+                              max: ScreenUtils.getSmallerDimension(context) * 0.045,
+                            ),
                             color: Colors.grey[600],
                           ),
                         ),

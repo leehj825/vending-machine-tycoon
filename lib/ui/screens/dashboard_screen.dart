@@ -83,37 +83,37 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       Icons.inventory_2_outlined,
                       size: ScreenUtils.relativeSizeClamped(
                         context,
-                        0.05, // Increased from 0.027
-                        min: ScreenUtils.getSmallerDimension(context) * 0.04,
-                        max: ScreenUtils.getSmallerDimension(context) * 0.08,
+                        0.08, // Increased from 0.06
+                        min: ScreenUtils.getSmallerDimension(context) * 0.06,
+                        max: ScreenUtils.getSmallerDimension(context) * 0.12,
                       ),
                       color: Colors.grey[400],
                     ),
-                    SizedBox(height: ScreenUtils.relativeSize(context, 0.015)),
+                    SizedBox(height: ScreenUtils.relativeSize(context, 0.025)),
                     Text(
                       'No machines yet',
                       style: TextStyle(
                         fontSize: ScreenUtils.relativeFontSize(
                           context,
-                          0.028, // Increased from 0.015
-                          min: ScreenUtils.getSmallerDimension(context) * 0.022,
-                          max: ScreenUtils.getSmallerDimension(context) * 0.04,
+                          0.045, // Increased from 0.035
+                          min: ScreenUtils.getSmallerDimension(context) * 0.035,
+                          max: ScreenUtils.getSmallerDimension(context) * 0.065,
                         ),
+                        fontWeight: FontWeight.bold,
                         color: Colors.grey[600],
-                        fontWeight: FontWeight.w500,
                       ),
                     ),
-                    SizedBox(height: ScreenUtils.relativeSize(context, 0.01)),
+                    SizedBox(height: ScreenUtils.relativeSize(context, 0.02)),
                     Text(
                       'Go to the Map to purchase machines',
                       style: TextStyle(
                         fontSize: ScreenUtils.relativeFontSize(
                           context,
-                          0.020, // Increased from 0.012
-                          min: ScreenUtils.getSmallerDimension(context) * 0.016,
-                          max: ScreenUtils.getSmallerDimension(context) * 0.028,
+                          0.032, // Increased from 0.025
+                          min: ScreenUtils.getSmallerDimension(context) * 0.025,
+                          max: ScreenUtils.getSmallerDimension(context) * 0.045,
                         ),
-                        color: Colors.grey[500],
+                        color: Colors.grey[600],
                       ),
                     ),
                   ],
