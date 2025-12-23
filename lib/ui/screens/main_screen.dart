@@ -50,38 +50,109 @@ class _MainScreenState extends ConsumerState<MainScreen> {
         index: _selectedIndex,
         children: _screens,
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
+      bottomNavigationBar: _CustomBottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
-        selectedItemColor: Colors.green,
-        unselectedItemColor: Colors.grey,
-        selectedLabelStyle: const TextStyle(
-          fontWeight: FontWeight.w600,
-        ),
-        unselectedLabelStyle: const TextStyle(
-          fontWeight: FontWeight.normal,
-        ),
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard_rounded),
-            label: 'HQ',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.map_rounded),
-            label: 'City',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.local_shipping_rounded),
-            label: 'Fleet',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.store_rounded),
-            label: 'Market',
+      ),
+    );
+  }
+}
+
+/// Custom bottom navigation bar using image assets
+class _CustomBottomNavigationBar extends StatelessWidget {
+  final int currentIndex;
+  final Function(int) onTap;
+
+  const _CustomBottomNavigationBar({
+    required this.currentIndex,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 4,
+            offset: const Offset(0, -2),
           ),
         ],
       ),
+      child: SafeArea(
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _buildTabItem(
+              index: 0,
+              pressAsset: 'assets/images/hq_tab_press.png',
+              unpressAsset: 'assets/images/hq_tab_unpress.png',
+            ),
+            _buildTabItem(
+              index: 1,
+              pressAsset: 'assets/images/city_tab_press.png',
+              unpressAsset: 'assets/images/city_tab_unpress.png',
+            ),
+            _buildTabItem(
+              index: 2,
+              pressAsset: 'assets/images/fleet_tab_press.png',
+              unpressAsset: 'assets/images/fleet_tab_unpress.png',
+            ),
+            _buildTabItem(
+              index: 3,
+              pressAsset: 'assets/images/market_tab_press.png',
+              unpressAsset: 'assets/images/market_tab_unpress.png',
+            ),
+          ],
+        ),
+      ),
     );
+  }
+
+  Widget _buildTabItem({
+    required int index,
+    required String pressAsset,
+    required String unpressAsset,
+  }) {
+    final isSelected = currentIndex == index;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => onTap(index),
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Image.asset(
+            isSelected ? pressAsset : unpressAsset,
+            fit: BoxFit.contain,
+            errorBuilder: (context, error, stackTrace) {
+              // Fallback to icon if image fails to load
+              return Icon(
+                _getIconForIndex(index),
+                color: isSelected ? Colors.green : Colors.grey,
+                size: 24,
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  IconData _getIconForIndex(int index) {
+    switch (index) {
+      case 0:
+        return Icons.dashboard_rounded;
+      case 1:
+        return Icons.map_rounded;
+      case 2:
+        return Icons.local_shipping_rounded;
+      case 3:
+        return Icons.store_rounded;
+      default:
+        return Icons.circle;
+    }
   }
 }
 

@@ -76,6 +76,14 @@ flutter:
     - assets/images/load_game_button.png
     - assets/images/options_button.png
     - assets/images/credits_button.png
+    - assets/images/hq_tab_press.png
+    - assets/images/hq_tab_unpress.png
+    - assets/images/city_tab_press.png
+    - assets/images/city_tab_unpress.png
+    - assets/images/fleet_tab_press.png
+    - assets/images/fleet_tab_unpress.png
+    - assets/images/market_tab_press.png
+    - assets/images/market_tab_unpress.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
