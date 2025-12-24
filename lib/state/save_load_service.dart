@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'game_state.dart';
 import 'providers.dart';
+import 'city_map_state.dart';
 import '../simulation/models/machine.dart';
 import '../simulation/models/truck.dart';
 import '../simulation/models/product.dart';
@@ -64,6 +65,7 @@ class SaveLoadService {
       'warehouse': _serializeWarehouse(state.warehouse),
       'warehouseRoadX': state.warehouseRoadX,
       'warehouseRoadY': state.warehouseRoadY,
+      'cityMapState': state.cityMapState?.toJson(),
     };
     return jsonEncode(map);
   }
@@ -87,6 +89,9 @@ class SaveLoadService {
       warehouse: _deserializeWarehouse(map['warehouse'] as Map<String, dynamic>),
       warehouseRoadX: map['warehouseRoadX'] as double?,
       warehouseRoadY: map['warehouseRoadY'] as double?,
+      cityMapState: map['cityMapState'] != null
+          ? CityMapState.fromJson(map['cityMapState'] as Map<String, dynamic>)
+          : null,
     );
   }
 

@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../state/providers.dart';
+import '../../state/city_map_state.dart';
 import '../../simulation/models/zone.dart';
 import '../../simulation/models/truck.dart' as sim;
 import '../../simulation/models/machine.dart' as sim;
@@ -99,9 +100,79 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
   @override
   void initState() {
     super.initState();
-    _generateMap();
+    // Check if map state exists in saved game, otherwise generate new map
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final gameState = ref.read(gameControllerProvider);
+      if (gameState.cityMapState != null) {
+        _loadMapFromState(gameState.cityMapState!);
+      } else {
+        _generateMap();
+        _saveMapToState();
+      }
+    });
     // Initialize with a zoomed-in view (scale 1.5)
     _transformationController = TransformationController();
+  }
+  
+  /// Load map from saved state
+  void _loadMapFromState(CityMapState mapState) {
+    _grid = mapState.grid.map((row) {
+      return row.map((tileName) {
+        return TileType.values.firstWhere(
+          (e) => e.name == tileName,
+          orElse: () => TileType.grass,
+        );
+      }).toList();
+    }).toList();
+    
+    _roadDirections = mapState.roadDirections.map((row) {
+      return row.map((dirName) {
+        if (dirName == null) return null;
+        return RoadDirection.values.firstWhere(
+          (e) => e.name == dirName,
+          orElse: () => RoadDirection.horizontal,
+        );
+      }).toList();
+    }).toList();
+    
+    _buildingOrientations = mapState.buildingOrientations.map((row) {
+      return row.map((orientName) {
+        if (orientName == null) return null;
+        return BuildingOrientation.values.firstWhere(
+          (e) => e.name == orientName,
+          orElse: () => BuildingOrientation.normal,
+        );
+      }).toList();
+    }).toList();
+    
+    _warehouseX = mapState.warehouseX;
+    _warehouseY = mapState.warehouseY;
+  }
+  
+  /// Save current map to game state
+  void _saveMapToState() {
+    final gridStrings = _grid.map((row) {
+      return row.map((tile) => tile.name).toList();
+    }).toList();
+    
+    final roadDirStrings = _roadDirections.map((row) {
+      return row.map((dir) => dir?.name).toList();
+    }).toList();
+    
+    final buildingOrientStrings = _buildingOrientations.map((row) {
+      return row.map((orient) => orient?.name).toList();
+    }).toList();
+    
+    final mapState = CityMapState(
+      grid: gridStrings,
+      roadDirections: roadDirStrings,
+      buildingOrientations: buildingOrientStrings,
+      warehouseX: _warehouseX,
+      warehouseY: _warehouseY,
+    );
+    
+    final controller = ref.read(gameControllerProvider.notifier);
+    controller.updateCityMapState(mapState);
   }
 
   @override

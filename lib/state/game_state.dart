@@ -2,6 +2,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 import '../simulation/models/machine.dart';
 import '../simulation/models/truck.dart';
 import 'providers.dart';
+import 'city_map_state.dart';
 
 part 'game_state.freezed.dart';
 
@@ -19,6 +20,7 @@ abstract class GlobalGameState with _$GlobalGameState {
     @Default(Warehouse()) Warehouse warehouse,
     @Default(null) double? warehouseRoadX, // Road tile X coordinate next to warehouse (zone coordinates)
     @Default(null) double? warehouseRoadY, // Road tile Y coordinate next to warehouse (zone coordinates)
+    @Default(null) CityMapState? cityMapState, // City map layout (grid, buildings, roads)
   }) = _GlobalGameState;
 
   const GlobalGameState._();

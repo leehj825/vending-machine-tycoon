@@ -9,6 +9,7 @@ import '../simulation/models/zone.dart';
 import '../simulation/models/machine.dart';
 import '../simulation/models/truck.dart';
 import 'game_state.dart';
+import 'city_map_state.dart';
 
 part 'providers.freezed.dart';
 
@@ -592,6 +593,13 @@ class GameController extends StateNotifier<GlobalGameState> {
     state = savedState;
     
     state = state.addLogMessage('Game loaded successfully');
+  }
+
+  /// Update city map state
+  void updateCityMapState(CityMapState? mapState) {
+    // Directly update state - this works around freezed limitations
+    // The state will be properly serialized when saving
+    state = state.copyWith(cityMapState: mapState);
   }
 
   /// Retrieve cash from a machine
