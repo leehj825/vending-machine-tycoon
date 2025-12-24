@@ -100,18 +100,20 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
   @override
   void initState() {
     super.initState();
-    // Check if map state exists in saved game, otherwise generate new map
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final gameState = ref.read(gameControllerProvider);
-      if (gameState.cityMapState != null) {
-        _loadMapFromState(gameState.cityMapState!);
-      } else {
-        _generateMap();
-        _saveMapToState();
-      }
-    });
     // Initialize with a zoomed-in view (scale 1.5)
     _transformationController = TransformationController();
+    
+    // Initialize map immediately - check if map state exists in saved game, otherwise generate new map
+    final gameState = ref.read(gameControllerProvider);
+    if (gameState.cityMapState != null) {
+      _loadMapFromState(gameState.cityMapState!);
+    } else {
+      _generateMap();
+      // Save map state after frame is built
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _saveMapToState();
+      });
+    }
   }
   
   /// Load map from saved state
