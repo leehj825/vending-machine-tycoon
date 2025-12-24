@@ -508,7 +508,7 @@ class SimulationEngine extends StateNotifier<SimulationState> {
       // Get cached base graph and create a shallow copy for this pathfinding call
       final baseGraph = _getBaseGraph();
       final graph = Map<({double x, double y}), List<({double x, double y})>>.from(
-        baseGraph.map((key, value) => MapEntry(key, List.from(value))),
+        baseGraph.map((key, value) => MapEntry(key, List<({double x, double y})>.from(value))),
       );
       
       // Helper to check if a coordinate is on an outward road
