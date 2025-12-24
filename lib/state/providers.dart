@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart' show StateNotifierProvider, StateProvider;
@@ -68,11 +69,16 @@ class GameController extends StateNotifier<GlobalGameState> {
   /// Public getter to access current state
   GlobalGameState get currentState => state;
 
+  StreamSubscription<SimulationState>? _simSubscription;
+
   /// Setup listener for simulation engine updates
   void _setupSimulationListener() {
     print('🟡 CONTROLLER: Setting up simulation listener...');
     
-    simulationEngine.stream.listen((simState) {
+    _simSubscription = simulationEngine.stream.listen((SimulationState simState) {
+      // Check if controller is still alive
+      if (!mounted) return;
+      
       // This print confirms data is flowing from Engine -> UI
       print('🟡 CONTROLLER SYNC: Received update. Cash: \$${simState.cash.toStringAsFixed(2)}, Machines: ${simState.machines.length}');
       
@@ -131,18 +137,41 @@ class GameController extends StateNotifier<GlobalGameState> {
 
   /// Buy a new vending machine and place it in a zone
   void buyMachine(ZoneType zoneType, {required double x, required double y}) {
-    print('🟢 CONTROLLER ACTION: Attempting to buy machine...');
+    _processMachinePurchase(zoneType, x, y, withStock: false);
+  }
+
+  /// Buy a new vending machine with automatic initial stocking
+  void buyMachineWithStock(ZoneType zoneType, {required double x, required double y}) {
+    _processMachinePurchase(zoneType, x, y, withStock: true);
+  }
+
+  /// Common logic for purchasing a machine (with or without stock)
+  void _processMachinePurchase(ZoneType zoneType, double x, double y, {required bool withStock}) {
+    print('🟢 CONTROLLER ACTION: Attempting to buy machine${withStock ? " with stock" : ""}...');
     final price = MachinePrices.getPrice(zoneType);
+    
     if (state.cash < price) {
       state = state.addLogMessage('Insufficient funds');
       return;
     }
 
-    // 1. Create Data
+    // Create zone and building name
     final zone = _createZoneForType(zoneType, x: x, y: y);
-    
-    // Map zone type to building name for display
     final buildingName = _getBuildingNameForZone(zoneType);
+    
+    // Create inventory (empty or with initial stock)
+    Map<Product, InventoryItem> inventory = {};
+    if (withStock) {
+      final initialProducts = _getInitialProductsForZone(zoneType);
+      final currentDay = simulationEngine.state.time.day;
+      for (final product in initialProducts) {
+        inventory[product] = InventoryItem(
+          product: product,
+          quantity: 20,
+          dayAdded: currentDay,
+        );
+      }
+    }
     
     // Create machine
     final newMachine = Machine(
@@ -150,7 +179,7 @@ class GameController extends StateNotifier<GlobalGameState> {
       name: '$buildingName Machine ${state.machines.length + 1}',
       zone: zone,
       condition: MachineCondition.excellent,
-      inventory: {},
+      inventory: inventory,
       currentCash: 0.0,
     );
 
@@ -158,69 +187,18 @@ class GameController extends StateNotifier<GlobalGameState> {
     final updatedMachines = [...state.machines, newMachine];
     simulationEngine.updateMachines(updatedMachines);
 
-    // UPDATE STATE DIRECTLY
-    final newCash = state.cash - price;
-    state = state.copyWith(
-      cash: newCash,
-      machines: updatedMachines,
-    );
-    state = state.addLogMessage("Bought ${newMachine.name}");
-    
-    // Sync cash to simulation engine to prevent reversion on next tick
-    simulationEngine.updateCash(newCash);
-  }
-
-  /// Buy a new vending machine with automatic initial stocking
-  void buyMachineWithStock(ZoneType zoneType, {required double x, required double y}) {
-    print('🟢 CONTROLLER ACTION: Attempting to buy machine with stock...');
-    final price = MachinePrices.getPrice(zoneType);
-    if (state.cash < price) {
-      state = state.addLogMessage('Insufficient funds');
-      return;
-    }
-
-    // 1. Create Data
-    final zone = _createZoneForType(zoneType, x: x, y: y);
-    
-    // 2. Get initial products for this zone type
-    final initialProducts = _getInitialProductsForZone(zoneType);
-    
-    // 3. Create initial inventory
-    final currentDay = simulationEngine.state.time.day;
-    final initialInventory = <Product, InventoryItem>{};
-    for (final product in initialProducts) {
-      initialInventory[product] = InventoryItem(
-        product: product,
-        quantity: 20, // Start with 20 of each product
-        dayAdded: currentDay,
-      );
-    }
-    
-    // Create machine with initial inventory
-    // Map zone type to building name for display
-    final buildingName = _getBuildingNameForZone(zoneType);
-    final newMachine = Machine(
-      id: _uuid.v4(),
-      name: '$buildingName Machine ${state.machines.length + 1}',
-      zone: zone,
-      condition: MachineCondition.excellent,
-      inventory: initialInventory,
-      currentCash: 0.0,
-    );
-
-    // Update simulation engine
-    final updatedMachines = [...state.machines, newMachine];
-    simulationEngine.updateMachines(updatedMachines);
-
-    // UPDATE STATE DIRECTLY
+    // Update state
     final newCash = state.cash - price;
     state = state.copyWith(
       cash: newCash,
       machines: updatedMachines,
     );
     
-    final productNames = initialProducts.map((p) => p.name).join(', ');
-    state = state.addLogMessage("Bought ${newMachine.name} (stocked with: $productNames)");
+    // Create log message
+    final logMsg = withStock 
+        ? "Bought ${newMachine.name} (stocked)"
+        : "Bought ${newMachine.name}";
+    state = state.addLogMessage(logMsg);
     
     // Sync cash to simulation engine to prevent reversion on next tick
     simulationEngine.updateCash(newCash);
@@ -641,20 +619,16 @@ class GameController extends StateNotifier<GlobalGameState> {
     simulationEngine.updateCash(newCash);
   }
 
-  // No dispose method needed in GameController for SimulationEngine as it's not a provider but an internal object.
-  // We just want to make sure the timer stops.
   @override
   void dispose() {
+    // Cancel the stream subscription to prevent updates after disposal
+    _simSubscription?.cancel();
+    _simSubscription = null;
+    
+    // Stop the simulation engine
     simulationEngine.stop();
-    // Do NOT call super.dispose() here manually because StateNotifierProvider handles it?
-    // Wait, StateNotifier expects dispose() to be called.
-    // The error says "Tried to use GameController after dispose was called".
-    // This implies that something is accessing the controller AFTER it has been disposed.
-    // Riverpod calls dispose() automatically.
     
-    // Let's try removing our manual dispose entirely and just rely on onDispose in the provider definition?
-    // No, we need to stop the engine.
-    
+    // Call super.dispose() - StateNotifier requires this
     super.dispose();
   }
 }

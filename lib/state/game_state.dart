@@ -28,15 +28,14 @@ abstract class GlobalGameState with _$GlobalGameState {
   /// Add a log message (keeps last 100 messages)
   GlobalGameState addLogMessage(String message) {
     final timestamp = 'Day $dayCount, ${_formatHour(hourOfDay)}';
-    final newMessages = [
-      ...logMessages,
-      '[$timestamp] $message',
-    ];
-    // Keep only last 100 messages
-    if (newMessages.length > 100) {
-      newMessages.removeRange(0, newMessages.length - 100);
-    }
-    return copyWith(logMessages: newMessages);
+    final newEntry = '[$timestamp] $message';
+    
+    // Take the last 99 items, then add the new one to avoid unnecessary copying
+    final limitedHistory = logMessages.length >= 100 
+        ? logMessages.sublist(logMessages.length - 99) 
+        : logMessages;
+        
+    return copyWith(logMessages: [...limitedHistory, newEntry]);
   }
 
   /// Format hour for display

@@ -150,14 +150,23 @@ class CityMapGame extends FlameGame with ScaleDetector, ScrollDetector, TapDetec
     }
   }
 
-  // --- SYNC LOGIC (Unchanged) ---
+  // --- SYNC LOGIC ---
   void _syncMachines() {
     try {
       final machines = ref.read(machinesProvider);
       final machineIds = machines.map((m) => m.id).toSet();
-      _machineComponents.keys.where((id) => !machineIds.contains(id)).toList().forEach((id) {
-         _machineComponents.remove(id)?.removeFromParent();
-      });
+      
+      // Iterate existing keys directly instead of creating a new list
+      final keysToRemove = <String>[];
+      for (final id in _machineComponents.keys) {
+        if (!machineIds.contains(id)) {
+          keysToRemove.add(id);
+        }
+      }
+      for (final id in keysToRemove) {
+        _machineComponents.remove(id)?.removeFromParent();
+      }
+      
       for (final m in machines) {
          final blockX = (m.zone.x - 1.0).floor();
          final blockY = (m.zone.y - 1.0).floor();
@@ -174,16 +183,28 @@ class CityMapGame extends FlameGame with ScaleDetector, ScrollDetector, TapDetec
             world.add(c);
          }
       }
-    } catch (_) {}
+    } catch (e, stack) {
+      debugPrint("Error syncing machines: $e");
+      debugPrint("Stack trace: $stack");
+    }
   }
 
   void _syncTrucks() {
     try {
       final trucks = ref.read(trucksProvider);
       final truckIds = trucks.map((t) => t.id).toSet();
-      _truckComponents.keys.where((id) => !truckIds.contains(id)).toList().forEach((id) {
-         _truckComponents.remove(id)?.removeFromParent();
-      });
+      
+      // Iterate existing keys directly instead of creating a new list
+      final keysToRemove = <String>[];
+      for (final id in _truckComponents.keys) {
+        if (!truckIds.contains(id)) {
+          keysToRemove.add(id);
+        }
+      }
+      for (final id in keysToRemove) {
+        _truckComponents.remove(id)?.removeFromParent();
+      }
+      
       for (final t in trucks) {
         // Trucks must always stay on roads (integer coordinates)
         // Round to road coordinates for all truck states
@@ -201,7 +222,10 @@ class CityMapGame extends FlameGame with ScaleDetector, ScrollDetector, TapDetec
            world.add(c);
         }
       }
-    } catch (_) {}
+    } catch (e, stack) {
+      debugPrint("Error syncing trucks: $e");
+      debugPrint("Stack trace: $stack");
+    }
   }
 }
 
