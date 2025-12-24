@@ -352,42 +352,27 @@ class _CustomBottomNavigationBar extends ConsumerWidget {
       onTap: () => onTap(index),
       behavior: HitTestBehavior.opaque,
       child: Container(
-        padding: EdgeInsets.symmetric(
-          vertical: ScreenUtils.relativeSize(context, 0.0034),
-        ),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final smallerDim = ScreenUtils.getSmallerDimension(context);
-            // Increase tab width for better visibility on Android
-            final maxWidth = ScreenUtils.relativeSizeClamped(
-              context,
-              0.75, // Increased from 0.62
-              min: smallerDim * 0.25, // Increased from 0.195
-              max: smallerDim * 0.45, // Increased from 0.39
-            );
-            return Center(
-              child: SizedBox(
-                width: maxWidth,
-                child: Image.asset(
-                  isSelected ? pressAsset : unpressAsset,
-                  fit: BoxFit.contain,
-                  errorBuilder: (context, error, stackTrace) {
-                    // Fallback to icon if image fails to load
-                    return Icon(
-                      _getIconForIndex(index),
-                      color: isSelected ? Colors.green : Colors.grey,
-                      size: ScreenUtils.relativeSizeClamped(
-                        context,
-                        0.12, // Increased from 0.078
-                        min: smallerDim * 0.08,
-                        max: smallerDim * 0.15,
-                      ),
-                    );
-                  },
+        height: 60, // Fixed comfortable height
+        color: Colors.transparent, // Ensures the empty space is tappable
+        child: Center(
+          child: Image.asset(
+            isSelected ? pressAsset : unpressAsset,
+            fit: BoxFit.contain, // Prevents distortion - image grows as big as possible without distorting
+            errorBuilder: (context, error, stackTrace) {
+              // Fallback to icon if image fails to load
+              final smallerDim = ScreenUtils.getSmallerDimension(context);
+              return Icon(
+                _getIconForIndex(index),
+                color: isSelected ? Colors.green : Colors.grey,
+                size: ScreenUtils.relativeSizeClamped(
+                  context,
+                  0.12,
+                  min: smallerDim * 0.08,
+                  max: smallerDim * 0.15,
                 ),
-              ),
-            );
-          },
+              );
+            },
+          ),
         ),
       ),
     );
@@ -396,87 +381,87 @@ class _CustomBottomNavigationBar extends ConsumerWidget {
   Widget _buildActionButtons(BuildContext context, WidgetRef ref) {
     return LayoutBuilder(
       builder: (context, constraints) {
+        final screenWidth = MediaQuery.of(context).size.width;
         final smallerDim = ScreenUtils.getSmallerDimension(context);
-        // Calculate button width: half of tab button width (doubled)
-        final buttonWidth = ScreenUtils.relativeSizeClamped(
+        
+        // Calculate button height: comfortable touch height (min 48dp recommended)
+        final buttonHeight = ScreenUtils.relativeSizeClamped(
           context,
-          0.31, // 62% * 0.5
-          min: smallerDim * 0.0975,
-          max: smallerDim * 0.195,
+          0.08, // Responsive height
+          min: 48.0, // Minimum 48dp for comfortable touch target
+          max: smallerDim * 0.12,
         );
         
-        // Calculate button height: half of tab button height (doubled)
-        final tabButtonPadding = ScreenUtils.relativeSize(context, 0.0034);
-        final tabButtonHeight = constraints.maxHeight - (tabButtonPadding * 2);
-        final buttonHeight = (tabButtonHeight * 0.5).clamp(
-          smallerDim * 0.042,
-          smallerDim * 0.13,
+        // Adjust button width for side-by-side layout - make them smaller to fit together
+        final sideBySideButtonWidth = ScreenUtils.relativeSizeClamped(
+          context,
+          0.12, // Smaller width for side-by-side layout
+          min: screenWidth * 0.08, // At least 8% of screen width
+          max: screenWidth * 0.15, // At most 15% of screen width
         );
         
-        return Container(
-          // Anchor the container by aligning buttons
-          // The Column will be centered vertically, with save button bottom and exit button top as anchors
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Save Button - bottom anchor point
-              GestureDetector(
-                onTap: () => _saveGame(context, ref),
-                child: SizedBox(
-                  width: buttonWidth,
-                  height: buttonHeight,
-                  child: Image.asset(
-                    'assets/images/save_button.png',
-                    fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        width: buttonWidth,
-                        height: buttonHeight,
-                        decoration: BoxDecoration(
-                          color: Colors.blue,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Icons.save,
-                          color: Colors.white,
-                          size: buttonHeight * 0.5,
-                        ),
-                      );
-                    },
-                  ),
+        return Row(
+          mainAxisSize: MainAxisSize.min, // Keep compact on the right side
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Save Button
+            GestureDetector(
+              onTap: () => _saveGame(context, ref),
+              child: Container(
+                width: sideBySideButtonWidth,
+                height: buttonHeight,
+                alignment: Alignment.center,
+                child: Image.asset(
+                  'assets/images/save_button.png',
+                  fit: BoxFit.contain, // Keeps button shape correct
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      width: sideBySideButtonWidth,
+                      height: buttonHeight,
+                      decoration: BoxDecoration(
+                        color: Colors.blue,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.save,
+                        color: Colors.white,
+                        size: buttonHeight * 0.5,
+                      ),
+                    );
+                  },
                 ),
               ),
-              SizedBox(height: ScreenUtils.relativeSize(context, 0.0017)),
-              // Exit Button - top anchor point
-              GestureDetector(
-                onTap: () => _exitToMenu(context, ref),
-                child: SizedBox(
-                  width: buttonWidth,
-                  height: buttonHeight,
-                  child: Image.asset(
-                    'assets/images/exit_button.png',
-                    fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        width: buttonWidth,
-                        height: buttonHeight,
-                        decoration: BoxDecoration(
-                          color: Colors.red,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Icons.exit_to_app,
-                          color: Colors.white,
-                          size: buttonHeight * 0.5,
-                        ),
-                      );
-                    },
-                  ),
+            ),
+            SizedBox(width: 8), // Spacing between buttons
+            // Exit Button
+            GestureDetector(
+              onTap: () => _exitToMenu(context, ref),
+              child: Container(
+                width: sideBySideButtonWidth,
+                height: buttonHeight,
+                alignment: Alignment.center,
+                child: Image.asset(
+                  'assets/images/exit_button.png',
+                  fit: BoxFit.contain, // Keeps button shape correct
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      width: sideBySideButtonWidth,
+                      height: buttonHeight,
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.exit_to_app,
+                        color: Colors.white,
+                        size: buttonHeight * 0.5,
+                      ),
+                    );
+                  },
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         );
       },
     );
