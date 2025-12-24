@@ -20,7 +20,8 @@ mixin _$GlobalGameState {
  int get hourOfDay;// Current hour (0-23), starts at 8 AM
  List<String> get logMessages;// Game event log
  List<Machine> get machines; List<Truck> get trucks; Warehouse get warehouse; double? get warehouseRoadX;// Road tile X coordinate next to warehouse (zone coordinates)
- double? get warehouseRoadY;
+ double? get warehouseRoadY;// Road tile Y coordinate next to warehouse (zone coordinates)
+ CityMapState? get cityMapState;
 /// Create a copy of GlobalGameState
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -31,16 +32,16 @@ $GlobalGameStateCopyWith<GlobalGameState> get copyWith => _$GlobalGameStateCopyW
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is GlobalGameState&&(identical(other.cash, cash) || other.cash == cash)&&(identical(other.reputation, reputation) || other.reputation == reputation)&&(identical(other.dayCount, dayCount) || other.dayCount == dayCount)&&(identical(other.hourOfDay, hourOfDay) || other.hourOfDay == hourOfDay)&&const DeepCollectionEquality().equals(other.logMessages, logMessages)&&const DeepCollectionEquality().equals(other.machines, machines)&&const DeepCollectionEquality().equals(other.trucks, trucks)&&(identical(other.warehouse, warehouse) || other.warehouse == warehouse)&&(identical(other.warehouseRoadX, warehouseRoadX) || other.warehouseRoadX == warehouseRoadX)&&(identical(other.warehouseRoadY, warehouseRoadY) || other.warehouseRoadY == warehouseRoadY));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is GlobalGameState&&(identical(other.cash, cash) || other.cash == cash)&&(identical(other.reputation, reputation) || other.reputation == reputation)&&(identical(other.dayCount, dayCount) || other.dayCount == dayCount)&&(identical(other.hourOfDay, hourOfDay) || other.hourOfDay == hourOfDay)&&const DeepCollectionEquality().equals(other.logMessages, logMessages)&&const DeepCollectionEquality().equals(other.machines, machines)&&const DeepCollectionEquality().equals(other.trucks, trucks)&&(identical(other.warehouse, warehouse) || other.warehouse == warehouse)&&(identical(other.warehouseRoadX, warehouseRoadX) || other.warehouseRoadX == warehouseRoadX)&&(identical(other.warehouseRoadY, warehouseRoadY) || other.warehouseRoadY == warehouseRoadY)&&(identical(other.cityMapState, cityMapState) || other.cityMapState == cityMapState));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,cash,reputation,dayCount,hourOfDay,const DeepCollectionEquality().hash(logMessages),const DeepCollectionEquality().hash(machines),const DeepCollectionEquality().hash(trucks),warehouse,warehouseRoadX,warehouseRoadY);
+int get hashCode => Object.hash(runtimeType,cash,reputation,dayCount,hourOfDay,const DeepCollectionEquality().hash(logMessages),const DeepCollectionEquality().hash(machines),const DeepCollectionEquality().hash(trucks),warehouse,warehouseRoadX,warehouseRoadY,cityMapState);
 
 @override
 String toString() {
-  return 'GlobalGameState(cash: $cash, reputation: $reputation, dayCount: $dayCount, hourOfDay: $hourOfDay, logMessages: $logMessages, machines: $machines, trucks: $trucks, warehouse: $warehouse, warehouseRoadX: $warehouseRoadX, warehouseRoadY: $warehouseRoadY)';
+  return 'GlobalGameState(cash: $cash, reputation: $reputation, dayCount: $dayCount, hourOfDay: $hourOfDay, logMessages: $logMessages, machines: $machines, trucks: $trucks, warehouse: $warehouse, warehouseRoadX: $warehouseRoadX, warehouseRoadY: $warehouseRoadY, cityMapState: $cityMapState)';
 }
 
 
@@ -51,7 +52,7 @@ abstract mixin class $GlobalGameStateCopyWith<$Res>  {
   factory $GlobalGameStateCopyWith(GlobalGameState value, $Res Function(GlobalGameState) _then) = _$GlobalGameStateCopyWithImpl;
 @useResult
 $Res call({
- double cash, int reputation, int dayCount, int hourOfDay, List<String> logMessages, List<Machine> machines, List<Truck> trucks, Warehouse warehouse, double? warehouseRoadX, double? warehouseRoadY
+ double cash, int reputation, int dayCount, int hourOfDay, List<String> logMessages, List<Machine> machines, List<Truck> trucks, Warehouse warehouse, double? warehouseRoadX, double? warehouseRoadY, CityMapState? cityMapState
 });
 
 
@@ -68,7 +69,7 @@ class _$GlobalGameStateCopyWithImpl<$Res>
 
 /// Create a copy of GlobalGameState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? cash = null,Object? reputation = null,Object? dayCount = null,Object? hourOfDay = null,Object? logMessages = null,Object? machines = null,Object? trucks = null,Object? warehouse = null,Object? warehouseRoadX = freezed,Object? warehouseRoadY = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? cash = null,Object? reputation = null,Object? dayCount = null,Object? hourOfDay = null,Object? logMessages = null,Object? machines = null,Object? trucks = null,Object? warehouse = null,Object? warehouseRoadX = freezed,Object? warehouseRoadY = freezed,Object? cityMapState = freezed,}) {
   return _then(_self.copyWith(
 cash: null == cash ? _self.cash : cash // ignore: cast_nullable_to_non_nullable
 as double,reputation: null == reputation ? _self.reputation : reputation // ignore: cast_nullable_to_non_nullable
@@ -80,7 +81,8 @@ as List<Machine>,trucks: null == trucks ? _self.trucks : trucks // ignore: cast_
 as List<Truck>,warehouse: null == warehouse ? _self.warehouse : warehouse // ignore: cast_nullable_to_non_nullable
 as Warehouse,warehouseRoadX: freezed == warehouseRoadX ? _self.warehouseRoadX : warehouseRoadX // ignore: cast_nullable_to_non_nullable
 as double?,warehouseRoadY: freezed == warehouseRoadY ? _self.warehouseRoadY : warehouseRoadY // ignore: cast_nullable_to_non_nullable
-as double?,
+as double?,cityMapState: freezed == cityMapState ? _self.cityMapState : cityMapState // ignore: cast_nullable_to_non_nullable
+as CityMapState?,
   ));
 }
 /// Create a copy of GlobalGameState
@@ -174,10 +176,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( double cash,  int reputation,  int dayCount,  int hourOfDay,  List<String> logMessages,  List<Machine> machines,  List<Truck> trucks,  Warehouse warehouse,  double? warehouseRoadX,  double? warehouseRoadY)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( double cash,  int reputation,  int dayCount,  int hourOfDay,  List<String> logMessages,  List<Machine> machines,  List<Truck> trucks,  Warehouse warehouse,  double? warehouseRoadX,  double? warehouseRoadY,  CityMapState? cityMapState)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _GlobalGameState() when $default != null:
-return $default(_that.cash,_that.reputation,_that.dayCount,_that.hourOfDay,_that.logMessages,_that.machines,_that.trucks,_that.warehouse,_that.warehouseRoadX,_that.warehouseRoadY);case _:
+return $default(_that.cash,_that.reputation,_that.dayCount,_that.hourOfDay,_that.logMessages,_that.machines,_that.trucks,_that.warehouse,_that.warehouseRoadX,_that.warehouseRoadY,_that.cityMapState);case _:
   return orElse();
 
 }
@@ -195,10 +197,10 @@ return $default(_that.cash,_that.reputation,_that.dayCount,_that.hourOfDay,_that
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( double cash,  int reputation,  int dayCount,  int hourOfDay,  List<String> logMessages,  List<Machine> machines,  List<Truck> trucks,  Warehouse warehouse,  double? warehouseRoadX,  double? warehouseRoadY)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( double cash,  int reputation,  int dayCount,  int hourOfDay,  List<String> logMessages,  List<Machine> machines,  List<Truck> trucks,  Warehouse warehouse,  double? warehouseRoadX,  double? warehouseRoadY,  CityMapState? cityMapState)  $default,) {final _that = this;
 switch (_that) {
 case _GlobalGameState():
-return $default(_that.cash,_that.reputation,_that.dayCount,_that.hourOfDay,_that.logMessages,_that.machines,_that.trucks,_that.warehouse,_that.warehouseRoadX,_that.warehouseRoadY);case _:
+return $default(_that.cash,_that.reputation,_that.dayCount,_that.hourOfDay,_that.logMessages,_that.machines,_that.trucks,_that.warehouse,_that.warehouseRoadX,_that.warehouseRoadY,_that.cityMapState);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -215,10 +217,10 @@ return $default(_that.cash,_that.reputation,_that.dayCount,_that.hourOfDay,_that
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( double cash,  int reputation,  int dayCount,  int hourOfDay,  List<String> logMessages,  List<Machine> machines,  List<Truck> trucks,  Warehouse warehouse,  double? warehouseRoadX,  double? warehouseRoadY)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( double cash,  int reputation,  int dayCount,  int hourOfDay,  List<String> logMessages,  List<Machine> machines,  List<Truck> trucks,  Warehouse warehouse,  double? warehouseRoadX,  double? warehouseRoadY,  CityMapState? cityMapState)?  $default,) {final _that = this;
 switch (_that) {
 case _GlobalGameState() when $default != null:
-return $default(_that.cash,_that.reputation,_that.dayCount,_that.hourOfDay,_that.logMessages,_that.machines,_that.trucks,_that.warehouse,_that.warehouseRoadX,_that.warehouseRoadY);case _:
+return $default(_that.cash,_that.reputation,_that.dayCount,_that.hourOfDay,_that.logMessages,_that.machines,_that.trucks,_that.warehouse,_that.warehouseRoadX,_that.warehouseRoadY,_that.cityMapState);case _:
   return null;
 
 }
@@ -230,7 +232,7 @@ return $default(_that.cash,_that.reputation,_that.dayCount,_that.hourOfDay,_that
 
 
 class _GlobalGameState extends GlobalGameState {
-  const _GlobalGameState({this.cash = 2000.0, this.reputation = 100, this.dayCount = 1, this.hourOfDay = 8, final  List<String> logMessages = const [], final  List<Machine> machines = const [], final  List<Truck> trucks = const [], this.warehouse = const Warehouse(), this.warehouseRoadX = null, this.warehouseRoadY = null}): _logMessages = logMessages,_machines = machines,_trucks = trucks,super._();
+  const _GlobalGameState({this.cash = 2000.0, this.reputation = 100, this.dayCount = 1, this.hourOfDay = 8, final  List<String> logMessages = const [], final  List<Machine> machines = const [], final  List<Truck> trucks = const [], this.warehouse = const Warehouse(), this.warehouseRoadX = null, this.warehouseRoadY = null, this.cityMapState = null}): _logMessages = logMessages,_machines = machines,_trucks = trucks,super._();
   
 
 @override@JsonKey() final  double cash;
@@ -269,6 +271,8 @@ class _GlobalGameState extends GlobalGameState {
 @override@JsonKey() final  double? warehouseRoadX;
 // Road tile X coordinate next to warehouse (zone coordinates)
 @override@JsonKey() final  double? warehouseRoadY;
+// Road tile Y coordinate next to warehouse (zone coordinates)
+@override@JsonKey() final  CityMapState? cityMapState;
 
 /// Create a copy of GlobalGameState
 /// with the given fields replaced by the non-null parameter values.
@@ -280,16 +284,16 @@ _$GlobalGameStateCopyWith<_GlobalGameState> get copyWith => __$GlobalGameStateCo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _GlobalGameState&&(identical(other.cash, cash) || other.cash == cash)&&(identical(other.reputation, reputation) || other.reputation == reputation)&&(identical(other.dayCount, dayCount) || other.dayCount == dayCount)&&(identical(other.hourOfDay, hourOfDay) || other.hourOfDay == hourOfDay)&&const DeepCollectionEquality().equals(other._logMessages, _logMessages)&&const DeepCollectionEquality().equals(other._machines, _machines)&&const DeepCollectionEquality().equals(other._trucks, _trucks)&&(identical(other.warehouse, warehouse) || other.warehouse == warehouse)&&(identical(other.warehouseRoadX, warehouseRoadX) || other.warehouseRoadX == warehouseRoadX)&&(identical(other.warehouseRoadY, warehouseRoadY) || other.warehouseRoadY == warehouseRoadY));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _GlobalGameState&&(identical(other.cash, cash) || other.cash == cash)&&(identical(other.reputation, reputation) || other.reputation == reputation)&&(identical(other.dayCount, dayCount) || other.dayCount == dayCount)&&(identical(other.hourOfDay, hourOfDay) || other.hourOfDay == hourOfDay)&&const DeepCollectionEquality().equals(other._logMessages, _logMessages)&&const DeepCollectionEquality().equals(other._machines, _machines)&&const DeepCollectionEquality().equals(other._trucks, _trucks)&&(identical(other.warehouse, warehouse) || other.warehouse == warehouse)&&(identical(other.warehouseRoadX, warehouseRoadX) || other.warehouseRoadX == warehouseRoadX)&&(identical(other.warehouseRoadY, warehouseRoadY) || other.warehouseRoadY == warehouseRoadY)&&(identical(other.cityMapState, cityMapState) || other.cityMapState == cityMapState));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,cash,reputation,dayCount,hourOfDay,const DeepCollectionEquality().hash(_logMessages),const DeepCollectionEquality().hash(_machines),const DeepCollectionEquality().hash(_trucks),warehouse,warehouseRoadX,warehouseRoadY);
+int get hashCode => Object.hash(runtimeType,cash,reputation,dayCount,hourOfDay,const DeepCollectionEquality().hash(_logMessages),const DeepCollectionEquality().hash(_machines),const DeepCollectionEquality().hash(_trucks),warehouse,warehouseRoadX,warehouseRoadY,cityMapState);
 
 @override
 String toString() {
-  return 'GlobalGameState(cash: $cash, reputation: $reputation, dayCount: $dayCount, hourOfDay: $hourOfDay, logMessages: $logMessages, machines: $machines, trucks: $trucks, warehouse: $warehouse, warehouseRoadX: $warehouseRoadX, warehouseRoadY: $warehouseRoadY)';
+  return 'GlobalGameState(cash: $cash, reputation: $reputation, dayCount: $dayCount, hourOfDay: $hourOfDay, logMessages: $logMessages, machines: $machines, trucks: $trucks, warehouse: $warehouse, warehouseRoadX: $warehouseRoadX, warehouseRoadY: $warehouseRoadY, cityMapState: $cityMapState)';
 }
 
 
@@ -300,7 +304,7 @@ abstract mixin class _$GlobalGameStateCopyWith<$Res> implements $GlobalGameState
   factory _$GlobalGameStateCopyWith(_GlobalGameState value, $Res Function(_GlobalGameState) _then) = __$GlobalGameStateCopyWithImpl;
 @override @useResult
 $Res call({
- double cash, int reputation, int dayCount, int hourOfDay, List<String> logMessages, List<Machine> machines, List<Truck> trucks, Warehouse warehouse, double? warehouseRoadX, double? warehouseRoadY
+ double cash, int reputation, int dayCount, int hourOfDay, List<String> logMessages, List<Machine> machines, List<Truck> trucks, Warehouse warehouse, double? warehouseRoadX, double? warehouseRoadY, CityMapState? cityMapState
 });
 
 
@@ -317,7 +321,7 @@ class __$GlobalGameStateCopyWithImpl<$Res>
 
 /// Create a copy of GlobalGameState
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? cash = null,Object? reputation = null,Object? dayCount = null,Object? hourOfDay = null,Object? logMessages = null,Object? machines = null,Object? trucks = null,Object? warehouse = null,Object? warehouseRoadX = freezed,Object? warehouseRoadY = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? cash = null,Object? reputation = null,Object? dayCount = null,Object? hourOfDay = null,Object? logMessages = null,Object? machines = null,Object? trucks = null,Object? warehouse = null,Object? warehouseRoadX = freezed,Object? warehouseRoadY = freezed,Object? cityMapState = freezed,}) {
   return _then(_GlobalGameState(
 cash: null == cash ? _self.cash : cash // ignore: cast_nullable_to_non_nullable
 as double,reputation: null == reputation ? _self.reputation : reputation // ignore: cast_nullable_to_non_nullable
@@ -329,7 +333,8 @@ as List<Machine>,trucks: null == trucks ? _self._trucks : trucks // ignore: cast
 as List<Truck>,warehouse: null == warehouse ? _self.warehouse : warehouse // ignore: cast_nullable_to_non_nullable
 as Warehouse,warehouseRoadX: freezed == warehouseRoadX ? _self.warehouseRoadX : warehouseRoadX // ignore: cast_nullable_to_non_nullable
 as double?,warehouseRoadY: freezed == warehouseRoadY ? _self.warehouseRoadY : warehouseRoadY // ignore: cast_nullable_to_non_nullable
-as double?,
+as double?,cityMapState: freezed == cityMapState ? _self.cityMapState : cityMapState // ignore: cast_nullable_to_non_nullable
+as CityMapState?,
   ));
 }
 
