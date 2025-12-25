@@ -119,8 +119,9 @@ class SimulationEngine extends StateNotifier<SimulationState> {
   final StreamController<SimulationState> _streamController = StreamController<SimulationState>.broadcast();
   
   // Pathfinding optimization: cached base graph
-  static const List<double> _validRoads = [1.0, 4.0, 7.0, 10.0];
-  static const List<double> _outwardRoads = [1.0, 10.0];
+  // UPDATED: Valid roads are only at indices 4 and 7 as per map layout
+  static const List<double> _validRoads = [4.0, 7.0];
+  static const List<double> _outwardRoads = []; // Cleared as we only use inner roads 4 and 7
   Map<({double x, double y}), List<({double x, double y})>>? _cachedBaseGraph;
 
   SimulationEngine({
@@ -308,6 +309,32 @@ class SimulationEngine extends StateNotifier<SimulationState> {
     return graph;
   }
 
+  /// Helper to find nearest point on the road network from any coordinate
+  /// This projects the point perpendicularly onto the nearest road.
+  ({double x, double y}) _getNearestRoadPoint(double x, double y) {
+    double minDist = double.infinity;
+    var bestPoint = (x: x, y: y);
+
+    // Check vertical roads (fixed X)
+    for (final roadX in _validRoads) {
+      final dist = (x - roadX).abs();
+      if (dist < minDist) {
+        minDist = dist;
+        bestPoint = (x: roadX, y: y);
+      }
+    }
+
+    // Check horizontal roads (fixed Y)
+    for (final roadY in _validRoads) {
+      final dist = (y - roadY).abs();
+      if (dist < minDist) { 
+        minDist = dist;
+        bestPoint = (x: x, y: roadY);
+      }
+    }
+    return bestPoint;
+  }
+
   /// Main tick function - called every 1 second (10 minutes in-game)
   void _tick() {
     final currentState = state;
@@ -352,11 +379,9 @@ class SimulationEngine extends StateNotifier<SimulationState> {
   }
 
   /// Process machine sales based on demand math
-  /// Implements: SaleChance = BaseDemand * ZoneMultiplier * HourMultiplier * Traffic
   List<Machine> _processMachineSales(List<Machine> machines, GameTime time) {
     return machines.map((machine) {
       if (machine.isBroken || machine.isEmpty) {
-        // Increment hours since restock if empty (1 tick = 0.1 hours since 10 ticks = 1 hour)
         return machine.copyWith(
           hoursSinceRestock: machine.hoursSinceRestock + 0.1, // 1 tick = 0.1 hours
         );
@@ -377,12 +402,6 @@ class SimulationEngine extends StateNotifier<SimulationState> {
         final zoneMultiplier = machine.zone.getDemandMultiplier(time.hour);
         final trafficMultiplier = machine.zone.trafficMultiplier;
         
-        // Example: Coffee at Office at 8 AM
-        // baseDemand = 0.10 (coffee)
-        // zoneMultiplier = 2.0 (office at 8 AM)
-        // trafficMultiplier = 1.2 (office traffic)
-        // SaleChance per hour = 0.10 * 2.0 * 1.2 = 0.24 (24% chance per hour)
-        // Since 10 ticks = 1 hour, divide by 10 to get per-tick chance
         final saleChancePerHour = baseDemand * zoneMultiplier * trafficMultiplier;
         final saleChance = saleChancePerHour / 10.0; // Divide by 10 since 10 ticks = 1 hour
         
@@ -406,7 +425,7 @@ class SimulationEngine extends StateNotifier<SimulationState> {
         }
       }
 
-      // Update hours since restock (increment by 0.1 hours since 10 ticks = 1 hour)
+      // Update hours since restock
       hoursSinceRestock += 0.1;
 
       return machine.copyWith(
@@ -473,109 +492,102 @@ class SimulationEngine extends StateNotifier<SimulationState> {
     // Movement speed: 0.1 units per tick = 1 tile per second (10 ticks per second)
     const double movementSpeed = 0.1;
     
-    // Helper function to snap to nearest valid road coordinate
-    double snapToNearestRoad(double coord) {
-      final rounded = coord.round().toDouble();
-      double nearest = _validRoads[0];
-      double minDist = (rounded - nearest).abs();
-      for (final road in _validRoads) {
-        final dist = (rounded - road).abs();
-        if (dist < minDist) {
-          minDist = dist;
-          nearest = road;
-        }
-      }
-      return nearest;
-    }
-    
-    
     // A* pathfinding to find shortest path through road network
     List<({double x, double y})> findPath(
       double startX, double startY,
       double endX, double endY,
     ) {
-      // Don't snap start position immediately - treat it as a potential point on a road line
       final start = (x: startX, y: startY);
-      // Snap end position (destinations are always on valid roads or intersections)
-      final end = (x: snapToNearestRoad(endX), y: snapToNearestRoad(endY));
+      final end = (x: endX, y: endY);
       
-      // If close to destination, return simple path
+      // If start and end are close enough (e.g. moving slightly on same spot), just go direct
       if ((start.x - end.x).abs() < SimulationConstants.roadSnapThreshold && 
           (start.y - end.y).abs() < SimulationConstants.roadSnapThreshold) {
         return [end];
       }
       
-      // Get cached base graph and create a shallow copy for this pathfinding call
+      // 1. Get Base Graph (Intersections)
       final baseGraph = _getBaseGraph();
       final graph = Map<({double x, double y}), List<({double x, double y})>>.from(
         baseGraph.map((key, value) => MapEntry(key, List<({double x, double y})>.from(value))),
       );
       
-      // Helper to check if a coordinate is on an outward road
-      bool isOutwardRoad(double coord) => _outwardRoads.contains(coord);
+      // 2. Identify Entry and Exit points on the road network
+      // Use helper to project current/target position onto nearest road line
+      final startEntry = _getNearestRoadPoint(startX, startY);
+      final endExit = _getNearestRoadPoint(endX, endY);
       
-      // Allow connections to end node even if it's on an outward road
-      if (graph.containsKey(end)) {
-        // End is already in base graph, but we may need to add connections
-        // Check if we need to allow connections from outward roads to end
-        for (final node in graph.keys) {
-          if (isOutwardRoad(node.x) || isOutwardRoad(node.y)) {
-            // Allow connection to end if not already present
-            if (!graph[node]!.any((n) => n.x == end.x && n.y == end.y)) {
-              graph[node]!.add(end);
-            }
-          }
+      // 3. Connect START point to ENTRY point (if different)
+      if (startEntry != start) {
+        // Connect Start -> StartEntry
+        graph[start] = [startEntry];
+        if (!graph.containsKey(startEntry)) graph[startEntry] = [];
+        graph[startEntry]!.add(start); // Undirected for consistency
+      } else {
+        // Start IS on the road, ensure it's in the graph
+        if (!graph.containsKey(start)) graph[start] = [];
+      }
+
+      // 4. Connect END point to EXIT point (if different)
+      if (endExit != end) {
+         if (!graph.containsKey(endExit)) graph[endExit] = [];
+         graph[endExit]!.add(end);
+         graph[end] = [endExit];
+      } else {
+         if (!graph.containsKey(end)) graph[end] = [];
+      }
+
+      // 5. Connect Entry/Exit points to the rest of the road network
+      // Helper to connect a road point to its neighbors on the same road line
+      void connectToRoadNetwork(({double x, double y}) point) {
+        if (baseGraph.containsKey(point)) return; // Already an intersection
+
+        // Check if on a vertical road (X is a valid road X)
+        if (_validRoads.contains(point.x)) {
+           // Connect to all intersections on this vertical line
+           for (final rY in _validRoads) {
+             final neighbor = (x: point.x, y: rY);
+             // Ensure neighbor exists in base graph or is effectively a node
+             if (!graph.containsKey(neighbor)) graph[neighbor] = [];
+             
+             // Add edges
+             if (!graph[point]!.contains(neighbor)) graph[point]!.add(neighbor);
+             if (!graph[neighbor]!.contains(point)) graph[neighbor]!.add(point);
+           }
+        }
+        
+        // Check if on a horizontal road (Y is a valid road Y)
+        if (_validRoads.contains(point.y)) {
+           // Connect to all intersections on this horizontal line
+           for (final rX in _validRoads) {
+             final neighbor = (x: rX, y: point.y);
+             if (!graph.containsKey(neighbor)) graph[neighbor] = [];
+             
+             if (!graph[point]!.contains(neighbor)) graph[point]!.add(neighbor);
+             if (!graph[neighbor]!.contains(point)) graph[neighbor]!.add(point);
+           }
         }
       }
 
-      // 2. Add Start Node to Graph
-      // Find neighbors for start node based on its position
-      graph[start] = [];
+      connectToRoadNetwork(startEntry);
+      connectToRoadNetwork(endExit);
+
+      // 6. Direct connection check: If Entry and Exit are on the same road segment, connect them
+      bool sameVertical = (startEntry.x == endExit.x) && _validRoads.contains(startEntry.x);
+      bool sameHorizontal = (startEntry.y == endExit.y) && _validRoads.contains(startEntry.y);
       
-      // Snap start to nearest road lines to find valid neighbors
-      final snappedStartX = snapToNearestRoad(startX);
-      final snappedStartY = snapToNearestRoad(startY);
-      
-      // Check if start is close to a horizontal road (y is fixed)
-      if ((startY - snappedStartY).abs() < SimulationConstants.roadSnapThreshold) {
-        // We are on horizontal road y=snappedStartY. Connect to road nodes on this line.
-        for (final roadX in _validRoads) {
-           final neighbor = (x: roadX, y: snappedStartY);
-           if (graph.containsKey(neighbor)) {
-             graph[start]!.add(neighbor);
-             // Also add reverse connection for A* to work
-             graph[neighbor]!.add(start); 
-           }
-        }
+      if (sameVertical || sameHorizontal) {
+          if (!graph[startEntry]!.contains(endExit)) graph[startEntry]!.add(endExit);
+          if (!graph[endExit]!.contains(startEntry)) graph[endExit]!.add(startEntry);
       }
-      
-      // Check if start is close to a vertical road (x is fixed)
-      if ((startX - snappedStartX).abs() < SimulationConstants.roadSnapThreshold) {
-        // We are on vertical road x=snappedStartX. Connect to road nodes on this line.
-         for (final roadY in _validRoads) {
-           final neighbor = (x: snappedStartX, y: roadY);
-           if (graph.containsKey(neighbor)) {
-             graph[start]!.add(neighbor);
-             graph[neighbor]!.add(start);
-           }
-        }
-      }
-      
-      // 3. Add End Node to Graph (if not already an intersection)
-      if (!graph.containsKey(end)) {
-        graph[end] = [];
-        // End is usually a road intersection or snapped to one by caller
-        // Given snapToNearestRoad used for end, it IS an intersection or close enough.
-      }
-      
-      // A* algorithm
+
+      // A* Algorithm
       final openSet = <({double x, double y})>{start};
       final cameFrom = <({double x, double y}), ({double x, double y})>{};
       final gScore = <({double x, double y}), double>{start: 0.0};
       final fScore = <({double x, double y}), double>{start: (end.x - start.x).abs() + (end.y - start.y).abs()};
       
       while (openSet.isNotEmpty) {
-        // Find node with lowest fScore
         ({double x, double y})? current;
         double lowestF = double.infinity;
         for (final node in openSet) {
@@ -592,13 +604,12 @@ class SimulationEngine extends StateNotifier<SimulationState> {
             (current.y - end.y).abs() < SimulationConstants.roadSnapThreshold) {
           // Reconstruct path
           final path = <({double x, double y})>[end];
-          var node = current; // Use current as it matches end
+          var node = current;
           while (cameFrom.containsKey(node)) {
             node = cameFrom[node]!;
             if (node == start) break; // Don't include start in path
             path.insert(0, node);
           }
-           // Ensure end is in path
           if (path.isEmpty || path.last != end) path.add(end);
           return path;
         }
@@ -610,23 +621,12 @@ class SimulationEngine extends StateNotifier<SimulationState> {
           // Manhattan distance as edge cost
           double edgeCost = (neighbor.x - current.x).abs() + (neighbor.y - current.y).abs();
           
-          // Add penalty for using outward roads (encourages using inward roads)
-          // Don't penalize moving FROM start or TO end
-          if (current != start && neighbor != end) {
-             if (isOutwardRoad(neighbor.x) || isOutwardRoad(neighbor.y)) {
-               edgeCost += SimulationConstants.wrongWayPenalty; 
-             }
-          }
-          
           final tentativeG = (gScore[current] ?? double.infinity) + edgeCost;
           
           if (tentativeG < (gScore[neighbor] ?? double.infinity)) {
             cameFrom[neighbor] = current;
             gScore[neighbor] = tentativeG;
-            // Heuristic: Manhattan distance to goal
-            fScore[neighbor] = tentativeG + 
-                (SimulationConstants.pathfindingHeuristicWeight * 
-                 ((end.x - neighbor.x).abs() + (end.y - neighbor.y).abs()));
+            fScore[neighbor] = tentativeG + ((end.x - neighbor.x).abs() + (end.y - neighbor.y).abs());
             if (!openSet.contains(neighbor)) {
               openSet.add(neighbor);
             }
@@ -661,7 +661,7 @@ class SimulationEngine extends StateNotifier<SimulationState> {
         final dyToWarehouse = warehouseRoadY - currentY;
         final distanceToWarehouse = math.sqrt(dxToWarehouse * dxToWarehouse + dyToWarehouse * dyToWarehouse);
         
-        // If already very close to warehouse, mark as Idle and snap
+        // If already very close to warehouse, mark as Idle
         if (distanceToWarehouse < SimulationConstants.roadSnapThreshold) {
           return truck.copyWith(
             status: TruckStatus.idle,
@@ -671,21 +671,15 @@ class SimulationEngine extends StateNotifier<SimulationState> {
             targetY: warehouseRoadY,
             path: [],
             pathIndex: 0,
-            // Ensure route index stays complete (redundant but safe)
             currentRouteIndex: truck.route.length, 
           );
         }
         
         // Not at warehouse yet - calculate movement
-        
-        // Get or calculate path to warehouse
         List<({double x, double y})> path = truck.path;
         int pathIndex = truck.pathIndex;
         
-        // Recalculate path if needed:
-        // 1. Path is empty
-        // 2. Path end point is not warehouse
-        // 3. Path index is invalid
+        // Recalculate path if needed
         if (path.isEmpty || 
             (path.isNotEmpty && (path.last.x != warehouseRoadX || path.last.y != warehouseRoadY)) ||
             pathIndex >= path.length) {
@@ -699,7 +693,7 @@ class SimulationEngine extends StateNotifier<SimulationState> {
         var simY = currentY;
         var newStatus = currentStatus == TruckStatus.idle ? TruckStatus.traveling : currentStatus;
 
-        // Process movement (support multiple waypoints per tick)
+        // Process movement
         while (currentPathIndex < path.length) {
           final targetWaypoint = path[currentPathIndex];
           final dx = targetWaypoint.x - simX;
@@ -743,69 +737,33 @@ class SimulationEngine extends StateNotifier<SimulationState> {
       // CASE 2: ROUTE INCOMPLETE - TRAVEL TO NEXT MACHINE
       // ---------------------------------------------------------
       
-      // Get current destination
       final destinationId = truck.currentDestination;
       
       if (destinationId == null) {
-        // Should catch this in Case 1, but as fallback:
         return truck.copyWith(status: TruckStatus.idle);
       }
 
-      // Find destination machine
       final destination = machines.firstWhere(
         (m) => m.id == destinationId,
-        orElse: () => machines.first, // Fallback
+        orElse: () => machines.first,
       );
 
-      // Get machine position and snap to nearest road
       final machineX = destination.zone.x;
       final machineY = destination.zone.y;
       
-      // Find the closest valid road to the machine
-      double destRoadX = _validRoads[0];
-      double destRoadY = _validRoads[0];
-      double minDist = double.infinity;
+      // Find the correct stopping point on the road for this machine
+      final destPoint = _getNearestRoadPoint(machineX, machineY);
+      final destRoadX = destPoint.x;
+      final destRoadY = destPoint.y;
       
-      // Check all valid road positions
-      for (final roadX in _validRoads) {
-        for (final roadY in _validRoads) {
-          final dist = (machineX - roadX).abs() + (machineY - roadY).abs();
-          if (dist < minDist) {
-            minDist = dist;
-            destRoadX = roadX;
-            destRoadY = roadY;
-          }
-        }
-      }
-      
-      // Also check if we can use a road line closer to machine
-      for (final roadY in _validRoads) {
-        final closestRoadX = snapToNearestRoad(machineX);
-        final dist = (machineX - closestRoadX).abs() + (machineY - roadY).abs();
-        if (dist < minDist) {
-          minDist = dist;
-          destRoadX = closestRoadX;
-          destRoadY = roadY;
-        }
-      }
-      for (final roadX in _validRoads) {
-        final closestRoadY = snapToNearestRoad(machineY);
-        final dist = (machineX - roadX).abs() + (machineY - closestRoadY).abs();
-        if (dist < minDist) {
-          minDist = dist;
-          destRoadX = roadX;
-          destRoadY = closestRoadY;
-        }
-      }
-      
-      // Calculate distance to destination road
+      // Calculate distance to destination road point
       final currentX = truck.currentX;
       final currentY = truck.currentY;
       final dxToRoad = destRoadX - currentX;
       final dyToRoad = destRoadY - currentY;
       final manhattanDistance = dxToRoad.abs() + dyToRoad.abs();
 
-      // If truck is at the road adjacent to the machine, mark as arrived for restocking
+      // If truck is at the road stopping point, mark as arrived for restocking
       if (manhattanDistance < SimulationConstants.roadSnapThreshold) {
         return truck.copyWith(
           status: TruckStatus.restocking,
@@ -818,14 +776,11 @@ class SimulationEngine extends StateNotifier<SimulationState> {
         );
       }
 
-      // Get or calculate path to destination
+      // Get or calculate path to destination road point
       List<({double x, double y})> path = truck.path;
       int pathIndex = truck.pathIndex;
       
-      // Recalculate path if:
-      // 1. Path is empty
-      // 2. Path end point is not current destination
-      // 3. Path index is invalid
+      // Recalculate path if needed
       if (path.isEmpty || 
           (path.isNotEmpty && (path.last.x != destRoadX || path.last.y != destRoadY)) ||
           pathIndex >= path.length) {
@@ -1010,8 +965,6 @@ class SimulationEngine extends StateNotifier<SimulationState> {
           // Check if product is allowed in this machine's zone type
           final allowedProducts = _getAllowedProductsForZone(machine.zone.type);
           if (!allowedProducts.contains(product)) {
-            // Skip this product - not allowed in this zone type
-            // Keep it in truck inventory for other machines
             itemsToTransfer[product] = truckQuantity;
             continue;
           }
@@ -1021,7 +974,6 @@ class SimulationEngine extends StateNotifier<SimulationState> {
           final availableSpaceForProduct = maxItemsPerProduct - currentProductStock;
           
           if (availableSpaceForProduct <= 0) {
-            // Machine is full for this product, keep it in truck
             itemsToTransfer[product] = truckQuantity;
             continue;
           }
@@ -1067,7 +1019,7 @@ class SimulationEngine extends StateNotifier<SimulationState> {
             final remainingMachineId = truck.route[routeIdx];
             final remainingMachine = updatedMachines.firstWhere(
               (m) => m.id == remainingMachineId,
-              orElse: () => updatedMachines.first, // Fallback (shouldn't happen)
+              orElse: () => updatedMachines.first, 
             );
             
             // Check if this machine needs any of the products the truck is carrying
@@ -1088,8 +1040,8 @@ class SimulationEngine extends StateNotifier<SimulationState> {
         }
         
         // Get warehouse position for returning
-        final warehouseRoadX = state.warehouseRoadX ?? 4.0; // Fallback if not set
-        final warehouseRoadY = state.warehouseRoadY ?? 4.0; // Fallback if not set
+        final warehouseRoadX = state.warehouseRoadX ?? 4.0;
+        final warehouseRoadY = state.warehouseRoadY ?? 4.0;
         
         if (isTruckEmpty || !hasMoreDestinations || !remainingDestinationsNeedItems) {
           // Truck is empty OR last destination completed OR no remaining destinations need items - return to warehouse
@@ -1138,7 +1090,7 @@ class SimulationEngine extends StateNotifier<SimulationState> {
             final remainingMachineId = truck.route[routeIdx];
             final remainingMachine = updatedMachines.firstWhere(
               (m) => m.id == remainingMachineId,
-              orElse: () => updatedMachines.first, // Fallback (shouldn't happen)
+              orElse: () => updatedMachines.first, 
             );
             
             // Check if this machine needs any of the products the truck is carrying
@@ -1159,8 +1111,8 @@ class SimulationEngine extends StateNotifier<SimulationState> {
         }
         
         // Get warehouse position for returning
-        final warehouseRoadX = state.warehouseRoadX ?? 4.0; // Fallback if not set
-        final warehouseRoadY = state.warehouseRoadY ?? 4.0; // Fallback if not set
+        final warehouseRoadX = state.warehouseRoadX ?? 4.0;
+        final warehouseRoadY = state.warehouseRoadY ?? 4.0;
         
         if (isTruckEmpty || !hasMoreDestinations || !remainingDestinationsNeedItems) {
           // Truck is empty OR last destination OR no remaining destinations need items - return to warehouse
@@ -1189,4 +1141,3 @@ class SimulationEngine extends StateNotifier<SimulationState> {
     return (machines: updatedMachines, trucks: updatedTrucks);
   }
 }
-
