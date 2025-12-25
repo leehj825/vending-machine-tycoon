@@ -72,6 +72,7 @@ flutter:
   assets:
     - assets/images/tiles/
     - assets/images/views/
+    - assets/images/items/
     - assets/images/title.png
     - assets/images/start_button.png
     - assets/images/load_game_button.png

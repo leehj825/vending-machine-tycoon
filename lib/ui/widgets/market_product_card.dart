@@ -15,21 +15,21 @@ class MarketProductCard extends ConsumerWidget {
     required this.product,
   });
 
-  /// Get icon for product
-  IconData _getProductIcon(Product product) {
+  /// Get image asset path for product
+  String _getProductImagePath(Product product) {
     switch (product) {
       case Product.soda:
-        return Icons.local_drink;
+        return 'assets/images/items/soda.png';
       case Product.chips:
-        return Icons.fastfood;
+        return 'assets/images/items/chips.png';
       case Product.proteinBar:
-        return Icons.fitness_center;
+        return 'assets/images/items/protein_bar.png';
       case Product.coffee:
-        return Icons.local_cafe;
+        return 'assets/images/items/coffee.png';
       case Product.techGadget:
-        return Icons.devices;
+        return 'assets/images/items/tech_gadget.png';
       case Product.sandwich:
-        return Icons.lunch_dining;
+        return 'assets/images/items/sandwich.png';
     }
   }
 
@@ -88,18 +88,34 @@ class MarketProductCard extends ConsumerWidget {
           padding: const EdgeInsets.all(16),
           child: Row(
             children: [
-              // Product Icon
+              // Product Image
               Container(
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primaryContainer,
+                  color: Colors.white,
                   borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: Colors.grey.withOpacity(0.2),
+                    width: 1,
+                  ),
                 ),
-                child: Icon(
-                  _getProductIcon(product),
-                  color: Theme.of(context).colorScheme.onPrimaryContainer,
-                  size: 24,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.asset(
+                    _getProductImagePath(product),
+                    width: 48,
+                    height: 48,
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) {
+                      // Fallback to icon if image fails to load
+                      return Icon(
+                        Icons.image_not_supported,
+                        color: Colors.grey[600],
+                        size: 24,
+                      );
+                    },
+                  ),
                 ),
               ),
               const SizedBox(width: 16),
@@ -184,6 +200,24 @@ class _BuyStockBottomSheetState extends ConsumerState<_BuyStockBottomSheet> {
   double _quantity = 1.0;
   static const int _maxCapacity = 1000;
 
+  /// Get image asset path for product
+  String _getProductImagePath(Product product) {
+    switch (product) {
+      case Product.soda:
+        return 'assets/images/items/soda.png';
+      case Product.chips:
+        return 'assets/images/items/chips.png';
+      case Product.proteinBar:
+        return 'assets/images/items/protein_bar.png';
+      case Product.coffee:
+        return 'assets/images/items/coffee.png';
+      case Product.techGadget:
+        return 'assets/images/items/tech_gadget.png';
+      case Product.sandwich:
+        return 'assets/images/items/sandwich.png';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final cash = ref.watch(cashProvider);
@@ -213,14 +247,55 @@ class _BuyStockBottomSheetState extends ConsumerState<_BuyStockBottomSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Buy ${widget.product.name}',
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Unit Price: \$${widget.unitPrice.toStringAsFixed(2)}',
-              style: Theme.of(context).textTheme.bodyLarge,
+            // Product header with image
+            Row(
+              children: [
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Colors.grey.withOpacity(0.2),
+                      width: 1,
+                    ),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.asset(
+                      _getProductImagePath(widget.product),
+                      width: 56,
+                      height: 56,
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Icon(
+                          Icons.image_not_supported,
+                          color: Colors.grey[600],
+                          size: 28,
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Buy ${widget.product.name}',
+                        style: Theme.of(context).textTheme.headlineSmall,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Unit Price: \$${widget.unitPrice.toStringAsFixed(2)}',
+                        style: Theme.of(context).textTheme.bodyLarge,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 24),
             // Quantity Display
@@ -252,23 +327,18 @@ class _BuyStockBottomSheetState extends ConsumerState<_BuyStockBottomSheet> {
               ),
             ),
             const SizedBox(height: 16),
-            // Custom quantity track (visual representation)
-            Container(
-              height: 8,
-              decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: FractionallySizedBox(
-                alignment: Alignment.centerLeft,
-                widthFactor: (_quantity / maxQuantity).clamp(0.0, 1.0),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primary,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                ),
-              ),
+            // Slider for quantity selection
+            Slider(
+              value: _quantity.clamp(1.0, maxQuantity.toDouble()),
+              min: 1.0,
+              max: maxQuantity.toDouble(),
+              divisions: maxQuantity > 1 ? maxQuantity - 1 : 1,
+              label: quantityInt.toString(),
+              onChanged: (value) {
+                setState(() {
+                  _quantity = value;
+                });
+              },
             ),
             const SizedBox(height: 16),
             // Quick increment buttons with GameButtons
@@ -277,11 +347,10 @@ class _BuyStockBottomSheetState extends ConsumerState<_BuyStockBottomSheet> {
               runSpacing: 8,
               alignment: WrapAlignment.center,
               children: [
-                _buildIncrementGameButton(context, -10, maxQuantity),
-                _buildIncrementGameButton(context, -1, maxQuantity),
-                _buildIncrementGameButton(context, 1, maxQuantity),
                 _buildIncrementGameButton(context, 10, maxQuantity),
-                GameButton(
+                _buildIncrementGameButton(context, 50, maxQuantity),
+                _buildIncrementGameButton(context, 100, maxQuantity),
+                _SmallGameButton(
                   onPressed: maxQuantity > 0
                       ? () {
                           setState(() {
@@ -289,7 +358,7 @@ class _BuyStockBottomSheetState extends ConsumerState<_BuyStockBottomSheet> {
                           });
                         }
                       : null,
-                  label: 'MAX ($maxQuantity)',
+                  label: 'Full ($maxQuantity)',
                   color: Colors.orange,
                   icon: Icons.maximize,
                 ),
@@ -348,17 +417,17 @@ class _BuyStockBottomSheetState extends ConsumerState<_BuyStockBottomSheet> {
             Row(
               children: [
                 Expanded(
-                  child: GameButton(
+                  child: _SmallGameButton(
                     onPressed: () => Navigator.of(context).pop(),
                     label: 'Cancel',
                     color: Colors.grey,
                     icon: Icons.close,
                   ),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 12),
                 Expanded(
                   flex: 2,
-                  child: GameButton(
+                  child: _SmallGameButton(
                     onPressed: totalCost <= cash && quantityInt > 0
                         ? () {
                             ref
@@ -393,11 +462,9 @@ class _BuyStockBottomSheetState extends ConsumerState<_BuyStockBottomSheet> {
 
   Widget _buildIncrementGameButton(BuildContext context, int increment, int maxQuantity) {
     final newQuantity = (_quantity + increment).clamp(1.0, maxQuantity.toDouble());
-    final isEnabled = increment > 0 
-        ? _quantity < maxQuantity 
-        : _quantity > 1;
+    final isEnabled = _quantity < maxQuantity;
     
-    return GameButton(
+    return _SmallGameButton(
       onPressed: isEnabled
           ? () {
               setState(() {
@@ -405,9 +472,86 @@ class _BuyStockBottomSheetState extends ConsumerState<_BuyStockBottomSheet> {
               });
             }
           : null,
-      label: increment > 0 ? '+$increment' : '$increment',
-      color: increment > 0 ? Colors.blue : Colors.red,
-      icon: increment > 0 ? Icons.add : Icons.remove,
+      label: '+$increment',
+      color: Colors.blue,
+      icon: Icons.add,
+    );
+  }
+}
+
+/// Smaller variant of GameButton for use in modals and tight spaces
+class _SmallGameButton extends StatefulWidget {
+  final String label;
+  final VoidCallback? onPressed;
+  final Color color;
+  final IconData? icon;
+
+  const _SmallGameButton({
+    required this.label,
+    this.onPressed,
+    this.color = const Color(0xFF4CAF50),
+    this.icon,
+  });
+
+  @override
+  State<_SmallGameButton> createState() => _SmallGameButtonState();
+}
+
+class _SmallGameButtonState extends State<_SmallGameButton> {
+  bool _isPressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final isEnabled = widget.onPressed != null;
+    
+    return GestureDetector(
+      onTapDown: isEnabled ? (_) => setState(() => _isPressed = true) : null,
+      onTapUp: isEnabled ? (_) => setState(() => _isPressed = false) : null,
+      onTapCancel: isEnabled ? () => setState(() => _isPressed = false) : null,
+      onTap: widget.onPressed,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 100),
+        margin: EdgeInsets.only(top: _isPressed ? 3 : 0),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: isEnabled ? widget.color : Colors.grey,
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: _isPressed || !isEnabled
+              ? []
+              : [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.3),
+                    offset: const Offset(0, 3),
+                    blurRadius: 0,
+                  ),
+                ],
+          border: Border.all(color: Colors.white.withOpacity(0.5), width: 1.5),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (widget.icon != null) ...[
+              Icon(widget.icon, color: Colors.white, size: 16),
+              const SizedBox(width: 6),
+            ],
+            Flexible(
+              child: Text(
+                widget.label.toUpperCase(),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                  letterSpacing: 0.5,
+                ),
+                textAlign: TextAlign.center,
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

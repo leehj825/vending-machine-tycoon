@@ -6,6 +6,7 @@ import '../../simulation/models/machine.dart';
 import '../../simulation/models/truck.dart';
 import '../../simulation/models/product.dart';
 import '../widgets/machine_route_card.dart';
+import '../widgets/game_button.dart';
 import '../theme/zone_ui.dart';
 import '../utils/screen_utils.dart';
 import 'dart:math' as math;
@@ -224,20 +225,29 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> {
   void _showLoadCargoDialog(Truck truck) {
     final warehouse = ref.read(warehouseProvider);
     final controller = ref.read(gameControllerProvider.notifier);
+    // Save the parent context before showing dialog
+    final parentContext = context;
 
     showDialog(
       context: context,
-      builder: (context) => _LoadCargoDialog(
+      builder: (dialogContext) => _LoadCargoDialog(
         truck: truck,
         warehouse: warehouse,
         onLoad: (product, quantity) {
+          // Close dialog first using dialog's context
+          Navigator.of(dialogContext).pop();
+          // Perform the load operation
           controller.loadTruck(truck.id, product, quantity);
-          Navigator.of(context).pop();
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Loaded $quantity ${product.name} onto ${truck.name}'),
-            ),
-          );
+          // Show snackbar using parent context after dialog closes
+          Future.delayed(const Duration(milliseconds: 150), () {
+            if (parentContext.mounted) {
+              ScaffoldMessenger.of(parentContext).showSnackBar(
+                SnackBar(
+                  content: Text('Loaded $quantity ${product.name} onto ${truck.name}'),
+                ),
+              );
+            }
+          });
         },
       ),
     );
@@ -363,39 +373,15 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> {
                                   ),
                                 ),
                                 SizedBox(height: ScreenUtils.relativeSize(context, 0.03)),
-                                ElevatedButton.icon(
+                                GameButton(
                                   onPressed: () {
                                     ref
                                         .read(gameControllerProvider.notifier)
                                         .buyTruck();
                                   },
-                                  icon: Icon(
-                                    Icons.add_shopping_cart,
-                                    size: ScreenUtils.relativeSizeClamped(
-                                      context,
-                                      0.06, // Increased from 0.05
-                                      min: ScreenUtils.getSmallerDimension(context) * 0.05,
-                                      max: ScreenUtils.getSmallerDimension(context) * 0.09,
-                                    ),
-                                  ),
-                                  label: Text(
-                                    'Buy Truck (\$500)',
-                                    style: TextStyle(
-                                      fontSize: ScreenUtils.relativeFontSize(
-                                        context,
-                                        0.035, // Increased from 0.028
-                                        min: ScreenUtils.getSmallerDimension(context) * 0.028,
-                                        max: ScreenUtils.getSmallerDimension(context) * 0.05,
-                                      ),
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  style: ElevatedButton.styleFrom(
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: ScreenUtils.relativeSize(context, 0.06),
-                                      vertical: ScreenUtils.relativeSize(context, 0.03),
-                                    ),
-                                  ),
+                                  icon: Icons.add_shopping_cart,
+                                  label: 'Buy Truck (\$500)',
+                                  color: Colors.green,
                                 ),
                               ],
                             ),
@@ -414,56 +400,74 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> {
                                     .selectTruck(truck.id);
                               },
                               child: Container(
-                                width: 140,
+                                width: 150,
                                 margin: const EdgeInsets.symmetric(horizontal: 4),
                                 decoration: BoxDecoration(
-                                  color: isSelected
-                                      ? Theme.of(context)
-                                          .colorScheme
-                                          .primaryContainer
-                                      : Colors.grey[200],
-                                  borderRadius: BorderRadius.circular(12),
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(16),
                                   border: Border.all(
                                     color: isSelected
-                                        ? Theme.of(context).colorScheme.primary
-                                        : Colors.transparent,
-                                    width: 2,
+                                        ? Colors.green
+                                        : Colors.grey.withOpacity(0.3),
+                                    width: isSelected ? 3 : 2,
                                   ),
+                                  boxShadow: isSelected
+                                      ? [
+                                          BoxShadow(
+                                            color: Colors.green.withOpacity(0.2),
+                                            offset: const Offset(0, 4),
+                                            blurRadius: 8,
+                                          ),
+                                        ]
+                                      : [
+                                          BoxShadow(
+                                            color: Colors.grey.withOpacity(0.1),
+                                            offset: const Offset(0, 2),
+                                            blurRadius: 4,
+                                          ),
+                                        ],
                                 ),
                                 child: Padding(
-                                  padding: const EdgeInsets.all(12),
+                                  padding: const EdgeInsets.all(10),
                                   child: Column(
                                     mainAxisSize: MainAxisSize.min,
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      Icon(
-                                        Icons.local_shipping,
-                                        size: 32,
-                                        color: isSelected
-                                            ? Theme.of(context)
-                                                .colorScheme
-                                                .primary
-                                            : Colors.grey[600],
+                                      Container(
+                                        width: 48,
+                                        height: 48,
+                                        decoration: BoxDecoration(
+                                          color: isSelected
+                                              ? Colors.green.withOpacity(0.2)
+                                              : Colors.grey.withOpacity(0.1),
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        child: Icon(
+                                          Icons.local_shipping,
+                                          size: 32,
+                                          color: isSelected
+                                              ? Colors.green
+                                              : Colors.grey[600],
+                                        ),
                                       ),
-                                      const SizedBox(height: 8),
-                                      Flexible(
+                                      const SizedBox(height: 6),
+                                      SizedBox(
+                                        width: double.infinity,
                                         child: Text(
                                           truck.name,
                                           style: TextStyle(
                                             fontWeight: FontWeight.bold,
                                             color: isSelected
-                                                ? Theme.of(context)
-                                                    .colorScheme
-                                                    .primary
+                                                ? Colors.green
                                                 : Colors.black87,
-                                            fontSize: 12,
+                                            fontSize: 14,
                                           ),
-                                          overflow: TextOverflow.ellipsis,
-                                          maxLines: 2,
                                           textAlign: TextAlign.center,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.fade,
                                         ),
                                       ),
-                                      const SizedBox(height: 4),
+                                      const SizedBox(height: 3),
                                       Row(
                                         mainAxisAlignment:
                                             MainAxisAlignment.center,
@@ -484,24 +488,29 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> {
                                           ),
                                         ],
                                       ),
-                                      const SizedBox(height: 4),
+                                      const SizedBox(height: 3),
                                       Flexible(
                                         child: Container(
                                           padding: const EdgeInsets.symmetric(
-                                            horizontal: 6,
-                                            vertical: 2,
+                                            horizontal: 8,
+                                            vertical: 3,
                                           ),
                                           decoration: BoxDecoration(
                                             color: _getStatusColor(truck.status)
-                                                .withValues(alpha: 0.2),
-                                            borderRadius: BorderRadius.circular(4),
+                                                .withOpacity(0.15),
+                                            borderRadius: BorderRadius.circular(8),
+                                            border: Border.all(
+                                              color: _getStatusColor(truck.status).withOpacity(0.5),
+                                              width: 1,
+                                            ),
                                           ),
                                           child: Text(
-                                            _getStatusText(truck.status),
+                                            _getStatusText(truck.status).toUpperCase(),
                                             style: TextStyle(
                                               fontSize: 10,
                                               color: _getStatusColor(truck.status),
-                                              fontWeight: FontWeight.w500,
+                                              fontWeight: FontWeight.bold,
+                                              letterSpacing: 0.5,
                                             ),
                                             overflow: TextOverflow.ellipsis,
                                             maxLines: 1,
@@ -537,14 +546,21 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> {
               SliverToBoxAdapter(
                 child: Container(
                   margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.blue.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: Colors.blue.withValues(alpha: 0.3),
-                      width: 1,
+                      color: Colors.blue.withOpacity(0.5),
+                      width: 2,
                     ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.blue.withOpacity(0.1),
+                        offset: const Offset(0, 4),
+                        blurRadius: 8,
+                      ),
+                    ],
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -568,13 +584,24 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> {
                         spacing: 8,
                         runSpacing: 4,
                         children: selectedTruck.inventory.entries.map((entry) {
-                          return Chip(
-                            label: Text(
-                              '${entry.key.name}: ${entry.value}',
-                              style: const TextStyle(fontSize: 12),
+                          return Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Colors.blue.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: Colors.blue.withOpacity(0.3),
+                                width: 1,
+                              ),
                             ),
-                            backgroundColor: Colors.blue.shade50,
-                            side: BorderSide(color: Colors.blue.shade200),
+                            child: Text(
+                              '${entry.key.name}: ${entry.value}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.blue[900],
+                              ),
+                            ),
                           );
                         }).toList(),
                       ),
@@ -601,31 +628,26 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> {
                       spacing: 8,
                       runSpacing: 8,
                       children: [
-                        ElevatedButton.icon(
+                        GameButton(
                           onPressed: () => _showLoadCargoDialog(selectedTruck),
-                          icon: const Icon(Icons.inventory, size: 18),
-                          label: const Text('Load Cargo'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green,
-                            foregroundColor: Colors.white,
-                          ),
+                          icon: Icons.inventory,
+                          label: 'Load Cargo',
+                          color: Colors.green,
                         ),
-                        ElevatedButton.icon(
+                        GameButton(
                           onPressed: () =>
                               _showAddStopDialog(selectedTruck, machines),
-                          icon: const Icon(Icons.add, size: 18),
-                          label: const Text('Add Stop'),
+                          icon: Icons.add,
+                          label: 'Add Stop',
+                          color: Colors.blue,
                         ),
-                        ElevatedButton.icon(
+                        GameButton(
                           onPressed: _canGoStock(selectedTruck, routeMachines)
                               ? () => _goStock(selectedTruck)
                               : null,
-                          icon: const Icon(Icons.local_shipping, size: 18),
-                          label: const Text('Go Stock'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue,
-                            foregroundColor: Colors.white,
-                          ),
+                          icon: Icons.local_shipping,
+                          label: 'Go Stock',
+                          color: Colors.orange,
                         ),
                       ],
                     ),
@@ -655,10 +677,11 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      ElevatedButton.icon(
+                      GameButton(
                         onPressed: () => _showAddStopDialog(selectedTruck, machines),
-                        icon: const Icon(Icons.add),
-                        label: const Text('Add First Stop'),
+                        icon: Icons.add,
+                        label: 'Add First Stop',
+                        color: Colors.green,
                       ),
                     ],
                   ),
@@ -856,7 +879,36 @@ class _LoadCargoDialogState extends ConsumerState<_LoadCargoDialog> {
             if (_selectedProduct != null) ...[
               const SizedBox(height: 16),
               if (maxQuantity > 0) ...[
-                Text('Quantity: $quantityInt'),
+                // Quantity Display
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                      width: 2,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Quantity: ',
+                        style: Theme.of(context).textTheme.bodyLarge,
+                      ),
+                      Text(
+                        '$quantityInt',
+                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Slider for quantity selection
                 Slider(
                   value: _quantity.clamp(1.0, maxQuantity.toDouble()),
                   min: 1.0,
@@ -869,31 +921,17 @@ class _LoadCargoDialogState extends ConsumerState<_LoadCargoDialog> {
                     });
                   },
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 16),
                 // Quick increment buttons
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  alignment: WrapAlignment.center,
                   children: [
-                    _buildIncrementButton(1, maxQuantity),
-                    _buildIncrementButton(5, maxQuantity),
                     _buildIncrementButton(10, maxQuantity),
-                    SizedBox(
-                      child: OutlinedButton(
-                        onPressed: () {
-                          setState(() {
-                            _quantity = maxQuantity.toDouble();
-                          });
-                        },
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                          minimumSize: const Size(40, 36),
-                        ),
-                        child: Text(
-                          'Full ($maxQuantity)',
-                          style: const TextStyle(fontSize: 12),
-                        ),
-                      ),
-                    ),
+                    _buildIncrementButton(50, maxQuantity),
+                    _buildIncrementButton(100, maxQuantity),
+                    _buildFullButton(maxQuantity),
                   ],
                 ),
               ] else
@@ -906,15 +944,28 @@ class _LoadCargoDialogState extends ConsumerState<_LoadCargoDialog> {
         ),
       ),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
-        ElevatedButton(
-          onPressed: _selectedProduct != null && quantityInt > 0
-              ? () => widget.onLoad(_selectedProduct!, quantityInt)
-              : null,
-          child: const Text('Load'),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            _SmallGameButton(
+              onPressed: () => Navigator.of(context).pop(),
+              label: 'Cancel',
+              color: Colors.grey,
+              icon: Icons.close,
+            ),
+            const SizedBox(width: 8),
+            _SmallGameButton(
+              onPressed: _selectedProduct != null && quantityInt > 0
+                  ? () {
+                      widget.onLoad(_selectedProduct!, quantityInt);
+                      // Dialog will be closed by the onLoad callback
+                    }
+                  : null,
+              label: 'Load',
+              color: Colors.green,
+              icon: Icons.check_circle,
+            ),
+          ],
         ),
       ],
     );
@@ -922,29 +973,34 @@ class _LoadCargoDialogState extends ConsumerState<_LoadCargoDialog> {
 
   Widget _buildIncrementButton(int increment, int maxQuantity) {
     final newQuantity = (_quantity + increment).clamp(1.0, maxQuantity.toDouble());
-    final isEnabled = increment > 0 
-        ? _quantity < maxQuantity 
-        : _quantity > 1;
+    final isEnabled = _quantity < maxQuantity;
     
-    return SizedBox(
-      width: 50,
-      child: OutlinedButton(
-        onPressed: isEnabled
-            ? () {
-                setState(() {
-                  _quantity = newQuantity;
-                });
-              }
-            : null,
-        style: OutlinedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-          minimumSize: const Size(40, 36),
-        ),
-        child: Text(
-          increment > 0 ? '+$increment' : '$increment',
-          style: const TextStyle(fontSize: 12),
-        ),
-      ),
+    return _SmallGameButton(
+      onPressed: isEnabled
+          ? () {
+              setState(() {
+                _quantity = newQuantity;
+              });
+            }
+          : null,
+      label: '+$increment',
+      color: Colors.blue,
+      icon: Icons.add,
+    );
+  }
+
+  Widget _buildFullButton(int maxQuantity) {
+    return _SmallGameButton(
+      onPressed: maxQuantity > 0
+          ? () {
+              setState(() {
+                _quantity = maxQuantity.toDouble();
+              });
+            }
+          : null,
+      label: 'Full ($maxQuantity)',
+      color: Colors.orange,
+      icon: Icons.maximize,
     );
   }
 }
@@ -988,6 +1044,83 @@ class _StatItem extends StatelessWidget {
             textAlign: TextAlign.center,
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Smaller variant of GameButton for use in modals and tight spaces
+class _SmallGameButton extends StatefulWidget {
+  final String label;
+  final VoidCallback? onPressed;
+  final Color color;
+  final IconData? icon;
+
+  const _SmallGameButton({
+    required this.label,
+    this.onPressed,
+    this.color = const Color(0xFF4CAF50),
+    this.icon,
+  });
+
+  @override
+  State<_SmallGameButton> createState() => _SmallGameButtonState();
+}
+
+class _SmallGameButtonState extends State<_SmallGameButton> {
+  bool _isPressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final isEnabled = widget.onPressed != null;
+    
+    return GestureDetector(
+      onTapDown: isEnabled ? (_) => setState(() => _isPressed = true) : null,
+      onTapUp: isEnabled ? (_) => setState(() => _isPressed = false) : null,
+      onTapCancel: isEnabled ? () => setState(() => _isPressed = false) : null,
+      onTap: widget.onPressed,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 100),
+        margin: EdgeInsets.only(top: _isPressed ? 3 : 0),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: isEnabled ? widget.color : Colors.grey,
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: _isPressed || !isEnabled
+              ? []
+              : [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.3),
+                    offset: const Offset(0, 3),
+                    blurRadius: 0,
+                  ),
+                ],
+          border: Border.all(color: Colors.white.withOpacity(0.5), width: 1.5),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (widget.icon != null) ...[
+              Icon(widget.icon, color: Colors.white, size: 16),
+              const SizedBox(width: 6),
+            ],
+            Flexible(
+              child: Text(
+                widget.label.toUpperCase(),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                  letterSpacing: 0.5,
+                ),
+                textAlign: TextAlign.center,
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
