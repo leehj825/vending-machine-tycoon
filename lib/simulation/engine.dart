@@ -989,10 +989,12 @@ class SimulationEngine extends StateNotifier<SimulationState> {
       }
 
       // Find destination machine
-      final destination = machines.firstWhere(
-        (m) => m.id == destinationId,
-        orElse: () => machines.first, // Fallback
-      );
+      final destinationIndex = machines.indexWhere((m) => m.id == destinationId);
+      if (destinationIndex == -1) {
+        // Machine not found - return truck as-is (will be handled in restocking)
+        return truck;
+      }
+      final destination = machines[destinationIndex];
 
       // Get machine position and snap to nearest road
       final machineX = destination.zone.x;
@@ -1217,12 +1219,12 @@ class SimulationEngine extends StateNotifier<SimulationState> {
     double totalDistance = 0.0;
     
     for (int i = 0; i < machineIds.length - 1; i++) {
-      final machine1 = machines.firstWhere(
-        (m) => m.id == machineIds[i],
-      );
-      final machine2 = machines.firstWhere(
-        (m) => m.id == machineIds[i + 1],
-      );
+      final machine1Index = machines.indexWhere((m) => m.id == machineIds[i]);
+      final machine2Index = machines.indexWhere((m) => m.id == machineIds[i + 1]);
+      if (machine1Index == -1 || machine2Index == -1) continue;
+      
+      final machine1 = machines[machine1Index];
+      final machine2 = machines[machine2Index];
 
       final dx = machine2.zone.x - machine1.zone.x;
       final dy = machine2.zone.y - machine1.zone.y;
@@ -1266,9 +1268,10 @@ class SimulationEngine extends StateNotifier<SimulationState> {
     List<Truck> trucks,
     List<Machine> machines,
   ) {
-    var updatedMachines = List<Machine>.from(machines);
-    var updatedTrucks = List<Truck>.from(trucks);
-    final currentDay = state.time.day;
+    try {
+      var updatedMachines = List<Machine>.from(machines);
+      var updatedTrucks = List<Truck>.from(trucks);
+      final currentDay = state.time.day;
 
     for (int i = 0; i < updatedTrucks.length; i++) {
       final truck = updatedTrucks[i];
@@ -1413,10 +1416,10 @@ class SimulationEngine extends StateNotifier<SimulationState> {
           // Check remaining machines in route
           for (int routeIdx = truck.currentRouteIndex + 1; routeIdx < truck.route.length; routeIdx++) {
             final remainingMachineId = truck.route[routeIdx];
-            final remainingMachine = updatedMachines.firstWhere(
-              (m) => m.id == remainingMachineId,
-              orElse: () => updatedMachines.first, // Fallback (shouldn't happen)
-            );
+            final remainingMachineIndex = updatedMachines.indexWhere((m) => m.id == remainingMachineId);
+            if (remainingMachineIndex == -1) continue; // Machine not found, skip
+            
+            final remainingMachine = updatedMachines[remainingMachineIndex];
             
             // Check if this machine needs any of the products the truck is carrying
             for (final entry in updatedTruckInventory.entries) {
@@ -1488,10 +1491,10 @@ class SimulationEngine extends StateNotifier<SimulationState> {
           // Check remaining machines in route
           for (int routeIdx = truck.currentRouteIndex + 1; routeIdx < truck.route.length; routeIdx++) {
             final remainingMachineId = truck.route[routeIdx];
-            final remainingMachine = updatedMachines.firstWhere(
-              (m) => m.id == remainingMachineId,
-              orElse: () => updatedMachines.first, // Fallback (shouldn't happen)
-            );
+            final remainingMachineIndex = updatedMachines.indexWhere((m) => m.id == remainingMachineId);
+            if (remainingMachineIndex == -1) continue; // Machine not found, skip
+            
+            final remainingMachine = updatedMachines[remainingMachineIndex];
             
             // Check if this machine needs any of the products the truck is carrying
             for (final entry in truck.inventory.entries) {
@@ -1538,7 +1541,14 @@ class SimulationEngine extends StateNotifier<SimulationState> {
       }
     }
 
-    return (machines: updatedMachines, trucks: updatedTrucks);
+      return (machines: updatedMachines, trucks: updatedTrucks);
+    } catch (e, stackTrace) {
+      // Log error but return current state to prevent simulation from stopping
+      print('❌ ERROR in _processTruckRestocking: $e');
+      print('Stack trace: $stackTrace');
+      // Return trucks and machines as-is to prevent state corruption
+      return (machines: machines, trucks: trucks);
+    }
   }
 }
 
