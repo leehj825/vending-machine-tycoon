@@ -560,313 +560,205 @@ class SimulationEngine extends StateNotifier<SimulationState> {
     // Movement speed: 0.1 units per tick = 1 tile per second (10 ticks per second)
     const double movementSpeed = 0.1;
     
-    // A* pathfinding to find shortest path through road network
-    // Completely rewritten to ensure trucks ONLY move along road tiles
-    // Returns a path where every waypoint is on a valid road (x or y matches a road coordinate)
+    // Simplified pathfinding - generates paths along roads only
+    // Returns a list of waypoints where trucks can move step by step
     List<({double x, double y})> findPath(
       double startX, double startY,
       double endX, double endY,
     ) {
-      // Helper to check if a coordinate is on a valid road
-      bool isOnRoad(double coord) {
-        for (final road in _validRoads) {
-          if ((coord - road).abs() < SimulationConstants.roadSnapThreshold) {
-            return true;
-          }
-        }
-        return false;
-      }
-      
-      // Helper to check if a point is on a road (either x or y is on a road)
-      bool isPointOnRoad(double x, double y) {
-        return isOnRoad(x) || isOnRoad(y);
-      }
-      
-      // Snap start and end to nearest road intersections
+      // Snap to nearest road intersections for pathfinding
       final startRoadX = _snapToNearestRoad(startX);
       final startRoadY = _snapToNearestRoad(startY);
       final endRoadX = _snapToNearestRoad(endX);
       final endRoadY = _snapToNearestRoad(endY);
       
+      // If already at destination
+      if ((startRoadX - endRoadX).abs() < 0.01 && (startRoadY - endRoadY).abs() < 0.01) {
+        return [(x: endRoadX, y: endRoadY)];
+      }
+      
+      // Simple case: same road line (horizontal or vertical)
+      if ((startRoadX - endRoadX).abs() < 0.01) {
+        // Same vertical road
+        final path = <({double x, double y})>[];
+        final step = endRoadY > startRoadY ? 1.0 : -1.0;
+        var y = startRoadY;
+        while ((endRoadY > startRoadY && y <= endRoadY) || (endRoadY < startRoadY && y >= endRoadY)) {
+          path.add((x: startRoadX, y: y));
+          y += step;
+          if (path.length > 50) break; // Safety
+        }
+        if (path.isEmpty || (path.last.x - endRoadX).abs() > 0.01 || (path.last.y - endRoadY).abs() > 0.01) {
+          path.add((x: endRoadX, y: endRoadY));
+        }
+        return path;
+      }
+      
+      if ((startRoadY - endRoadY).abs() < 0.01) {
+        // Same horizontal road
+        final path = <({double x, double y})>[];
+        final step = endRoadX > startRoadX ? 1.0 : -1.0;
+        var x = startRoadX;
+        while ((endRoadX > startRoadX && x <= endRoadX) || (endRoadX < startRoadX && x >= endRoadX)) {
+          path.add((x: x, y: startRoadY));
+          x += step;
+          if (path.length > 50) break; // Safety
+        }
+        if (path.isEmpty || (path.last.x - endRoadX).abs() > 0.01 || (path.last.y - endRoadY).abs() > 0.01) {
+          path.add((x: endRoadX, y: endRoadY));
+        }
+        return path;
+      }
+      
+      // Need to go through intersections - use A* on road graph
+      final baseGraph = _getBaseGraph();
       final start = (x: startRoadX, y: startRoadY);
       final end = (x: endRoadX, y: endRoadY);
       
-      // If already at destination
-      if (startRoadX == endRoadX && startRoadY == endRoadY) {
-        return [end];
-      }
-      
-      // Get base graph (road intersections only) - make a copy
-      final baseGraph = Map<({double x, double y}), List<({double x, double y})>>.from(
-        _getBaseGraph().map((key, value) => MapEntry(key, List.from(value))),
+      // Add start and end to graph if needed
+      final graph = Map<({double x, double y}), List<({double x, double y})>>.from(
+        baseGraph.map((key, value) => MapEntry(key, List.from(value))),
       );
       
-      // Ensure start and end are in graph
-      if (!baseGraph.containsKey(start)) {
-        baseGraph[start] = [];
-      }
-      if (!baseGraph.containsKey(end)) {
-        baseGraph[end] = [];
-      }
+      if (!graph.containsKey(start)) graph[start] = [];
+      if (!graph.containsKey(end)) graph[end] = [];
       
-      // Connect start to intersections on same road lines
+      // Connect start/end to intersections on same roads
       for (final roadX in _validRoads) {
-        if (roadX == startRoadX) {
+        if ((roadX - startRoadX).abs() < 0.01) {
           for (final roadY in _validRoads) {
-            final neighbor = (x: roadX, y: roadY);
-            if (baseGraph.containsKey(neighbor) && neighbor != start) {
-              if (!baseGraph[start]!.any((n) => n.x == neighbor.x && n.y == neighbor.y)) {
-                baseGraph[start]!.add(neighbor);
-              }
-              if (!baseGraph[neighbor]!.any((n) => n.x == start.x && n.y == start.y)) {
-                baseGraph[neighbor]!.add(start);
-              }
+            final n = (x: roadX, y: roadY);
+            if (graph.containsKey(n) && (n.x != start.x || n.y != start.y)) {
+              graph[start]!.add(n);
+              graph[n]!.add(start);
+            }
+          }
+        }
+        if ((roadX - endRoadX).abs() < 0.01) {
+          for (final roadY in _validRoads) {
+            final n = (x: roadX, y: roadY);
+            if (graph.containsKey(n) && (n.x != end.x || n.y != end.y)) {
+              graph[end]!.add(n);
+              graph[n]!.add(end);
             }
           }
         }
       }
       for (final roadY in _validRoads) {
-        if (roadY == startRoadY) {
+        if ((roadY - startRoadY).abs() < 0.01) {
           for (final roadX in _validRoads) {
-            final neighbor = (x: roadX, y: roadY);
-            if (baseGraph.containsKey(neighbor) && neighbor != start) {
-              if (!baseGraph[start]!.any((n) => n.x == neighbor.x && n.y == neighbor.y)) {
-                baseGraph[start]!.add(neighbor);
-              }
-              if (!baseGraph[neighbor]!.any((n) => n.x == start.x && n.y == start.y)) {
-                baseGraph[neighbor]!.add(start);
-              }
+            final n = (x: roadX, y: roadY);
+            if (graph.containsKey(n) && (n.x != start.x || n.y != start.y)) {
+              graph[start]!.add(n);
+              graph[n]!.add(start);
+            }
+          }
+        }
+        if ((roadY - endRoadY).abs() < 0.01) {
+          for (final roadX in _validRoads) {
+            final n = (x: roadX, y: roadY);
+            if (graph.containsKey(n) && (n.x != end.x || n.y != end.y)) {
+              graph[end]!.add(n);
+              graph[n]!.add(end);
             }
           }
         }
       }
       
-      // Connect end to intersections on same road lines
-      for (final roadX in _validRoads) {
-        if (roadX == endRoadX) {
-          for (final roadY in _validRoads) {
-            final neighbor = (x: roadX, y: roadY);
-            if (baseGraph.containsKey(neighbor) && neighbor != end) {
-              if (!baseGraph[end]!.any((n) => n.x == neighbor.x && n.y == neighbor.y)) {
-                baseGraph[end]!.add(neighbor);
-              }
-              if (!baseGraph[neighbor]!.any((n) => n.x == end.x && n.y == end.y)) {
-                baseGraph[neighbor]!.add(end);
-              }
-            }
-          }
-        }
-      }
-      for (final roadY in _validRoads) {
-        if (roadY == endRoadY) {
-          for (final roadX in _validRoads) {
-            final neighbor = (x: roadX, y: roadY);
-            if (baseGraph.containsKey(neighbor) && neighbor != end) {
-              if (!baseGraph[end]!.any((n) => n.x == neighbor.x && n.y == neighbor.y)) {
-                baseGraph[end]!.add(neighbor);
-              }
-              if (!baseGraph[neighbor]!.any((n) => n.x == end.x && n.y == end.y)) {
-                baseGraph[neighbor]!.add(end);
-              }
-            }
-          }
-        }
-      }
-      
-      // A* pathfinding on intersections
+      // Simple A* pathfinding
       final openSet = <({double x, double y})>{start};
       final cameFrom = <({double x, double y}), ({double x, double y})>{};
       final gScore = <({double x, double y}), double>{start: 0.0};
-      final hStart = (end.x - start.x).abs() + (end.y - start.y).abs();
-      final fScore = <({double x, double y}), double>{start: hStart};
+      final fScore = <({double x, double y}), double>{start: (end.x - start.x).abs() + (end.y - start.y).abs()};
       
-      // Helper to check node equality
-      bool nodesEqual(({double x, double y}) a, ({double x, double y}) b) {
-        return a.x == b.x && a.y == b.y;
-      }
-      
-      // Find path through intersections
-      ({double x, double y})? goalNode;
+      ({double x, double y})? goal;
       
       while (openSet.isNotEmpty) {
-        // Find node with lowest fScore
         ({double x, double y})? current;
-        double lowestF = double.infinity;
-        for (final node in openSet) {
-          final f = fScore[node] ?? double.infinity;
-          if (f < lowestF) {
-            lowestF = f;
-            current = node;
+        double minF = double.infinity;
+        for (final n in openSet) {
+          final f = fScore[n] ?? double.infinity;
+          if (f < minF) {
+            minF = f;
+            current = n;
           }
         }
-        
         if (current == null) break;
         
-        // Check if we reached the goal
-        if (nodesEqual(current, end)) {
-          goalNode = current;
+        if ((current.x - end.x).abs() < 0.01 && (current.y - end.y).abs() < 0.01) {
+          goal = current;
           break;
         }
         
         openSet.remove(current);
-        
-        // Get neighbors from graph
-        final neighbors = baseGraph[current] ?? [];
-        
-        for (final neighbor in neighbors) {
-          // Calculate edge cost (Manhattan distance - only horizontal or vertical moves)
+        for (final neighbor in graph[current] ?? []) {
           final dx = (neighbor.x - current.x).abs();
           final dy = (neighbor.y - current.y).abs();
+          if (dx > 0 && dy > 0) continue; // No diagonal
           
-          // Only allow horizontal or vertical movement (no diagonal)
-          if (dx > 0 && dy > 0) continue; // Skip diagonal moves
-          
-          double edgeCost = dx + dy;
-          
-          // Add penalty for outward roads
-          if (!nodesEqual(current, start) && !nodesEqual(neighbor, end)) {
-            if (_outwardRoads.contains(neighbor.x) || _outwardRoads.contains(neighbor.y)) {
-              edgeCost += SimulationConstants.wrongWayPenalty;
-            }
-          }
-          
-          final tentativeG = (gScore[current] ?? double.infinity) + edgeCost;
-          final currentG = gScore[neighbor] ?? double.infinity;
-          
-          if (tentativeG < currentG) {
+          final cost = dx + dy;
+          final tg = (gScore[current] ?? double.infinity) + cost;
+          if (tg < (gScore[neighbor] ?? double.infinity)) {
             cameFrom[neighbor] = current;
-            gScore[neighbor] = tentativeG;
-            final h = (end.x - neighbor.x).abs() + (end.y - neighbor.y).abs();
-            fScore[neighbor] = tentativeG + (SimulationConstants.pathfindingHeuristicWeight * h);
-            
-            if (!openSet.any((n) => nodesEqual(n, neighbor))) {
+            gScore[neighbor] = tg;
+            fScore[neighbor] = tg + ((end.x - neighbor.x).abs() + (end.y - neighbor.y).abs());
+            if (!openSet.contains(neighbor)) {
               openSet.add(neighbor);
             }
           }
         }
       }
       
-      // Reconstruct path through intersections
-      final intersectionPath = <({double x, double y})>[];
-      if (goalNode != null) {
-        var node = goalNode;
-        while (node != null) {
-          intersectionPath.insert(0, node);
+      // Reconstruct path
+      final path = <({double x, double y})>[];
+      if (goal != null) {
+        var node = goal;
+        while (true) {
+          path.insert(0, node);
           final nextNode = cameFrom[node];
-          if (nextNode == null || nodesEqual(nextNode, start)) {
-            if (nextNode != null && !nodesEqual(nextNode, start)) {
-              intersectionPath.insert(0, nextNode);
-            }
+          if (nextNode == null || (nextNode.x == start.x && nextNode.y == start.y)) {
             break;
           }
           node = nextNode;
-          if (intersectionPath.length > 100) break; // Safety check
+          if (path.length > 50) break;
         }
       }
       
-      // If no path found through intersections, try direct connection
-      if (intersectionPath.isEmpty) {
-        // Check if start and end are on same road line (can go directly)
-        if (startRoadX == endRoadX) {
-          // Same vertical road - return path with intermediate points
-          final path = <({double x, double y})>[];
-          final startY = startRoadY;
-          final endY = endRoadY;
-          final step = endY > startY ? 1.0 : -1.0;
-          
-          var y = startY;
-          path.add((x: startRoadX, y: y));
-          while ((endY > startY && y < endY) || (endY < startY && y > endY)) {
-            y += step;
-            path.add((x: startRoadX, y: y));
-          }
-          if (!nodesEqual(path.last, end)) {
-            path.add(end);
-          }
-          return path;
-        } else if (startRoadY == endRoadY) {
-          // Same horizontal road - return path with intermediate points
-          final path = <({double x, double y})>[];
-          final startX = startRoadX;
-          final endX = endRoadX;
-          final step = endX > startX ? 1.0 : -1.0;
-          
-          var x = startX;
-          path.add((x: x, y: startRoadY));
-          while ((endX > startX && x < endX) || (endX < startX && x > endX)) {
-            x += step;
-            path.add((x: x, y: startRoadY));
-          }
-          if (!nodesEqual(path.last, end)) {
-            path.add(end);
-          }
-          return path;
-        }
-        // Can't go directly - return just end (will need to recalculate)
-        return [end];
+      if (path.isEmpty) {
+        return [(x: endRoadX, y: endRoadY)];
       }
       
-      // Expand path to include intermediate points along road segments
-      // This ensures trucks move along roads, not through tiles
-      final expandedPath = <({double x, double y})>[];
+      // Expand path with intermediate waypoints
+      final expanded = <({double x, double y})>[];
+      expanded.add((x: startRoadX, y: startRoadY));
       
-      // Always start with the start point
-      expandedPath.add(start);
-      
-      // Process each segment in the intersection path
-      for (int i = 0; i < intersectionPath.length; i++) {
-        final current = i > 0 ? intersectionPath[i - 1] : start;
-        final next = intersectionPath[i];
+      for (int i = 0; i < path.length; i++) {
+        final prev = i > 0 ? path[i - 1] : (x: startRoadX, y: startRoadY);
+        final curr = path[i];
         
-        // Add intermediate waypoints along the road segment
-        if ((current.x - next.x).abs() < 0.01) {
-          // Moving vertically along a vertical road (same x)
-          final roadX = current.x;
-          final startY = current.y;
-          final endY = next.y;
-          final step = endY > startY ? 1.0 : -1.0;
-          
-          var y = startY + step;
-          while ((endY > startY && y <= endY) || (endY < startY && y >= endY)) {
-            expandedPath.add((x: roadX, y: y));
+        if ((prev.x - curr.x).abs() < 0.01) {
+          // Vertical movement
+          final step = curr.y > prev.y ? 1.0 : -1.0;
+          var y = prev.y + step;
+          while ((curr.y > prev.y && y <= curr.y) || (curr.y < prev.y && y >= curr.y)) {
+            expanded.add((x: prev.x, y: y));
             y += step;
-            // Safety check
-            if (expandedPath.length > 200) break;
+            if (expanded.length > 100) break;
           }
-        } else if ((current.y - next.y).abs() < 0.01) {
-          // Moving horizontally along a horizontal road (same y)
-          final roadY = current.y;
-          final startX = current.x;
-          final endX = next.x;
-          final step = endX > startX ? 1.0 : -1.0;
-          
-          var x = startX + step;
-          while ((endX > startX && x <= endX) || (endX < startX && x >= endX)) {
-            expandedPath.add((x: x, y: roadY));
+        } else if ((prev.y - curr.y).abs() < 0.01) {
+          // Horizontal movement
+          final step = curr.x > prev.x ? 1.0 : -1.0;
+          var x = prev.x + step;
+          while ((curr.x > prev.x && x <= curr.x) || (curr.x < prev.x && x >= curr.x)) {
+            expanded.add((x: x, y: prev.y));
             x += step;
-            // Safety check
-            if (expandedPath.length > 200) break;
+            if (expanded.length > 100) break;
           }
-        } else {
-          // Shouldn't happen if pathfinding is correct, but add the point anyway
-          expandedPath.add(next);
         }
+        expanded.add(curr);
       }
       
-      // Ensure end is in path
-      if (expandedPath.isEmpty || !nodesEqual(expandedPath.last, end)) {
-        expandedPath.add(end);
-      }
-      
-      // Remove duplicates (keep only unique consecutive points)
-      final finalPath = <({double x, double y})>[];
-      for (final point in expandedPath) {
-        if (finalPath.isEmpty || !nodesEqual(finalPath.last, point)) {
-          finalPath.add(point);
-        }
-      }
-      
-      return finalPath.isNotEmpty ? finalPath : [end];
+      return expanded.isEmpty ? [(x: endRoadX, y: endRoadY)] : expanded;
     }
     
     // Helper function to expand path with intermediate waypoints along road segments

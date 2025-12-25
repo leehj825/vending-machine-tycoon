@@ -206,12 +206,9 @@ class CityMapGame extends FlameGame with ScaleDetector, ScrollDetector, TapDetec
       }
       
       for (final t in trucks) {
-        // Trucks must always stay on roads (integer coordinates)
-        // Round to road coordinates for all truck states
-        final roadX = t.currentX.round().toDouble();
-        final roadY = t.currentY.round().toDouble();
-        final posX = roadX * 100;
-        final posY = roadY * 100;
+        // Use exact coordinates for smooth movement (don't round!)
+        final posX = t.currentX * 100;
+        final posY = t.currentY * 100;
         final pos = Vector2(posX, posY);
         if (_truckComponents.containsKey(t.id)) {
            _truckComponents[t.id]!.updateTruck(t);
