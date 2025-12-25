@@ -833,53 +833,25 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
               top: buttonTop,
               width: buttonSize,
               height: buttonSize,
-              child: GestureDetector(
-                onTap: () {
-                  if (!isButtonEnabled) {
-                    // Show why button is disabled
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(buttonReason ?? 'Cannot purchase'),
-                          duration: const Duration(seconds: 3),
-                          backgroundColor: Colors.orange,
-                        ),
-                      );
-                    }
-                    return;
-                  }
-                  
-                  final buttonKey = '${data['x']}_${data['y']}';
-                  final now = DateTime.now();
-                  
-                  // Prevent duplicate calls within 300ms for the same button
-                  if (_lastTappedButton != buttonKey || 
-                      _lastTapTime == null || 
-                      now.difference(_lastTapTime!) > const Duration(milliseconds: 300)) {
-                    _lastTapTime = now;
-                    _lastTappedButton = buttonKey;
-                    _handleBuildingTap(data['x'] as int, data['y'] as int, tileType);
-                  }
+              child: IgnorePointer(
+                ignoring: false,
+                child: Listener(
+                onPointerDown: (event) {
+                  final buttonKey = 'button_${data['x']}_${data['y']}';
+                  _buttonPointerDownPositions[buttonKey] = event.position;
                 },
-                onLongPress: () {
-                  // Long press shows debug info
-                  if (context.mounted) {
-                    final debugInfo = _getButtonDebugInfo(data['x'] as int, data['y'] as int, tileType);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(debugInfo),
-                        duration: const Duration(seconds: 5),
-                        backgroundColor: Colors.blue,
-                      ),
-                    );
-                  }
-                },
-                behavior: HitTestBehavior.opaque,
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: () {
+                onPointerUp: (event) {
+                  final buttonKey = 'button_${data['x']}_${data['y']}';
+                  final downPosition = _buttonPointerDownPositions[buttonKey];
+                  
+                  if (downPosition != null) {
+                    final distance = (event.position - downPosition).distance;
+                    _buttonPointerDownPositions.remove(buttonKey);
+                    
+                    // Only treat as tap if movement was small (< 10 pixels)
+                    if (distance < 10.0) {
                       if (!isButtonEnabled) {
+                        // Show why button is disabled
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
@@ -892,9 +864,8 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
                         return;
                       }
                       
-                      final buttonKey = '${data['x']}_${data['y']}';
                       final now = DateTime.now();
-                      
+                      // Prevent duplicate calls within 300ms for the same button
                       if (_lastTappedButton != buttonKey || 
                           _lastTapTime == null || 
                           now.difference(_lastTapTime!) > const Duration(milliseconds: 300)) {
@@ -902,34 +873,86 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
                         _lastTappedButton = buttonKey;
                         _handleBuildingTap(data['x'] as int, data['y'] as int, tileType);
                       }
-                    },
-                    customBorder: const CircleBorder(),
-                    splashColor: Colors.green.shade300,
-                    highlightColor: Colors.green.shade200,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: isButtonEnabled ? Colors.green : Colors.grey,
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: Colors.white,
-                          width: ScreenUtils.relativeSize(context, 0.004),
+                    }
+                  }
+                },
+                onPointerCancel: (event) {
+                  final buttonKey = 'button_${data['x']}_${data['y']}';
+                  _buttonPointerDownPositions.remove(buttonKey);
+                },
+                behavior: HitTestBehavior.opaque,
+                child: GestureDetector(
+                  onLongPress: () {
+                    // Long press shows debug info
+                    if (context.mounted) {
+                      final debugInfo = _getButtonDebugInfo(data['x'] as int, data['y'] as int, tileType);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(debugInfo),
+                          duration: const Duration(seconds: 5),
+                          backgroundColor: Colors.blue,
                         ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.3),
-                            blurRadius: ScreenUtils.relativeSize(context, 0.008),
-                            offset: Offset(0, ScreenUtils.relativeSize(context, 0.004)),
+                      );
+                    }
+                  },
+                  behavior: HitTestBehavior.opaque,
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () {
+                        if (!isButtonEnabled) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(buttonReason ?? 'Cannot purchase'),
+                                duration: const Duration(seconds: 3),
+                                backgroundColor: Colors.orange,
+                              ),
+                            );
+                          }
+                          return;
+                        }
+                        
+                        final buttonKey = 'button_${data['x']}_${data['y']}';
+                        final now = DateTime.now();
+                        
+                        if (_lastTappedButton != buttonKey || 
+                            _lastTapTime == null || 
+                            now.difference(_lastTapTime!) > const Duration(milliseconds: 300)) {
+                          _lastTapTime = now;
+                          _lastTappedButton = buttonKey;
+                          _handleBuildingTap(data['x'] as int, data['y'] as int, tileType);
+                        }
+                      },
+                      customBorder: const CircleBorder(),
+                      splashColor: Colors.green.shade300,
+                      highlightColor: Colors.green.shade200,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: isButtonEnabled ? Colors.green : Colors.grey,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.white,
+                            width: ScreenUtils.relativeSize(context, 0.004),
                           ),
-                        ],
-                      ),
-                      child: Icon(
-                        isButtonEnabled ? Icons.add : Icons.info_outline,
-                        color: Colors.white,
-                        size: buttonSize * 0.75, // 75% of button size
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.3),
+                              blurRadius: ScreenUtils.relativeSize(context, 0.008),
+                              offset: Offset(0, ScreenUtils.relativeSize(context, 0.004)),
+                            ),
+                          ],
+                        ),
+                        child: Icon(
+                          isButtonEnabled ? Icons.add : Icons.info_outline,
+                          color: Colors.white,
+                          size: buttonSize * 0.75, // 75% of button size
+                        ),
                       ),
                     ),
                   ),
                 ),
+              ),
               ),
             ),
           );
