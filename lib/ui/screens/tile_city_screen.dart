@@ -8,6 +8,7 @@ import '../../simulation/models/truck.dart' as sim;
 import '../../simulation/models/machine.dart' as sim;
 import '../theme/zone_ui.dart';
 import '../utils/screen_utils.dart';
+import 'route_planner_screen.dart';
 
 enum TileType {
   grass,
@@ -779,17 +780,47 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
         
         final verticalOffset = tileType == TileType.warehouse ? warehouseVerticalOffset : 0.0;
         
+        // Determine if building is interactive or decorative
+        final isInteractive = tileType == TileType.shop || 
+                             tileType == TileType.gym || 
+                             tileType == TileType.office || 
+                             tileType == TileType.school;
+        
+        Widget buildingWidget = _buildBuildingTile(tileType, buildingOrientation);
+        
+        // Wrap decorative buildings in IgnorePointer so clicks pass through
+        // Wrap interactive buildings in Listener for manual tap detection
+        if (isInteractive) {
+          buildingWidget = Listener(
+            onPointerDown: (event) {
+              final key = 'building_${data['x']}_${data['y']}';
+              _buttonPointerDownPositions[key] = event.position;
+            },
+            onPointerUp: (event) {
+              final key = 'building_${data['x']}_${data['y']}';
+              final downPosition = _buttonPointerDownPositions[key];
+              if (downPosition != null) {
+                final distance = (event.position - downPosition).distance;
+                _buttonPointerDownPositions.remove(key);
+                if (distance < 10.0) {
+                  _handleBuildingTap(data['x'] as int, data['y'] as int, tileType);
+                }
+              }
+            },
+            behavior: HitTestBehavior.translucent,
+            child: buildingWidget,
+          );
+        } else {
+          buildingWidget = IgnorePointer(child: buildingWidget);
+        }
+        
         tiles.add(
           Positioned(
             left: positionedX + centerOffsetX,
             top: buildingTop - verticalOffset,
             width: scaledWidth,
             height: scaledBuildingHeight,
-            child: GestureDetector(
-              onTap: () => _handleBuildingTap(data['x'] as int, data['y'] as int, tileType),
-              behavior: HitTestBehavior.opaque, // Ensure tap is captured
-              child: _buildBuildingTile(tileType, buildingOrientation),
-            ),
+            child: buildingWidget,
           ),
         );
 
@@ -1081,27 +1112,70 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
       },
     );
 
+    Widget truckWidget = img;
     if (flip) {
-      return Positioned(
-        left: left,
-        top: top,
-        width: truckSize,
-        height: truckSize,
-        child: Transform(
-          alignment: Alignment.center, 
-          transform: Matrix4.identity()..scale(-1.0, 1.0), 
-          child: img
-        ),
+      truckWidget = Transform(
+        alignment: Alignment.center, 
+        transform: Matrix4.identity()..scale(-1.0, 1.0), 
+        child: img
       );
     }
+    
+    // Wrap truck widget in Listener for tap detection
+    truckWidget = Listener(
+      onPointerDown: (event) {
+        final key = 'truck_${truck.id}';
+        _buttonPointerDownPositions[key] = event.position;
+      },
+      onPointerUp: (event) {
+        final key = 'truck_${truck.id}';
+        final downPosition = _buttonPointerDownPositions[key];
+        if (downPosition != null) {
+          final distance = (event.position - downPosition).distance;
+          _buttonPointerDownPositions.remove(key);
+          if (distance < 10.0) {
+            _handleTruckTap(truck);
+          }
+        }
+      },
+      behavior: HitTestBehavior.translucent,
+      child: truckWidget,
+    );
     
     return Positioned(
       left: left,
       top: top,
       width: truckSize,
       height: truckSize,
-      child: img,
+      child: truckWidget,
     );
+  }
+
+  void _handleTruckTap(sim.Truck truck) {
+    try {
+      // Update selected truck state
+      ref.read(selectedTruckIdProvider.notifier).selectTruck(truck.id);
+      
+      // Show snackbar
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Truck ${truck.name} selected! Check Fleet tab.'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error handling truck tap: $e');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    }
   }
 
   void _handleBuildingTap(int gridX, int gridY, TileType tileType) {
