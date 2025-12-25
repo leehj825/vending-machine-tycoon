@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'ui/screens/menu_screen.dart';
 
 void main() {
@@ -18,11 +19,16 @@ class VendingMachineTycoonApp extends StatelessWidget {
     return MaterialApp(
       title: 'Vending Machine Tycoon',
       theme: ThemeData(
+        useMaterial3: true,
+        // Define the default font family for the entire app
+        textTheme: GoogleFonts.fredokaTextTheme(
+          ThemeData.light().textTheme,
+        ),
         colorScheme: ColorScheme.fromSeed(
           seedColor: Colors.green,
           brightness: Brightness.light,
+          surface: const Color(0xFFF5F5F5), // Light grey background instead of white
         ),
-        useMaterial3: true,
       ),
       home: const MenuScreen(),
       debugShowCheckedModeBanner: false,

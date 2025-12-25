@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../simulation/models/machine.dart';
 import '../../state/providers.dart';
 import '../theme/zone_ui.dart';
+import 'game_button.dart';
 
 /// Widget that displays a machine's status in a card format
 class MachineStatusCard extends ConsumerStatefulWidget {
@@ -44,10 +45,25 @@ class _MachineStatusCardState extends ConsumerState<MachineStatusCard> {
     final zoneIcon = machine.zone.type.icon;
     final zoneColor = machine.zone.type.color;
 
-    return Card(
+    return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      elevation: 2,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: zoneColor.withOpacity(0.5), // Colored border based on zone
+          width: 2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: zoneColor.withOpacity(0.1),
+            offset: const Offset(0, 4),
+            blurRadius: 8,
+          ),
+        ],
+      ),
       child: InkWell(
+        borderRadius: BorderRadius.circular(16), // ripple matches shape
         onTap: () {
           setState(() {
             _isExpanded = !_isExpanded;
@@ -211,7 +227,7 @@ class _MachineStatusCardState extends ConsumerState<MachineStatusCard> {
                 if (machine.currentCash > 0)
                   SizedBox(
                     width: double.infinity,
-                    child: ElevatedButton.icon(
+                    child: GameButton(
                       onPressed: () {
                         ref.read(gameControllerProvider.notifier).retrieveCash(machine.id);
                         // Optionally close the expanded view after retrieving
@@ -219,15 +235,9 @@ class _MachineStatusCardState extends ConsumerState<MachineStatusCard> {
                         //   _isExpanded = false;
                         // });
                       },
-                      icon: const Icon(Icons.account_balance_wallet, size: 18),
-                      label: Text(
-                        'Retrieve \$${machine.currentCash.toStringAsFixed(2)}',
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
+                      icon: Icons.account_balance_wallet,
+                      label: 'Retrieve \$${machine.currentCash.toStringAsFixed(2)}',
+                      color: Colors.green,
                     ),
                   )
                 else

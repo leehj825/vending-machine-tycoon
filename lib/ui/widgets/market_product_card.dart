@@ -4,6 +4,7 @@ import '../../simulation/models/product.dart';
 import '../../state/market_provider.dart';
 import '../../state/selectors.dart';
 import '../../state/providers.dart';
+import 'game_button.dart';
 
 /// Card widget that displays a product in the market
 class MarketProductCard extends ConsumerWidget {
@@ -63,43 +64,85 @@ class MarketProductCard extends ConsumerWidget {
     final priceColor = _getPriceColor(trend);
     final trendIcon = _getTrendIcon(trend);
 
-    return Card(
+    return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: ListTile(
-        leading: Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.primaryContainer,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(
-            _getProductIcon(product),
-            color: Theme.of(context).colorScheme.onPrimaryContainer,
-            size: 24,
-          ),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: priceColor.withOpacity(0.3),
+          width: 2,
         ),
-        title: Text(
-          product.name,
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        subtitle: Wrap(
-          crossAxisAlignment: WrapCrossAlignment.center,
-          spacing: 4,
-          children: [
-            Icon(trendIcon, size: 16, color: priceColor),
-            Text(
-              'Current: \$${price.toStringAsFixed(2)}',
-              style: TextStyle(
-                color: priceColor,
-                fontWeight: FontWeight.w500,
+        boxShadow: [
+          BoxShadow(
+            color: priceColor.withOpacity(0.1),
+            offset: const Offset(0, 4),
+            blurRadius: 8,
+          ),
+        ],
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () => _showBuyDialog(context, ref, product, price),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              // Product Icon
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  _getProductIcon(product),
+                  color: Theme.of(context).colorScheme.onPrimaryContainer,
+                  size: 24,
+                ),
               ),
-            ),
-          ],
-        ),
-        trailing: ElevatedButton(
-          onPressed: () => _showBuyDialog(context, ref, product, price),
-          child: const Text('Buy'),
+              const SizedBox(width: 16),
+              // Product Info
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      product.name,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 4,
+                      children: [
+                        Icon(trendIcon, size: 16, color: priceColor),
+                        Text(
+                          'Current: \$${price.toStringAsFixed(2)}',
+                          style: TextStyle(
+                            color: priceColor,
+                            fontWeight: FontWeight.w500,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 16),
+              // Buy Button
+              GameButton(
+                onPressed: () => _showBuyDialog(context, ref, product, price),
+                label: 'Buy',
+                color: Colors.blue,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -180,43 +223,75 @@ class _BuyStockBottomSheetState extends ConsumerState<_BuyStockBottomSheet> {
               style: Theme.of(context).textTheme.bodyLarge,
             ),
             const SizedBox(height: 24),
-            Text('Quantity: $quantityInt'),
-            Slider(
-              value: _quantity.clamp(1.0, maxQuantity.toDouble()),
-              min: 1.0,
-              max: maxQuantity.toDouble(),
-              divisions: maxQuantity > 1 ? maxQuantity - 1 : 1,
-              label: quantityInt.toString(),
-              onChanged: (value) {
-                setState(() {
-                  _quantity = value;
-                });
-              },
-            ),
-            const SizedBox(height: 8),
-            // Quick increment buttons
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _buildIncrementButton(context, 1, maxQuantity),
-                _buildIncrementButton(context, 5, maxQuantity),
-                _buildIncrementButton(context, 10, maxQuantity),
-                SizedBox(
-                  child: OutlinedButton(
-                    onPressed: () {
-                      setState(() {
-                        _quantity = maxQuantity.toDouble();
-                      });
-                    },
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                      minimumSize: const Size(40, 36),
-                    ),
-                    child: Text(
-                      'Full ($maxQuantity)',
-                      style: const TextStyle(fontSize: 12),
+            // Quantity Display
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                  width: 2,
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'Quantity: ',
+                    style: Theme.of(context).textTheme.bodyLarge,
+                  ),
+                  Text(
+                    '$quantityInt',
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.primary,
                     ),
                   ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            // Custom quantity track (visual representation)
+            Container(
+              height: 8,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: FractionallySizedBox(
+                alignment: Alignment.centerLeft,
+                widthFactor: (_quantity / maxQuantity).clamp(0.0, 1.0),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primary,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            // Quick increment buttons with GameButtons
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              alignment: WrapAlignment.center,
+              children: [
+                _buildIncrementGameButton(context, -10, maxQuantity),
+                _buildIncrementGameButton(context, -1, maxQuantity),
+                _buildIncrementGameButton(context, 1, maxQuantity),
+                _buildIncrementGameButton(context, 10, maxQuantity),
+                GameButton(
+                  onPressed: maxQuantity > 0
+                      ? () {
+                          setState(() {
+                            _quantity = maxQuantity.toDouble();
+                          });
+                        }
+                      : null,
+                  label: 'MAX ($maxQuantity)',
+                  color: Colors.orange,
+                  icon: Icons.maximize,
                 ),
               ],
             ),
@@ -273,15 +348,17 @@ class _BuyStockBottomSheetState extends ConsumerState<_BuyStockBottomSheet> {
             Row(
               children: [
                 Expanded(
-                  child: OutlinedButton(
+                  child: GameButton(
                     onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('Cancel'),
+                    label: 'Cancel',
+                    color: Colors.grey,
+                    icon: Icons.close,
                   ),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
                   flex: 2,
-                  child: ElevatedButton(
+                  child: GameButton(
                     onPressed: totalCost <= cash && quantityInt > 0
                         ? () {
                             ref
@@ -301,7 +378,9 @@ class _BuyStockBottomSheetState extends ConsumerState<_BuyStockBottomSheet> {
                             );
                           }
                         : null,
-                    child: const Text('Confirm Purchase'),
+                    label: 'Confirm Purchase',
+                    color: Colors.green,
+                    icon: Icons.check_circle,
                   ),
                 ),
               ],
@@ -312,31 +391,23 @@ class _BuyStockBottomSheetState extends ConsumerState<_BuyStockBottomSheet> {
     );
   }
 
-  Widget _buildIncrementButton(BuildContext context, int increment, int maxQuantity) {
+  Widget _buildIncrementGameButton(BuildContext context, int increment, int maxQuantity) {
     final newQuantity = (_quantity + increment).clamp(1.0, maxQuantity.toDouble());
     final isEnabled = increment > 0 
         ? _quantity < maxQuantity 
         : _quantity > 1;
     
-    return SizedBox(
-      width: 50,
-      child: OutlinedButton(
-        onPressed: isEnabled
-            ? () {
-                setState(() {
-                  _quantity = newQuantity;
-                });
-              }
-            : null,
-        style: OutlinedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-          minimumSize: const Size(40, 36),
-        ),
-        child: Text(
-          increment > 0 ? '+$increment' : '$increment',
-          style: const TextStyle(fontSize: 12),
-        ),
-      ),
+    return GameButton(
+      onPressed: isEnabled
+          ? () {
+              setState(() {
+                _quantity = newQuantity;
+              });
+            }
+          : null,
+      label: increment > 0 ? '+$increment' : '$increment',
+      color: increment > 0 ? Colors.blue : Colors.red,
+      icon: increment > 0 ? Icons.add : Icons.remove,
     );
   }
 }
