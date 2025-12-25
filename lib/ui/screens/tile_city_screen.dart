@@ -824,6 +824,9 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
           
           // Add button to buttons list (will be added last to ensure they're on top)
           // Use GestureDetector with opaque behavior to ensure button captures all taps
+          final buttonReason = _getButtonDisabledReason(data['x'] as int, data['y'] as int, tileType);
+          final isButtonEnabled = buttonReason == null;
+          
           buttons.add(
             Positioned(
               left: buttonLeft,
@@ -832,6 +835,20 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
               height: buttonSize,
               child: GestureDetector(
                 onTap: () {
+                  if (!isButtonEnabled) {
+                    // Show why button is disabled
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(buttonReason ?? 'Cannot purchase'),
+                          duration: const Duration(seconds: 3),
+                          backgroundColor: Colors.orange,
+                        ),
+                      );
+                    }
+                    return;
+                  }
+                  
                   final buttonKey = '${data['x']}_${data['y']}';
                   final now = DateTime.now();
                   
@@ -844,11 +861,37 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
                     _handleBuildingTap(data['x'] as int, data['y'] as int, tileType);
                   }
                 },
+                onLongPress: () {
+                  // Long press shows debug info
+                  if (context.mounted) {
+                    final debugInfo = _getButtonDebugInfo(data['x'] as int, data['y'] as int, tileType);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(debugInfo),
+                        duration: const Duration(seconds: 5),
+                        backgroundColor: Colors.blue,
+                      ),
+                    );
+                  }
+                },
                 behavior: HitTestBehavior.opaque,
                 child: Material(
                   color: Colors.transparent,
                   child: InkWell(
                     onTap: () {
+                      if (!isButtonEnabled) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(buttonReason ?? 'Cannot purchase'),
+                              duration: const Duration(seconds: 3),
+                              backgroundColor: Colors.orange,
+                            ),
+                          );
+                        }
+                        return;
+                      }
+                      
                       final buttonKey = '${data['x']}_${data['y']}';
                       final now = DateTime.now();
                       
@@ -865,7 +908,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
                     highlightColor: Colors.green.shade200,
                     child: Container(
                       decoration: BoxDecoration(
-                        color: Colors.green,
+                        color: isButtonEnabled ? Colors.green : Colors.grey,
                         shape: BoxShape.circle,
                         border: Border.all(
                           color: Colors.white,
@@ -880,7 +923,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
                         ],
                       ),
                       child: Icon(
-                        Icons.add,
+                        isButtonEnabled ? Icons.add : Icons.info_outline,
                         color: Colors.white,
                         size: buttonSize * 0.75, // 75% of button size
                       ),
@@ -1215,14 +1258,64 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
     final zoneType = _tileTypeToZoneType(tileType);
     if (zoneType == null) return false;
 
-    if (!_canPurchaseMachine(zoneType)) return false;
+    // Always show button if it's an interactive building type
+    // The button will be disabled/enabled based on conditions
+    return true;
+  }
+  
+  /// Get reason why button is disabled, or null if enabled
+  String? _getButtonDisabledReason(int gridX, int gridY, TileType tileType) {
+    final zoneX = (gridX + 1).toDouble() + 0.5;
+    final zoneY = (gridY + 1).toDouble() + 0.5;
 
+    final zoneType = _tileTypeToZoneType(tileType);
+    if (zoneType == null) return 'Not a valid building type';
+
+    // Check progression requirements
+    if (!_canPurchaseMachine(zoneType)) {
+      return _getProgressionMessage(zoneType);
+    }
+
+    // Check if machine already exists
     final machines = ref.watch(machinesProvider);
     final hasExistingMachine = machines.any(
       (m) => (m.zone.x - zoneX).abs() < 0.1 && (m.zone.y - zoneY).abs() < 0.1,
     );
+    
+    if (hasExistingMachine) {
+      return 'Machine already exists here';
+    }
 
-    return !hasExistingMachine;
+    // Check funds
+    final gameState = ref.read(gameControllerProvider);
+    final price = _getMachinePrice(zoneType);
+    if (gameState.cash < price) {
+      return 'Need \$${price.toStringAsFixed(2)}, have \$${gameState.cash.toStringAsFixed(2)}';
+    }
+
+    return null; // Button is enabled
+  }
+  
+  /// Get debug info for button (long press)
+  String _getButtonDebugInfo(int gridX, int gridY, TileType tileType) {
+    final zoneX = (gridX + 1).toDouble() + 0.5;
+    final zoneY = (gridY + 1).toDouble() + 0.5;
+    final zoneType = _tileTypeToZoneType(tileType);
+    final gameState = ref.read(gameControllerProvider);
+    final machines = ref.watch(machinesProvider);
+    final hasExistingMachine = machines.any(
+      (m) => (m.zone.x - zoneX).abs() < 0.1 && (m.zone.y - zoneY).abs() < 0.1,
+    );
+    
+    final reason = _getButtonDisabledReason(gridX, gridY, tileType);
+    final price = zoneType != null ? _getMachinePrice(zoneType) : 0.0;
+    
+    return 'Grid: ($gridX, $gridY) | Zone: ($zoneX, $zoneY) | '
+           'Type: ${zoneType?.name ?? "N/A"} | '
+           'Price: \$${price.toStringAsFixed(2)} | '
+           'Cash: \$${gameState.cash.toStringAsFixed(2)} | '
+           'Has Machine: $hasExistingMachine | '
+           'Status: ${reason ?? "ENABLED"}';
   }
 
   ZoneType? _tileTypeToZoneType(TileType tileType) {
