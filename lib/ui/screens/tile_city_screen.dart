@@ -995,26 +995,9 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
     return Offset(gridX, gridY);
   }
   
-  /// Clamp truck coordinates to valid road positions
-  double _clampToValidRoad(double coord) {
-    const validRoads = [1.0, 4.0, 7.0, 10.0];
-    double nearest = validRoads[0];
-    double minDist = (coord - validRoads[0]).abs();
-    for (final road in validRoads) {
-      final dist = (coord - road).abs();
-      if (dist < minDist) {
-        minDist = dist;
-        nearest = road;
-      }
-    }
-    return nearest;
-  }
-
   Widget _buildGameTruck(BuildContext context, sim.Truck truck, Offset centerOffset, double tileWidth, double tileHeight) {
-    // Clamp truck coordinates to valid road positions to prevent going off-road
-    final clampedX = _clampToValidRoad(truck.currentX);
-    final clampedY = _clampToValidRoad(truck.currentY);
-    final gridPos = _zoneToGrid(clampedX, clampedY);
+    // Use exact truck coordinates for smooth movement (don't clamp - it causes jumps)
+    final gridPos = _zoneToGrid(truck.currentX, truck.currentY);
     final pos = _gridToScreenDouble(context, gridPos.dx, gridPos.dy);
     final positionedX = pos.dx + centerOffset.dx;
     final positionedY = pos.dy + centerOffset.dy;
@@ -1176,6 +1159,22 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
         return;
       }
 
+      // Check if player has enough cash
+      final gameState = ref.read(gameControllerProvider);
+      final price = _getMachinePrice(zoneType);
+      if (gameState.cash < price) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Insufficient funds! Need \$${price.toStringAsFixed(2)}, have \$${gameState.cash.toStringAsFixed(2)}'),
+              duration: const Duration(seconds: 3),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
       // Read machines to check if one already exists at this location
       final machines = ref.read(machinesProvider);
       final hasExistingMachine = machines.any(
@@ -1234,6 +1233,17 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
       case TileType.office: return ZoneType.office;
       default: return null;
     }
+  }
+
+  double _getMachinePrice(ZoneType zoneType) {
+    const basePrice = 400.0;
+    const zoneMultipliers = {
+      ZoneType.office: 1.75,
+      ZoneType.school: 1.5,
+      ZoneType.gym: 1.25,
+      ZoneType.shop: 1.0,
+    };
+    return basePrice * (zoneMultipliers[zoneType] ?? 1.0);
   }
 
   bool _canPurchaseMachine(ZoneType zoneType) {

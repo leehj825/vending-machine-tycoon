@@ -9,8 +9,8 @@ class MapTruck extends PositionComponent {
   // while the map renders on a 1000x1000 world with grid lines every 100.
   // Keep the map in pixel/world space by scaling simulation coords.
   static const double _worldScale = 100.0;
-  static const double _speed = 200.0; // Pixels per second (increased for smoother movement)
-  static const double _arrivalThreshold = 5.0; // Distance to consider "arrived" (increased to prevent jitter)
+  static const double _speed = 300.0; // Pixels per second (increased for smoother movement)
+  static const double _arrivalThreshold = 10.0; // Distance to consider "arrived" (increased to prevent jitter)
 
   MapTruck({
     required this.truck,
@@ -54,8 +54,13 @@ class MapTruck extends PositionComponent {
         // Very close, just snap
         position = targetPos;
       }
+    } else if (distance > 1.0) {
+      // Close but not quite there - use lerp for smoother approach
+      final moveDistance = (_speed * dt * 2.0).clamp(0.0, distance);
+      final lerpFactor = moveDistance / distance;
+      position = position + direction * lerpFactor;
     } else {
-      // Snap to target if close enough (within threshold)
+      // Very close, snap to target
       position = targetPos;
     }
   }
