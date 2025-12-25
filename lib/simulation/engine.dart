@@ -764,57 +764,93 @@ class SimulationEngine extends StateNotifier<SimulationState> {
         }
       }
       
-      // If no path found, try direct connection
+      // If no path found through intersections, try direct connection
       if (intersectionPath.isEmpty) {
-        // Check if start and end are on same road line
-        if (startRoadX == endRoadX || startRoadY == endRoadY) {
-          return [start, end];
+        // Check if start and end are on same road line (can go directly)
+        if (startRoadX == endRoadX) {
+          // Same vertical road - return path with intermediate points
+          final path = <({double x, double y})>[];
+          final startY = startRoadY;
+          final endY = endRoadY;
+          final step = endY > startY ? 1.0 : -1.0;
+          
+          var y = startY;
+          path.add((x: startRoadX, y: y));
+          while ((endY > startY && y < endY) || (endY < startY && y > endY)) {
+            y += step;
+            path.add((x: startRoadX, y: y));
+          }
+          if (!nodesEqual(path.last, end)) {
+            path.add(end);
+          }
+          return path;
+        } else if (startRoadY == endRoadY) {
+          // Same horizontal road - return path with intermediate points
+          final path = <({double x, double y})>[];
+          final startX = startRoadX;
+          final endX = endRoadX;
+          final step = endX > startX ? 1.0 : -1.0;
+          
+          var x = startX;
+          path.add((x: x, y: startRoadY));
+          while ((endX > startX && x < endX) || (endX < startX && x > endX)) {
+            x += step;
+            path.add((x: x, y: startRoadY));
+          }
+          if (!nodesEqual(path.last, end)) {
+            path.add(end);
+          }
+          return path;
         }
+        // Can't go directly - return just end (will need to recalculate)
         return [end];
       }
       
-      // Expand path to include all intermediate points along road segments
+      // Expand path to include intermediate points along road segments
       // This ensures trucks move along roads, not through tiles
       final expandedPath = <({double x, double y})>[];
       
-      // Add start if not already in path
-      if (intersectionPath.isEmpty || !nodesEqual(intersectionPath.first, start)) {
-        expandedPath.add(start);
-      }
+      // Always start with the start point
+      expandedPath.add(start);
       
+      // Process each segment in the intersection path
       for (int i = 0; i < intersectionPath.length; i++) {
         final current = i > 0 ? intersectionPath[i - 1] : start;
         final next = intersectionPath[i];
         
         // Add intermediate waypoints along the road segment
-        if (current.x == next.x) {
-          // Moving vertically along a vertical road
+        if ((current.x - next.x).abs() < 0.01) {
+          // Moving vertically along a vertical road (same x)
           final roadX = current.x;
           final startY = current.y;
           final endY = next.y;
           final step = endY > startY ? 1.0 : -1.0;
           
-          var y = startY;
-          while ((endY > startY && y < endY) || (endY < startY && y > endY)) {
+          var y = startY + step;
+          while ((endY > startY && y <= endY) || (endY < startY && y >= endY)) {
             expandedPath.add((x: roadX, y: y));
             y += step;
+            // Safety check
+            if (expandedPath.length > 200) break;
           }
-        } else if (current.y == next.y) {
-          // Moving horizontally along a horizontal road
+        } else if ((current.y - next.y).abs() < 0.01) {
+          // Moving horizontally along a horizontal road (same y)
           final roadY = current.y;
           final startX = current.x;
           final endX = next.x;
           final step = endX > startX ? 1.0 : -1.0;
           
-          var x = startX;
-          while ((endX > startX && x < endX) || (endX < startX && x > endX)) {
+          var x = startX + step;
+          while ((endX > startX && x <= endX) || (endX < startX && x >= endX)) {
             expandedPath.add((x: x, y: roadY));
             x += step;
+            // Safety check
+            if (expandedPath.length > 200) break;
           }
+        } else {
+          // Shouldn't happen if pathfinding is correct, but add the point anyway
+          expandedPath.add(next);
         }
-        
-        // Add the intersection point
-        expandedPath.add(next);
       }
       
       // Ensure end is in path
@@ -822,7 +858,7 @@ class SimulationEngine extends StateNotifier<SimulationState> {
         expandedPath.add(end);
       }
       
-      // Remove duplicates
+      // Remove duplicates (keep only unique consecutive points)
       final finalPath = <({double x, double y})>[];
       for (final point in expandedPath) {
         if (finalPath.isEmpty || !nodesEqual(finalPath.last, point)) {
@@ -934,9 +970,20 @@ class SimulationEngine extends StateNotifier<SimulationState> {
           // Generate path through intersections
           path = findPath(currentX, currentY, warehouseRoadX, warehouseRoadY);
           pathIndex = 0;
-          // Ensure path is not empty
+          // Ensure path is not empty and has at least the destination
           if (path.isEmpty) {
             path = [(x: warehouseRoadX, y: warehouseRoadY)];
+          }
+          // If truck is already at first waypoint, skip to next
+          if (path.isNotEmpty) {
+            final firstWaypoint = path[0];
+            final distToFirst = math.sqrt(
+              (firstWaypoint.x - currentX) * (firstWaypoint.x - currentX) + 
+              (firstWaypoint.y - currentY) * (firstWaypoint.y - currentY)
+            );
+            if (distToFirst < SimulationConstants.roadSnapThreshold && path.length > 1) {
+              pathIndex = 1;
+            }
           }
         }
         
@@ -1079,9 +1126,20 @@ class SimulationEngine extends StateNotifier<SimulationState> {
         // Generate path through intersections
         path = findPath(currentX, currentY, destRoadX, destRoadY);
         pathIndex = 0;
-        // Ensure path is not empty
+        // Ensure path is not empty and has at least the destination
         if (path.isEmpty) {
           path = [(x: destRoadX, y: destRoadY)];
+        }
+        // If truck is already at first waypoint, skip to next
+        if (path.isNotEmpty) {
+          final firstWaypoint = path[0];
+          final distToFirst = math.sqrt(
+            (firstWaypoint.x - currentX) * (firstWaypoint.x - currentX) + 
+            (firstWaypoint.y - currentY) * (firstWaypoint.y - currentY)
+          );
+          if (distToFirst < SimulationConstants.roadSnapThreshold && path.length > 1) {
+            pathIndex = 1;
+          }
         }
       }
       
