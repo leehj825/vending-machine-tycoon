@@ -397,45 +397,52 @@ class SimulationEngine extends StateNotifier<SimulationState> {
 
   /// Main tick function - called every 1 second (10 minutes in-game)
   void _tick() {
-    final currentState = state;
-    
-    // DEBUG PRINT
-    print('🔴 ENGINE TICK: Day ${currentState.time.day} ${currentState.time.hour}:00 | Machines: ${currentState.machines.length} | Cash: \$${currentState.cash.toStringAsFixed(2)}');
+    try {
+      final currentState = state;
+      
+      // DEBUG PRINT
+      print('🔴 ENGINE TICK: Day ${currentState.time.day} ${currentState.time.hour}:00 | Machines: ${currentState.machines.length} | Cash: \$${currentState.cash.toStringAsFixed(2)}');
 
-    final nextTime = currentState.time.nextTick();
+      final nextTime = currentState.time.nextTick();
 
-    // 1. Process Sales
-    var updatedMachines = _processMachineSales(currentState.machines, nextTime);
-    
-    // 2. Process Spoilage
-    updatedMachines = _processSpoilage(updatedMachines, nextTime);
-    
-    // 3. Process Trucks (Movement)
-    var updatedTrucks = _processTruckMovement(currentState.trucks, updatedMachines);
-    
-    // 4. Process Restocking (Truck arrived at machine)
-    final restockResult = _processTruckRestocking(updatedTrucks, updatedMachines);
-    updatedTrucks = restockResult.trucks;
-    updatedMachines = restockResult.machines;
+      // 1. Process Sales
+      var updatedMachines = _processMachineSales(currentState.machines, nextTime);
+      
+      // 2. Process Spoilage
+      updatedMachines = _processSpoilage(updatedMachines, nextTime);
+      
+      // 3. Process Trucks (Movement)
+      var updatedTrucks = _processTruckMovement(currentState.trucks, updatedMachines);
+      
+      // 4. Process Restocking (Truck arrived at machine)
+      final restockResult = _processTruckRestocking(updatedTrucks, updatedMachines);
+      updatedTrucks = restockResult.trucks;
+      updatedMachines = restockResult.machines;
 
-    // 5. Reputation & Cash
-    final reputationPenalty = _calculateReputationPenalty(updatedMachines);
-    var updatedReputation = (currentState.reputation - reputationPenalty).clamp(0, 1000);
-    var updatedCash = currentState.cash;
-    updatedCash = _processFuelCosts(updatedTrucks, currentState.trucks, updatedCash);
+      // 5. Reputation & Cash
+      final reputationPenalty = _calculateReputationPenalty(updatedMachines);
+      var updatedReputation = (currentState.reputation - reputationPenalty).clamp(0, 1000);
+      var updatedCash = currentState.cash;
+      updatedCash = _processFuelCosts(updatedTrucks, currentState.trucks, updatedCash);
 
-    // Update State
-    final newState = currentState.copyWith(
-      time: nextTime,
-      machines: updatedMachines,
-      trucks: updatedTrucks,
-      cash: updatedCash,
-      reputation: updatedReputation,
-    );
-    state = newState;
-    
-    // Notify listeners of state change via stream
-    _streamController.add(newState);
+      // Update State
+      final newState = currentState.copyWith(
+        time: nextTime,
+        machines: updatedMachines,
+        trucks: updatedTrucks,
+        cash: updatedCash,
+        reputation: updatedReputation,
+      );
+      state = newState;
+      
+      // Notify listeners of state change via stream
+      _streamController.add(newState);
+    } catch (e, stackTrace) {
+      // Log error but don't stop the simulation
+      print('❌ ERROR in simulation tick: $e');
+      print('Stack trace: $stackTrace');
+      // Continue simulation even if there's an error
+    }
   }
 
   /// Process machine sales based on demand math
@@ -1267,7 +1274,27 @@ class SimulationEngine extends StateNotifier<SimulationState> {
       final truck = updatedTrucks[i];
       
       // Only process trucks that are restocking
+      // Also handle trucks that are stuck in restocking but route is complete
       if (truck.status != TruckStatus.restocking) continue;
+      
+      // If route is complete, immediately transition to traveling back to warehouse
+      if (truck.isRouteComplete) {
+        final warehouseRoadX = state.warehouseRoadX ?? 4.0;
+        final warehouseRoadY = state.warehouseRoadY ?? 4.0;
+        final roadX = _snapToNearestRoad(truck.currentX);
+        final roadY = _snapToNearestRoad(truck.currentY);
+        updatedTrucks[i] = truck.copyWith(
+          status: TruckStatus.traveling,
+          currentRouteIndex: truck.route.length,
+          targetX: warehouseRoadX,
+          targetY: warehouseRoadY,
+          path: [],
+          pathIndex: 0,
+          currentX: roadX,
+          currentY: roadY,
+        );
+        continue;
+      }
       
       // Ensure truck stays on road (snap to nearest valid road coordinate)
       // Use _snapToNearestRoad helper to prevent trucks from being at invalid coordinates (0, 9, etc.)
@@ -1275,11 +1302,41 @@ class SimulationEngine extends StateNotifier<SimulationState> {
       final roadY = _snapToNearestRoad(truck.currentY);
       
       final destinationId = truck.currentDestination;
-      if (destinationId == null) continue;
+      if (destinationId == null) {
+        // No destination - transition to traveling back to warehouse
+        final warehouseRoadX = state.warehouseRoadX ?? 4.0;
+        final warehouseRoadY = state.warehouseRoadY ?? 4.0;
+        updatedTrucks[i] = truck.copyWith(
+          status: TruckStatus.traveling,
+          currentRouteIndex: truck.route.length,
+          targetX: warehouseRoadX,
+          targetY: warehouseRoadY,
+          path: [],
+          pathIndex: 0,
+          currentX: roadX,
+          currentY: roadY,
+        );
+        continue;
+      }
 
       // Find the machine being restocked
       final machineIndex = updatedMachines.indexWhere((m) => m.id == destinationId);
-      if (machineIndex == -1) continue;
+      if (machineIndex == -1) {
+        // Machine not found - transition to traveling back to warehouse
+        final warehouseRoadX = state.warehouseRoadX ?? 4.0;
+        final warehouseRoadY = state.warehouseRoadY ?? 4.0;
+        updatedTrucks[i] = truck.copyWith(
+          status: TruckStatus.traveling,
+          currentRouteIndex: truck.route.length,
+          targetX: warehouseRoadX,
+          targetY: warehouseRoadY,
+          path: [],
+          pathIndex: 0,
+          currentX: roadX,
+          currentY: roadY,
+        );
+        continue;
+      }
 
       final machine = updatedMachines[machineIndex];
       var machineInventory = Map<Product, InventoryItem>.from(machine.inventory);
@@ -1402,6 +1459,10 @@ class SimulationEngine extends StateNotifier<SimulationState> {
             inventory: updatedTruckInventory,
             status: TruckStatus.traveling,
             currentRouteIndex: truck.currentRouteIndex + 1,
+            targetX: 0.0, // Will be set in movement processing
+            targetY: 0.0, // Will be set in movement processing
+            path: [], // Clear path so it recalculates
+            pathIndex: 0,
             // Keep truck on road
             currentX: roadX,
             currentY: roadY,
