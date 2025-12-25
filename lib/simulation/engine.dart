@@ -760,6 +760,11 @@ class SimulationEngine extends StateNotifier<SimulationState> {
             pathIndex >= path.length) {
           path = findPath(currentX, currentY, warehouseRoadX, warehouseRoadY);
           pathIndex = 0;
+          // Debug: ensure path is not empty
+          if (path.isEmpty) {
+            // Fallback: direct path
+            path = [(x: warehouseRoadX, y: warehouseRoadY)];
+          }
         }
         
         // Move along the path
@@ -795,16 +800,6 @@ class SimulationEngine extends StateNotifier<SimulationState> {
            newStatus = TruckStatus.idle;
            simX = warehouseRoadX;
            simY = warehouseRoadY;
-        }
-        
-        // Only clamp if truck is at invalid coordinates (0 or 9)
-        // Otherwise allow free movement along road lines
-        final roundedX = simX.round().toDouble();
-        final roundedY = simY.round().toDouble();
-        if (roundedX == 0.0 || roundedX == 9.0 || roundedY == 0.0 || roundedY == 9.0) {
-          final clamped = _clampToValidRoad(simX, simY);
-          simX = clamped.x;
-          simY = clamped.y;
         }
 
         return truck.copyWith(
@@ -910,6 +905,11 @@ class SimulationEngine extends StateNotifier<SimulationState> {
           pathIndex >= path.length) {
         path = findPath(currentX, currentY, destRoadX, destRoadY);
         pathIndex = 0;
+        // Debug: ensure path is not empty
+        if (path.isEmpty) {
+          // Fallback: direct path
+          path = [(x: destRoadX, y: destRoadY)];
+        }
       }
       
       // Move along the path
@@ -946,16 +946,6 @@ class SimulationEngine extends StateNotifier<SimulationState> {
          newStatus = TruckStatus.restocking;
          simX = destRoadX;
          simY = destRoadY;
-      }
-      
-      // Only clamp if truck is at invalid coordinates (0 or 9)
-      // Otherwise allow free movement along road lines
-      final roundedX = simX.round().toDouble();
-      final roundedY = simY.round().toDouble();
-      if (roundedX == 0.0 || roundedX == 9.0 || roundedY == 0.0 || roundedY == 9.0) {
-        final clamped = _clampToValidRoad(simX, simY);
-        simX = clamped.x;
-        simY = clamped.y;
       }
 
       return truck.copyWith(
