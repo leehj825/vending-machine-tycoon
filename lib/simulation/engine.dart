@@ -777,6 +777,164 @@ class SimulationEngine extends StateNotifier<SimulationState> {
       return expanded.isEmpty ? [(x: endRoadX, y: endRoadY)] : expanded;
     }
     
+    // Helper function to generate a simple road-based path when pathfinding fails
+    // This ensures trucks always follow roads, not direct paths
+    List<({double x, double y})> _generateSimpleRoadPath(
+      double startX, double startY,
+      double endX, double endY,
+    ) {
+      // Snap to nearest roads
+      final startRoadX = _snapToNearestRoad(startX);
+      final startRoadY = _snapToNearestRoad(startY);
+      final endRoadX = _snapToNearestRoad(endX);
+      final endRoadY = _snapToNearestRoad(endY);
+      
+      final path = <({double x, double y})>[];
+      
+      // If on same vertical road, go straight vertically
+      if ((startRoadX - endRoadX).abs() < 0.01) {
+        final step = endRoadY > startRoadY ? 1.0 : -1.0;
+        var y = startRoadY;
+        while ((endRoadY > startRoadY && y <= endRoadY) || (endRoadY < startRoadY && y >= endRoadY)) {
+          path.add((x: startRoadX, y: y));
+          y += step;
+          if (path.length > 50) break;
+        }
+        return path.isEmpty ? [(x: endRoadX, y: endRoadY)] : path;
+      }
+      
+      // If on same horizontal road, go straight horizontally
+      if ((startRoadY - endRoadY).abs() < 0.01) {
+        final step = endRoadX > startRoadX ? 1.0 : -1.0;
+        var x = startRoadX;
+        while ((endRoadX > startRoadX && x <= endRoadX) || (endRoadX < startRoadX && x >= endRoadX)) {
+          path.add((x: x, y: startRoadY));
+          x += step;
+          if (path.length > 50) break;
+        }
+        return path.isEmpty ? [(x: endRoadX, y: endRoadY)] : path;
+      }
+      
+      // Need to go through an intersection - find a common road
+      // Try going horizontally first, then vertically
+      final midRoadX = startRoadX;
+      final midRoadY = endRoadY;
+      
+      // Check if mid point is on a valid road
+      bool midOnRoad = false;
+      for (final roadX in _validRoads) {
+        if ((roadX - midRoadX).abs() < 0.01) midOnRoad = true;
+      }
+      for (final roadY in _validRoads) {
+        if ((roadY - midRoadY).abs() < 0.01) midOnRoad = true;
+      }
+      
+      if (midOnRoad) {
+        // Path: start -> (startRoadX, endRoadY) -> end
+        // Horizontal segment
+        final stepX = midRoadX > startRoadX ? 1.0 : -1.0;
+        var x = startRoadX;
+        while ((midRoadX > startRoadX && x <= midRoadX) || (midRoadX < startRoadX && x >= midRoadX)) {
+          path.add((x: x, y: startRoadY));
+          x += stepX;
+          if (path.length > 50) break;
+        }
+        // Vertical segment
+        final stepY = endRoadY > midRoadY ? 1.0 : -1.0;
+        var y = midRoadY;
+        while ((endRoadY > midRoadY && y <= endRoadY) || (endRoadY < midRoadY && y >= endRoadY)) {
+          path.add((x: midRoadX, y: y));
+          y += stepY;
+          if (path.length > 50) break;
+        }
+        if (path.isEmpty || (path.last.x != endRoadX || path.last.y != endRoadY)) {
+          path.add((x: endRoadX, y: endRoadY));
+        }
+        return path;
+      }
+      
+      // Try going vertically first, then horizontally
+      final midRoadX2 = endRoadX;
+      final midRoadY2 = startRoadY;
+      
+      bool mid2OnRoad = false;
+      for (final roadX in _validRoads) {
+        if ((roadX - midRoadX2).abs() < 0.01) mid2OnRoad = true;
+      }
+      for (final roadY in _validRoads) {
+        if ((roadY - midRoadY2).abs() < 0.01) mid2OnRoad = true;
+      }
+      
+      if (mid2OnRoad) {
+        // Path: start -> (endRoadX, startRoadY) -> end
+        // Vertical segment
+        final stepY = midRoadY2 > startRoadY ? 1.0 : -1.0;
+        var y = startRoadY;
+        while ((midRoadY2 > startRoadY && y <= midRoadY2) || (midRoadY2 < startRoadY && y >= midRoadY2)) {
+          path.add((x: startRoadX, y: y));
+          y += stepY;
+          if (path.length > 50) break;
+        }
+        // Horizontal segment
+        final stepX = endRoadX > midRoadX2 ? 1.0 : -1.0;
+        var x = midRoadX2;
+        while ((endRoadX > midRoadX2 && x <= endRoadX) || (endRoadX < midRoadX2 && x >= endRoadX)) {
+          path.add((x: x, y: midRoadY2));
+          x += stepX;
+          if (path.length > 50) break;
+        }
+        if (path.isEmpty || (path.last.x != endRoadX || path.last.y != endRoadY)) {
+          path.add((x: endRoadX, y: endRoadY));
+        }
+        return path;
+      }
+      
+      // Fallback: find nearest intersection and create path through it
+      ({double x, double y})? bestIntersection;
+      double bestDist = double.infinity;
+      
+      for (final roadX in _validRoads) {
+        for (final roadY in _validRoads) {
+          final dist1 = (roadX - startRoadX).abs() + (roadY - startRoadY).abs();
+          final dist2 = (roadX - endRoadX).abs() + (roadY - endRoadY).abs();
+          final totalDist = dist1 + dist2;
+          if (totalDist < bestDist) {
+            bestDist = totalDist;
+            bestIntersection = (x: roadX, y: roadY);
+          }
+        }
+      }
+      
+      if (bestIntersection != null) {
+        // Path through intersection: start -> intersection -> end
+        // Horizontal segment to intersection
+        final stepX = bestIntersection.x > startRoadX ? 1.0 : -1.0;
+        var x = startRoadX;
+        while ((bestIntersection.x > startRoadX && x <= bestIntersection.x) || 
+               (bestIntersection.x < startRoadX && x >= bestIntersection.x)) {
+          path.add((x: x, y: startRoadY));
+          x += stepX;
+          if (path.length > 50) break;
+        }
+        // Vertical segment from intersection to end
+        final stepY = endRoadY > bestIntersection.y ? 1.0 : -1.0;
+        var y = bestIntersection.y;
+        while ((endRoadY > bestIntersection.y && y <= endRoadY) || 
+               (endRoadY < bestIntersection.y && y >= endRoadY)) {
+          path.add((x: bestIntersection.x, y: y));
+          y += stepY;
+          if (path.length > 50) break;
+        }
+        if (path.isEmpty || (path.last.x != endRoadX || path.last.y != endRoadY)) {
+          path.add((x: endRoadX, y: endRoadY));
+        }
+        return path;
+      }
+      
+      // Last resort: direct path (shouldn't happen)
+      return [(x: endRoadX, y: endRoadY)];
+    }
+    
     // Helper function to expand path with intermediate waypoints along road segments
     // This ensures smooth movement between intersections
     List<({double x, double y})> _expandPathWithWaypoints(List<({double x, double y})> path) {
@@ -879,10 +1037,10 @@ class SimulationEngine extends StateNotifier<SimulationState> {
           try {
             path = findPath(currentX, currentY, warehouseRoadX, warehouseRoadY);
             pathIndex = 0;
-            // Ensure path is not empty and has at least the destination
-            if (path.isEmpty) {
-              path = [(x: warehouseRoadX, y: warehouseRoadY)];
-            }
+          // Ensure path is not empty and has at least the destination
+          if (path.isEmpty) {
+            path = _generateSimpleRoadPath(currentX, currentY, warehouseRoadX, warehouseRoadY);
+          }
             // If truck is already at first waypoint, skip to next
             if (path.isNotEmpty) {
               final firstWaypoint = path[0];
@@ -894,12 +1052,13 @@ class SimulationEngine extends StateNotifier<SimulationState> {
                 pathIndex = 1;
               }
             }
-          } catch (e) {
-            // Pathfinding failed - use direct path
-            print('⚠️ Pathfinding failed for truck ${truck.id} to warehouse: $e');
-            path = [(x: warehouseRoadX, y: warehouseRoadY)];
-            pathIndex = 0;
-          }
+        } catch (e) {
+          // Pathfinding failed - generate simple road-based path
+          print('⚠️ Pathfinding failed for truck ${truck.id} to warehouse: $e');
+          // Generate a simple path along roads
+          path = _generateSimpleRoadPath(currentX, currentY, warehouseRoadX, warehouseRoadY);
+          pathIndex = 0;
+        }
         }
         
         // Move along the path
@@ -1099,7 +1258,7 @@ class SimulationEngine extends StateNotifier<SimulationState> {
           pathIndex = 0;
           // Ensure path is not empty and has at least the destination
           if (path.isEmpty) {
-            path = [(x: destRoadX, y: destRoadY)];
+            path = _generateSimpleRoadPath(currentX, currentY, destRoadX, destRoadY);
           }
           // If truck is already at first waypoint, skip to next
           if (path.isNotEmpty) {
@@ -1113,9 +1272,10 @@ class SimulationEngine extends StateNotifier<SimulationState> {
             }
           }
         } catch (e) {
-          // Pathfinding failed - use direct path
+          // Pathfinding failed - generate simple road-based path
           print('⚠️ Pathfinding failed for truck ${truck.id}: $e');
-          path = [(x: destRoadX, y: destRoadY)];
+          // Generate a simple path along roads
+          path = _generateSimpleRoadPath(currentX, currentY, destRoadX, destRoadY);
           pathIndex = 0;
         }
       }
