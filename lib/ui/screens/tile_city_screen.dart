@@ -1651,36 +1651,55 @@ class _MachineStatusSection extends ConsumerWidget {
             padding: EdgeInsets.only(
               bottom: dialogWidth * AppConfig.machineStatusDialogStockItemPaddingFactor,
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Text(
-                    item.product.name,
-                    style: TextStyle(
-                      fontSize: dialogWidth * AppConfig.machineStatusDialogStockItemFontSizeFactor,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        item.product.name,
+                        style: TextStyle(
+                          fontSize: dialogWidth * AppConfig.machineStatusDialogStockItemFontSizeFactor,
+                        ),
+                      ),
                     ),
-                  ),
+                    Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: dialogWidth * AppConfig.machineStatusDialogStockItemBadgePaddingHorizontalFactor,
+                        vertical: dialogWidth * AppConfig.machineStatusDialogStockItemBadgePaddingVerticalFactor,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade50,
+                        borderRadius: BorderRadius.circular(
+                          dialogWidth * AppConfig.machineStatusDialogStockItemBadgeBorderRadiusFactor,
+                        ),
+                      ),
+                      child: Text(
+                        '${item.quantity}',
+                        style: TextStyle(
+                          fontSize: dialogWidth * AppConfig.machineStatusDialogStockItemBadgeFontSizeFactor,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue.shade900,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: dialogWidth * AppConfig.machineStatusDialogStockItemBadgePaddingHorizontalFactor,
-                    vertical: dialogWidth * AppConfig.machineStatusDialogStockItemBadgePaddingVerticalFactor,
+                SizedBox(height: dialogWidth * AppConfig.machineStatusDialogStockItemPaddingFactor * 0.5),
+                // Customer Interest Progress Bar
+                LinearProgressIndicator(
+                  value: item.customerInterest,
+                  backgroundColor: Colors.grey[200],
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    item.customerInterest > 0.7 
+                      ? Colors.green 
+                      : item.customerInterest > 0.4 
+                        ? Colors.orange 
+                        : Colors.blue,
                   ),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
-                    borderRadius: BorderRadius.circular(
-                      dialogWidth * AppConfig.machineStatusDialogStockItemBadgeBorderRadiusFactor,
-                    ),
-                  ),
-                  child: Text(
-                    '${item.quantity}',
-                    style: TextStyle(
-                      fontSize: dialogWidth * AppConfig.machineStatusDialogStockItemBadgeFontSizeFactor,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.blue.shade900,
-                    ),
-                  ),
+                  minHeight: dialogWidth * 0.008,
                 ),
               ],
             ),

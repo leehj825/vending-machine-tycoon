@@ -45,21 +45,21 @@ extension ProductExtension on Product {
     }
   }
 
-  /// Base demand probability (0.0 to 1.0) - increased by 30%
+  /// Base demand probability (0.0 to 1.0) - increased for better game pacing
   double get baseDemand {
     switch (this) {
       case Product.soda:
-        return 0.195; // 0.15 * 1.3
+        return 0.40; // 40% per hour (+10 percentage points from 30%)
       case Product.chips:
-        return 0.156; // 0.12 * 1.3
+        return 0.35; // 35% per hour (+10 percentage points from 25%)
       case Product.proteinBar:
-        return 0.104; // 0.08 * 1.3
+        return 0.26; // 26% per hour (+10 percentage points from 16%)
       case Product.coffee:
-        return 0.13; // 0.10 * 1.3
+        return 0.30; // 30% per hour (+10 percentage points from 20%)
       case Product.techGadget:
-        return 0.026; // 0.02 * 1.3
+        return 0.14; // 14% per hour (+10 percentage points from 4%)
       case Product.sandwich:
-        return 0.117; // 0.09 * 1.3
+        return 0.28; // 28% per hour (+10 percentage points from 18%)
     }
   }
 

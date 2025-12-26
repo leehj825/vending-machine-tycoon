@@ -119,7 +119,6 @@ class SimulationState {
 /// The Simulation Engine - The Heartbeat of the Game
 class SimulationEngine extends StateNotifier<SimulationState> {
   Timer? _tickTimer;
-  final math.Random _random = math.Random();
   final StreamController<SimulationState> _streamController = StreamController<SimulationState>.broadcast();
   
   // Pathfinding optimization: cached base graph
@@ -401,6 +400,9 @@ class SimulationEngine extends StateNotifier<SimulationState> {
         final stock = machine.getStock(product);
         if (stock == 0) continue;
 
+        // Get current inventory item
+        final item = updatedInventory[product]!;
+        
         // Calculate sale chance using the demand formula
         final baseDemand = product.baseDemand;
         final zoneMultiplier = machine.zone.getDemandMultiplier(time.hour);
@@ -412,20 +414,30 @@ class SimulationEngine extends StateNotifier<SimulationState> {
         // Clamp to reasonable range (0.0 to 1.0)
         final clampedChance = saleChance.clamp(0.0, 1.0);
 
-        // Roll for sale
-        if (_random.nextDouble() < clampedChance) {
+        // Accumulator approach: Add probability to sales progress
+        final newSalesProgress = item.salesProgress + clampedChance;
+
+        // Check if we've accumulated enough interest for a sale
+        if (newSalesProgress >= 1.0) {
           // Sale occurred!
-          final item = updatedInventory[product]!;
           final newQuantity = item.quantity - 1;
+          final remainingProgress = newSalesProgress - 1.0; // Carry over remainder
           
           if (newQuantity > 0) {
-            updatedInventory[product] = item.copyWith(quantity: newQuantity);
+            updatedInventory[product] = item.copyWith(
+              quantity: newQuantity,
+              salesProgress: remainingProgress,
+            );
           } else {
+            // Item sold out, remove from inventory (don't carry progress to empty slot)
             updatedInventory.remove(product);
           }
 
           updatedCash += product.basePrice;
           salesCount++;
+        } else {
+          // No sale yet, just update the progress
+          updatedInventory[product] = item.copyWith(salesProgress: newSalesProgress);
         }
       }
 

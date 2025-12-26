@@ -226,41 +226,60 @@ class _MachineStatusCardState extends ConsumerState<MachineStatusCard> {
                 else
                   ...machine.inventory.values.map((item) => Padding(
                     padding: EdgeInsets.only(bottom: ScreenUtils.relativeSize(context, AppConfig.spacingFactorMedium)),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          child: Text(
-                            item.product.name,
-                            style: TextStyle(
-                          fontSize: ScreenUtils.relativeFontSize(
-                            context,
-                            AppConfig.fontSizeFactorNormal,
-                            min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                            max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                          ),
-                        ),
-                          ),
-                        ),
-                        Container(
-                          padding: EdgeInsets.symmetric(horizontal: ScreenUtils.relativeSize(context, AppConfig.spacingFactorMedium), vertical: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall)),
-                          decoration: BoxDecoration(
-                            color: Colors.blue.shade50,
-                            borderRadius: BorderRadius.circular(ScreenUtils.relativeSize(context, 0.012)),
-                          ),
-                          child: Text(
-                            '${item.quantity}',
-                            style: TextStyle(
-                            fontSize: ScreenUtils.relativeFontSize(
-                              context,
-                              AppConfig.fontSizeFactorNormal,
-                              min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                              max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                item.product.name,
+                                style: TextStyle(
+                                  fontSize: ScreenUtils.relativeFontSize(
+                                    context,
+                                    AppConfig.fontSizeFactorNormal,
+                                    min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
+                                    max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+                                  ),
+                                ),
+                              ),
                             ),
-                              fontWeight: FontWeight.bold,
-                              color: Colors.blue.shade900,
+                            Container(
+                              padding: EdgeInsets.symmetric(horizontal: ScreenUtils.relativeSize(context, AppConfig.spacingFactorMedium), vertical: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall)),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.shade50,
+                                borderRadius: BorderRadius.circular(ScreenUtils.relativeSize(context, 0.012)),
+                              ),
+                              child: Text(
+                                '${item.quantity}',
+                                style: TextStyle(
+                                  fontSize: ScreenUtils.relativeFontSize(
+                                    context,
+                                    AppConfig.fontSizeFactorNormal,
+                                    min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
+                                    max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+                                  ),
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.blue.shade900,
+                                ),
+                              ),
                             ),
+                          ],
+                        ),
+                        SizedBox(height: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall)),
+                        // Customer Interest Progress Bar
+                        LinearProgressIndicator(
+                          value: item.customerInterest,
+                          backgroundColor: Colors.grey[200],
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            item.customerInterest > 0.7 
+                              ? Colors.green 
+                              : item.customerInterest > 0.4 
+                                ? Colors.orange 
+                                : Colors.blue,
                           ),
+                          minHeight: ScreenUtils.relativeSize(context, AppConfig.spacingFactorTiny * 8),
                         ),
                       ],
                     ),
