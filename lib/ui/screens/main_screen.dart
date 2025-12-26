@@ -90,7 +90,12 @@ class _StatusBar extends ConsumerWidget {
     final cash = ref.watch(cashProvider);
     final reputation = ref.watch(reputationProvider);
     final dayCount = ref.watch(dayCountProvider);
-    final timeString = 'Day $dayCount';
+    final hourOfDay = ref.watch(hourOfDayProvider);
+    
+    // Format hour as 12-hour format with AM/PM (hour only, no minutes)
+    final hour12 = hourOfDay == 0 ? 12 : (hourOfDay > 12 ? hourOfDay - 12 : hourOfDay);
+    final amPm = hourOfDay < 12 ? 'AM' : 'PM';
+    final timeString = 'Day $dayCount, $hour12$amPm';
     
     final smallerDim = ScreenUtils.getSmallerDimension(context);
     
@@ -253,6 +258,7 @@ class _StatusCard extends StatelessWidget {
                           color: valueColor,
                         ),
                         maxLines: 1,
+                        textAlign: TextAlign.center,
                       ),
                     ),
                   ),

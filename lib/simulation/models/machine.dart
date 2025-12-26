@@ -20,6 +20,7 @@ abstract class InventoryItem with _$InventoryItem {
     required Product product,
     required int quantity,
     required int dayAdded, // Game day when item was added
+    @Default(0.0) double salesProgress, // Accumulator for customer interest (0.0 to 1.0+)
   }) = _InventoryItem;
 
   const InventoryItem._();
@@ -32,6 +33,9 @@ extension InventoryItemExtension on InventoryItem {
     if (!product.canSpoil) return false;
     return (currentDay - dayAdded) >= product.spoilageDays;
   }
+
+  /// Get current customer interest (clamped between 0.0 and 1.0 for UI display)
+  double get customerInterest => salesProgress.clamp(0.0, 1.0);
 }
 
 /// Vending machine model

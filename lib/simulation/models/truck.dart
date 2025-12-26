@@ -20,6 +20,8 @@ abstract class Truck with _$Truck {
     @Default(1000) int capacity, // Max items it can carry
     /// Current route: List of machine IDs to visit in order
     @Default([]) List<String> route,
+    /// Pending route: Route changes saved while truck is moving (applied when truck becomes idle)
+    @Default([]) List<String> pendingRoute,
     /// Current position in the route (index)
     @Default(0) int currentRouteIndex,
     @Default(TruckStatus.idle) TruckStatus status,

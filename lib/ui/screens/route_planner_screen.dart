@@ -305,8 +305,16 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> {
     print('🔵 BUILD DEBUG: Selected truck inventory: ${selectedTruck?.inventory.length ?? 0} items');
 
     // Get machines for the selected truck's route
+    // Show pending route if it exists (when truck is moving or just became idle)
+    // Otherwise show current route
+    final routeToDisplay = selectedTruck != null
+        ? (selectedTruck.pendingRoute.isNotEmpty
+            ? selectedTruck.pendingRoute
+            : selectedTruck.route)
+        : <String>[];
+    
     final routeMachines = selectedTruck != null && machines.isNotEmpty
-        ? selectedTruck.route
+        ? routeToDisplay
             .map((id) {
               try {
                 return machines.firstWhere((m) => m.id == id);
@@ -319,13 +327,13 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> {
             .toList()
         : <Machine>[];
 
-    // Calculate route stats
+    // Calculate route stats (use displayed route)
     final totalDistance = selectedTruck != null
-        ? _calculateRouteDistance(selectedTruck.route, machines)
+        ? _calculateRouteDistance(routeToDisplay, machines)
         : 0.0;
     final fuelCost = totalDistance * AppConfig.fuelCostPerUnit;
     final efficiencyRating = selectedTruck != null
-        ? _getEfficiencyRating(totalDistance, selectedTruck.route.length)
+        ? _getEfficiencyRating(totalDistance, routeToDisplay.length)
         : 'N/A';
 
     // Calculate dynamic truck price (base price + 500 per existing truck)

@@ -118,7 +118,7 @@ class AppConfig {
   /// Machine route card icon container
   static const double machineRouteCardIconContainerSizeFactor = 0.048; // Icon container size as factor of smaller screen dimension
   static const double machineRouteCardIconContainerBorderWidthFactor = borderWidthFactorSmall; // 0.002 - Icon container border width
-  static const double machineRouteCardIconSizeFactor = fontSizeFactorSmall * 0.96; // 0.024 - Icon size (reuse 0.024 pattern)
+  static const double machineRouteCardIconSizeFactor = fontSizeFactorNormal * 0.96; // 0.024 - Icon size (reuse 0.024 pattern)
   
   /// Machine route card spacing
   static const double machineRouteCardIconSpacingFactor = borderRadiusFactorMedium; // 0.016 - Spacing between icon and text
@@ -210,8 +210,8 @@ class AppConfig {
   static const double saveExitButtonWidthFactor = 0.10; // Width as factor of screen width
   
   /// Top status bar boxes (cash, reputation, time)
-  static const double statusCardWidthFactor = 0.66; // Width as factor of smaller dimension (0.25 * 3.0)
-  static const double statusCardWidthMinFactor = 0.22; // Minimum width as factor of smaller dimension
+  static const double statusCardWidthFactor = 0.75; // Width as factor of smaller dimension (0.25 * 3.0)
+  static const double statusCardWidthMinFactor = 0.25; // Minimum width as factor of smaller dimension
   static const double statusCardWidthMaxFactor = 0.25; // Maximum width as factor of smaller dimension
   static const double statusCardHeightRatio = 1.0; // Height ratio relative to card width
   
@@ -220,7 +220,7 @@ class AppConfig {
   static const double statusCardIconTopPositionFactor = 0.05; // Icon top position as factor of card height (relative to card height)
   
   /// Status card text settings
-  static const double statusCardTextSizeFactor = 0.035; // Text font size factor (relative to smaller screen dimension)
+  static const double statusCardTextSizeFactor = 0.030; // Text font size factor (relative to smaller screen dimension)
   static const double statusCardTextBottomPositionFactor = 0.05; // Text bottom position as factor of card height (relative to card height)
   
   /// Status card padding and spacing - Removed min/max duplicates
@@ -407,6 +407,13 @@ class AppConfig {
   /// Reputation constants
   static const int emptyMachinePenaltyHours = 4;
   static const int reputationPenaltyPerEmptyHour = 5;
+  
+  /// Reputation gain from sales
+  static const int reputationGainPerSale = 1; // Gain 1 reputation per sale
+  
+  /// Reputation-based sales bonus
+  static const double reputationBonusPer100 = 0.05; // +5% sales rate per 100 reputation (0.05 = 5%)
+  static const double maxReputationBonus = 0.50; // Maximum 50% bonus (at 1000 reputation)
   
   /// Item disposal
   static const double disposalCostPerExpiredItem = 0.50;

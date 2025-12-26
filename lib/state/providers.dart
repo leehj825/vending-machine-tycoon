@@ -83,9 +83,26 @@ class GameController extends StateNotifier<GlobalGameState> {
       // This print confirms data is flowing from Engine -> UI
       print('🟡 CONTROLLER SYNC: Received update. Cash: \$${simState.cash.toStringAsFixed(2)}, Machines: ${simState.machines.length}');
       
+      // Apply pending routes for trucks that just became idle
+      var updatedTrucks = simState.trucks.map((simTruck) {
+        // Find corresponding truck in our state (to get pending route)
+        final localTruck = state.trucks.firstWhere(
+          (t) => t.id == simTruck.id,
+          orElse: () => simTruck,
+        );
+        
+        // Preserve pending route from local state (whether moving or idle)
+        // This ensures the UI can display pending route stops immediately
+        if (localTruck.pendingRoute.isNotEmpty) {
+          return simTruck.copyWith(pendingRoute: localTruck.pendingRoute);
+        }
+        
+        return simTruck;
+      }).toList();
+      
       state = state.copyWith(
         machines: simState.machines,
-        trucks: simState.trucks,
+        trucks: updatedTrucks,
         cash: simState.cash,
         reputation: simState.reputation,
         dayCount: simState.time.day,
@@ -331,12 +348,32 @@ class GameController extends StateNotifier<GlobalGameState> {
 
     final truck = state.trucks[truckIndex];
 
-    // Update truck route
-    // Keep truck idle when updating route - only "Go Stock" button starts the route
+    // If truck is currently moving (traveling or restocking), save route to pendingRoute
+    // The route will be applied when the truck finishes and becomes idle
+    if (truck.status != TruckStatus.idle) {
+      final updatedTruck = truck.copyWith(
+        pendingRoute: machineIds, // Save new route as pending
+      );
+
+      final updatedTrucks = [...state.trucks];
+      updatedTrucks[truckIndex] = updatedTruck;
+
+      state = state.copyWith(trucks: updatedTrucks);
+      state = state.addLogMessage(
+        'Route updated for ${truck.name} (will apply when truck finishes current route): ${machineIds.length} stops',
+      );
+      
+      // Sync to simulation engine to prevent reversion on next tick
+      simulationEngine.updateTrucks(updatedTrucks);
+      return;
+    }
+
+    // Truck is idle - apply route changes immediately
     final updatedTruck = truck.copyWith(
       route: machineIds,
+      pendingRoute: [], // Clear any pending route
       currentRouteIndex: 0, // Reset to start of route
-      status: machineIds.isEmpty ? TruckStatus.idle : truck.status, // Keep current status (don't auto-start)
+      status: TruckStatus.idle, // Keep idle - truck only moves when "Go Stock" is pressed
     );
 
     final updatedTrucks = [...state.trucks];
@@ -363,6 +400,15 @@ class GameController extends StateNotifier<GlobalGameState> {
 
     final truck = state.trucks[truckIndex];
 
+    // Check if truck is idle (can't start if already moving)
+    if (truck.status != TruckStatus.idle) {
+      state = state.addLogMessage('${truck.name} is already on a route');
+      return;
+    }
+
+    // Apply pending route if it exists (route was updated while truck was moving)
+    final routeToUse = truck.pendingRoute.isNotEmpty ? truck.pendingRoute : truck.route;
+
     // Check if truck has items
     if (truck.inventory.isEmpty) {
       state = state.addLogMessage('${truck.name} has no items to stock');
@@ -370,13 +416,15 @@ class GameController extends StateNotifier<GlobalGameState> {
     }
 
     // Check if truck has a route
-    if (truck.route.isEmpty) {
+    if (routeToUse.isEmpty) {
       state = state.addLogMessage('${truck.name} has no route assigned');
       return;
     }
 
-    // Reset route index to 0 and set status to traveling
+    // Apply pending route and reset route index to 0, then set status to traveling
     final updatedTruck = truck.copyWith(
+      route: routeToUse, // Apply pending route if it exists
+      pendingRoute: [], // Clear pending route
       currentRouteIndex: 0,
       status: TruckStatus.traveling,
     );
