@@ -45,21 +45,21 @@ extension ProductExtension on Product {
     }
   }
 
-  /// Base demand probability (0.0 to 1.0)
+  /// Base demand probability (0.0 to 1.0) - increased by 30%
   double get baseDemand {
     switch (this) {
       case Product.soda:
-        return 0.15;
+        return 0.195; // 0.15 * 1.3
       case Product.chips:
-        return 0.12;
+        return 0.156; // 0.12 * 1.3
       case Product.proteinBar:
-        return 0.08;
+        return 0.104; // 0.08 * 1.3
       case Product.coffee:
-        return 0.10;
+        return 0.13; // 0.10 * 1.3
       case Product.techGadget:
-        return 0.02;
+        return 0.026; // 0.02 * 1.3
       case Product.sandwich:
-        return 0.09;
+        return 0.117; // 0.09 * 1.3
     }
   }
 

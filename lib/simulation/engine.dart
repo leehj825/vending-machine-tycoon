@@ -28,8 +28,8 @@ class SimulationConstants {
 class GameTime {
   final int day; // Current game day (starts at 1)
   final int hour; // Current hour (0-23)
-  final int minute; // Current minute (0-59, in 6-minute increments since 10 ticks = 1 hour)
-  final int tick; // Current tick within the day (0-239, since 240 ticks per day)
+  final int minute; // Current minute (0-59, in increments based on ticksPerHour)
+  final int tick; // Current tick within the day (0-5999, since 6000 ticks per day)
 
   const GameTime({
     required this.day,
@@ -43,8 +43,10 @@ class GameTime {
     final day = (totalTicks ~/ SimulationConstants.ticksPerDay) + 1;
     final tickInDay = totalTicks % SimulationConstants.ticksPerDay;
     final hour = tickInDay ~/ SimulationConstants.ticksPerHour;
-    // Since 10 ticks = 1 hour, each tick is 6 minutes (60 minutes / 10 ticks)
-    final minute = (tickInDay % SimulationConstants.ticksPerHour) * 6;
+    // Calculate minutes: each tick represents (60 minutes / ticksPerHour) of game time
+    // Round to nearest minute for display
+    final minutesPerTick = 60.0 / SimulationConstants.ticksPerHour;
+    final minute = ((tickInDay % SimulationConstants.ticksPerHour) * minutesPerTick).round().clamp(0, 59);
     
     return GameTime(
       day: day,
@@ -133,7 +135,7 @@ class SimulationEngine extends StateNotifier<SimulationState> {
     int initialReputation = 100,
   }) : super(
           SimulationState(
-            time: const GameTime(day: 1, hour: 8, minute: 0, tick: 80), // 8:00 AM = 8 hours * 10 ticks/hour = 80 ticks
+            time: const GameTime(day: 1, hour: 8, minute: 0, tick: 1000), // 8:00 AM = 8 hours * 125 ticks/hour = 1000 ticks
             machines: initialMachines,
             trucks: initialTrucks,
             cash: initialCash,
@@ -385,7 +387,7 @@ class SimulationEngine extends StateNotifier<SimulationState> {
     return machines.map((machine) {
       if (machine.isBroken || machine.isEmpty) {
         return machine.copyWith(
-          hoursSinceRestock: machine.hoursSinceRestock + 0.1, // 1 tick = 0.1 hours
+          hoursSinceRestock: machine.hoursSinceRestock + (1.0 / SimulationConstants.ticksPerHour), // 1 tick = 1/ticksPerHour hours
         );
       }
 
@@ -405,7 +407,7 @@ class SimulationEngine extends StateNotifier<SimulationState> {
         final trafficMultiplier = machine.zone.trafficMultiplier;
         
         final saleChancePerHour = baseDemand * zoneMultiplier * trafficMultiplier;
-        final saleChance = saleChancePerHour / 10.0; // Divide by 10 since 10 ticks = 1 hour
+        final saleChance = saleChancePerHour / SimulationConstants.ticksPerHour; // Divide by ticksPerHour to get chance per tick
         
         // Clamp to reasonable range (0.0 to 1.0)
         final clampedChance = saleChance.clamp(0.0, 1.0);
@@ -428,7 +430,7 @@ class SimulationEngine extends StateNotifier<SimulationState> {
       }
 
       // Update hours since restock
-      hoursSinceRestock += 0.1;
+      hoursSinceRestock += (1.0 / SimulationConstants.ticksPerHour);
 
       return machine.copyWith(
         inventory: updatedInventory,

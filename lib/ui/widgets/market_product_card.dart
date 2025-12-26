@@ -610,14 +610,9 @@ class _NumberPadInputState extends State<_NumberPadInput> {
     }
   }
 
-  void _onClearOne() {
-    final currentText = _controller.text;
-    if (currentText.isNotEmpty) {
-      final newText = currentText.substring(0, currentText.length - 1);
-      final newValue = newText.isEmpty ? 0 : int.tryParse(newText) ?? 0;
-      _controller.text = newText;
-      widget.onValueChanged(newValue);
-    }
+  void _onSetAll() {
+    _controller.text = widget.maxValue.toString();
+    widget.onValueChanged(widget.maxValue);
   }
 
   void _onClearAll() {
@@ -714,7 +709,7 @@ class _NumberPadInputState extends State<_NumberPadInput> {
                       ),
                   ],
                 ),
-              // Bottom row: 0, C (clear one), AC (clear all)
+              // Bottom row: 0, All (set to max), AC (clear all)
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -725,10 +720,10 @@ class _NumberPadInputState extends State<_NumberPadInput> {
                     onTap: () => _onNumberTap('0'),
                   ),
                   _NumberButton(
-                    label: 'C',
+                    label: 'All',
                     size: buttonSize,
                     fontSize: fontSize,
-                    onTap: _onClearOne,
+                    onTap: _onSetAll,
                   ),
                   _NumberButton(
                     label: 'AC',

@@ -226,8 +226,6 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> {
   void _showLoadCargoDialog(Truck truck) {
     final warehouse = ref.read(warehouseProvider);
     final controller = ref.read(gameControllerProvider.notifier);
-    // Save the parent context before showing dialog
-    final parentContext = context;
 
     showDialog(
       context: context,
@@ -239,16 +237,6 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> {
           Navigator.of(dialogContext).pop();
           // Perform the load operation
           controller.loadTruck(truck.id, product, quantity);
-          // Show snackbar using parent context after dialog closes
-          Future.delayed(AppConfig.debounceDelay, () {
-            if (parentContext.mounted) {
-              ScaffoldMessenger.of(parentContext).showSnackBar(
-                SnackBar(
-                  content: Text('Loaded $quantity ${product.name} onto ${truck.name}'),
-                ),
-              );
-            }
-          });
         },
       ),
     );
@@ -256,6 +244,9 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> {
 
   /// Check if truck can go stock (has items and machines have room)
   bool _canGoStock(Truck truck, List<Machine> routeMachines) {
+    // Check if truck is already doing a route (traveling or restocking)
+    if (truck.status != TruckStatus.idle) return false;
+    
     // Check if truck has items
     if (truck.inventory.isEmpty) return false;
     
@@ -856,13 +847,10 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> {
               )
             else
               SliverToBoxAdapter(
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxHeight: MediaQuery.of(context).size.height * AppConfig.routeListMaxHeightFactor,
-                  ),
+                child: SizedBox(
+                  height: MediaQuery.of(context).size.height * AppConfig.routeListMaxHeightFactor,
                   child: ReorderableListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
+                    physics: const ClampingScrollPhysics(),
                     padding: EdgeInsets.symmetric(
                       horizontal: ScreenUtils.relativeSize(context, AppConfig.spacingFactorMedium),
                       vertical: ScreenUtils.relativeSize(context, AppConfig.spacingFactorMedium),
@@ -1550,14 +1538,9 @@ class _NumberPadInputState extends State<_NumberPadInput> {
     }
   }
 
-  void _onClearOne() {
-    final currentText = _controller.text;
-    if (currentText.isNotEmpty) {
-      final newText = currentText.substring(0, currentText.length - 1);
-      final newValue = newText.isEmpty ? 0 : int.tryParse(newText) ?? 0;
-      _controller.text = newText;
-      widget.onValueChanged(newValue);
-    }
+  void _onSetAll() {
+    _controller.text = widget.maxValue.toString();
+    widget.onValueChanged(widget.maxValue);
   }
 
   void _onClearAll() {
@@ -1654,7 +1637,7 @@ class _NumberPadInputState extends State<_NumberPadInput> {
                       ),
                   ],
                 ),
-              // Bottom row: 0, C (clear one), AC (clear all)
+              // Bottom row: 0, All (set to max), AC (clear all)
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -1665,10 +1648,10 @@ class _NumberPadInputState extends State<_NumberPadInput> {
                     onTap: () => _onNumberTap('0'),
                   ),
                   _NumberButton(
-                    label: 'C',
+                    label: 'All',
                     size: buttonSize,
                     fontSize: fontSize,
-                    onTap: _onClearOne,
+                    onTap: _onSetAll,
                   ),
                   _NumberButton(
                     label: 'AC',

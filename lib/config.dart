@@ -395,9 +395,11 @@ class AppConfig {
   // ============================================================================
   
   /// Time constants
+  /// 1 game day = 5 minutes real time at 10 ticks/second
+  /// 5 minutes = 300 seconds = 3000 ticks at 10 ticks/second
   static const int hoursPerDay = 24;
-  static const int ticksPerHour = 10;
-  static const int ticksPerDay = hoursPerDay * ticksPerHour; // 240
+  static const int ticksPerHour = 125; // 3000 ticks per day / 24 hours = 125 ticks per hour
+  static const int ticksPerDay = hoursPerDay * ticksPerHour; // 3000
   
   /// Gas/fuel constants
   static const double gasPrice = 0.05; // Cost per unit distance

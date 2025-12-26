@@ -332,10 +332,11 @@ class GameController extends StateNotifier<GlobalGameState> {
     final truck = state.trucks[truckIndex];
 
     // Update truck route
+    // Keep truck idle when updating route - only "Go Stock" button starts the route
     final updatedTruck = truck.copyWith(
       route: machineIds,
       currentRouteIndex: 0, // Reset to start of route
-      status: machineIds.isEmpty ? TruckStatus.idle : TruckStatus.traveling,
+      status: machineIds.isEmpty ? TruckStatus.idle : truck.status, // Keep current status (don't auto-start)
     );
 
     final updatedTrucks = [...state.trucks];
