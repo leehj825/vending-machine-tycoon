@@ -85,7 +85,7 @@ class AppConfig {
   
   /// Truck selector card sizes (fleet manager screen)
   static const double truckCardWidthFactor = 0.20; // Card width as factor of screen width
-  static const double truckCardHeightFactor = 0.16; // Card container height as factor of smaller screen dimension
+  static const double truckCardHeightFactor = 0.18; // Card container height as factor of smaller screen dimension
   static const double truckCardPaddingFactor = spacingFactorSmall * 4; // 0.008 - Internal padding of truck card
   static const double truckCardBorderRadiusFactor = borderWidthFactorSmall; // 0.002 - Border radius of truck card
   static const double truckCardMarginHorizontalFactor = spacingFactorTiny; // 0.001 - Horizontal margin between cards
@@ -150,6 +150,30 @@ class AppConfig {
   /// Load cargo dialog quantity display
   static const double loadCargoQuantityContainerPaddingFactor = borderRadiusFactorMedium; // 0.016 - Container padding
   static const double loadCargoQuantityBorderWidthFactor = borderWidthFactorSmall; // 0.002 - Border width
+  
+  // ============================================================================
+  // NUMBER PAD CONSTANTS
+  // ============================================================================
+  
+  /// Number pad text field (relative to dialog width or screen)
+  static const double numberPadTextFieldPaddingFactor = 0.02; // Text field padding
+  static const double numberPadTextFieldBorderRadiusFactor = 0.01; // Text field border radius
+  static const double numberPadTextFieldBorderWidthFactor = 0.002; // Text field border width
+  
+  /// Number pad spacing
+  static const double numberPadSpacingFactor = 0.02; // Spacing between text field and pad grid
+  
+  /// Number pad container (relative to dialog width or screen)
+  static const double numberPadContainerPaddingFactor = 0.01; // Pad container padding
+  static const double numberPadContainerBorderRadiusFactor = 0.01; // Pad container border radius
+  static const double numberPadContainerBorderWidthFactor = 0.001; // Pad container border width
+  
+  /// Number pad buttons (relative to dialog width or screen)
+  static const double numberPadButtonSizeFactor = 0.10; // Button size
+  static const double numberPadButtonFontSizeFactor = 0.06; // Button font size (for dialog-based)
+  static const double numberPadButtonBorderRadiusMultiplier = 0.2; // Button border radius as multiplier of button size
+  static const double numberPadButtonBorderWidthMultiplier = 0.02; // Button border width as multiplier of button size
+  static const double numberPadButtonPaddingMultiplier = 0.1; // Button padding as multiplier of button size
   
   // ============================================================================
   // EFFICIENCY STATS CONSTANTS
@@ -371,9 +395,11 @@ class AppConfig {
   // ============================================================================
   
   /// Time constants
+  /// 1 game day = 5 minutes real time at 10 ticks/second
+  /// 5 minutes = 300 seconds = 3000 ticks at 10 ticks/second
   static const int hoursPerDay = 24;
-  static const int ticksPerHour = 10;
-  static const int ticksPerDay = hoursPerDay * ticksPerHour; // 240
+  static const int ticksPerHour = 125; // 3000 ticks per day / 24 hours = 125 ticks per hour
+  static const int ticksPerDay = hoursPerDay * ticksPerHour; // 3000
   
   /// Gas/fuel constants
   static const double gasPrice = 0.05; // Cost per unit distance

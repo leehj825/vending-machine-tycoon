@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../state/providers.dart';
+import '../../state/selectors.dart';
 import '../../state/city_map_state.dart';
 import '../../simulation/models/zone.dart';
 import '../../simulation/models/truck.dart' as sim;
@@ -911,6 +912,41 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
     );
   }
 
+  void _showMachinePurchaseDialog(BuildContext context, ZoneType zoneType, double zoneX, double zoneY) {
+    final imagePath = _getViewImagePath(zoneType);
+    final price = MachinePrices.getPrice(zoneType);
+    
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.7),
+      builder: (dialogContext) => _MachinePurchaseDialog(
+        zoneType: zoneType,
+        zoneX: zoneX,
+        zoneY: zoneY,
+        imagePath: imagePath,
+        price: price,
+        onPurchased: () {
+          // After purchase, close purchase dialog and show machine status
+          Navigator.of(dialogContext).pop();
+          // Wait a moment for the machine to be created, then show status
+          Future.delayed(const Duration(milliseconds: 100), () {
+            if (context.mounted) {
+              final machines = ref.read(machinesProvider);
+              try {
+                final machine = machines.firstWhere(
+                  (m) => (m.zone.x - zoneX).abs() < 0.1 && (m.zone.y - zoneY).abs() < 0.1,
+                );
+                _showMachineView(context, machine);
+              } catch (e) {
+                // Machine not found yet, just close
+              }
+            }
+          });
+        },
+      ),
+    );
+  }
+
   Offset _zoneToGrid(double zoneX, double zoneY) {
     final gridX = (zoneX - 1.0).clamp(0.0, (gridSize - 1).toDouble());
     final gridY = (zoneY - 1.0).clamp(0.0, (gridSize - 1).toDouble());
@@ -1025,37 +1061,40 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
         controller.startSimulation();
       }
 
-      if (!_canPurchaseMachine(zoneType)) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(_getProgressionMessage(zoneType)),
-              duration: AppConfig.snackbarDurationShort,
-            ),
-          );
-        }
-        return;
-      }
-
       // Read machines to check if one already exists at this location
       final machines = ref.read(machinesProvider);
-      final hasExistingMachine = machines.any(
-        (m) => (m.zone.x - zoneX).abs() < 0.1 && (m.zone.y - zoneY).abs() < 0.1,
-      );
-      
-      if (hasExistingMachine) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('A machine already exists at this location'),
-              duration: AppConfig.snackbarDurationShort,
-            ),
-          );
-        }
-        return;
+      sim.Machine? existingMachine;
+      try {
+        existingMachine = machines.firstWhere(
+          (m) => (m.zone.x - zoneX).abs() < 0.1 && (m.zone.y - zoneY).abs() < 0.1,
+        );
+      } catch (e) {
+        // Machine doesn't exist - will show purchase dialog
       }
-
-      controller.buyMachineWithStock(zoneType, x: zoneX, y: zoneY);
+      
+      if (existingMachine != null) {
+        // Machine exists - show status popup
+        if (context.mounted) {
+          _showMachineView(context, existingMachine);
+        }
+      } else {
+        // Machine doesn't exist - show purchase dialog
+        if (!_canPurchaseMachine(zoneType)) {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(_getProgressionMessage(zoneType)),
+                duration: AppConfig.snackbarDurationShort,
+              ),
+            );
+          }
+          return;
+        }
+        
+        if (context.mounted) {
+          _showMachinePurchaseDialog(context, zoneType, zoneX, zoneY);
+        }
+      }
     } catch (e) {
       // Handle any errors gracefully
       print('Error handling building tap: $e');
@@ -1785,6 +1824,282 @@ class _PurchaseButtonState extends State<_PurchaseButton> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Dialog for purchasing a machine (shown when machine doesn't exist yet)
+class _MachinePurchaseDialog extends ConsumerWidget {
+  final ZoneType zoneType;
+  final double zoneX;
+  final double zoneY;
+  final String imagePath;
+  final double price;
+  final VoidCallback onPurchased;
+
+  const _MachinePurchaseDialog({
+    required this.zoneType,
+    required this.zoneX,
+    required this.zoneY,
+    required this.imagePath,
+    required this.price,
+    required this.onPurchased,
+  });
+
+  String _getZoneName(ZoneType zoneType) {
+    switch (zoneType) {
+      case ZoneType.shop:
+        return 'Shop';
+      case ZoneType.school:
+        return 'School';
+      case ZoneType.gym:
+        return 'Gym';
+      case ZoneType.office:
+        return 'Office';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cash = ref.watch(cashProvider);
+    final canAfford = cash >= price;
+    
+    // Calculate the actual dialog width
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final dialogMaxWidth = screenWidth * AppConfig.machineStatusDialogWidthFactor;
+    
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: EdgeInsets.all(
+        ScreenUtils.relativeSize(context, AppConfig.machineStatusDialogInsetPaddingFactor),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // Use the actual constrained width for sizing
+          final dialogWidth = constraints.maxWidth;
+          final imageHeight = dialogWidth * AppConfig.machineStatusDialogImageHeightFactor;
+          final borderRadius = dialogWidth * AppConfig.machineStatusDialogBorderRadiusFactor;
+          final padding = dialogWidth * AppConfig.machineStatusDialogPaddingFactor;
+          
+          return Container(
+            constraints: BoxConstraints(
+              maxWidth: dialogMaxWidth,
+              maxHeight: screenHeight * AppConfig.machineStatusDialogHeightFactor,
+            ),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(borderRadius),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Stack(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(borderRadius),
+                        topRight: Radius.circular(borderRadius),
+                      ),
+                      child: Image.asset(
+                        imagePath,
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                        height: imageHeight,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            width: double.infinity,
+                            height: imageHeight,
+                            color: Colors.grey[800],
+                            child: Center(
+                              child: Text(
+                                'View image not found',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: dialogWidth * AppConfig.machineStatusDialogErrorTextFontSizeFactor,
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    Positioned(
+                      top: padding * AppConfig.machineStatusDialogHeaderImageTopPaddingFactor,
+                      right: padding * AppConfig.machineStatusDialogHeaderImageTopPaddingFactor,
+                      child: IconButton(
+                        icon: Icon(
+                          Icons.close,
+                          color: Colors.white,
+                          size: dialogWidth * AppConfig.machineStatusDialogCloseButtonSizeFactor,
+                        ),
+                        onPressed: () => Navigator.of(context).pop(),
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.black.withValues(alpha: 0.5),
+                          padding: EdgeInsets.all(
+                            padding * AppConfig.machineStatusDialogCloseButtonPaddingFactor,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                Flexible(
+                  child: SingleChildScrollView(
+                    child: Padding(
+                      padding: EdgeInsets.all(padding),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                width: dialogWidth * AppConfig.machineStatusDialogZoneIconContainerSizeFactor,
+                                height: dialogWidth * AppConfig.machineStatusDialogZoneIconContainerSizeFactor,
+                                decoration: BoxDecoration(
+                                  color: zoneType.color.withValues(alpha: 0.2),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  zoneType.icon,
+                                  color: zoneType.color,
+                                  size: dialogWidth * AppConfig.machineStatusDialogZoneIconSizeFactor,
+                                ),
+                              ),
+                              SizedBox(
+                                width: dialogWidth * AppConfig.machineStatusDialogZoneIconSpacingFactor,
+                              ),
+                              Expanded(
+                                child: Text(
+                                  '${_getZoneName(zoneType)} Machine',
+                                  style: TextStyle(
+                                    fontSize: dialogWidth * AppConfig.machineStatusDialogMachineNameFontSizeFactor,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          SizedBox(
+                            height: dialogWidth * AppConfig.machineStatusDialogSectionSpacingFactor,
+                          ),
+                          Container(
+                            padding: EdgeInsets.all(
+                              dialogWidth * AppConfig.machineStatusDialogInfoContainerPaddingFactor,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.blue.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(
+                                dialogWidth * AppConfig.machineStatusDialogInfoContainerBorderRadiusFactor,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Price',
+                                      style: TextStyle(
+                                        fontSize: dialogWidth * AppConfig.machineStatusDialogInfoLabelFontSizeFactor,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                    Text(
+                                      '\$${price.toStringAsFixed(2)}',
+                                      style: TextStyle(
+                                        fontSize: dialogWidth * AppConfig.machineStatusDialogInfoValueFontSizeFactor,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.blue,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    Text(
+                                      'Your Cash',
+                                      style: TextStyle(
+                                        fontSize: dialogWidth * AppConfig.machineStatusDialogInfoLabelFontSizeFactor,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                    Text(
+                                      '\$${cash.toStringAsFixed(2)}',
+                                      style: TextStyle(
+                                        fontSize: dialogWidth * AppConfig.machineStatusDialogInfoValueFontSizeFactor,
+                                        fontWeight: FontWeight.bold,
+                                        color: canAfford ? Colors.green : Colors.red,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (!canAfford) ...[
+                            SizedBox(
+                              height: dialogWidth * AppConfig.machineStatusDialogSectionSpacingFactor,
+                            ),
+                            Text(
+                              'Insufficient funds',
+                              style: TextStyle(
+                                fontSize: dialogWidth * AppConfig.machineStatusDialogStockTextFontSizeFactor,
+                                color: Colors.red,
+                              ),
+                            ),
+                          ],
+                          SizedBox(
+                            height: dialogWidth * AppConfig.machineStatusDialogSectionSpacingFactor,
+                          ),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              onPressed: canAfford
+                                  ? () {
+                                      final controller = ref.read(gameControllerProvider.notifier);
+                                      controller.buyMachineWithStock(zoneType, x: zoneX, y: zoneY);
+                                      onPurchased();
+                                    }
+                                  : null,
+                              icon: Icon(
+                                Icons.shopping_cart,
+                                size: dialogWidth * AppConfig.machineStatusDialogCashIconSizeFactor,
+                              ),
+                              label: Text(
+                                'Buy Machine',
+                                style: TextStyle(
+                                  fontSize: dialogWidth * AppConfig.machineStatusDialogCashTextFontSizeFactor,
+                                ),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green,
+                                foregroundColor: Colors.white,
+                                disabledBackgroundColor: Colors.grey,
+                                disabledForegroundColor: Colors.grey[400],
+                                padding: EdgeInsets.symmetric(
+                                  vertical: dialogWidth * AppConfig.machineStatusDialogCashButtonPaddingFactor,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(
+                                    dialogWidth * AppConfig.machineStatusDialogCashButtonBorderRadiusFactor,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }

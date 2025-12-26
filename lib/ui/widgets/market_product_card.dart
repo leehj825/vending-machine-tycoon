@@ -6,7 +6,6 @@ import '../../state/selectors.dart';
 import '../../state/providers.dart';
 import '../../config.dart';
 import '../utils/screen_utils.dart';
-import 'game_button.dart';
 
 /// Card widget that displays a product in the market
 class MarketProductCard extends ConsumerWidget {
@@ -35,141 +34,126 @@ class MarketProductCard extends ConsumerWidget {
     }
   }
 
-  /// Get color based on price trend
-  Color _getPriceColor(PriceTrend trend) {
-    switch (trend) {
-      case PriceTrend.up:
-        return Colors.red;
-      case PriceTrend.down:
-        return Colors.green;
-      case PriceTrend.stable:
-        return Colors.grey;
-    }
-  }
-
-  /// Get trend icon
-  IconData _getTrendIcon(PriceTrend trend) {
-    switch (trend) {
-      case PriceTrend.up:
-        return Icons.trending_up;
-      case PriceTrend.down:
-        return Icons.trending_down;
-      case PriceTrend.stable:
-        return Icons.trending_flat;
-    }
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final price = ref.watch(productMarketPriceProvider(product));
-    final trend = ref.watch(priceTrendProvider(product));
-    final priceColor = _getPriceColor(trend);
-    final trendIcon = _getTrendIcon(trend);
+    final market = ref.watch(marketPricesProvider);
+    final unitPrice = market.getPrice(product);
+    final trend = market.getPriceTrend(product);
 
-    final cardBorderRadius = ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall) * 2;
-    
-    return Container(
-      margin: EdgeInsets.symmetric(horizontal: ScreenUtils.relativeSize(context, AppConfig.spacingFactorXLarge), vertical: ScreenUtils.relativeSize(context, AppConfig.spacingFactorMedium)),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(cardBorderRadius),
-        border: Border.all(
-          color: priceColor.withValues(alpha: 0.3),
-          width: ScreenUtils.relativeSize(context, AppConfig.spacingFactorTiny),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: priceColor.withValues(alpha: 0.1),
-            offset: Offset(0, ScreenUtils.relativeSize(context, AppConfig.spacingFactorTiny) * 2),
-            blurRadius: ScreenUtils.relativeSize(context, AppConfig.spacingFactorTiny) * 4,
+    return GestureDetector(
+      onTap: () => _showBuyDialog(context, ref, product, unitPrice),
+      child: Card(
+        elevation: 2,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(
+            ScreenUtils.relativeSize(context, AppConfig.borderRadiusFactorMedium),
           ),
-        ],
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(cardBorderRadius),
-        onTap: () => _showBuyDialog(context, ref, product, price),
+        ),
         child: Padding(
-          padding: EdgeInsets.all(ScreenUtils.relativeSize(context, AppConfig.spacingFactorXLarge)),
+          padding: EdgeInsets.all(
+            ScreenUtils.relativeSize(context, AppConfig.spacingFactorLarge),
+          ),
           child: Row(
             children: [
-              // Product Image
+              // Product image
               Container(
-                width: ScreenUtils.relativeSize(context, AppConfig.productCardImageSizeFactor),
-                height: ScreenUtils.relativeSize(context, AppConfig.productCardImageSizeFactor),
+                width: ScreenUtils.relativeSize(
+                  context,
+                  AppConfig.productCardImageSizeFactor,
+                ),
+                height: ScreenUtils.relativeSize(
+                  context,
+                  AppConfig.productCardImageSizeFactor,
+                ),
                 decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(ScreenUtils.relativeSize(context, AppConfig.spacingFactorTiny) * 4),
+                  borderRadius: BorderRadius.circular(
+                    ScreenUtils.relativeSize(context, AppConfig.borderRadiusFactorSmall),
+                  ),
                   border: Border.all(
-                    color: Colors.grey.withValues(alpha: 0.2),
-                    width: ScreenUtils.relativeSize(context, AppConfig.spacingFactorTiny) * 0.5,
+                    color: Colors.grey[300]!,
+                    width: ScreenUtils.relativeSize(context, AppConfig.borderWidthFactorSmall),
                   ),
                 ),
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(ScreenUtils.relativeSize(context, AppConfig.spacingFactorTiny) * 4),
+                  borderRadius: BorderRadius.circular(
+                    ScreenUtils.relativeSize(context, AppConfig.borderRadiusFactorSmall),
+                  ),
                   child: Image.asset(
                     _getProductImagePath(product),
-                    width: ScreenUtils.relativeSize(context, AppConfig.productCardImageSizeFactor),
-                    height: ScreenUtils.relativeSize(context, AppConfig.productCardImageSizeFactor),
-                    fit: BoxFit.contain,
+                    fit: BoxFit.cover,
                     errorBuilder: (context, error, stackTrace) {
-                      // Fallback to icon if image fails to load
                       return Icon(
                         Icons.image_not_supported,
+                        size: ScreenUtils.relativeSize(
+                          context,
+                          AppConfig.productCardImageFallbackSizeFactor,
+                        ),
                         color: Colors.grey[600],
-                        size: ScreenUtils.relativeSize(context, AppConfig.productCardImageFallbackSizeFactor),
                       );
                     },
                   ),
                 ),
               ),
-              SizedBox(width: ScreenUtils.relativeSize(context, AppConfig.spacingFactorXLarge)),
-              // Product Info
+              SizedBox(
+                width: ScreenUtils.relativeSize(context, AppConfig.spacingFactorLarge),
+              ),
+              // Product info
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      product.name,
-                      style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: ScreenUtils.relativeFontSize(
-                        context,
-                        AppConfig.fontSizeFactorNormal,
-                        min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                        max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                      ),
-                    ),
-                    ),
-                    SizedBox(height: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall)),
-                    Wrap(
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      spacing: ScreenUtils.relativeSize(context, AppConfig.spacingFactorTiny) * 2,
+                    Row(
                       children: [
-                        Icon(trendIcon, size: ScreenUtils.relativeSize(context, AppConfig.productCardTrendIconSizeFactor), color: priceColor),
                         Text(
-                          'Current: \$${price.toStringAsFixed(2)}',
+                          product.name,
                           style: TextStyle(
-                            color: priceColor,
-                            fontWeight: FontWeight.w500,
                             fontSize: ScreenUtils.relativeFontSize(
                               context,
-                              AppConfig.fontSizeFactorSmall,
+                              AppConfig.fontSizeFactorMedium,
                               min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
                               max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
                             ),
+                            fontWeight: FontWeight.bold,
                           ),
+                        ),
+                        SizedBox(
+                          width: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall),
+                        ),
+                        Icon(
+                          trend == PriceTrend.up
+                              ? Icons.trending_up
+                              : trend == PriceTrend.down
+                                  ? Icons.trending_down
+                                  : Icons.trending_flat,
+                          size: ScreenUtils.relativeSize(
+                            context,
+                            AppConfig.productCardTrendIconSizeFactor,
+                          ),
+                          color: trend == PriceTrend.up
+                              ? Colors.green
+                              : trend == PriceTrend.down
+                                  ? Colors.red
+                                  : Colors.grey,
                         ),
                       ],
                     ),
+                    SizedBox(
+                      height: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall),
+                    ),
+                    Text(
+                      '\$${unitPrice.toStringAsFixed(2)}',
+                      style: TextStyle(
+                        fontSize: ScreenUtils.relativeFontSize(
+                          context,
+                          AppConfig.fontSizeFactorNormal,
+                          min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
+                          max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+                        ),
+                        color: Colors.grey[700],
+                      ),
+                    ),
                   ],
                 ),
-              ),
-              SizedBox(width: ScreenUtils.relativeSize(context, AppConfig.spacingFactorXLarge)),
-              // Buy Button
-              GameButton(
-                onPressed: () => _showBuyDialog(context, ref, product, price),
-                label: 'Buy',
-                color: Colors.blue,
               ),
             ],
           ),
@@ -178,16 +162,10 @@ class MarketProductCard extends ConsumerWidget {
     );
   }
 
-  void _showBuyDialog(
-    BuildContext context,
-    WidgetRef ref,
-    Product product,
-    double unitPrice,
-  ) {
+  void _showBuyDialog(BuildContext context, WidgetRef ref, Product product, double unitPrice) {
     showDialog(
       context: context,
-      barrierColor: Colors.black.withValues(alpha: 0.7),
-      builder: (context) => _BuyStockDialog(
+      builder: (dialogContext) => _BuyStockDialog(
         product: product,
         unitPrice: unitPrice,
       ),
@@ -211,7 +189,7 @@ class _BuyStockDialog extends ConsumerStatefulWidget {
 }
 
 class _BuyStockDialogState extends ConsumerState<_BuyStockDialog> {
-  double _quantity = 1.0;
+  double _quantity = 0.0;
 
   /// Get image asset path for product
   String _getProductImagePath(Product product) {
@@ -233,7 +211,7 @@ class _BuyStockDialogState extends ConsumerState<_BuyStockDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final cash = ref.watch(cashProvider);
+    
     final warehouse = ref.watch(warehouseProvider);
     final currentTotal = warehouse.inventory.values.fold<int>(
       0,
@@ -242,6 +220,7 @@ class _BuyStockDialogState extends ConsumerState<_BuyStockDialog> {
     final availableCapacity = AppConfig.warehouseMaxCapacity - currentTotal;
 
     // Calculate max affordable quantity
+    final cash = ref.watch(cashProvider);
     final maxAffordable = (cash / widget.unitPrice).floor();
     final maxQuantity = [maxAffordable, availableCapacity].reduce(
       (a, b) => a < b ? a : b,
@@ -259,44 +238,53 @@ class _BuyStockDialogState extends ConsumerState<_BuyStockDialog> {
 
     return Dialog(
       backgroundColor: Colors.transparent,
-      insetPadding: EdgeInsets.all(ScreenUtils.relativeSize(context, AppConfig.buyDialogInsetPaddingFactor)),
+      insetPadding: EdgeInsets.all(
+        ScreenUtils.relativeSize(context, AppConfig.buyDialogInsetPaddingFactor),
+      ),
       child: LayoutBuilder(
         builder: (context, constraints) {
-          // Use the actual constrained width for sizing
-          final dialogWidth = constraints.maxWidth;
-          final borderRadius = dialogWidth * AppConfig.buyDialogBorderRadiusFactor;
+          final dialogWidth = dialogMaxWidth.clamp(
+            screenWidth * AppConfig.buyDialogWidthMinFactor,
+            screenWidth * AppConfig.buyDialogWidthMaxFactor,
+          );
+          final dialogHeight = (screenHeight * AppConfig.buyDialogHeightFactor).clamp(
+            screenHeight * AppConfig.buyDialogHeightMinFactor,
+            screenHeight * AppConfig.buyDialogHeightMaxFactor,
+          );
           final padding = dialogWidth * AppConfig.buyDialogPaddingFactor;
-          
+          final borderRadius = dialogWidth * AppConfig.buyDialogBorderRadiusFactor;
+
           return Container(
-            constraints: BoxConstraints(
-              maxWidth: dialogMaxWidth,
-              maxHeight: screenHeight * AppConfig.buyDialogHeightFactor,
-            ),
+            width: dialogWidth,
+            height: dialogHeight,
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(borderRadius),
             ),
             child: Column(
-              mainAxisSize: MainAxisSize.min,
               children: [
-                // Header with icon, title, and close button
+                // Header
                 Container(
                   padding: EdgeInsets.symmetric(
                     horizontal: padding,
                     vertical: padding * AppConfig.buyDialogHeaderPaddingVerticalFactor,
                   ),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(borderRadius),
+                      topRight: Radius.circular(borderRadius),
+                    ),
+                  ),
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      // Icon and title
+                      // Product icon and title
                       Row(
                         children: [
                           Image.asset(
                             imagePath,
                             width: dialogWidth * AppConfig.buyDialogHeaderIconSizeFactor,
                             height: dialogWidth * AppConfig.buyDialogHeaderIconSizeFactor,
-                            fit: BoxFit.contain,
                             errorBuilder: (context, error, stackTrace) {
                               return Icon(
                                 Icons.image_not_supported,
@@ -347,60 +335,17 @@ class _BuyStockDialogState extends ConsumerState<_BuyStockDialog> {
                             ),
                           ),
                           SizedBox(height: padding),
-                          // Quantity Display
-                          Container(
-                            padding: EdgeInsets.all(padding * AppConfig.buyDialogQuantityContainerPaddingFactor),
-                            decoration: BoxDecoration(
-                              color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                              borderRadius: BorderRadius.circular(borderRadius * AppConfig.buyDialogQuantityBorderRadiusFactor),
-                              border: Border.all(
-                                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
-                                width: padding * AppConfig.buyDialogQuantityBorderWidthFactor,
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  'Quantity: ',
-                                  style: TextStyle(
-                                    fontSize: dialogWidth * AppConfig.buyDialogQuantityLabelFontSizeFactor,
-                                  ),
-                                ),
-                                Text(
-                                  '$quantityInt',
-                                  style: TextStyle(
-                                    fontSize: dialogWidth * AppConfig.buyDialogQuantityValueFontSizeFactor,
-                                    fontWeight: FontWeight.bold,
-                                    color: Theme.of(context).colorScheme.primary,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          SizedBox(height: padding),
-                          // Slider for quantity selection
-                          Slider(
-                            value: _quantity.clamp(AppConfig.buyDialogSliderMinValue, maxQuantity.toDouble()),
-                            min: AppConfig.buyDialogSliderMinValue,
-                            max: maxQuantity.toDouble(),
-                            divisions: maxQuantity > 1 ? maxQuantity - 1 : 1,
-                            label: quantityInt.toString(),
-                            onChanged: (value) {
+                          // Number pad input
+                          _NumberPadInput(
+                            value: quantityInt,
+                            maxValue: maxQuantity,
+                            onValueChanged: (value) {
                               setState(() {
-                                _quantity = value;
+                                _quantity = value.toDouble();
                               });
                             },
-                          ),
-                          SizedBox(height: padding * AppConfig.buyDialogSliderSpacingFactor),
-                          // Quick increment buttons
-                          Wrap(
-                            spacing: padding * AppConfig.buyDialogIncrementButtonSpacingFactor,
-                            runSpacing: padding * AppConfig.buyDialogIncrementButtonSpacingFactor,
-                            alignment: WrapAlignment.center,
-                            children: AppConfig.buyDialogIncrementValues.map((increment) =>
-                              _buildIncrementGameButton(context, increment, maxQuantity, dialogWidth, padding),
-                            ).toList(),
+                            dialogWidth: dialogWidth,
+                            padding: padding,
                           ),
                           SizedBox(height: padding),
                           Container(
@@ -470,7 +415,7 @@ class _BuyStockDialogState extends ConsumerState<_BuyStockDialog> {
                               Expanded(
                                 flex: 2,
                                 child: _SmallGameButton(
-                                  onPressed: totalCost <= cash && quantityInt > 0
+                                  onPressed: totalCost <= cash && quantityInt > 0 && _quantity > 0
                                       ? () {
                                           ref
                                               .read(gameControllerProvider.notifier)
@@ -511,25 +456,7 @@ class _BuyStockDialogState extends ConsumerState<_BuyStockDialog> {
     );
   }
 
-  Widget _buildIncrementGameButton(BuildContext context, int increment, int maxQuantity, double dialogWidth, double padding) {
-    final newQuantity = (_quantity + increment).clamp(1.0, maxQuantity.toDouble());
-    final isEnabled = _quantity < maxQuantity;
-    
-    return _SmallGameButton(
-      onPressed: isEnabled
-          ? () {
-              setState(() {
-                _quantity = newQuantity;
-              });
-            }
-          : null,
-      label: '+$increment',
-      color: Colors.blue,
-      icon: Icons.add,
-      dialogWidth: dialogWidth,
-      padding: padding,
-    );
-  }
+  // Removed - replaced with number pad
 }
 
 /// Smaller variant of GameButton for use in modals and tight spaces
@@ -629,3 +556,234 @@ class _SmallGameButtonState extends State<_SmallGameButton> {
   }
 }
 
+/// Number pad input widget for entering quantities
+class _NumberPadInput extends StatefulWidget {
+  final int value;
+  final int maxValue;
+  final ValueChanged<int> onValueChanged;
+  final double? dialogWidth;
+  final double? padding;
+
+  const _NumberPadInput({
+    required this.value,
+    required this.maxValue,
+    required this.onValueChanged,
+    this.dialogWidth,
+    this.padding,
+  });
+
+  @override
+  State<_NumberPadInput> createState() => _NumberPadInputState();
+}
+
+class _NumberPadInputState extends State<_NumberPadInput> {
+  late TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.value > 0 ? widget.value.toString() : '');
+  }
+
+  @override
+  void didUpdateWidget(_NumberPadInput oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.value != oldWidget.value) {
+      _controller.text = widget.value.toString();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _onNumberTap(String number) {
+    final currentText = _controller.text;
+    final newText = currentText.isEmpty ? number : currentText + number;
+    final newValue = int.tryParse(newText) ?? 0;
+    
+    if (newValue <= widget.maxValue) {
+      _controller.text = newText;
+      widget.onValueChanged(newValue);
+    }
+  }
+
+  void _onSetAll() {
+    _controller.text = widget.maxValue.toString();
+    widget.onValueChanged(widget.maxValue);
+  }
+
+  void _onClearAll() {
+    _controller.text = '';
+    widget.onValueChanged(0);
+  }
+
+  double _getSize(double baseSize) {
+    if (widget.dialogWidth != null && widget.padding != null) {
+      return widget.dialogWidth! * baseSize;
+    }
+    return ScreenUtils.relativeSize(context, baseSize);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final buttonSize = _getSize(AppConfig.numberPadButtonSizeFactor);
+    final fontSize = widget.dialogWidth != null 
+        ? widget.dialogWidth! * AppConfig.numberPadButtonFontSizeFactor
+        : ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal);
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Text field to display/edit value
+        Container(
+          padding: EdgeInsets.all(_getSize(AppConfig.numberPadTextFieldPaddingFactor)),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(_getSize(AppConfig.numberPadTextFieldBorderRadiusFactor)),
+            border: Border.all(
+              color: Theme.of(context).colorScheme.primary,
+              width: _getSize(AppConfig.numberPadTextFieldBorderWidthFactor),
+            ),
+          ),
+          child: TextField(
+            controller: _controller,
+            textAlign: TextAlign.center,
+            keyboardType: TextInputType.number,
+            style: TextStyle(
+              fontSize: fontSize,
+              fontWeight: FontWeight.bold,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+            decoration: InputDecoration(
+              border: InputBorder.none,
+              isDense: true,
+              contentPadding: EdgeInsets.zero,
+              hintText: '0',
+              hintStyle: TextStyle(
+                color: Colors.grey[400],
+              ),
+            ),
+            onChanged: (value) {
+              if (value.isEmpty) {
+                widget.onValueChanged(0);
+                return;
+              }
+              final intValue = int.tryParse(value) ?? 0;
+              if (intValue <= widget.maxValue) {
+                widget.onValueChanged(intValue);
+              } else {
+                _controller.text = widget.maxValue.toString();
+                widget.onValueChanged(widget.maxValue);
+              }
+            },
+          ),
+        ),
+        SizedBox(height: _getSize(AppConfig.numberPadSpacingFactor)),
+        // Number pad grid
+        Container(
+          padding: EdgeInsets.all(_getSize(AppConfig.numberPadContainerPaddingFactor)),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(_getSize(AppConfig.numberPadContainerBorderRadiusFactor)),
+            border: Border.all(
+              color: Colors.grey[300]!,
+              width: _getSize(AppConfig.numberPadContainerBorderWidthFactor),
+            ),
+          ),
+          child: Column(
+            children: [
+              // Number buttons 1-9
+              for (int row = 0; row < 3; row++)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    for (int col = 1; col <= 3; col++)
+                      _NumberButton(
+                        label: (row * 3 + col).toString(),
+                        size: buttonSize,
+                        fontSize: fontSize,
+                        onTap: () => _onNumberTap((row * 3 + col).toString()),
+                      ),
+                  ],
+                ),
+              // Bottom row: 0, All (set to max), AC (clear all)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _NumberButton(
+                    label: '0',
+                    size: buttonSize,
+                    fontSize: fontSize,
+                    onTap: () => _onNumberTap('0'),
+                  ),
+                  _NumberButton(
+                    label: 'All',
+                    size: buttonSize,
+                    fontSize: fontSize,
+                    onTap: _onSetAll,
+                  ),
+                  _NumberButton(
+                    label: 'AC',
+                    size: buttonSize,
+                    fontSize: fontSize,
+                    onTap: _onClearAll,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Individual number button for the number pad
+class _NumberButton extends StatelessWidget {
+  final String label;
+  final double size;
+  final double fontSize;
+  final VoidCallback onTap;
+
+  const _NumberButton({
+    required this.label,
+    required this.size,
+    required this.fontSize,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.all(size * AppConfig.numberPadButtonPaddingMultiplier),
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.primaryContainer,
+            borderRadius: BorderRadius.circular(size * AppConfig.numberPadButtonBorderRadiusMultiplier),
+            border: Border.all(
+              color: Theme.of(context).colorScheme.primary,
+              width: size * AppConfig.numberPadButtonBorderWidthMultiplier,
+            ),
+          ),
+          child: Center(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: fontSize,
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.onPrimaryContainer,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
