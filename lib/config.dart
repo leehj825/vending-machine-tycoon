@@ -118,7 +118,7 @@ class AppConfig {
   /// Machine route card icon container
   static const double machineRouteCardIconContainerSizeFactor = 0.048; // Icon container size as factor of smaller screen dimension
   static const double machineRouteCardIconContainerBorderWidthFactor = borderWidthFactorSmall; // 0.002 - Icon container border width
-  static const double machineRouteCardIconSizeFactor = fontSizeFactorSmall * 0.96; // 0.024 - Icon size (reuse 0.024 pattern)
+  static const double machineRouteCardIconSizeFactor = fontSizeFactorNormal * 0.96; // 0.024 - Icon size (reuse 0.024 pattern)
   
   /// Machine route card spacing
   static const double machineRouteCardIconSpacingFactor = borderRadiusFactorMedium; // 0.016 - Spacing between icon and text
