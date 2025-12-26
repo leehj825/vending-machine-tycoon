@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'main_screen.dart';
 import '../../state/save_load_service.dart';
@@ -10,43 +11,100 @@ class MenuScreen extends ConsumerWidget {
   const MenuScreen({super.key});
 
   Future<void> _loadGame(BuildContext context, WidgetRef ref) async {
-    final savedState = await SaveLoadService.loadGame();
+    final slots = await SaveLoadService.getSaveSlots();
     
-    if (savedState == null) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('No saved game found'),
-            backgroundColor: Colors.red,
-            duration: Duration(seconds: 2),
-          ),
-        );
-      }
-      return;
-    }
-
-    // Load the game state into the controller
-    ref.read(gameControllerProvider.notifier).loadGameState(savedState);
+    if (!context.mounted) return;
     
-    // Start simulation after loading
-    ref.read(gameControllerProvider.notifier).startSimulation();
-
-    // Navigate to main game screen
-    if (context.mounted) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (context) => const MainScreen(),
-        ),
-      );
-      
+    // Check if any slot has a save
+    final hasAnySave = slots.any((slot) => slot.gameState != null);
+    
+    if (!hasAnySave) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Game loaded successfully!'),
-          backgroundColor: Colors.green,
+          content: Text('No saved games found'),
+          backgroundColor: Colors.red,
           duration: Duration(seconds: 2),
         ),
       );
+      return;
     }
+    
+    // Show load dialog
+    showDialog(
+      context: context,
+      builder: (dialogContext) => _LoadGameDialog(
+        slots: slots,
+        onLoad: (slotIndex) {
+          // Close dialog first
+          Navigator.of(dialogContext).pop();
+          
+          // Schedule load and navigation after current frame
+          SchedulerBinding.instance.addPostFrameCallback((_) async {
+            try {
+              final savedState = await SaveLoadService.loadGame(slotIndex);
+              
+              if (savedState == null) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Failed to load game'),
+                      backgroundColor: Colors.red,
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                }
+                return;
+              }
+
+              // Load the game state into the controller
+              ref.read(gameControllerProvider.notifier).loadGameState(savedState);
+              
+              // Start simulation after loading
+              ref.read(gameControllerProvider.notifier).startSimulation();
+
+              // Navigate to main game screen in next frame
+              // Use pushAndRemoveUntil instead of pushReplacement to handle case when no routes exist
+              if (context.mounted) {
+                SchedulerBinding.instance.addPostFrameCallback((_) {
+                  if (context.mounted) {
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(
+                        builder: (context) => const MainScreen(),
+                      ),
+                      (route) => false, // Remove all previous routes
+                    );
+                    
+                    // Show success message after navigation
+                    Future.delayed(const Duration(milliseconds: 300), () {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Game loaded successfully!'),
+                            backgroundColor: Colors.green,
+                            duration: Duration(seconds: 2),
+                          ),
+                        );
+                      }
+                    });
+                  }
+                });
+              }
+            } catch (e) {
+              print('Error loading game: $e');
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Error loading game: ${e.toString()}'),
+                    backgroundColor: Colors.red,
+                    duration: const Duration(seconds: 2),
+                  ),
+                );
+              }
+            }
+          });
+        },
+      ),
+    );
   }
 
   @override
@@ -286,6 +344,56 @@ class MenuScreen extends ConsumerWidget {
           },
         ),
       ),
+    );
+  }
+}
+
+/// Dialog for selecting save slot to load
+class _LoadGameDialog extends StatelessWidget {
+  final List<SaveSlot> slots;
+  final void Function(int slotIndex) onLoad;
+
+  const _LoadGameDialog({
+    required this.slots,
+    required this.onLoad,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Load Game'),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ...List.generate(3, (index) {
+              final slot = slots[index];
+              final hasSave = slot.gameState != null;
+              final displayName = slot.name.isEmpty ? 'Empty' : slot.name;
+              
+              return ListTile(
+                title: Text('Slot ${index + 1}: $displayName'),
+                subtitle: hasSave 
+                    ? Text('Day ${slot.gameState!.dayCount}, \$${slot.gameState!.cash.toStringAsFixed(2)}')
+                    : const Text('No save data'),
+                enabled: hasSave,
+                onTap: hasSave ? () {
+                  // Close dialog first, then trigger load
+                  Navigator.of(context).pop();
+                  onLoad(index);
+                } : null,
+              );
+            }),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+      ],
     );
   }
 }

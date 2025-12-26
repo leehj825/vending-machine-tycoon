@@ -462,19 +462,33 @@ class _CustomBottomNavigationBar extends ConsumerWidget {
 
   Future<void> _saveGame(BuildContext context, WidgetRef ref) async {
     final gameState = ref.read(gameControllerProvider);
-    final success = await SaveLoadService.saveGame(gameState);
+    final slots = await SaveLoadService.getSaveSlots();
     
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(success 
-            ? 'Game saved successfully!' 
-            : 'Failed to save game'),
-          backgroundColor: success ? Colors.green : Colors.red,
-          duration: AppConfig.snackbarDurationShort,
-        ),
-      );
-    }
+    if (!context.mounted) return;
+    
+    showDialog(
+      context: context,
+      builder: (dialogContext) => _SaveGameDialog(
+        slots: slots,
+        onSave: (slotIndex, name) async {
+          final success = await SaveLoadService.saveGame(slotIndex, gameState, name);
+          if (dialogContext.mounted) {
+            Navigator.of(dialogContext).pop();
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(success 
+                    ? 'Game saved successfully!' 
+                    : 'Failed to save game'),
+                  backgroundColor: success ? Colors.green : Colors.red,
+                  duration: AppConfig.snackbarDurationShort,
+                ),
+              );
+            }
+          }
+        },
+      ),
+    );
   }
 
   void _exitToMenu(BuildContext context, WidgetRef ref) {
@@ -521,6 +535,102 @@ class _CustomBottomNavigationBar extends ConsumerWidget {
       default:
         return Icons.circle;
     }
+  }
+}
+
+/// Dialog for selecting save slot and entering name
+class _SaveGameDialog extends StatefulWidget {
+  final List<SaveSlot> slots;
+  final void Function(int slotIndex, String name) onSave;
+
+  const _SaveGameDialog({
+    required this.slots,
+    required this.onSave,
+  });
+
+  @override
+  State<_SaveGameDialog> createState() => _SaveGameDialogState();
+}
+
+class _SaveGameDialogState extends State<_SaveGameDialog> {
+  int? _selectedSlot;
+  final TextEditingController _nameController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    // Pre-select first slot if available
+    if (widget.slots.isNotEmpty) {
+      _selectedSlot = 0;
+      _nameController.text = widget.slots[0].name.isEmpty ? '' : widget.slots[0].name;
+    }
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Save Game'),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Slot selection
+            ...List.generate(3, (index) {
+              final slot = widget.slots[index];
+              final hasSave = slot.gameState != null;
+              final displayName = slot.name.isEmpty ? 'Empty' : slot.name;
+              
+              return RadioListTile<int>(
+                title: Text('Slot ${index + 1}: $displayName'),
+                subtitle: hasSave ? Text('Day ${slot.gameState!.dayCount}, \$${slot.gameState!.cash.toStringAsFixed(2)}') : null,
+                value: index,
+                groupValue: _selectedSlot,
+                onChanged: (value) {
+                  setState(() {
+                    _selectedSlot = value;
+                    _nameController.text = slot.name.isEmpty ? '' : slot.name;
+                  });
+                },
+              );
+            }),
+            const SizedBox(height: 16),
+            // Name input
+            TextField(
+              controller: _nameController,
+              decoration: const InputDecoration(
+                labelText: 'Save Name (max 10 characters)',
+                border: OutlineInputBorder(),
+              ),
+              maxLength: 10,
+              onChanged: (value) {
+                setState(() {}); // Update to enable/disable save button
+              },
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: _selectedSlot != null && _nameController.text.trim().isNotEmpty
+              ? () {
+                  widget.onSave(_selectedSlot!, _nameController.text.trim());
+                }
+              : null,
+          child: const Text('Save'),
+        ),
+      ],
+    );
   }
 }
 
