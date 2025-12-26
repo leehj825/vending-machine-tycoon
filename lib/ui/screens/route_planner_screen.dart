@@ -427,7 +427,9 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> {
                                 ),
                                 decoration: BoxDecoration(
                                   color: Colors.white,
-                                  borderRadius: BorderRadius.circular(AppConfig.truckCardBorderRadius),
+                                  borderRadius: BorderRadius.circular(
+                                    ScreenUtils.relativeSize(context, AppConfig.truckCardBorderRadiusFactor),
+                                  ),
                                   border: Border.all(
                                     color: isSelected
                                         ? Colors.green
@@ -480,7 +482,9 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> {
                                           color: isSelected
                                               ? Colors.green.withValues(alpha: 0.2)
                                               : Colors.grey.withValues(alpha: 0.1),
-                                          borderRadius: BorderRadius.circular(AppConfig.truckIconContainerBorderRadius),
+                                          borderRadius: BorderRadius.circular(
+                                            ScreenUtils.relativeSize(context, AppConfig.truckIconContainerBorderRadiusFactor),
+                                          ),
                                         ),
                                         child: Icon(
                                           Icons.local_shipping,
@@ -541,7 +545,9 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> {
                                           decoration: BoxDecoration(
                                             color: _getStatusColor(truck.status)
                                                 .withValues(alpha: 0.15),
-                                            borderRadius: BorderRadius.circular(AppConfig.truckStatusBorderRadius),
+                                            borderRadius: BorderRadius.circular(
+                                              ScreenUtils.relativeSize(context, AppConfig.truckStatusBorderRadiusFactor),
+                                            ),
                                             border: Border.all(
                                               color: _getStatusColor(truck.status).withValues(alpha: 0.5),
                                               width: ScreenUtils.relativeSize(context, AppConfig.spacingFactorTiny),
@@ -597,7 +603,7 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> {
                 builder: (context) {
                   final screenWidth = MediaQuery.of(context).size.width;
                   final padding = ScreenUtils.relativeSize(context, AppConfig.spacingFactorLarge);
-                  final maxItemWidth = screenWidth * 0.4;
+                  final maxItemWidth = screenWidth * AppConfig.truckCargoMaxItemWidthFactor;
                   
                   print('🔵 CARGO DEBUG: Screen width: $screenWidth');
                   print('🔵 CARGO DEBUG: Padding: $padding');
@@ -811,7 +817,7 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> {
                     children: [
                       Icon(
                         Icons.route,
-                        size: 64,
+                        size: ScreenUtils.relativeSize(context, AppConfig.routeListEmptyIconSizeFactor),
                         color: Colors.grey[400],
                       ),
                       SizedBox(
@@ -852,7 +858,7 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> {
               SliverToBoxAdapter(
                 child: ConstrainedBox(
                   constraints: BoxConstraints(
-                    maxHeight: MediaQuery.of(context).size.height * 0.6,
+                    maxHeight: MediaQuery.of(context).size.height * AppConfig.routeListMaxHeightFactor,
                   ),
                   child: ReorderableListView.builder(
                     shrinkWrap: true,
@@ -916,7 +922,7 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> {
                           style: TextStyle(
                             fontSize: ScreenUtils.relativeFontSize(
                               context,
-                              AppConfig.fontSizeFactorSmall,
+                              AppConfig.routeEfficiencyTitleFontSizeFactor,
                               min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
                               max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
                             ),
@@ -1131,7 +1137,9 @@ class _LoadCargoDialogState extends ConsumerState<_LoadCargoDialog> {
               if (maxQuantity > 0) ...[
                 // Quantity Display
                 Container(
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.all(
+                    ScreenUtils.relativeSize(context, AppConfig.loadCargoQuantityContainerPaddingFactor),
+                  ),
                   decoration: BoxDecoration(
                     color: Theme.of(context).colorScheme.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(
@@ -1139,7 +1147,7 @@ class _LoadCargoDialogState extends ConsumerState<_LoadCargoDialog> {
                     ),
                     border: Border.all(
                       color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
-                      width: 2,
+                      width: ScreenUtils.relativeSize(context, AppConfig.loadCargoQuantityBorderWidthFactor),
                     ),
                   ),
                   child: Row(
@@ -1312,7 +1320,11 @@ class _StatItem extends StatelessWidget {
     return Expanded(
       child: Column(
         children: [
-          Icon(icon, size: 24, color: valueColor ?? Colors.grey[700]),
+          Icon(
+            icon,
+            size: ScreenUtils.relativeSize(context, AppConfig.efficiencyStatIconSizeFactor),
+            color: valueColor ?? Colors.grey[700],
+          ),
           SizedBox(
             height: ScreenUtils.relativeSize(
               context,
@@ -1324,7 +1336,7 @@ class _StatItem extends StatelessWidget {
             style: TextStyle(
               fontSize: ScreenUtils.relativeFontSize(
                 context,
-                AppConfig.fontSizeFactorSmall,
+                AppConfig.routeEfficiencyValueFontSizeFactor,
                 min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
                 max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
               ),
@@ -1343,7 +1355,7 @@ class _StatItem extends StatelessWidget {
             style: TextStyle(
               fontSize: ScreenUtils.relativeFontSize(
                 context,
-                AppConfig.fontSizeFactorSmall,
+                AppConfig.routeEfficiencyLabelFontSizeFactor,
                 min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
                 max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
               ),
@@ -1389,7 +1401,11 @@ class _SmallGameButtonState extends State<_SmallGameButton> {
       onTap: widget.onPressed,
       child: AnimatedContainer(
         duration: AppConfig.animationDurationFast,
-        margin: EdgeInsets.only(top: _isPressed ? 3 : 0),
+        margin: EdgeInsets.only(
+          top: _isPressed
+              ? ScreenUtils.relativeSize(context, AppConfig.routePlannerSmallButtonPressedMarginFactor)
+              : 0,
+        ),
         padding: EdgeInsets.symmetric(
           horizontal: ScreenUtils.relativeSize(
             context,
@@ -1408,11 +1424,17 @@ class _SmallGameButtonState extends State<_SmallGameButton> {
               : [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.3),
-                    offset: const Offset(0, 3),
+                    offset: Offset(
+                      0,
+                      ScreenUtils.relativeSize(context, AppConfig.routePlannerSmallButtonShadowOffsetFactor),
+                    ),
                     blurRadius: 0,
                   ),
                 ],
-          border: Border.all(color: Colors.white.withValues(alpha: 0.5), width: 1.5),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.5),
+            width: ScreenUtils.relativeSize(context, AppConfig.routePlannerSmallButtonBorderWidthFactor),
+          ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -1539,7 +1561,7 @@ class _BuyTruckButtonState extends State<_BuyTruckButton> {
                 color: Colors.white,
                 size: ScreenUtils.relativeSize(
                   context,
-                  AppConfig.gameButtonIconSizeFactor * 1.5,
+                  AppConfig.gameButtonIconSizeFactor * AppConfig.gameButtonIconSizeMultiplier,
                 ),
               ),
               SizedBox(

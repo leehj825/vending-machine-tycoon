@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../simulation/models/machine.dart';
+import '../../config.dart';
 import '../theme/zone_ui.dart';
+import '../utils/screen_utils.dart';
 
 /// Card widget that displays a machine in a route list
 class MachineRouteCard extends StatelessWidget {
@@ -26,46 +28,59 @@ class MachineRouteCard extends StatelessWidget {
     final zoneColor = machine.zone.type.color;
     final stock = machine.totalInventory;
     final stockColor = _getStockColor(stock);
+    
+    final cardBorderRadius = ScreenUtils.relativeSize(context, AppConfig.machineRouteCardBorderRadiusFactor);
+    final cardBorderWidth = ScreenUtils.relativeSize(context, AppConfig.machineRouteCardBorderWidthFactor);
+    final cardShadowOffset = ScreenUtils.relativeSize(context, AppConfig.machineRouteCardShadowOffsetFactor);
+    final cardShadowBlur = ScreenUtils.relativeSize(context, AppConfig.machineRouteCardShadowBlurFactor);
+    final cardPadding = ScreenUtils.relativeSize(context, AppConfig.machineRouteCardPaddingFactor);
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      margin: EdgeInsets.symmetric(
+        horizontal: ScreenUtils.relativeSize(context, AppConfig.machineRouteCardMarginHorizontalFactor),
+        vertical: ScreenUtils.relativeSize(context, AppConfig.machineRouteCardMarginVerticalFactor),
+      ),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(cardBorderRadius),
         border: Border.all(
           color: zoneColor.withOpacity(0.5),
-          width: 2,
+          width: cardBorderWidth,
         ),
         boxShadow: [
           BoxShadow(
             color: zoneColor.withOpacity(0.1),
-            offset: const Offset(0, 4),
-            blurRadius: 8,
+            offset: Offset(0, cardShadowOffset),
+            blurRadius: cardShadowBlur,
           ),
         ],
       ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(cardBorderRadius),
         onTap: () {}, // Can be used for future tap actions
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(cardPadding),
           child: Row(
             children: [
               // Zone Icon
               Container(
-                width: 48,
-                height: 48,
+                width: ScreenUtils.relativeSize(context, AppConfig.machineRouteCardIconContainerSizeFactor),
+                height: ScreenUtils.relativeSize(context, AppConfig.machineRouteCardIconContainerSizeFactor),
                 decoration: BoxDecoration(
                   color: zoneColor.withOpacity(0.2),
                   shape: BoxShape.circle,
                   border: Border.all(
                     color: zoneColor.withOpacity(0.5),
-                    width: 2,
+                    width: ScreenUtils.relativeSize(context, AppConfig.machineRouteCardIconContainerBorderWidthFactor),
                   ),
                 ),
-                child: Icon(zoneIcon, color: zoneColor, size: 24),
+                child: Icon(
+                  zoneIcon,
+                  color: zoneColor,
+                  size: ScreenUtils.relativeSize(context, AppConfig.machineRouteCardIconSizeFactor),
+                ),
               ),
-              const SizedBox(width: 16),
+              SizedBox(width: ScreenUtils.relativeSize(context, AppConfig.machineRouteCardIconSpacingFactor)),
               // Machine Info
               Expanded(
                 child: Column(
@@ -74,30 +89,34 @@ class MachineRouteCard extends StatelessWidget {
                   children: [
                     Text(
                       machine.name,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                        fontSize: ScreenUtils.relativeSize(context, AppConfig.machineRouteCardTitleFontSizeFactor),
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: ScreenUtils.relativeSize(context, AppConfig.machineRouteCardTextSpacingFactor)),
                     Text(
                       'Zone: ${machine.zone.type.name.toUpperCase()}',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: ScreenUtils.relativeSize(context, AppConfig.machineRouteCardZoneFontSizeFactor),
                         color: Colors.grey[600],
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: ScreenUtils.relativeSize(context, AppConfig.machineRouteCardTextSpacingFactor)),
                     Row(
                       children: [
-                        Icon(Icons.inventory_2, size: 16, color: stockColor),
-                        const SizedBox(width: 4),
+                        Icon(
+                          Icons.inventory_2,
+                          size: ScreenUtils.relativeSize(context, AppConfig.machineRouteCardInventoryIconSizeFactor),
+                          color: stockColor,
+                        ),
+                        SizedBox(width: ScreenUtils.relativeSize(context, AppConfig.machineRouteCardInventoryIconSpacingFactor)),
                         Text(
                           'Stock: $stock items',
                           style: TextStyle(
                             color: stockColor,
                             fontWeight: FontWeight.w600,
-                            fontSize: 14,
+                            fontSize: ScreenUtils.relativeSize(context, AppConfig.machineRouteCardStockFontSizeFactor),
                           ),
                         ),
                       ],
@@ -109,14 +128,20 @@ class MachineRouteCard extends StatelessWidget {
               Container(
                 decoration: BoxDecoration(
                   color: Colors.red.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(
+                    ScreenUtils.relativeSize(context, AppConfig.machineRouteCardRemoveButtonBorderRadiusFactor),
+                  ),
                   border: Border.all(
                     color: Colors.red.withOpacity(0.3),
-                    width: 1,
+                    width: ScreenUtils.relativeSize(context, AppConfig.machineRouteCardRemoveButtonBorderWidthFactor),
                   ),
                 ),
                 child: IconButton(
-                  icon: const Icon(Icons.delete, color: Colors.red, size: 20),
+                  icon: Icon(
+                    Icons.delete,
+                    color: Colors.red,
+                    size: ScreenUtils.relativeSize(context, AppConfig.machineRouteCardRemoveIconSizeFactor),
+                  ),
                   onPressed: onRemove,
                   tooltip: 'Remove from route',
                 ),
@@ -128,4 +153,5 @@ class MachineRouteCard extends StatelessWidget {
     );
   }
 }
+
 

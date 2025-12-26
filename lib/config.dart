@@ -42,6 +42,17 @@ class AppConfig {
   static const double spacingFactorLarge = 0.012; // Large spacing (12px on 1000px screen)
   static const double spacingFactorXLarge = 0.016; // Extra large spacing (16px on 1000px screen)
   
+  /// Common border width factors (reused across components)
+  static const double borderWidthFactorTiny = spacingFactorTiny; // 0.001 - Very thin borders
+  static const double borderWidthFactorSmall = spacingFactorSmall; // 0.002 - Small borders
+  static const double borderWidthFactorMedium = spacingFactorSmall * 2; // 0.004 - Medium borders
+  
+  /// Common border radius factors (reused across components)
+  static const double borderRadiusFactorTiny = spacingFactorTiny; // 0.001 - Very small radius
+  static const double borderRadiusFactorSmall = spacingFactorSmall * 4; // 0.008 - Small radius
+  static const double borderRadiusFactorMedium = spacingFactorXLarge; // 0.016 - Medium radius
+  static const double borderRadiusFactorLarge = spacingFactorXLarge * 2; // 0.032 - Large radius
+  
   /// Border radius values
   static const double borderRadiusSmall = 8.0;
   static const double borderRadiusMedium = 12.0;
@@ -62,6 +73,7 @@ class AppConfig {
   static const double gameButtonPaddingVerticalFactor = 0.01; // Vertical padding as factor of smaller screen dimension
   static const double gameButtonBorderRadius = 8.0;
   static const double gameButtonIconSizeFactor = 0.05; // Icon size as factor of smaller screen dimension
+  static const double gameButtonIconSizeMultiplier = 1.5; // Multiplier for buy truck button icon (larger than normal)
   static const double gameButtonFontSizeFactor = 0.03; // Font size factor (responsive) - uses fontSizeFactorNormal by default
   
   /// SmallGameButton sizes (used in dialogs)
@@ -72,43 +84,106 @@ class AppConfig {
   static const double smallGameButtonFontSizeFactor = 0.025; // Font size factor (responsive) - uses fontSizeFactorSmall by default
   
   /// Truck selector card sizes (fleet manager screen)
-  static const double truckCardWidthFactor = 0.15; // Card width as factor of screen width
+  static const double truckCardWidthFactor = 0.20; // Card width as factor of screen width
   static const double truckCardHeightFactor = 0.16; // Card container height as factor of smaller screen dimension
-  static const double truckCardPaddingFactor = 0.008; // Internal padding of truck card as factor of smaller screen dimension
-  static const double truckCardBorderRadius = 2.0; // Border radius of truck card
-  static const double truckCardMarginHorizontalFactor = 0.001; // Horizontal margin between cards as factor of screen width
+  static const double truckCardPaddingFactor = spacingFactorSmall * 4; // 0.008 - Internal padding of truck card
+  static const double truckCardBorderRadiusFactor = borderWidthFactorSmall; // 0.002 - Border radius of truck card
+  static const double truckCardMarginHorizontalFactor = spacingFactorTiny; // 0.001 - Horizontal margin between cards
   
   /// Truck icon sizes
   static const double truckIconContainerSizeFactor = 0.05; // Icon container size as factor of smaller screen dimension
   static const double truckIconSizeFactor = 0.05; // Icon size as factor of smaller screen dimension
-  static const double truckIconContainerBorderRadius = 1.0; // Border radius of icon container
+  static const double truckIconContainerBorderRadiusFactor = borderRadiusFactorTiny; // 0.001 - Border radius of icon container
   
   /// Truck name and status sizes
-  static const double truckNameFontSizeFactor = 0.02; // Truck name font size factor (uses fontSizeFactorSmall by default)
-  static const double truckStatusFontSizeFactor = 0.02; // Status badge font size factor (uses fontSizeFactorSmall by default)
-  static const double truckStatusPaddingHorizontalFactor = 0.002; // Status badge horizontal padding as factor of screen width
-  static const double truckStatusPaddingVerticalFactor = 0.001; // Status badge vertical padding as factor of smaller screen dimension
-  static const double truckStatusBorderRadius = 1.0; // Status badge border radius
+  static const double truckNameFontSizeFactor = fontSizeFactorMedium; // 0.035 - Truck name font size factor
+  static const double truckStatusFontSizeFactor = fontSizeFactorTiny; // 0.02 - Status badge font size factor
+  static const double truckStatusPaddingHorizontalFactor = borderWidthFactorSmall; // 0.002 - Status badge horizontal padding
+  static const double truckStatusPaddingVerticalFactor = spacingFactorTiny; // 0.001 - Status badge vertical padding
+  static const double truckStatusBorderRadiusFactor = borderRadiusFactorTiny; // 0.001 - Status badge border radius
+  
+  // ============================================================================
+  // MACHINE ROUTE CARD CONSTANTS
+  // ============================================================================
+  
+  /// Machine route card container
+  static const double machineRouteCardMarginHorizontalFactor = spacingFactorSmall * 4; // 0.008 - Horizontal margin
+  static const double machineRouteCardMarginVerticalFactor = borderWidthFactorMedium; // 0.004 - Vertical margin
+  static const double machineRouteCardBorderRadiusFactor = borderRadiusFactorMedium; // 0.016 - Border radius
+  static const double machineRouteCardBorderWidthFactor = borderWidthFactorSmall; // 0.002 - Border width
+  static const double machineRouteCardShadowOffsetFactor = borderWidthFactorMedium; // 0.004 - Shadow offset
+  static const double machineRouteCardShadowBlurFactor = spacingFactorSmall * 4; // 0.008 - Shadow blur radius
+  static const double machineRouteCardPaddingFactor = borderRadiusFactorMedium; // 0.016 - Padding
+  
+  /// Machine route card icon container
+  static const double machineRouteCardIconContainerSizeFactor = 0.048; // Icon container size as factor of smaller screen dimension
+  static const double machineRouteCardIconContainerBorderWidthFactor = borderWidthFactorSmall; // 0.002 - Icon container border width
+  static const double machineRouteCardIconSizeFactor = fontSizeFactorSmall * 0.96; // 0.024 - Icon size (reuse 0.024 pattern)
+  
+  /// Machine route card spacing
+  static const double machineRouteCardIconSpacingFactor = borderRadiusFactorMedium; // 0.016 - Spacing between icon and text
+  static const double machineRouteCardTextSpacingFactor = borderWidthFactorSmall; // 0.002 - Spacing between text lines
+  static const double machineRouteCardInventoryIconSpacingFactor = borderWidthFactorSmall; // 0.002 - Spacing between inventory icon and text
+  
+  /// Machine route card text sizes
+  static const double machineRouteCardTitleFontSizeFactor = fontSizeFactorMedium; // 0.035 - Title font size
+  static const double machineRouteCardZoneFontSizeFactor = fontSizeFactorNormal; // 0.032 - Zone text font size
+  static const double machineRouteCardStockFontSizeFactor = fontSizeFactorMedium; // 0.035 - Stock text font size
+  static const double machineRouteCardInventoryIconSizeFactor = borderRadiusFactorMedium; // 0.016 - Inventory icon size
+  
+  /// Machine route card remove button
+  static const double machineRouteCardRemoveButtonBorderRadiusFactor = borderRadiusFactorMedium; // 0.016 - Remove button border radius
+  static const double machineRouteCardRemoveButtonBorderWidthFactor = spacingFactorTiny; // 0.001 - Remove button border width
+  static const double machineRouteCardRemoveIconSizeFactor = fontSizeFactorLarge; // 0.045 - Remove icon size
+  
+  /// Route list container
+  static const double routeListMaxHeightFactor = 0.6; // Max height of route list as factor of screen height
+  static const double routeListEmptyIconSizeFactor = 0.064; // Empty route icon size as factor of smaller screen dimension
+  
+  /// Truck cargo display
+  static const double truckCargoMaxItemWidthFactor = 0.4; // Max width of cargo item as factor of screen width
+  
+  // ============================================================================
+  // LOAD CARGO DIALOG CONSTANTS
+  // ============================================================================
+  
+  /// Load cargo dialog quantity display
+  static const double loadCargoQuantityContainerPaddingFactor = borderRadiusFactorMedium; // 0.016 - Container padding
+  static const double loadCargoQuantityBorderWidthFactor = borderWidthFactorSmall; // 0.002 - Border width
+  
+  // ============================================================================
+  // EFFICIENCY STATS CONSTANTS
+  // ============================================================================
+  
+  /// Efficiency stat item
+  static const double efficiencyStatIconSizeFactor = machineRouteCardIconSizeFactor; // 0.024 - Stat icon size (reuse)
+  
+  /// Route efficiency font sizes
+  static const double routeEfficiencyTitleFontSizeFactor = fontSizeFactorNormal; // 0.025 - Route efficiency card title font size
+  static const double routeEfficiencyValueFontSizeFactor = fontSizeFactorNormal; // 0.025 - Route efficiency rating value font size (Great, Good, Fair, Poor)
+  static const double routeEfficiencyLabelFontSizeFactor = fontSizeFactorNormal; // 0.025 - Route efficiency label font size (Efficiency, Total Distance, etc.)
+  
+  // ============================================================================
+  // SMALL GAME BUTTON (ROUTE PLANNER) CONSTANTS
+  // ============================================================================
+  
+  /// Small game button (used in route planner dialogs)
+  static const double routePlannerSmallButtonPressedMarginFactor = spacingFactorTiny * 3; // 0.003 - Pressed margin
+  static const double routePlannerSmallButtonShadowOffsetFactor = spacingFactorTiny * 3; // 0.003 - Shadow offset
+  static const double routePlannerSmallButtonBorderWidthFactor = spacingFactorTiny * 1.5; // 0.0015 - Border width
   
   /// Bottom navigation bar sizes
   static const double bottomNavBarHeightFactor = 0.20; // Height as factor of smaller screen dimension
   
-  /// Tab button sizes (HQ, City, Fleet, Market buttons)
+  /// Tab button sizes (HQ, City, Fleet, Market buttons) - Removed min/max duplicates
   static const double tabButtonHeightFactor = 0.20; // Height as factor of smaller screen dimension
-  static const double tabButtonHeightMinFactor = 0.20; // Minimum height as factor of smaller screen dimension
-  static const double tabButtonHeightMaxFactor = 0.20; // Maximum height as factor of smaller screen dimension
   
-  /// Tab button icon size (for fallback icons)
+  /// Tab button icon size (for fallback icons) - Removed min/max duplicates
   static const double tabButtonIconSizeFactor = 0.20; // Icon size as factor of smaller screen dimension
-  static const double tabButtonIconSizeMinFactor = 0.20; // Minimum icon size factor
-  static const double tabButtonIconSizeMaxFactor = 0.20; // Maximum icon size factor
   
-  /// Save/Exit button sizes
+  /// Save/Exit button sizes - Removed min/max duplicates
   static const double saveExitButtonHeightFactor = 0.10; // Height as factor of smaller screen dimension
-  static const double saveExitButtonHeightMaxFactor = 0.10; // Maximum height as factor of smaller screen dimension
   static const double saveExitButtonWidthFactor = 0.10; // Width as factor of screen width
-  static const double saveExitButtonWidthMinFactor = 0.10; // Minimum width as factor of screen width
-  static const double saveExitButtonWidthMaxFactor = 0.10; // Maximum width as factor of screen width
   
   /// Top status bar boxes (cash, reputation, time)
   static const double statusCardWidthFactor = 0.66; // Width as factor of smaller dimension (0.25 * 3.0)
@@ -116,21 +191,17 @@ class AppConfig {
   static const double statusCardWidthMaxFactor = 0.25; // Maximum width as factor of smaller dimension
   static const double statusCardHeightRatio = 1.0; // Height ratio relative to card width
   
-  /// Status card icon settings
-  static const double statusCardIconSizeFactor = 0.15; // Icon size factor relative to card width
-  static const double statusCardIconSizeMinFactor = 0.15; // Minimum icon size as factor of smaller dimension
-  static const double statusCardIconSizeMaxFactor = 0.15; // Maximum icon size as factor of smaller dimension
-  static const double statusCardIconTopPositionFactor = 1.0; // Icon top position factor (1.0 = uses padding, adjust to change icon vertical position)
+  /// Status card icon settings - Removed min/max duplicates
+  static const double statusCardIconSizeFactor = 0.60; // Icon size factor relative to card width
+  static const double statusCardIconTopPositionFactor = 0.05; // Icon top position as factor of card height (relative to card height)
   
   /// Status card text settings
-  static const double statusCardTextSizeFactor = 0.04; // Text font size factor (relative to smaller screen dimension)
-  static const double statusCardTextBottomPositionFactor = 2.0; // Text bottom position factor (1.0 = uses padding, adjust to change text vertical position)
+  static const double statusCardTextSizeFactor = 0.035; // Text font size factor (relative to smaller screen dimension)
+  static const double statusCardTextBottomPositionFactor = 0.05; // Text bottom position as factor of card height (relative to card height)
   
-  /// Status card padding and spacing
+  /// Status card padding and spacing - Removed min/max duplicates
   static const double statusCardPaddingFactor = 0.01; // Internal padding factor relative to card width
-  static const double statusCardPaddingMinFactor = 0.01; // Minimum padding as factor of smaller dimension
-  static const double statusCardPaddingMaxFactor = 0.01; // Maximum padding as factor of smaller dimension
-  static const double statusBarContainerPaddingFactor = 0.001; // Container padding around status bar
+  static const double statusBarContainerPaddingFactor = spacingFactorTiny; // 0.001 - Container padding around status bar (reuse)
   
   /// Card dimensions
   static const double cardBorderWidth = 2.0;
@@ -159,13 +230,61 @@ class AppConfig {
   static const int warehouseMaxCapacity = 1000;
   
   // ============================================================================
+  // MACHINE STATUS POPUP CONSTANTS
+  // ============================================================================
+  
+  /// Machine status popup dialog dimensions (relative to screen)
+  static const double machineStatusDialogWidthFactor = 0.9; // 90% of screen width
+  static const double machineStatusDialogHeightFactor = 0.8; // 80% of screen height
+  static const double machineStatusDialogInsetPaddingFactor = 0.04; // Inset padding relative to screen
+  
+  /// Machine status popup sizing (relative to dialog width) - No min/max to avoid small screen restrictions
+  static const double machineStatusDialogBorderRadiusFactor = 0.04; // Border radius as factor of dialog width
+  static const double machineStatusDialogPaddingFactor = 0.04; // Padding as factor of dialog width
+  static const double machineStatusDialogImageHeightFactor = 0.5; // Image height as factor of dialog width
+  
+  /// Machine status popup header
+  static const double machineStatusDialogCloseButtonSizeFactor = 0.08; // Close button icon size as factor of dialog width
+  static const double machineStatusDialogCloseButtonPaddingFactor = 0.3; // Close button padding as factor of padding
+  static const double machineStatusDialogErrorTextFontSizeFactor = 0.045; // Error text font size as factor of dialog width
+  static const double machineStatusDialogHeaderImageTopPaddingFactor = 0.5; // Image top padding for close button as factor of padding
+  
+  /// Machine status popup content section
+  static const double machineStatusDialogZoneIconContainerSizeFactor = 0.05; // Zone icon container size as factor of dialog width
+  static const double machineStatusDialogZoneIconSizeFactor = 0.04; // Zone icon size as factor of dialog width
+  static const double machineStatusDialogZoneIconSpacingFactor = 0.01; // Spacing between zone icon and name as factor of dialog width
+  static const double machineStatusDialogMachineNameFontSizeFactor = 0.05; // Machine name font size as factor of dialog width
+  static const double machineStatusDialogSectionSpacingFactor = 0.01; // Spacing between sections as factor of dialog width
+  static const double machineStatusDialogStockTextFontSizeFactor = 0.04; // Stock text font size as factor of dialog width
+  static const double machineStatusDialogStockProgressSpacingFactor = 0.01; // Spacing before progress bar as factor of dialog width
+  static const double machineStatusDialogProgressBarHeightFactor = 0.02; // Progress bar height as factor of dialog width
+  static const double machineStatusDialogInfoContainerPaddingFactor = 0.01; // Info container padding as factor of dialog width
+  static const double machineStatusDialogInfoContainerBorderRadiusFactor = 0.02; // Info container border radius as factor of dialog width
+  static const double machineStatusDialogInfoLabelFontSizeFactor = 0.04; // Info label font size as factor of dialog width
+  static const double machineStatusDialogInfoValueFontSizeFactor = 0.04; // Info value font size as factor of dialog width
+  static const double machineStatusDialogDividerHeightFactor = 0.003; // Divider height as factor of dialog width
+  static const double machineStatusDialogStockDetailsTitleFontSizeFactor = 0.03; // Stock details title font size as factor of dialog width
+  static const double machineStatusDialogStockDetailsSpacingFactor = 0.01; // Spacing before stock details as factor of dialog width
+  static const double machineStatusDialogStockItemPaddingFactor = 0.01; // Stock item padding as factor of dialog width
+  static const double machineStatusDialogStockItemFontSizeFactor = 0.04; // Stock item font size as factor of dialog width
+  static const double machineStatusDialogStockItemBadgePaddingHorizontalFactor = 0.02; // Stock item badge horizontal padding as factor of dialog width
+  static const double machineStatusDialogStockItemBadgePaddingVerticalFactor = 0.01; // Stock item badge vertical padding as factor of dialog width
+  static const double machineStatusDialogStockItemBadgeFontSizeFactor = 0.04; // Stock item badge font size as factor of dialog width
+  static const double machineStatusDialogStockItemBadgeBorderRadiusFactor = 0.01; // Stock item badge border radius as factor of dialog width
+  static const double machineStatusDialogCashIconSizeFactor = 0.04; // Cash icon size as factor of dialog width
+  static const double machineStatusDialogCashTextFontSizeFactor = 0.04; // Cash text font size as factor of dialog width
+  static const double machineStatusDialogCashButtonPaddingFactor = 0.01; // Cash button padding as factor of dialog width
+  static const double machineStatusDialogCashButtonBorderRadiusFactor = 0.01; // Cash button border radius as factor of dialog width
+  static const double machineStatusDialogCashButtonFontSizeFactor = 0.04; // Cash button font size as factor of dialog width
+  
+  // ============================================================================
   // MARKET PRODUCT CARD CONSTANTS
   // ============================================================================
   
   /// Product card image sizes (relative to screen)
   static const double productCardImageSizeFactor = 0.048;
-  static const double productCardImageFallbackSizeFactor = 0.024;
-  static const double productCardTrendIconSizeFactor = 0.016;
+  static const double productCardImageFallbackSizeFactor = machineRouteCardIconSizeFactor; // 0.024 - Reuse
+  static const double productCardTrendIconSizeFactor = borderRadiusFactorMedium; // 0.016 - Reuse
   
   /// Buy dialog dimensions (relative to screen)
   static const double buyDialogWidthFactor = 0.9; // 90% of screen width
@@ -176,44 +295,28 @@ class AppConfig {
   static const double buyDialogHeightMaxFactor = 0.85; // 85% of screen height (max)
   static const double buyDialogInsetPaddingFactor = 0.04; // Inset padding relative to screen
   
-  /// Buy dialog sizing (relative to dialog width)
+  /// Buy dialog sizing (relative to dialog width) - No min/max to avoid small screen restrictions
   static const double buyDialogBorderRadiusFactor = 0.03; // Border radius as factor of dialog width
-  static const double buyDialogBorderRadiusMinFactor = 0.02; // Min border radius factor
-  static const double buyDialogBorderRadiusMaxFactor = 0.04; // Max border radius factor
   static const double buyDialogPaddingFactor = 0.03; // Padding as factor of dialog width
-  static const double buyDialogPaddingMinFactor = 0.02; // Min padding factor
-  static const double buyDialogPaddingMaxFactor = 0.04; // Max padding factor
   
-  /// Buy dialog header
+  /// Buy dialog header - No min/max to avoid small screen restrictions
   static const double buyDialogHeaderPaddingVerticalFactor = 0.5; // Vertical padding as factor of padding
   static const double buyDialogHeaderIconSizeFactor = 0.08; // Icon size as factor of dialog width
-  static const double buyDialogHeaderIconSizeMinFactor = 0.06; // Min icon size factor
-  static const double buyDialogHeaderIconSizeMaxFactor = 0.1; // Max icon size factor
   static const double buyDialogHeaderTitleSpacingFactor = 0.5; // Spacing between icon and title as factor of padding
   static const double buyDialogHeaderTitleFontSizeFactor = 0.05; // Title font size as factor of dialog width
-  static const double buyDialogHeaderTitleFontSizeMinFactor = 0.04; // Min title font size factor
-  static const double buyDialogHeaderTitleFontSizeMaxFactor = 0.06; // Max title font size factor
   static const double buyDialogCloseButtonSizeFactor = 0.06; // Close button icon size as factor of dialog width
-  static const double buyDialogCloseButtonSizeMinFactor = 0.05; // Min close button size factor
-  static const double buyDialogCloseButtonSizeMaxFactor = 0.08; // Max close button size factor
   static const double buyDialogCloseButtonPaddingFactor = 0.3; // Close button padding as factor of padding
   
-  /// Buy dialog content
-  static const double buyDialogUnitPriceFontSizeFactor = 0.035; // Unit price font size as factor of dialog width
-  static const double buyDialogUnitPriceFontSizeMinFactor = 0.03; // Min unit price font size factor
-  static const double buyDialogUnitPriceFontSizeMaxFactor = 0.045; // Max unit price font size factor
+  /// Buy dialog content - No min/max to avoid small screen restrictions
+  static const double buyDialogUnitPriceFontSizeFactor = fontSizeFactorMedium; // 0.035 - Unit price font size (reuse)
   static const double buyDialogContentSpacingFactor = 0.3; // Spacing between title and unit price as factor of padding
   
-  /// Buy dialog quantity display
+  /// Buy dialog quantity display - No min/max to avoid small screen restrictions
   static const double buyDialogQuantityContainerPaddingFactor = 0.8; // Container padding as factor of padding
   static const double buyDialogQuantityBorderRadiusFactor = 0.5; // Border radius as factor of borderRadius
   static const double buyDialogQuantityBorderWidthFactor = 0.08; // Border width as factor of padding
-  static const double buyDialogQuantityLabelFontSizeFactor = 0.035; // Label font size as factor of dialog width
-  static const double buyDialogQuantityLabelFontSizeMinFactor = 0.03; // Min label font size factor
-  static const double buyDialogQuantityLabelFontSizeMaxFactor = 0.045; // Max label font size factor
-  static const double buyDialogQuantityValueFontSizeFactor = 0.045; // Value font size as factor of dialog width
-  static const double buyDialogQuantityValueFontSizeMinFactor = 0.04; // Min value font size factor
-  static const double buyDialogQuantityValueFontSizeMaxFactor = 0.055; // Max value font size factor
+  static const double buyDialogQuantityLabelFontSizeFactor = fontSizeFactorMedium; // 0.035 - Label font size (reuse)
+  static const double buyDialogQuantityValueFontSizeFactor = fontSizeFactorLarge; // 0.045 - Value font size (reuse)
   
   /// Buy dialog slider
   static const double buyDialogSliderMinValue = 1.0;
@@ -223,39 +326,29 @@ class AppConfig {
   static const List<int> buyDialogIncrementValues = [10, 50, 100]; // Quick increment button values
   static const double buyDialogIncrementButtonSpacingFactor = 0.4; // Spacing between buttons as factor of padding
   
-  /// Buy dialog total cost display
-  static const double buyDialogTotalCostContainerPaddingFactor = 0.8; // Container padding as factor of padding
+  /// Buy dialog total cost display - No min/max to avoid small screen restrictions
+  static const double buyDialogTotalCostContainerPaddingFactor = buyDialogQuantityContainerPaddingFactor; // 0.8 - Reuse
   static const double buyDialogTotalCostBorderRadiusFactor = 0.33; // Border radius as factor of borderRadius
-  static const double buyDialogTotalCostLabelFontSizeFactor = 0.035; // Label font size as factor of dialog width
-  static const double buyDialogTotalCostLabelFontSizeMinFactor = 0.03; // Min label font size factor
-  static const double buyDialogTotalCostLabelFontSizeMaxFactor = 0.045; // Max label font size factor
-  static const double buyDialogTotalCostValueFontSizeFactor = 0.045; // Value font size as factor of dialog width
-  static const double buyDialogTotalCostValueFontSizeMinFactor = 0.04; // Min value font size factor
-  static const double buyDialogTotalCostValueFontSizeMaxFactor = 0.055; // Max value font size factor
+  static const double buyDialogTotalCostLabelFontSizeFactor = fontSizeFactorMedium; // 0.035 - Label font size (reuse)
+  static const double buyDialogTotalCostValueFontSizeFactor = fontSizeFactorLarge; // 0.045 - Value font size (reuse)
   
-  /// Buy dialog warning messages
+  /// Buy dialog warning messages - No min/max to avoid small screen restrictions
   static const double buyDialogWarningSpacingFactor = 0.3; // Spacing above warning as factor of padding
   static const double buyDialogWarningFontSizeFactor = 0.03; // Warning font size as factor of dialog width
-  static const double buyDialogWarningFontSizeMinFactor = 0.025; // Min warning font size factor
-  static const double buyDialogWarningFontSizeMaxFactor = 0.04; // Max warning font size factor
   
   /// Buy dialog action buttons
   static const double buyDialogActionButtonSpacingFactor = 0.5; // Spacing between buttons as factor of padding
   
-  /// Small game button (used in buy dialog - dialog-specific sizing)
+  /// Small game button (used in buy dialog - dialog-specific sizing) - No min/max to avoid small screen restrictions
   static const double buyDialogButtonPressedMarginFactor = 0.125; // Pressed margin as factor of padding
   static const double buyDialogButtonPaddingHorizontalFactor = 0.8; // Horizontal padding as factor of padding
   static const double buyDialogButtonPaddingVerticalFactor = 0.6; // Vertical padding as factor of padding
   static const double buyDialogButtonBorderRadiusFactor = 0.42; // Border radius as factor of padding
-  static const double buyDialogButtonShadowOffsetFactor = 0.125; // Shadow offset as factor of padding
+  static const double buyDialogButtonShadowOffsetFactor = buyDialogButtonPressedMarginFactor; // 0.125 - Reuse
   static const double buyDialogButtonBorderWidthFactor = 0.06; // Border width as factor of padding
   static const double buyDialogButtonIconSizeFactor = 0.04; // Icon size as factor of dialog width
-  static const double buyDialogButtonIconSizeMinFactor = 0.03; // Min icon size factor
-  static const double buyDialogButtonIconSizeMaxFactor = 0.05; // Max icon size factor
   static const double buyDialogButtonIconSpacingFactor = 0.3; // Spacing between icon and text as factor of padding
-  static const double buyDialogButtonFontSizeFactor = 0.035; // Font size as factor of dialog width
-  static const double buyDialogButtonFontSizeMinFactor = 0.03; // Min font size factor
-  static const double buyDialogButtonFontSizeMaxFactor = 0.045; // Max font size factor
+  static const double buyDialogButtonFontSizeFactor = fontSizeFactorMedium; // 0.035 - Font size (reuse)
   static const double buyDialogButtonLetterSpacing = 0.5; // Letter spacing for button text
   
   /// Machine capacity

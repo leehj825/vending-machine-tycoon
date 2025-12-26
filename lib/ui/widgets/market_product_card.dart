@@ -253,12 +253,7 @@ class _BuyStockDialogState extends ConsumerState<_BuyStockDialog> {
     // Calculate dialog dimensions (compact, similar to bottom sheet)
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
-    final dialogMaxWidth = ScreenUtils.relativeSizeClamped(
-      context,
-      AppConfig.buyDialogWidthFactor,
-      min: screenWidth * AppConfig.buyDialogWidthMinFactor,
-      max: screenWidth * AppConfig.buyDialogWidthMaxFactor,
-    );
+    final dialogMaxWidth = screenWidth * AppConfig.buyDialogWidthFactor;
     
     final imagePath = _getProductImagePath(widget.product);
 
@@ -269,24 +264,13 @@ class _BuyStockDialogState extends ConsumerState<_BuyStockDialog> {
         builder: (context, constraints) {
           // Use the actual constrained width for sizing
           final dialogWidth = constraints.maxWidth;
-          final borderRadius = (dialogWidth * AppConfig.buyDialogBorderRadiusFactor).clamp(
-            dialogWidth * AppConfig.buyDialogBorderRadiusMinFactor,
-            dialogWidth * AppConfig.buyDialogBorderRadiusMaxFactor,
-          );
-          final padding = (dialogWidth * AppConfig.buyDialogPaddingFactor).clamp(
-            dialogWidth * AppConfig.buyDialogPaddingMinFactor,
-            dialogWidth * AppConfig.buyDialogPaddingMaxFactor,
-          );
+          final borderRadius = dialogWidth * AppConfig.buyDialogBorderRadiusFactor;
+          final padding = dialogWidth * AppConfig.buyDialogPaddingFactor;
           
           return Container(
             constraints: BoxConstraints(
               maxWidth: dialogMaxWidth,
-              maxHeight: ScreenUtils.relativeSizeClamped(
-                context,
-                AppConfig.buyDialogHeightFactor,
-                min: screenHeight * AppConfig.buyDialogHeightMinFactor,
-                max: screenHeight * AppConfig.buyDialogHeightMaxFactor,
-              ),
+              maxHeight: screenHeight * AppConfig.buyDialogHeightFactor,
             ),
             decoration: BoxDecoration(
               color: Colors.white,
@@ -310,22 +294,13 @@ class _BuyStockDialogState extends ConsumerState<_BuyStockDialog> {
                         children: [
                           Image.asset(
                             imagePath,
-                            width: (dialogWidth * AppConfig.buyDialogHeaderIconSizeFactor).clamp(
-                              dialogWidth * AppConfig.buyDialogHeaderIconSizeMinFactor,
-                              dialogWidth * AppConfig.buyDialogHeaderIconSizeMaxFactor,
-                            ),
-                            height: (dialogWidth * AppConfig.buyDialogHeaderIconSizeFactor).clamp(
-                              dialogWidth * AppConfig.buyDialogHeaderIconSizeMinFactor,
-                              dialogWidth * AppConfig.buyDialogHeaderIconSizeMaxFactor,
-                            ),
+                            width: dialogWidth * AppConfig.buyDialogHeaderIconSizeFactor,
+                            height: dialogWidth * AppConfig.buyDialogHeaderIconSizeFactor,
                             fit: BoxFit.contain,
                             errorBuilder: (context, error, stackTrace) {
                               return Icon(
                                 Icons.image_not_supported,
-                                size: (dialogWidth * AppConfig.buyDialogHeaderIconSizeFactor).clamp(
-                                  dialogWidth * AppConfig.buyDialogHeaderIconSizeMinFactor,
-                                  dialogWidth * AppConfig.buyDialogHeaderIconSizeMaxFactor,
-                                ),
+                                size: dialogWidth * AppConfig.buyDialogHeaderIconSizeFactor,
                                 color: Colors.grey[600],
                               );
                             },
@@ -334,10 +309,7 @@ class _BuyStockDialogState extends ConsumerState<_BuyStockDialog> {
                           Text(
                             'Buy ${widget.product.name}',
                             style: TextStyle(
-                              fontSize: (dialogWidth * AppConfig.buyDialogHeaderTitleFontSizeFactor).clamp(
-                                dialogWidth * AppConfig.buyDialogHeaderTitleFontSizeMinFactor,
-                                dialogWidth * AppConfig.buyDialogHeaderTitleFontSizeMaxFactor,
-                              ),
+                              fontSize: dialogWidth * AppConfig.buyDialogHeaderTitleFontSizeFactor,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -348,10 +320,7 @@ class _BuyStockDialogState extends ConsumerState<_BuyStockDialog> {
                         icon: Icon(
                           Icons.close,
                           color: Colors.black,
-                          size: (dialogWidth * AppConfig.buyDialogCloseButtonSizeFactor).clamp(
-                            dialogWidth * AppConfig.buyDialogCloseButtonSizeMinFactor,
-                            dialogWidth * AppConfig.buyDialogCloseButtonSizeMaxFactor,
-                          ),
+                          size: dialogWidth * AppConfig.buyDialogCloseButtonSizeFactor,
                         ),
                         onPressed: () => Navigator.of(context).pop(),
                         style: IconButton.styleFrom(
@@ -373,10 +342,7 @@ class _BuyStockDialogState extends ConsumerState<_BuyStockDialog> {
                           Text(
                             'Unit Price: \$${widget.unitPrice.toStringAsFixed(2)}',
                             style: TextStyle(
-                              fontSize: (dialogWidth * AppConfig.buyDialogUnitPriceFontSizeFactor).clamp(
-                                dialogWidth * AppConfig.buyDialogUnitPriceFontSizeMinFactor,
-                                dialogWidth * AppConfig.buyDialogUnitPriceFontSizeMaxFactor,
-                              ),
+                              fontSize: dialogWidth * AppConfig.buyDialogUnitPriceFontSizeFactor,
                               color: Colors.grey[700],
                             ),
                           ),
@@ -398,19 +364,13 @@ class _BuyStockDialogState extends ConsumerState<_BuyStockDialog> {
                                 Text(
                                   'Quantity: ',
                                   style: TextStyle(
-                                    fontSize: (dialogWidth * AppConfig.buyDialogQuantityLabelFontSizeFactor).clamp(
-                                      dialogWidth * AppConfig.buyDialogQuantityLabelFontSizeMinFactor,
-                                      dialogWidth * AppConfig.buyDialogQuantityLabelFontSizeMaxFactor,
-                                    ),
+                                    fontSize: dialogWidth * AppConfig.buyDialogQuantityLabelFontSizeFactor,
                                   ),
                                 ),
                                 Text(
                                   '$quantityInt',
                                   style: TextStyle(
-                                    fontSize: (dialogWidth * AppConfig.buyDialogQuantityValueFontSizeFactor).clamp(
-                                      dialogWidth * AppConfig.buyDialogQuantityValueFontSizeMinFactor,
-                                      dialogWidth * AppConfig.buyDialogQuantityValueFontSizeMaxFactor,
-                                    ),
+                                    fontSize: dialogWidth * AppConfig.buyDialogQuantityValueFontSizeFactor,
                                     fontWeight: FontWeight.bold,
                                     color: Theme.of(context).colorScheme.primary,
                                   ),
@@ -455,19 +415,13 @@ class _BuyStockDialogState extends ConsumerState<_BuyStockDialog> {
                                 Text(
                                   'Total Cost:',
                                   style: TextStyle(
-                                    fontSize: (dialogWidth * AppConfig.buyDialogTotalCostLabelFontSizeFactor).clamp(
-                                      dialogWidth * AppConfig.buyDialogTotalCostLabelFontSizeMinFactor,
-                                      dialogWidth * AppConfig.buyDialogTotalCostLabelFontSizeMaxFactor,
-                                    ),
+                                    fontSize: dialogWidth * AppConfig.buyDialogTotalCostLabelFontSizeFactor,
                                   ),
                                 ),
                                 Text(
                                   '\$${totalCost.toStringAsFixed(2)}',
                                   style: TextStyle(
-                                    fontSize: (dialogWidth * AppConfig.buyDialogTotalCostValueFontSizeFactor).clamp(
-                                      dialogWidth * AppConfig.buyDialogTotalCostValueFontSizeMinFactor,
-                                      dialogWidth * AppConfig.buyDialogTotalCostValueFontSizeMaxFactor,
-                                    ),
+                                    fontSize: dialogWidth * AppConfig.buyDialogTotalCostValueFontSizeFactor,
                                     fontWeight: FontWeight.bold,
                                     color: totalCost > cash
                                         ? Colors.red
@@ -484,10 +438,7 @@ class _BuyStockDialogState extends ConsumerState<_BuyStockDialog> {
                                 'Limited by warehouse capacity ($availableCapacity available)',
                                 style: TextStyle(
                                   color: Colors.orange[700],
-                                  fontSize: (dialogWidth * AppConfig.buyDialogWarningFontSizeFactor).clamp(
-                                    dialogWidth * AppConfig.buyDialogWarningFontSizeMinFactor,
-                                    dialogWidth * AppConfig.buyDialogWarningFontSizeMaxFactor,
-                                  ),
+                                  fontSize: dialogWidth * AppConfig.buyDialogWarningFontSizeFactor,
                                 ),
                               ),
                             ),
@@ -498,10 +449,7 @@ class _BuyStockDialogState extends ConsumerState<_BuyStockDialog> {
                                 'Insufficient funds',
                                 style: TextStyle(
                                   color: Colors.red,
-                                  fontSize: (dialogWidth * AppConfig.buyDialogWarningFontSizeFactor).clamp(
-                                    dialogWidth * AppConfig.buyDialogWarningFontSizeMinFactor,
-                                    dialogWidth * AppConfig.buyDialogWarningFontSizeMaxFactor,
-                                  ),
+                                  fontSize: dialogWidth * AppConfig.buyDialogWarningFontSizeFactor,
                                 ),
                               ),
                             ),
@@ -647,10 +595,9 @@ class _SmallGameButtonState extends State<_SmallGameButton> {
               Icon(
                 widget.icon,
                 color: Colors.white,
-                size: widget.dialogWidth != null ? (widget.dialogWidth! * AppConfig.buyDialogButtonIconSizeFactor).clamp(
-                  widget.dialogWidth! * AppConfig.buyDialogButtonIconSizeMinFactor,
-                  widget.dialogWidth! * AppConfig.buyDialogButtonIconSizeMaxFactor,
-                ) : ScreenUtils.relativeSize(context, AppConfig.productCardTrendIconSizeFactor),
+                size: widget.dialogWidth != null
+                    ? widget.dialogWidth! * AppConfig.buyDialogButtonIconSizeFactor
+                    : ScreenUtils.relativeSize(context, AppConfig.productCardTrendIconSizeFactor),
               ),
               SizedBox(width: widget.padding != null ? widget.padding! * AppConfig.buyDialogButtonIconSpacingFactor : ScreenUtils.relativeSize(context, AppConfig.spacingFactorMedium)),
             ],
@@ -661,10 +608,7 @@ class _SmallGameButtonState extends State<_SmallGameButton> {
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
                   fontSize: widget.dialogWidth != null
-                      ? (widget.dialogWidth! * AppConfig.buyDialogButtonFontSizeFactor).clamp(
-                          widget.dialogWidth! * AppConfig.buyDialogButtonFontSizeMinFactor,
-                          widget.dialogWidth! * AppConfig.buyDialogButtonFontSizeMaxFactor,
-                        )
+                      ? widget.dialogWidth! * AppConfig.buyDialogButtonFontSizeFactor
                       : ScreenUtils.relativeFontSize(
                           context,
                           AppConfig.fontSizeFactorSmall,

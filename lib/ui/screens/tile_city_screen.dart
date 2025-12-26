@@ -1350,34 +1350,28 @@ class _MachineViewDialog extends ConsumerWidget {
       );
     }
     
-    // Calculate the actual dialog width (clamped)
-    final dialogMaxWidth = ScreenUtils.relativeSizeClamped(
-      context,
-      0.9, // 90% of screen width
-      min: 300,
-      max: 600,
-    );
+    // Calculate the actual dialog width
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final dialogMaxWidth = screenWidth * AppConfig.machineStatusDialogWidthFactor;
     
     return Dialog(
       backgroundColor: Colors.transparent,
-      insetPadding: EdgeInsets.all(ScreenUtils.relativeSize(context, 0.04)),
+      insetPadding: EdgeInsets.all(
+        ScreenUtils.relativeSize(context, AppConfig.machineStatusDialogInsetPaddingFactor),
+      ),
       child: LayoutBuilder(
         builder: (context, constraints) {
           // Use the actual constrained width for sizing
           final dialogWidth = constraints.maxWidth;
-          final imageHeight = (dialogWidth * 0.5).clamp(120.0, 300.0);
-          final borderRadius = (dialogWidth * 0.04).clamp(12.0, 24.0);
-          final padding = (dialogWidth * 0.04).clamp(12.0, 24.0);
+          final imageHeight = dialogWidth * AppConfig.machineStatusDialogImageHeightFactor;
+          final borderRadius = dialogWidth * AppConfig.machineStatusDialogBorderRadiusFactor;
+          final padding = dialogWidth * AppConfig.machineStatusDialogPaddingFactor;
           
           return Container(
             constraints: BoxConstraints(
               maxWidth: dialogMaxWidth,
-              maxHeight: ScreenUtils.relativeSizeClamped(
-                context,
-                0.8, // 80% of screen height
-                min: 400,
-                max: 800,
-              ),
+              maxHeight: screenHeight * AppConfig.machineStatusDialogHeightFactor,
             ),
             decoration: BoxDecoration(
               color: Colors.white,
@@ -1408,7 +1402,7 @@ class _MachineViewDialog extends ConsumerWidget {
                                 'View image not found',
                                 style: TextStyle(
                                   color: Colors.white,
-                                  fontSize: (dialogWidth * 0.045).clamp(14.0, 28.0),
+                                  fontSize: dialogWidth * AppConfig.machineStatusDialogErrorTextFontSizeFactor,
                                 ),
                               ),
                             ),
@@ -1417,18 +1411,20 @@ class _MachineViewDialog extends ConsumerWidget {
                       ),
                     ),
                     Positioned(
-                      top: padding * 0.5,
-                      right: padding * 0.5,
+                      top: padding * AppConfig.machineStatusDialogHeaderImageTopPaddingFactor,
+                      right: padding * AppConfig.machineStatusDialogHeaderImageTopPaddingFactor,
                       child: IconButton(
                         icon: Icon(
                           Icons.close,
                           color: Colors.white,
-                          size: (dialogWidth * 0.08).clamp(24.0, 48.0),
+                          size: dialogWidth * AppConfig.machineStatusDialogCloseButtonSizeFactor,
                         ),
                         onPressed: () => Navigator.of(context).pop(),
                         style: IconButton.styleFrom(
                           backgroundColor: Colors.black.withValues(alpha: 0.5),
-                          padding: EdgeInsets.all(padding * 0.3),
+                          padding: EdgeInsets.all(
+                            padding * AppConfig.machineStatusDialogCloseButtonPaddingFactor,
+                          ),
                         ),
                       ),
                     ),
@@ -1489,8 +1485,8 @@ class _MachineStatusSection extends ConsumerWidget {
         Row(
           children: [
             Container(
-              width: (dialogWidth * 0.15).clamp(36.0, 90.0),
-              height: (dialogWidth * 0.15).clamp(36.0, 90.0),
+              width: dialogWidth * AppConfig.machineStatusDialogZoneIconContainerSizeFactor,
+              height: dialogWidth * AppConfig.machineStatusDialogZoneIconContainerSizeFactor,
               decoration: BoxDecoration(
                 color: zoneColor.withValues(alpha: 0.2),
                 shape: BoxShape.circle,
@@ -1498,48 +1494,58 @@ class _MachineStatusSection extends ConsumerWidget {
               child: Icon(
                 zoneIcon,
                 color: zoneColor,
-                size: (dialogWidth * 0.08).clamp(24.0, 48.0),
+                size: dialogWidth * AppConfig.machineStatusDialogZoneIconSizeFactor,
               ),
             ),
-            SizedBox(width: (dialogWidth * 0.03).clamp(8.0, 18.0)),
+            SizedBox(
+              width: dialogWidth * AppConfig.machineStatusDialogZoneIconSpacingFactor,
+            ),
             Expanded(
               child: Text(
                 machine.name,
                 style: TextStyle(
-                  fontSize: (dialogWidth * 0.055).clamp(16.0, 33.0),
+                  fontSize: dialogWidth * AppConfig.machineStatusDialogMachineNameFontSizeFactor,
                   fontWeight: FontWeight.bold,
                 ),
               ),
             ),
           ],
         ),
-        SizedBox(height: (dialogWidth * 0.03).clamp(8.0, 18.0)),
+        SizedBox(
+          height: dialogWidth * AppConfig.machineStatusDialogSectionSpacingFactor,
+        ),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               'Stock: ${machine.totalInventory} items',
               style: TextStyle(
-                fontSize: (dialogWidth * 0.04).clamp(12.0, 24.0),
+                fontSize: dialogWidth * AppConfig.machineStatusDialogStockTextFontSizeFactor,
                 color: Colors.grey[600],
               ),
             ),
-            SizedBox(height: (dialogWidth * 0.015).clamp(4.0, 9.0)),
+            SizedBox(
+              height: dialogWidth * AppConfig.machineStatusDialogStockProgressSpacingFactor,
+            ),
             LinearProgressIndicator(
               value: stockLevel,
               backgroundColor: Colors.grey[300],
               valueColor: AlwaysStoppedAnimation<Color>(stockColor),
-              minHeight: (dialogWidth * 0.02).clamp(6.0, 12.0),
+              minHeight: dialogWidth * AppConfig.machineStatusDialogProgressBarHeightFactor,
             ),
           ],
         ),
-        SizedBox(height: (dialogWidth * 0.03).clamp(8.0, 18.0)),
+        SizedBox(
+          height: dialogWidth * AppConfig.machineStatusDialogSectionSpacingFactor,
+        ),
         Container(
-          padding: EdgeInsets.all((dialogWidth * 0.04).clamp(12.0, 24.0)),
+          padding: EdgeInsets.all(
+            dialogWidth * AppConfig.machineStatusDialogInfoContainerPaddingFactor,
+          ),
           decoration: BoxDecoration(
             color: Colors.green.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(
-              (dialogWidth * 0.02).clamp(6.0, 12.0),
+              dialogWidth * AppConfig.machineStatusDialogInfoContainerBorderRadiusFactor,
             ),
           ),
           child: Row(
@@ -1551,14 +1557,14 @@ class _MachineStatusSection extends ConsumerWidget {
                   Text(
                     'Cash',
                     style: TextStyle(
-                      fontSize: (dialogWidth * 0.03).clamp(9.0, 18.0),
+                      fontSize: dialogWidth * AppConfig.machineStatusDialogInfoLabelFontSizeFactor,
                       color: Colors.grey[600],
                     ),
                   ),
                   Text(
                     '\$${machine.currentCash.toStringAsFixed(2)}',
                     style: TextStyle(
-                      fontSize: (dialogWidth * 0.06).clamp(18.0, 36.0),
+                      fontSize: dialogWidth * AppConfig.machineStatusDialogInfoValueFontSizeFactor,
                       fontWeight: FontWeight.bold,
                       color: Colors.green,
                     ),
@@ -1568,26 +1574,34 @@ class _MachineStatusSection extends ConsumerWidget {
             ],
           ),
         ),
-        SizedBox(height: (dialogWidth * 0.03).clamp(8.0, 18.0)),
-        Divider(height: (dialogWidth * 0.003).clamp(1.0, 2.0)),
-        SizedBox(height: (dialogWidth * 0.03).clamp(8.0, 18.0)),
+        SizedBox(
+          height: dialogWidth * AppConfig.machineStatusDialogSectionSpacingFactor,
+        ),
+        Divider(
+          height: dialogWidth * AppConfig.machineStatusDialogDividerHeightFactor,
+        ),
+        SizedBox(
+          height: dialogWidth * AppConfig.machineStatusDialogSectionSpacingFactor,
+        ),
         Text(
           'Stock Details:',
           style: TextStyle(
-            fontSize: (dialogWidth * 0.055).clamp(16.0, 33.0),
+            fontSize: dialogWidth * AppConfig.machineStatusDialogStockDetailsTitleFontSizeFactor,
             fontWeight: FontWeight.bold,
           ),
         ),
-        SizedBox(height: (dialogWidth * 0.02).clamp(6.0, 12.0)),
+        SizedBox(
+          height: dialogWidth * AppConfig.machineStatusDialogStockDetailsSpacingFactor,
+        ),
         if (machine.inventory.isEmpty)
           Padding(
             padding: EdgeInsets.symmetric(
-              vertical: (dialogWidth * 0.015).clamp(4.0, 8.0),
+              vertical: dialogWidth * AppConfig.machineStatusDialogStockItemPaddingFactor,
             ),
             child: Text(
               'Empty',
               style: TextStyle(
-                fontSize: (dialogWidth * 0.04).clamp(12.0, 24.0),
+                fontSize: dialogWidth * AppConfig.machineStatusDialogStockItemFontSizeFactor,
                 fontStyle: FontStyle.italic,
                 color: Colors.grey[600],
               ),
@@ -1596,7 +1610,7 @@ class _MachineStatusSection extends ConsumerWidget {
         else
           ...machine.inventory.values.map((item) => Padding(
             padding: EdgeInsets.only(
-              bottom: (dialogWidth * 0.015).clamp(4.0, 8.0),
+              bottom: dialogWidth * AppConfig.machineStatusDialogStockItemPaddingFactor,
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1605,23 +1619,25 @@ class _MachineStatusSection extends ConsumerWidget {
                   child: Text(
                     item.product.name,
                     style: TextStyle(
-                      fontSize: (dialogWidth * 0.04).clamp(12.0, 24.0),
+                      fontSize: dialogWidth * AppConfig.machineStatusDialogStockItemFontSizeFactor,
                     ),
                   ),
                 ),
                 Container(
                   padding: EdgeInsets.symmetric(
-                    horizontal: (dialogWidth * 0.02).clamp(6.0, 12.0),
-                    vertical: (dialogWidth * 0.01).clamp(3.0, 6.0),
+                    horizontal: dialogWidth * AppConfig.machineStatusDialogStockItemBadgePaddingHorizontalFactor,
+                    vertical: dialogWidth * AppConfig.machineStatusDialogStockItemBadgePaddingVerticalFactor,
                   ),
                   decoration: BoxDecoration(
                     color: Colors.blue.shade50,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(
+                      dialogWidth * AppConfig.machineStatusDialogStockItemBadgeBorderRadiusFactor,
+                    ),
                   ),
                   child: Text(
                     '${item.quantity}',
                     style: TextStyle(
-                      fontSize: (dialogWidth * 0.04).clamp(12.0, 20.0),
+                      fontSize: dialogWidth * AppConfig.machineStatusDialogStockItemBadgeFontSizeFactor,
                       fontWeight: FontWeight.bold,
                       color: Colors.blue.shade900,
                     ),
@@ -1630,7 +1646,9 @@ class _MachineStatusSection extends ConsumerWidget {
               ],
             ),
           )),
-        SizedBox(height: (dialogWidth * 0.03).clamp(8.0, 18.0)),
+        SizedBox(
+          height: dialogWidth * AppConfig.machineStatusDialogSectionSpacingFactor,
+        ),
         if (machine.currentCash > 0)
           SizedBox(
             width: double.infinity,
@@ -1650,23 +1668,23 @@ class _MachineStatusSection extends ConsumerWidget {
               },
               icon: Icon(
                 Icons.account_balance_wallet,
-                size: (dialogWidth * 0.04).clamp(16.0, 24.0),
+                size: dialogWidth * AppConfig.machineStatusDialogCashIconSizeFactor,
               ),
               label: Text(
                 'Retrieve \$${machine.currentCash.toStringAsFixed(2)}',
                 style: TextStyle(
-                  fontSize: (dialogWidth * 0.04).clamp(14.0, 20.0),
+                  fontSize: dialogWidth * AppConfig.machineStatusDialogCashTextFontSizeFactor,
                 ),
               ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green,
                 foregroundColor: Colors.white,
                 padding: EdgeInsets.symmetric(
-                  vertical: (dialogWidth * 0.025).clamp(10.0, 16.0),
+                  vertical: dialogWidth * AppConfig.machineStatusDialogCashButtonPaddingFactor,
                 ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(
-                    (dialogWidth * 0.015).clamp(6.0, 12.0),
+                    dialogWidth * AppConfig.machineStatusDialogCashButtonBorderRadiusFactor,
                   ),
                 ),
               ),
@@ -1676,12 +1694,12 @@ class _MachineStatusSection extends ConsumerWidget {
           Container(
             width: double.infinity,
             padding: EdgeInsets.symmetric(
-              vertical: (dialogWidth * 0.025).clamp(10.0, 16.0),
+              vertical: dialogWidth * AppConfig.machineStatusDialogCashButtonPaddingFactor,
             ),
             decoration: BoxDecoration(
               color: Colors.grey[200],
               borderRadius: BorderRadius.circular(
-                (dialogWidth * 0.015).clamp(6.0, 12.0),
+                dialogWidth * AppConfig.machineStatusDialogCashButtonBorderRadiusFactor,
               ),
             ),
             child: Center(
@@ -1689,7 +1707,7 @@ class _MachineStatusSection extends ConsumerWidget {
                 'No cash to retrieve',
                 style: TextStyle(
                   color: Colors.grey[600],
-                  fontSize: (dialogWidth * 0.04).clamp(12.0, 20.0),
+                  fontSize: dialogWidth * AppConfig.machineStatusDialogCashButtonFontSizeFactor,
                 ),
               ),
             ),

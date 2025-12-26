@@ -104,11 +104,9 @@ class _StatusBar extends ConsumerWidget {
     final cardHeight = (cardWidth * AppConfig.statusCardHeightRatio);
     
     // Calculate icon size using config constants
-    final iconSize = ScreenUtils.relativeSizeClamped(
+    final iconSize = ScreenUtils.relativeSize(
       context,
       (cardWidth / smallerDim * AppConfig.statusCardIconSizeFactor),
-      min: smallerDim * AppConfig.statusCardIconSizeMinFactor,
-      max: smallerDim * AppConfig.statusCardIconSizeMaxFactor,
     );
     
     // Font size for value - use status card specific size
@@ -120,11 +118,9 @@ class _StatusBar extends ConsumerWidget {
     );
     
     // Calculate padding using config constants
-    final padding = ScreenUtils.relativeSizeClamped(
+    final padding = ScreenUtils.relativeSize(
       context,
       (cardWidth / smallerDim * AppConfig.statusCardPaddingFactor),
-      min: smallerDim * AppConfig.statusCardPaddingMinFactor,
-      max: smallerDim * AppConfig.statusCardPaddingMaxFactor,
     );
     
     final containerPadding = ScreenUtils.relativeSize(context, AppConfig.statusBarContainerPaddingFactor);
@@ -227,7 +223,7 @@ class _StatusCard extends StatelessWidget {
                 // Icon positioned at center upper part
                 Positioned(
                   left: (cardWidth - iconSize) / 2,
-                  top: padding * AppConfig.statusCardIconTopPositionFactor,
+                  top: cardHeight * AppConfig.statusCardIconTopPositionFactor,
                   child: Image.asset(
                     iconAsset,
                     width: iconSize,
@@ -245,7 +241,7 @@ class _StatusCard extends StatelessWidget {
                 Positioned(
                   left: 0,
                   right: 0,
-                  bottom: padding * AppConfig.statusCardTextBottomPositionFactor,
+                  bottom: cardHeight * AppConfig.statusCardTextBottomPositionFactor,
                   child: Center(
                     child: FittedBox(
                       fit: BoxFit.scaleDown,
@@ -348,14 +344,11 @@ class _CustomBottomNavigationBar extends ConsumerWidget {
     required String unpressAsset,
   }) {
     final isSelected = currentIndex == index;
-    final smallerDim = ScreenUtils.getSmallerDimension(context);
     
-    // Calculate responsive tab button height (similar to save/exit buttons)
-    final tabButtonHeight = ScreenUtils.relativeSizeClamped(
+    // Calculate responsive tab button height
+    final tabButtonHeight = ScreenUtils.relativeSize(
       context,
       AppConfig.tabButtonHeightFactor,
-      min: smallerDim * AppConfig.tabButtonHeightMinFactor,
-      max: smallerDim * AppConfig.tabButtonHeightMaxFactor,
     );
     
     return GestureDetector(
@@ -373,11 +366,9 @@ class _CustomBottomNavigationBar extends ConsumerWidget {
               return Icon(
                 _getIconForIndex(index),
                 color: isSelected ? Colors.green : Colors.grey,
-                size: ScreenUtils.relativeSizeClamped(
+                size: ScreenUtils.relativeSize(
                   context,
                   AppConfig.tabButtonIconSizeFactor,
-                  min: smallerDim * AppConfig.tabButtonIconSizeMinFactor,
-                  max: smallerDim * AppConfig.tabButtonIconSizeMaxFactor,
                 ),
               );
             },
@@ -391,23 +382,16 @@ class _CustomBottomNavigationBar extends ConsumerWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final screenWidth = MediaQuery.of(context).size.width;
-        final smallerDim = ScreenUtils.getSmallerDimension(context);
         
-        // Calculate button height: comfortable touch height
+        // Calculate button height
         final buttonHeight = ScreenUtils.relativeSizeClamped(
           context,
-          AppConfig.saveExitButtonHeightFactor, // Responsive height
+          AppConfig.saveExitButtonHeightFactor,
           min: AppConfig.buttonHeight, // Minimum for comfortable touch target
-          max: smallerDim * AppConfig.saveExitButtonHeightMaxFactor,
         );
         
-        // Adjust button width for side-by-side layout - make them smaller to fit together
-        final sideBySideButtonWidth = ScreenUtils.relativeSizeClamped(
-          context,
-          AppConfig.saveExitButtonWidthFactor, // Smaller width for side-by-side layout
-          min: screenWidth * AppConfig.saveExitButtonWidthMinFactor, // At least 8% of screen width
-          max: screenWidth * AppConfig.saveExitButtonWidthMaxFactor, // At most 15% of screen width
-        );
+        // Adjust button width for side-by-side layout
+        final sideBySideButtonWidth = screenWidth * AppConfig.saveExitButtonWidthFactor;
         
         return Row(
           mainAxisSize: MainAxisSize.min, // Keep compact on the right side
