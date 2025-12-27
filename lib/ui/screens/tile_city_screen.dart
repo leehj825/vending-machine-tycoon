@@ -805,7 +805,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
       // Add instruction message above the button (only when not in rush hour)
       if (!gameState.isRushHour) {
         final messageOffsetX = positionedX - tileWidth * 0.5;
-        final messageOffsetY = positionedY - tileHeight * 0.8; // Lower above button
+        final messageOffsetY = positionedY - tileHeight * 1.0; // Lower above button
         
         buttons.add(
           Positioned(
@@ -813,7 +813,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
             top: messageOffsetY,
             child: Container(
             constraints: BoxConstraints(
-              maxWidth: tileWidth * 2.5, // Smaller width
+              maxWidth: tileWidth * 3.0, // Smaller width
             ),
             padding: EdgeInsets.symmetric(
               horizontal: ScreenUtils.relativeSize(context, 0.01),
