@@ -351,7 +351,7 @@ class HQDashboard extends ConsumerWidget {
                     style: TextStyle(
                       fontSize: ScreenUtils.relativeFontSize(
                         context,
-                        AppConfig.fontSizeFactorNormal,
+                        AppConfig.fontSizeFactorMedium,
                         min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
                         max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
                       ),
@@ -362,7 +362,7 @@ class HQDashboard extends ConsumerWidget {
                     style: TextStyle(
                       fontSize: ScreenUtils.relativeFontSize(
                         context,
-                        AppConfig.fontSizeFactorSmall,
+                        AppConfig.fontSizeFactorNormal,
                         min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
                         max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
                       ),
@@ -398,7 +398,7 @@ class HQDashboard extends ConsumerWidget {
                       fontWeight: FontWeight.bold,
                       fontSize: ScreenUtils.relativeFontSize(
                         context,
-                        AppConfig.fontSizeFactorNormal,
+                        AppConfig.fontSizeFactorMedium,
                         min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
                         max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
                       ),
@@ -411,7 +411,7 @@ class HQDashboard extends ConsumerWidget {
                       fontWeight: FontWeight.w600,
                       fontSize: ScreenUtils.relativeFontSize(
                         context,
-                        AppConfig.fontSizeFactorSmall,
+                        AppConfig.fontSizeFactorNormal,
                         min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
                         max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
                       ),
@@ -438,7 +438,7 @@ class HQDashboard extends ConsumerWidget {
                     style: TextStyle(
                       fontSize: ScreenUtils.relativeFontSize(
                         context,
-                        AppConfig.fontSizeFactorNormal,
+                        AppConfig.fontSizeFactorMedium,
                         min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
                         max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
                       ),
@@ -449,7 +449,7 @@ class HQDashboard extends ConsumerWidget {
                     style: TextStyle(
                       fontSize: ScreenUtils.relativeFontSize(
                         context,
-                        AppConfig.fontSizeFactorSmall,
+                        AppConfig.fontSizeFactorNormal,
                         min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
                         max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
                       ),
