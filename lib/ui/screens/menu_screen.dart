@@ -250,10 +250,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                                   builder: (context, snapshot) {
                                     final hasSave = snapshot.data ?? false;
                                     return GestureDetector(
-                                      onTap: hasSave ? () {
-                                        SoundService().playButtonSound();
-                                        _loadGame(context, ref);
-                                      } : null,
+                                      onTap: hasSave ? () => _loadGame(context, ref) : null,
                                       child: Opacity(
                                         opacity: hasSave ? 1.0 : 0.5,
                                         child: Image.asset(
@@ -295,7 +292,6 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                               Expanded(
                                 child: GestureDetector(
                                   onTap: () {
-                                    SoundService().playButtonSound();
                                     // TODO: Implement options screen
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
@@ -340,7 +336,6 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                               Expanded(
                                 child: GestureDetector(
                                   onTap: () {
-                                    SoundService().playButtonSound();
                                     // TODO: Implement credits screen
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(

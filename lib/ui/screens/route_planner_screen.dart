@@ -1277,12 +1277,7 @@ class _SmallGameButtonState extends State<_SmallGameButton> {
       onTapDown: isEnabled ? (_) => setState(() => _isPressed = true) : null,
       onTapUp: isEnabled ? (_) => setState(() => _isPressed = false) : null,
       onTapCancel: isEnabled ? () => setState(() => _isPressed = false) : null,
-      onTap: isEnabled && widget.onPressed != null
-          ? () {
-              SoundService().playButtonSound();
-              widget.onPressed?.call();
-            }
-          : null,
+      onTap: widget.onPressed,
       child: AnimatedContainer(
         duration: AppConfig.animationDurationFast,
         margin: EdgeInsets.only(

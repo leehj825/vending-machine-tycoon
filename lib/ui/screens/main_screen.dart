@@ -441,10 +441,7 @@ class _CustomBottomNavigationBar extends ConsumerWidget {
           children: [
             // Save Button
             GestureDetector(
-              onTap: () {
-                SoundService().playButtonSound();
-                _saveGame(context, ref);
-              },
+              onTap: () => _saveGame(context, ref),
               child: Container(
                 width: sideBySideButtonWidth,
                 height: buttonHeight,

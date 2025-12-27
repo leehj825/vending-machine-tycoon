@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:audioplayers/audioplayers.dart';
 
 /// Service for managing game audio (sound effects and background music)
@@ -19,6 +20,10 @@ class SoundService {
   double _soundVolume = 0.7;
   String? _currentMusicPath; // Track what music is currently playing
   DateTime? _lastMusicStartTime; // Track when music was last started (to prevent immediate stops)
+  Timer? _fadeTimer; // Timer for monitoring position and handling fade
+  double? _targetVolume; // Target volume for current track (for fade in/out)
+  Duration? _trackDuration; // Duration of current track
+  bool _isFading = false; // Track if we're currently fading
 
   /// Initialize audio context to allow mixing with other sounds
   Future<void> _initAudioContext() async {
@@ -130,8 +135,14 @@ class SoundService {
   
   /// Internal method to start/restart music from beginning
   Future<void> _restartMusic(String assetPath) async {
+    // Stop any existing fade timer
+    _fadeTimer?.cancel();
+    _fadeTimer = null;
+    _isFading = false;
+    
     // Determine volume based on which track is playing
     final volume = assetPath.contains('game_background') ? _gameBackgroundVolume : _musicVolume;
+    _targetVolume = volume;
     
     // Configure for looping
     await _backgroundMusicPlayer.setReleaseMode(ReleaseMode.loop);
@@ -141,7 +152,89 @@ class SoundService {
     await _backgroundMusicPlayer.play(AssetSource(assetPath));
     _currentMusicPath = assetPath; // Track what's playing
     _lastMusicStartTime = DateTime.now(); // Track when music started
+    
+    // Get track duration and start fade monitoring
+    _startFadeMonitoring(assetPath, volume);
+    
     print('🎵 Music playback started');
+  }
+  
+  /// Start monitoring position for fade-out before loop
+  void _startFadeMonitoring(String assetPath, double targetVolume) {
+    _fadeTimer?.cancel();
+    
+    // Get duration after a short delay (to allow audio to load)
+    Future.delayed(const Duration(milliseconds: 500), () async {
+      try {
+        final duration = await _backgroundMusicPlayer.getDuration();
+        if (duration != null) {
+          _trackDuration = duration;
+        }
+      } catch (e) {
+        print('⚠️ Could not get track duration: $e');
+      }
+    });
+    
+    // Monitor position every 100ms
+    _fadeTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) async {
+      if (_currentMusicPath != assetPath) {
+        // Track changed, stop monitoring
+        timer.cancel();
+        _fadeTimer = null;
+        return;
+      }
+      
+      try {
+        final position = await _backgroundMusicPlayer.getCurrentPosition();
+        if (position == null || _trackDuration == null) return;
+        
+        final timeRemaining = _trackDuration! - position;
+        const fadeDuration = Duration(seconds: 2); // 2 second fade
+        
+        // If we're within fade duration of the end, start fading out
+        if (timeRemaining <= fadeDuration && !_isFading) {
+          _isFading = true;
+          _fadeOut(fadeDuration, targetVolume);
+        }
+        // If position resets (looped back to near 0), fade back in
+        else if (position.inMilliseconds < 500 && _isFading) {
+          _isFading = false;
+          _fadeIn(fadeDuration, _targetVolume ?? targetVolume);
+        }
+      } catch (e) {
+        // Ignore errors in monitoring
+      }
+    });
+  }
+  
+  /// Fade out volume over the specified duration
+  Future<void> _fadeOut(Duration duration, double targetVolume) async {
+    const steps = 20; // Number of fade steps
+    final stepDuration = duration ~/ steps;
+    final volumeStep = targetVolume / steps;
+    
+    for (int i = steps; i >= 0; i--) {
+      if (_currentMusicPath == null) break; // Music was stopped
+      
+      final currentVolume = volumeStep * i;
+      await _backgroundMusicPlayer.setVolume(currentVolume);
+      await Future.delayed(stepDuration);
+    }
+  }
+  
+  /// Fade in volume over the specified duration
+  Future<void> _fadeIn(Duration duration, double targetVolume) async {
+    const steps = 20; // Number of fade steps
+    final stepDuration = duration ~/ steps;
+    final volumeStep = targetVolume / steps;
+    
+    for (int i = 0; i <= steps; i++) {
+      if (_currentMusicPath == null) break; // Music was stopped
+      
+      final currentVolume = volumeStep * i;
+      await _backgroundMusicPlayer.setVolume(currentVolume);
+      await Future.delayed(stepDuration);
+    }
   }
 
   /// Stop background music
@@ -162,10 +255,17 @@ class SoundService {
           }
         }
         
+        // Stop fade timer
+        _fadeTimer?.cancel();
+        _fadeTimer = null;
+        _isFading = false;
+        
         print('🛑 Stopping background music: $_currentMusicPath');
         await _backgroundMusicPlayer.stop();
         _currentMusicPath = null; // Clear current track
         _lastMusicStartTime = null; // Clear start time
+        _trackDuration = null; // Clear duration
+        _targetVolume = null; // Clear target volume
         print('✅ Background music stopped');
       } else {
         print('ℹ️ No background music to stop');
@@ -174,6 +274,8 @@ class SoundService {
       print('❌ Error stopping background music: $e');
       _currentMusicPath = null; // Reset on error
       _lastMusicStartTime = null;
+      _trackDuration = null;
+      _targetVolume = null;
     }
   }
 
@@ -228,6 +330,8 @@ class SoundService {
 
   /// Dispose resources
   void dispose() {
+    _fadeTimer?.cancel();
+    _fadeTimer = null;
     _backgroundMusicPlayer.dispose();
     _soundEffectPlayer.dispose();
   }
