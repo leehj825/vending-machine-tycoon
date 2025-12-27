@@ -1,4 +1,4 @@
-package com.example.vending_empire
+package com.vendingmachiinetycoon.app
 
 import io.flutter.embedding.android.FlutterActivity
 

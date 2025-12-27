@@ -229,7 +229,7 @@ return $default(_that.id,_that.name,_that.fuel,_that.capacity,_that.route,_that.
 
 
 class _Truck extends Truck {
-  const _Truck({required this.id, required this.name, this.fuel = 100.0, this.capacity = 1000, final  List<String> route = const [], final  List<String> pendingRoute = const [], this.currentRouteIndex = 0, this.status = TruckStatus.idle, this.currentX = 0.0, this.currentY = 0.0, this.targetX = 0.0, this.targetY = 0.0, final  List<({double x, double y})> path = const [], this.pathIndex = 0, final  Map<Product, int> inventory = const {}}): _route = route,_pendingRoute = pendingRoute,_path = path,_inventory = inventory,super._();
+  const _Truck({required this.id, required this.name, this.fuel = 100.0, this.capacity = AppConfig.truckMaxCapacity, final  List<String> route = const [], final  List<String> pendingRoute = const [], this.currentRouteIndex = 0, this.status = TruckStatus.idle, this.currentX = 0.0, this.currentY = 0.0, this.targetX = 0.0, this.targetY = 0.0, final  List<({double x, double y})> path = const [], this.pathIndex = 0, final  Map<Product, int> inventory = const {}}): _route = route,_pendingRoute = pendingRoute,_path = path,_inventory = inventory,super._();
   
 
 @override final  String id;

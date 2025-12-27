@@ -250,6 +250,9 @@ class AppConfig {
   /// Truck prices
   static const double truckPrice = 500.0;
   
+  /// Truck maximum capacity
+  static const int truckMaxCapacity = 500;
+  
   /// Warehouse capacity
   static const int warehouseMaxCapacity = 1000;
   

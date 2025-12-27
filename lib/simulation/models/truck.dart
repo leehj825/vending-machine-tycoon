@@ -1,4 +1,5 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
+import '../../config.dart';
 import 'product.dart';
 
 part 'truck.freezed.dart';
@@ -17,7 +18,7 @@ abstract class Truck with _$Truck {
     required String id,
     required String name,
     @Default(100.0) double fuel, // Percentage (0-100)
-    @Default(1000) int capacity, // Max items it can carry
+    @Default(AppConfig.truckMaxCapacity) int capacity, // Max items it can carry
     /// Current route: List of machine IDs to visit in order
     @Default([]) List<String> route,
     /// Pending route: Route changes saved while truck is moving (applied when truck becomes idle)

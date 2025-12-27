@@ -14,3 +14,4 @@ build/*apk
 # Local tool installs (workspace-only)
 .flutter/
 .android-sdk/
+android/app/upload-keystore.jks
