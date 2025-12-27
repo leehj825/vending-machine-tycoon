@@ -20,8 +20,14 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
   void initState() {
     super.initState();
     // Play menu background music when screen is shown
+    // Use a delay to ensure any previous music has stopped and screen is fully loaded
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      SoundService().playBackgroundMusic('sound/game_menu.mp3');
+      Future.delayed(const Duration(milliseconds: 300), () {
+        // Only start music if we're still on this screen (not already navigated away)
+        if (mounted) {
+          SoundService().playBackgroundMusic('sound/game_menu.mp3');
+        }
+      });
     });
   }
 

@@ -14,6 +14,7 @@ class SoundService {
   double _musicVolume = 0.6; // Increased from 0.5 to 0.8 for better audibility
   double _soundVolume = 0.7;
   String? _currentMusicPath; // Track what music is currently playing
+  DateTime? _lastMusicStartTime; // Track when music was last started (to prevent immediate stops)
 
   /// Check if background music is enabled
   bool get isMusicEnabled => _isMusicEnabled;
@@ -93,17 +94,32 @@ class SoundService {
     print('🎵 Playing background music: $assetPath (volume: $_musicVolume)');
     await _backgroundMusicPlayer.play(AssetSource(assetPath));
     _currentMusicPath = assetPath; // Track what's playing
+    _lastMusicStartTime = DateTime.now(); // Track when music started
     print('🎵 Music playback started');
   }
 
   /// Stop background music
   /// Only stops if explicitly called (e.g., when navigating to menu)
-  Future<void> stopBackgroundMusic() async {
+  /// Prevents stopping music that was just started (within last 500ms) to avoid race conditions
+  /// Use forceStop parameter to bypass this protection when explicitly needed (e.g., exit to menu)
+  Future<void> stopBackgroundMusic({bool forceStop = false}) async {
     try {
       if (_currentMusicPath != null) {
+        // Prevent stopping music that was just started (within last 500ms)
+        // This prevents race conditions when navigating between screens
+        // But allow force stop to bypass this protection
+        if (!forceStop && _lastMusicStartTime != null) {
+          final timeSinceStart = DateTime.now().difference(_lastMusicStartTime!);
+          if (timeSinceStart.inMilliseconds < 500) {
+            print('⚠️ Ignoring stop request - music was just started ${timeSinceStart.inMilliseconds}ms ago (use forceStop=true to override)');
+            return;
+          }
+        }
+        
         print('🛑 Stopping background music: $_currentMusicPath');
         await _backgroundMusicPlayer.stop();
         _currentMusicPath = null; // Clear current track
+        _lastMusicStartTime = null; // Clear start time
         print('✅ Background music stopped');
       } else {
         print('ℹ️ No background music to stop');
@@ -111,6 +127,7 @@ class SoundService {
     } catch (e) {
       print('❌ Error stopping background music: $e');
       _currentMusicPath = null; // Reset on error
+      _lastMusicStartTime = null;
     }
   }
 
