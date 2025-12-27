@@ -4,11 +4,11 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'ui/screens/menu_screen.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
   // Initialize AdMob
-  MobileAds.instance.initialize();
+  await MobileAds.instance.initialize();
   
   runApp(
     const ProviderScope(

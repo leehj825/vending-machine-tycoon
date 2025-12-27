@@ -20,6 +20,7 @@ class AdMobBanner extends StatefulWidget {
 class _AdMobBannerState extends State<AdMobBanner> {
   BannerAd? _bannerAd;
   bool _isAdLoaded = false;
+  String? _errorMessage;
 
   @override
   void initState() {
@@ -34,14 +35,30 @@ class _AdMobBannerState extends State<AdMobBanner> {
       request: const AdRequest(),
       listener: BannerAdListener(
         onAdLoaded: (_) {
-          setState(() {
-            _isAdLoaded = true;
-          });
+          if (mounted) {
+            setState(() {
+              _isAdLoaded = true;
+              _errorMessage = null;
+            });
+          }
+          debugPrint('Banner ad loaded successfully');
         },
         onAdFailedToLoad: (ad, error) {
           // Dispose the ad if it fails to load
           ad.dispose();
-          debugPrint('Banner ad failed to load: $error');
+          if (mounted) {
+            setState(() {
+              _isAdLoaded = false;
+              _errorMessage = error.message;
+            });
+          }
+          debugPrint('Banner ad failed to load: ${error.code} - ${error.message}');
+        },
+        onAdOpened: (_) {
+          debugPrint('Banner ad opened');
+        },
+        onAdClosed: (_) {
+          debugPrint('Banner ad closed');
         },
       ),
     );
@@ -57,15 +74,32 @@ class _AdMobBannerState extends State<AdMobBanner> {
 
   @override
   Widget build(BuildContext context) {
+    // Show error message in debug mode
+    if (_errorMessage != null) {
+      debugPrint('AdMob Banner Error: $_errorMessage');
+    }
+
     if (!_isAdLoaded || _bannerAd == null) {
-      // Return empty container while ad is loading or if ad failed to load
-      return const SizedBox.shrink();
+      // Show a placeholder with fixed height while loading
+      return Container(
+        width: double.infinity,
+        height: AdSize.banner.height.toDouble(),
+        color: Colors.grey[200],
+        child: const Center(
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
+      );
     }
 
     return Container(
       alignment: Alignment.center,
       width: double.infinity,
       height: _bannerAd!.size.height.toDouble(),
+      color: Colors.white,
       child: AdWidget(ad: _bannerAd!),
     );
   }
