@@ -7,9 +7,11 @@ import '../../state/city_map_state.dart';
 import '../../simulation/models/zone.dart';
 import '../../simulation/models/truck.dart' as sim;
 import '../../simulation/models/machine.dart' as sim;
+import '../../simulation/models/product.dart';
 import '../../config.dart';
 import '../theme/zone_ui.dart';
 import '../utils/screen_utils.dart';
+import '../widgets/machine_interior_dialog.dart';
 
 enum TileType {
   grass,
@@ -1658,11 +1660,25 @@ class _MachineStatusSection extends ConsumerWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Expanded(
-                      child: Text(
-                        item.product.name,
-                        style: TextStyle(
-                          fontSize: dialogWidth * AppConfig.machineStatusDialogStockItemFontSizeFactor,
-                        ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            item.product.name,
+                            style: TextStyle(
+                              fontSize: dialogWidth * AppConfig.machineStatusDialogStockItemFontSizeFactor,
+                            ),
+                          ),
+                          SizedBox(height: dialogWidth * AppConfig.machineStatusDialogStockItemPaddingFactor * 0.3),
+                          Text(
+                            '\$${item.product.basePrice.toStringAsFixed(2)}',
+                            style: TextStyle(
+                              fontSize: dialogWidth * AppConfig.machineStatusDialogStockItemFontSizeFactor * 0.85,
+                              color: Colors.green.shade700,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     Container(
@@ -1707,69 +1723,39 @@ class _MachineStatusSection extends ConsumerWidget {
         SizedBox(
           height: dialogWidth * AppConfig.machineStatusDialogSectionSpacingFactor,
         ),
-        if (machine.currentCash > 0)
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: () {
-                ref.read(gameControllerProvider.notifier).retrieveCash(machine.id);
-                Navigator.of(context).pop();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      'Retrieved \$${machine.currentCash.toStringAsFixed(2)} from ${machine.name}',
-                    ),
-                    backgroundColor: Colors.green,
-                    duration: AppConfig.snackbarDurationShort,
-                  ),
-                );
-              },
-              icon: Icon(
-                Icons.account_balance_wallet,
-                size: dialogWidth * AppConfig.machineStatusDialogCashIconSizeFactor,
-              ),
-              label: Text(
-                'Retrieve \$${machine.currentCash.toStringAsFixed(2)}',
-                style: TextStyle(
-                  fontSize: dialogWidth * AppConfig.machineStatusDialogCashTextFontSizeFactor,
-                ),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
-                foregroundColor: Colors.white,
-                padding: EdgeInsets.symmetric(
-                  vertical: dialogWidth * AppConfig.machineStatusDialogCashButtonPaddingFactor,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(
-                    dialogWidth * AppConfig.machineStatusDialogCashButtonBorderRadiusFactor,
-                  ),
-                ),
+        // Open Machine button
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: () {
+              // Close current dialog and open interior dialog
+              Navigator.of(context).pop();
+              showDialog(
+                context: context,
+                barrierColor: Colors.black.withValues(alpha: 0.7),
+                builder: (context) => MachineInteriorDialog(machine: machine),
+              );
+            },
+            icon: Icon(
+              Icons.open_in_new,
+              size: dialogWidth * AppConfig.machineStatusDialogCashIconSizeFactor,
+            ),
+            label: Text(
+              'Open Machine',
+              style: TextStyle(
+                fontSize: dialogWidth * AppConfig.machineStatusDialogCashTextFontSizeFactor,
               ),
             ),
-          )
-        else
-          Container(
-            width: double.infinity,
-            padding: EdgeInsets.symmetric(
-              vertical: dialogWidth * AppConfig.machineStatusDialogCashButtonPaddingFactor,
-            ),
-            decoration: BoxDecoration(
-              color: Colors.grey[200],
-              borderRadius: BorderRadius.circular(
-                dialogWidth * AppConfig.machineStatusDialogCashButtonBorderRadiusFactor,
-              ),
-            ),
-            child: Center(
-              child: Text(
-                'No cash to retrieve',
-                style: TextStyle(
-                  color: Colors.grey[600],
-                  fontSize: dialogWidth * AppConfig.machineStatusDialogCashButtonFontSizeFactor,
-                ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              foregroundColor: Colors.white,
+              padding: EdgeInsets.symmetric(
+                vertical: dialogWidth * AppConfig.machineStatusDialogCashButtonPaddingFactor,
               ),
             ),
           ),
+        ),
+        // Retrieve cash button removed - cash collection is now done via Open Machine dialog
       ],
     );
   }
