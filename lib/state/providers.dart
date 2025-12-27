@@ -22,10 +22,10 @@ const _uuid = Uuid();
 class MachinePrices {
   static const double basePrice = AppConfig.machineBasePrice;
   static const Map<ZoneType, double> zoneMultipliers = {
-    ZoneType.office: 1.75, // $700 (was $750)
-    ZoneType.school: 1.5,  // $600 (was $600)
-    ZoneType.gym: 1.25,    // $500 (was $500)
-    ZoneType.shop: 1.0,    // $400 (was $400) - shop machines
+    ZoneType.office: 2.5,  // $1000
+    ZoneType.school: 1.5,  // $600
+    ZoneType.gym: 2.0,     // $800
+    ZoneType.shop: 1.0,    // $400 - shop machines
   };
 
   static double getPrice(ZoneType zoneType) {
