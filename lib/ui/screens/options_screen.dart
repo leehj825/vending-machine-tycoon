@@ -11,9 +11,6 @@ class OptionsScreen extends StatefulWidget {
 }
 
 class _OptionsScreenState extends State<OptionsScreen> {
-  late bool _musicEnabled;
-  late bool _soundEnabled;
-  late double _soundEffectsVolume;
   late double _soundVolumeMultiplier;
   late double _musicVolumeMultiplier;
   late SoundService _soundService;
@@ -22,9 +19,6 @@ class _OptionsScreenState extends State<OptionsScreen> {
   void initState() {
     super.initState();
     _soundService = SoundService();
-    _musicEnabled = _soundService.isMusicEnabled;
-    _soundEnabled = _soundService.isSoundEnabled;
-    _soundEffectsVolume = _soundService.soundVolume;
     _soundVolumeMultiplier = _soundService.soundVolumeMultiplier;
     _musicVolumeMultiplier = _soundService.musicVolumeMultiplier;
   }
@@ -54,74 +48,10 @@ class _OptionsScreenState extends State<OptionsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Music Toggle
-              _buildToggleControl(
-                context: context,
-                title: 'Background Music',
-                value: _musicEnabled,
-                onChanged: (value) {
-                  setState(() {
-                    _musicEnabled = value;
-                  });
-                  _soundService.setMusicEnabled(value);
-                },
-              ),
-              
-              SizedBox(height: ScreenUtils.relativeSize(context, 0.04)),
-              
-              // Sound Effects Toggle
-              _buildToggleControl(
-                context: context,
-                title: 'Sound Effects',
-                value: _soundEnabled,
-                onChanged: (value) {
-                  setState(() {
-                    _soundEnabled = value;
-                  });
-                  _soundService.setSoundEnabled(value);
-                },
-              ),
-              
-              SizedBox(height: ScreenUtils.relativeSize(context, 0.04)),
-              
-              // Sound Effects Volume (only shown if sound effects are enabled)
-              if (_soundEnabled) ...[
-                _buildVolumeControl(
-                  context: context,
-                  title: 'Sound Effects Volume',
-                  value: _soundEffectsVolume,
-                  maxValue: _soundService.soundEffectsMaxVolume,
-                  onChanged: (value) {
-                    setState(() {
-                      _soundEffectsVolume = value;
-                    });
-                    _soundService.setSoundVolume(value);
-                  },
-                ),
-                
-                SizedBox(height: ScreenUtils.relativeSize(context, 0.04)),
-                
-                // Sound Volume Multiplier
-                _buildVolumeControl(
-                  context: context,
-                  title: 'Sound Volume Multiplier',
-                  value: _soundVolumeMultiplier,
-                  maxValue: 1.0,
-                  onChanged: (value) {
-                    setState(() {
-                      _soundVolumeMultiplier = value;
-                    });
-                    _soundService.setSoundVolumeMultiplier(value);
-                  },
-                ),
-              ],
-              
-              SizedBox(height: ScreenUtils.relativeSize(context, 0.04)),
-              
               // Music Volume Multiplier
               _buildVolumeControl(
                 context: context,
-                title: 'Music Volume Multiplier',
+                title: 'Music',
                 value: _musicVolumeMultiplier,
                 maxValue: 1.0,
                 onChanged: (value) {
@@ -134,60 +64,23 @@ class _OptionsScreenState extends State<OptionsScreen> {
               
               SizedBox(height: ScreenUtils.relativeSize(context, 0.04)),
               
-              // Info text about individual volumes
-              Padding(
-                padding: EdgeInsets.only(top: ScreenUtils.relativeSize(context, 0.02)),
-                child: Text(
-                  'Note: Individual sound (truck/money) and music (menu/background) volumes are controlled in config.dart',
-                  style: TextStyle(
-                    fontFamily: 'Fredoka',
-                    fontSize: ScreenUtils.relativeFontSize(
-                      context,
-                      0.014,
-                      min: 12,
-                      max: 16,
-                    ),
-                    color: Colors.grey[600],
-                    fontStyle: FontStyle.italic,
-                  ),
-                ),
+              // Sound Volume Multiplier
+              _buildVolumeControl(
+                context: context,
+                title: 'Sound',
+                value: _soundVolumeMultiplier,
+                maxValue: 1.0,
+                onChanged: (value) {
+                  setState(() {
+                    _soundVolumeMultiplier = value;
+                  });
+                  _soundService.setSoundVolumeMultiplier(value);
+                },
               ),
             ],
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildToggleControl({
-    required BuildContext context,
-    required String title,
-    required bool value,
-    required ValueChanged<bool> onChanged,
-  }) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          title,
-          style: TextStyle(
-            fontFamily: 'Fredoka',
-            fontSize: ScreenUtils.relativeFontSize(
-              context,
-              0.018,
-              min: 16,
-              max: 24,
-            ),
-            fontWeight: FontWeight.w600,
-            color: Colors.black87,
-          ),
-        ),
-        Switch(
-          value: value,
-          onChanged: onChanged,
-          activeColor: Colors.green,
-        ),
-      ],
     );
   }
 
