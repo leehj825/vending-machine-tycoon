@@ -285,7 +285,8 @@ mixin _$Machine {
  String get id; String get name; Zone get zone; MachineCondition get condition;/// Inventory: Map of Product to InventoryItem
  Map<Product, InventoryItem> get inventory; double get currentCash;/// Hours since last restock (for reputation penalty calculation)
  double get hoursSinceRestock;/// Total sales count (for analytics)
- int get totalSales;
+ int get totalSales;/// Whether the machine is currently under maintenance (e.g., open for cash collection)
+ bool get isUnderMaintenance;
 /// Create a copy of Machine
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -296,16 +297,16 @@ $MachineCopyWith<Machine> get copyWith => _$MachineCopyWithImpl<Machine>(this as
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Machine&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.zone, zone) || other.zone == zone)&&(identical(other.condition, condition) || other.condition == condition)&&const DeepCollectionEquality().equals(other.inventory, inventory)&&(identical(other.currentCash, currentCash) || other.currentCash == currentCash)&&(identical(other.hoursSinceRestock, hoursSinceRestock) || other.hoursSinceRestock == hoursSinceRestock)&&(identical(other.totalSales, totalSales) || other.totalSales == totalSales));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Machine&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.zone, zone) || other.zone == zone)&&(identical(other.condition, condition) || other.condition == condition)&&const DeepCollectionEquality().equals(other.inventory, inventory)&&(identical(other.currentCash, currentCash) || other.currentCash == currentCash)&&(identical(other.hoursSinceRestock, hoursSinceRestock) || other.hoursSinceRestock == hoursSinceRestock)&&(identical(other.totalSales, totalSales) || other.totalSales == totalSales)&&(identical(other.isUnderMaintenance, isUnderMaintenance) || other.isUnderMaintenance == isUnderMaintenance));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,name,zone,condition,const DeepCollectionEquality().hash(inventory),currentCash,hoursSinceRestock,totalSales);
+int get hashCode => Object.hash(runtimeType,id,name,zone,condition,const DeepCollectionEquality().hash(inventory),currentCash,hoursSinceRestock,totalSales,isUnderMaintenance);
 
 @override
 String toString() {
-  return 'Machine(id: $id, name: $name, zone: $zone, condition: $condition, inventory: $inventory, currentCash: $currentCash, hoursSinceRestock: $hoursSinceRestock, totalSales: $totalSales)';
+  return 'Machine(id: $id, name: $name, zone: $zone, condition: $condition, inventory: $inventory, currentCash: $currentCash, hoursSinceRestock: $hoursSinceRestock, totalSales: $totalSales, isUnderMaintenance: $isUnderMaintenance)';
 }
 
 
@@ -316,7 +317,7 @@ abstract mixin class $MachineCopyWith<$Res>  {
   factory $MachineCopyWith(Machine value, $Res Function(Machine) _then) = _$MachineCopyWithImpl;
 @useResult
 $Res call({
- String id, String name, Zone zone, MachineCondition condition, Map<Product, InventoryItem> inventory, double currentCash, double hoursSinceRestock, int totalSales
+ String id, String name, Zone zone, MachineCondition condition, Map<Product, InventoryItem> inventory, double currentCash, double hoursSinceRestock, int totalSales, bool isUnderMaintenance
 });
 
 
@@ -333,7 +334,7 @@ class _$MachineCopyWithImpl<$Res>
 
 /// Create a copy of Machine
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? zone = null,Object? condition = null,Object? inventory = null,Object? currentCash = null,Object? hoursSinceRestock = null,Object? totalSales = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? zone = null,Object? condition = null,Object? inventory = null,Object? currentCash = null,Object? hoursSinceRestock = null,Object? totalSales = null,Object? isUnderMaintenance = null,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
@@ -343,7 +344,8 @@ as MachineCondition,inventory: null == inventory ? _self.inventory : inventory /
 as Map<Product, InventoryItem>,currentCash: null == currentCash ? _self.currentCash : currentCash // ignore: cast_nullable_to_non_nullable
 as double,hoursSinceRestock: null == hoursSinceRestock ? _self.hoursSinceRestock : hoursSinceRestock // ignore: cast_nullable_to_non_nullable
 as double,totalSales: null == totalSales ? _self.totalSales : totalSales // ignore: cast_nullable_to_non_nullable
-as int,
+as int,isUnderMaintenance: null == isUnderMaintenance ? _self.isUnderMaintenance : isUnderMaintenance // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 /// Create a copy of Machine
@@ -437,10 +439,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String name,  Zone zone,  MachineCondition condition,  Map<Product, InventoryItem> inventory,  double currentCash,  double hoursSinceRestock,  int totalSales)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String name,  Zone zone,  MachineCondition condition,  Map<Product, InventoryItem> inventory,  double currentCash,  double hoursSinceRestock,  int totalSales,  bool isUnderMaintenance)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _Machine() when $default != null:
-return $default(_that.id,_that.name,_that.zone,_that.condition,_that.inventory,_that.currentCash,_that.hoursSinceRestock,_that.totalSales);case _:
+return $default(_that.id,_that.name,_that.zone,_that.condition,_that.inventory,_that.currentCash,_that.hoursSinceRestock,_that.totalSales,_that.isUnderMaintenance);case _:
   return orElse();
 
 }
@@ -458,10 +460,10 @@ return $default(_that.id,_that.name,_that.zone,_that.condition,_that.inventory,_
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String name,  Zone zone,  MachineCondition condition,  Map<Product, InventoryItem> inventory,  double currentCash,  double hoursSinceRestock,  int totalSales)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String name,  Zone zone,  MachineCondition condition,  Map<Product, InventoryItem> inventory,  double currentCash,  double hoursSinceRestock,  int totalSales,  bool isUnderMaintenance)  $default,) {final _that = this;
 switch (_that) {
 case _Machine():
-return $default(_that.id,_that.name,_that.zone,_that.condition,_that.inventory,_that.currentCash,_that.hoursSinceRestock,_that.totalSales);case _:
+return $default(_that.id,_that.name,_that.zone,_that.condition,_that.inventory,_that.currentCash,_that.hoursSinceRestock,_that.totalSales,_that.isUnderMaintenance);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -478,10 +480,10 @@ return $default(_that.id,_that.name,_that.zone,_that.condition,_that.inventory,_
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String name,  Zone zone,  MachineCondition condition,  Map<Product, InventoryItem> inventory,  double currentCash,  double hoursSinceRestock,  int totalSales)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String name,  Zone zone,  MachineCondition condition,  Map<Product, InventoryItem> inventory,  double currentCash,  double hoursSinceRestock,  int totalSales,  bool isUnderMaintenance)?  $default,) {final _that = this;
 switch (_that) {
 case _Machine() when $default != null:
-return $default(_that.id,_that.name,_that.zone,_that.condition,_that.inventory,_that.currentCash,_that.hoursSinceRestock,_that.totalSales);case _:
+return $default(_that.id,_that.name,_that.zone,_that.condition,_that.inventory,_that.currentCash,_that.hoursSinceRestock,_that.totalSales,_that.isUnderMaintenance);case _:
   return null;
 
 }
@@ -493,7 +495,7 @@ return $default(_that.id,_that.name,_that.zone,_that.condition,_that.inventory,_
 
 
 class _Machine extends Machine {
-  const _Machine({required this.id, required this.name, required this.zone, required this.condition, final  Map<Product, InventoryItem> inventory = const {}, this.currentCash = 0.0, this.hoursSinceRestock = 0.0, this.totalSales = 0}): _inventory = inventory,super._();
+  const _Machine({required this.id, required this.name, required this.zone, required this.condition, final  Map<Product, InventoryItem> inventory = const {}, this.currentCash = 0.0, this.hoursSinceRestock = 0.0, this.totalSales = 0, this.isUnderMaintenance = false}): _inventory = inventory,super._();
   
 
 @override final  String id;
@@ -514,6 +516,8 @@ class _Machine extends Machine {
 @override@JsonKey() final  double hoursSinceRestock;
 /// Total sales count (for analytics)
 @override@JsonKey() final  int totalSales;
+/// Whether the machine is currently under maintenance (e.g., open for cash collection)
+@override@JsonKey() final  bool isUnderMaintenance;
 
 /// Create a copy of Machine
 /// with the given fields replaced by the non-null parameter values.
@@ -525,16 +529,16 @@ _$MachineCopyWith<_Machine> get copyWith => __$MachineCopyWithImpl<_Machine>(thi
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Machine&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.zone, zone) || other.zone == zone)&&(identical(other.condition, condition) || other.condition == condition)&&const DeepCollectionEquality().equals(other._inventory, _inventory)&&(identical(other.currentCash, currentCash) || other.currentCash == currentCash)&&(identical(other.hoursSinceRestock, hoursSinceRestock) || other.hoursSinceRestock == hoursSinceRestock)&&(identical(other.totalSales, totalSales) || other.totalSales == totalSales));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Machine&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.zone, zone) || other.zone == zone)&&(identical(other.condition, condition) || other.condition == condition)&&const DeepCollectionEquality().equals(other._inventory, _inventory)&&(identical(other.currentCash, currentCash) || other.currentCash == currentCash)&&(identical(other.hoursSinceRestock, hoursSinceRestock) || other.hoursSinceRestock == hoursSinceRestock)&&(identical(other.totalSales, totalSales) || other.totalSales == totalSales)&&(identical(other.isUnderMaintenance, isUnderMaintenance) || other.isUnderMaintenance == isUnderMaintenance));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,name,zone,condition,const DeepCollectionEquality().hash(_inventory),currentCash,hoursSinceRestock,totalSales);
+int get hashCode => Object.hash(runtimeType,id,name,zone,condition,const DeepCollectionEquality().hash(_inventory),currentCash,hoursSinceRestock,totalSales,isUnderMaintenance);
 
 @override
 String toString() {
-  return 'Machine(id: $id, name: $name, zone: $zone, condition: $condition, inventory: $inventory, currentCash: $currentCash, hoursSinceRestock: $hoursSinceRestock, totalSales: $totalSales)';
+  return 'Machine(id: $id, name: $name, zone: $zone, condition: $condition, inventory: $inventory, currentCash: $currentCash, hoursSinceRestock: $hoursSinceRestock, totalSales: $totalSales, isUnderMaintenance: $isUnderMaintenance)';
 }
 
 
@@ -545,7 +549,7 @@ abstract mixin class _$MachineCopyWith<$Res> implements $MachineCopyWith<$Res> {
   factory _$MachineCopyWith(_Machine value, $Res Function(_Machine) _then) = __$MachineCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String name, Zone zone, MachineCondition condition, Map<Product, InventoryItem> inventory, double currentCash, double hoursSinceRestock, int totalSales
+ String id, String name, Zone zone, MachineCondition condition, Map<Product, InventoryItem> inventory, double currentCash, double hoursSinceRestock, int totalSales, bool isUnderMaintenance
 });
 
 
@@ -562,7 +566,7 @@ class __$MachineCopyWithImpl<$Res>
 
 /// Create a copy of Machine
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? zone = null,Object? condition = null,Object? inventory = null,Object? currentCash = null,Object? hoursSinceRestock = null,Object? totalSales = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? zone = null,Object? condition = null,Object? inventory = null,Object? currentCash = null,Object? hoursSinceRestock = null,Object? totalSales = null,Object? isUnderMaintenance = null,}) {
   return _then(_Machine(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
@@ -572,7 +576,8 @@ as MachineCondition,inventory: null == inventory ? _self._inventory : inventory 
 as Map<Product, InventoryItem>,currentCash: null == currentCash ? _self.currentCash : currentCash // ignore: cast_nullable_to_non_nullable
 as double,hoursSinceRestock: null == hoursSinceRestock ? _self.hoursSinceRestock : hoursSinceRestock // ignore: cast_nullable_to_non_nullable
 as double,totalSales: null == totalSales ? _self.totalSales : totalSales // ignore: cast_nullable_to_non_nullable
-as int,
+as int,isUnderMaintenance: null == isUnderMaintenance ? _self.isUnderMaintenance : isUnderMaintenance // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 
