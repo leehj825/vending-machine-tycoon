@@ -66,11 +66,26 @@ class SoundService {
     _isSoundEnabled = enabled;
   }
 
-  /// Set music volume (0.0 to 1.0)
+  /// Set music volume (0.0 to 1.0) - affects menu music
   void setMusicVolume(double volume) {
     _musicVolume = volume.clamp(0.0, 1.0);
-    _backgroundMusicPlayer.setVolume(_musicVolume);
+    // Update current player volume if menu music is playing
+    if (_currentMusicPath != null && !_currentMusicPath!.contains('game_background')) {
+      _backgroundMusicPlayer.setVolume(_musicVolume);
+    }
   }
+
+  /// Set game background music volume (0.0 to 1.0)
+  void setGameBackgroundVolume(double volume) {
+    _gameBackgroundVolume = volume.clamp(0.0, 1.0);
+    // Update current player volume if game background music is playing
+    if (_currentMusicPath != null && _currentMusicPath!.contains('game_background')) {
+      _backgroundMusicPlayer.setVolume(_gameBackgroundVolume);
+    }
+  }
+
+  /// Get game background music volume
+  double get gameBackgroundVolume => _gameBackgroundVolume;
 
   /// Set sound effects volume (0.0 to 1.0)
   void setSoundVolume(double volume) {

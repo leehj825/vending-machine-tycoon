@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'main_screen.dart';
+import 'options_screen.dart';
 import '../../state/save_load_service.dart';
 import '../../state/providers.dart';
 import '../../services/sound_service.dart';
@@ -292,11 +293,9 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                               Expanded(
                                 child: GestureDetector(
                                   onTap: () {
-                                    // TODO: Implement options screen
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: const Text('Options feature coming soon!'),
-                                        duration: const Duration(seconds: 2),
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (context) => const OptionsScreen(),
                                       ),
                                     );
                                   },
