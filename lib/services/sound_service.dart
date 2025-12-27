@@ -4,7 +4,10 @@ import 'package:audioplayers/audioplayers.dart';
 class SoundService {
   static final SoundService _instance = SoundService._internal();
   factory SoundService() => _instance;
-  SoundService._internal();
+  
+  SoundService._internal() {
+    _initAudioContext();
+  }
 
   final AudioPlayer _backgroundMusicPlayer = AudioPlayer();
   final AudioPlayer _soundEffectPlayer = AudioPlayer();
@@ -16,6 +19,22 @@ class SoundService {
   double _soundVolume = 0.7;
   String? _currentMusicPath; // Track what music is currently playing
   DateTime? _lastMusicStartTime; // Track when music was last started (to prevent immediate stops)
+
+  /// Initialize audio context to allow mixing with other sounds
+  Future<void> _initAudioContext() async {
+    try {
+      // This config allows background music to mix with sound effects
+      // and prevents the OS from stopping music when a new sound plays
+      await AudioPlayer.global.setAudioContext(
+        AudioContextConfig(
+          focus: AudioContextConfigFocus.mixWithOthers,
+        ).build(),
+      );
+    } catch (e) {
+      print('⚠️ Error configuring audio context: $e');
+      // Continue even if audio context setup fails
+    }
+  }
 
   /// Check if background music is enabled
   bool get isMusicEnabled => _isMusicEnabled;
@@ -56,24 +75,45 @@ class SoundService {
 
   /// Play background music (looping)
   /// assetPath should be relative to assets/ directory (e.g., 'sound/game_menu.m4a')
-  /// Set [force] to true to restart music even if the service thinks it's already playing
-  Future<void> playBackgroundMusic(String assetPath, {bool force = false}) async {
+  Future<void> playBackgroundMusic(String assetPath) async {
     if (!_isMusicEnabled) {
       print('🔇 Music is disabled, skipping: $assetPath');
       return;
     }
     
-    // If the same music is already playing, do nothing - just return
-    // This prevents unnecessary restarts when switching tabs or rebuilding widgets
-    // Unless force is true, which allows restarting even if we think it's playing
-    if (!force && _currentMusicPath == assetPath) {
-      // Silently skip - music is already playing, no need to check state or restart
-      return;
+    // Check if we are already supposed to be playing this track
+    if (_currentMusicPath == assetPath) {
+      // Check the ACTUAL player state
+      try {
+        final playerState = await _backgroundMusicPlayer.state;
+        if (playerState == PlayerState.playing) {
+          // It is actually playing, so do nothing (seamless)
+          return;
+        } else {
+          // It's the correct track but it stopped/paused (e.g., interrupted by sound effect).
+          // RESUME instead of restart to keep the position!
+          print('▶️ Resuming background music: $assetPath');
+          try {
+            await _backgroundMusicPlayer.resume();
+            return;
+          } catch (e) {
+            // If resume fails, fall back to restart
+            print('⚠️ Resume failed, restarting: $e');
+            await _restartMusic(assetPath);
+            return;
+          }
+        }
+      } catch (e) {
+        // If we can't check state, fall back to restart
+        print('⚠️ Could not check player state, restarting: $e');
+        await _restartMusic(assetPath);
+        return;
+      }
     }
     
     try {
-      // Stop any currently playing music first (only if different or forced)
-      if (_currentMusicPath != null && (_currentMusicPath != assetPath || force)) {
+      // Stop any currently playing music first (only if different)
+      if (_currentMusicPath != null && _currentMusicPath != assetPath) {
         print('🛑 Stopping current music: $_currentMusicPath');
         await _backgroundMusicPlayer.stop();
         // Small delay to ensure stop completes
@@ -88,7 +128,7 @@ class SoundService {
     }
   }
   
-  /// Internal method to start/restart music
+  /// Internal method to start/restart music from beginning
   Future<void> _restartMusic(String assetPath) async {
     // Determine volume based on which track is playing
     final volume = assetPath.contains('game_background') ? _gameBackgroundVolume : _musicVolume;

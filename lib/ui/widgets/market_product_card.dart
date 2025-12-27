@@ -434,11 +434,10 @@ class _BuyStockDialogState extends ConsumerState<_BuyStockDialog> {
                                             ),
                                           );
                                           // Ensure background music continues playing after purchase
-                                          // This is a safeguard in case state updates caused music to stop
+                                          // This safeguard now smart-resumes the music if it was interrupted
                                           WidgetsBinding.instance.addPostFrameCallback((_) {
                                             Future.delayed(const Duration(milliseconds: 100), () {
-                                              // Use force: true to restart even if SoundService thinks it's playing
-                                              SoundService().playBackgroundMusic('sound/game_background.m4a', force: true);
+                                              SoundService().playBackgroundMusic('sound/game_background.m4a');
                                             });
                                           });
                                         }
