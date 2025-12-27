@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart' show StateNotifierProvider, StateProvider;
@@ -68,6 +69,122 @@ class GameController extends StateNotifier<GlobalGameState> {
           productSalesCount: {},
         )) {
     _setupSimulationListener();
+    // Spawn marketing button at initial random location
+    _spawnMarketingButton();
+  }
+  
+  /// Spawn marketing button at random road tile on the city map
+  void _spawnMarketingButton() {
+    final random = math.Random();
+    final cityMapState = state.cityMapState;
+    
+    if (cityMapState == null || cityMapState.grid.isEmpty) {
+      // Fallback to random position if map not loaded yet
+      final buttonGridX = random.nextInt(10);
+      final buttonGridY = random.nextInt(10);
+      print('🟢 CONTROLLER: Spawning marketing button at random grid ($buttonGridX, $buttonGridY) - map not loaded');
+      state = state.copyWith(
+        marketingButtonGridX: buttonGridX,
+        marketingButtonGridY: buttonGridY,
+      );
+      return;
+    }
+    
+    // Find all road tiles
+    final roadTiles = <({int x, int y})>[];
+    for (int y = 0; y < cityMapState.grid.length; y++) {
+      for (int x = 0; x < cityMapState.grid[y].length; x++) {
+        if (cityMapState.grid[y][x] == 'road') {
+          roadTiles.add((x: x, y: y));
+        }
+      }
+    }
+    
+    if (roadTiles.isEmpty) {
+      // Fallback if no roads found
+      final buttonGridX = random.nextInt(10);
+      final buttonGridY = random.nextInt(10);
+      print('🟢 CONTROLLER: No road tiles found, spawning at random grid ($buttonGridX, $buttonGridY)');
+      state = state.copyWith(
+        marketingButtonGridX: buttonGridX,
+        marketingButtonGridY: buttonGridY,
+      );
+      return;
+    }
+    
+    // Get positions to exclude (buildings with purchase buttons and machines)
+    final excludedPositions = <String>{};
+    
+    // 1. Exclude building positions that have purchase buttons
+    // Purchase buttons appear on buildings where there's no machine yet
+    for (int y = 0; y < cityMapState.grid.length; y++) {
+      for (int x = 0; x < cityMapState.grid[y].length; x++) {
+        final tileType = cityMapState.grid[y][x];
+        // Check if it's a building type that can have purchase buttons
+        if (tileType == 'shop' || tileType == 'school' || tileType == 'gym' || tileType == 'office') {
+          final zoneX = (x + 1).toDouble() + 0.5;
+          final zoneY = (y + 1).toDouble() + 0.5;
+          
+          // Check if there's already a machine at this position
+          final hasMachine = state.machines.any(
+            (m) => (m.zone.x - zoneX).abs() < 0.1 && (m.zone.y - zoneY).abs() < 0.1,
+          );
+          
+          // If no machine, there will be a purchase button - exclude this position
+          if (!hasMachine) {
+            excludedPositions.add('$x,$y');
+          }
+        }
+      }
+    }
+    
+    // 2. Exclude machine positions (machines have magnifier buttons)
+    for (final machine in state.machines) {
+      // Convert zone coordinates to grid coordinates
+      // zoneX = (gridX + 1) + 0.5, so gridX = zoneX - 1.5
+      final gridX = (machine.zone.x - 1.5).round();
+      final gridY = (machine.zone.y - 1.5).round();
+      // Exclude the tile and adjacent tiles (to avoid overlap)
+      for (int dx = -1; dx <= 1; dx++) {
+        for (int dy = -1; dy <= 1; dy++) {
+          final checkX = gridX + dx;
+          final checkY = gridY + dy;
+          if (checkX >= 0 && checkX < 10 && checkY >= 0 && checkY < 10) {
+            excludedPositions.add('$checkX,$checkY');
+          }
+        }
+      }
+    }
+    
+    // Filter out excluded positions from road tiles
+    final availableRoadTiles = roadTiles.where((road) {
+      return !excludedPositions.contains('${road.x},${road.y}');
+    }).toList();
+    
+    if (availableRoadTiles.isEmpty) {
+      // If all roads are excluded, fall back to any road (better than nothing)
+      print('🟢 CONTROLLER: All road tiles excluded, using any road tile');
+      final selectedRoad = roadTiles[random.nextInt(roadTiles.length)];
+      state = state.copyWith(
+        marketingButtonGridX: selectedRoad.x,
+        marketingButtonGridY: selectedRoad.y,
+      );
+      return;
+    }
+    
+    // Pick a random road tile from available ones
+    final selectedRoad = availableRoadTiles[random.nextInt(availableRoadTiles.length)];
+    print('🟢 CONTROLLER: Spawning marketing button at road tile ($selectedRoad.x, $selectedRoad.y)');
+    
+    state = state.copyWith(
+      marketingButtonGridX: selectedRoad.x,
+      marketingButtonGridY: selectedRoad.y,
+    );
+  }
+  
+  /// Public method to spawn marketing button (called from UI)
+  void spawnMarketingButton() {
+    _spawnMarketingButton();
   }
 
   /// Public getter to access current state
@@ -643,6 +760,7 @@ class GameController extends StateNotifier<GlobalGameState> {
       reputation: 100,
       warehouseRoadX: null,
       warehouseRoadY: null,
+      rushMultiplier: 1.0,
     );
     
     // Reset game state
@@ -660,7 +778,15 @@ class GameController extends StateNotifier<GlobalGameState> {
       dailyRevenueHistory: [],
       currentDayRevenue: 0.0,
       productSalesCount: {},
+      hypeLevel: 0.0,
+      isRushHour: false,
+      rushMultiplier: 1.0,
+      marketingButtonGridX: null,
+      marketingButtonGridY: null,
     );
+    
+    // Reset rush multiplier in simulation engine
+    simulationEngine.updateRushMultiplier(1.0);
     
     state = state.addLogMessage('New game started');
   }
@@ -683,10 +809,16 @@ class GameController extends StateNotifier<GlobalGameState> {
       reputation: savedState.reputation,
       warehouseRoadX: savedState.warehouseRoadX,
       warehouseRoadY: savedState.warehouseRoadY,
+      rushMultiplier: savedState.rushMultiplier,
     );
     
     // Restore game state
     state = savedState;
+    
+    // If marketing button position is not set and not in rush hour, spawn it
+    if ((state.marketingButtonGridX == null || state.marketingButtonGridY == null) && !state.isRushHour) {
+      _spawnMarketingButton();
+    }
     
     state = state.addLogMessage('Game loaded successfully');
   }
@@ -759,6 +891,39 @@ class GameController extends StateNotifier<GlobalGameState> {
     // Sync to simulation engine
     simulationEngine.updateMachines(updatedMachines);
     simulationEngine.updateCash(newCash);
+  }
+
+  /// Update hype level (0.0 to 1.0)
+  void updateHypeLevel(double newHype) {
+    state = state.copyWith(
+      hypeLevel: newHype.clamp(0.0, 1.0),
+    );
+  }
+
+  /// Start Rush Hour - sets multiplier to 10.0 and resets hype
+  void startRushHour() {
+    state = state.copyWith(
+      isRushHour: true,
+      hypeLevel: 0.0,
+      rushMultiplier: 10.0,
+    );
+    // Sync rush multiplier to simulation engine
+    simulationEngine.updateRushMultiplier(10.0);
+    state = state.addLogMessage('Rush Hour activated! Sales speed increased!');
+  }
+
+  /// End Rush Hour - resets multiplier to 1.0 and spawns marketing button at random location
+  void endRushHour() {
+    // Spawn marketing button at new random location
+    _spawnMarketingButton();
+    
+    state = state.copyWith(
+      isRushHour: false,
+      rushMultiplier: 1.0,
+    );
+    // Sync rush multiplier to simulation engine
+    simulationEngine.updateRushMultiplier(1.0);
+    state = state.addLogMessage('Rush Hour ended. Marketing opportunity appeared!');
   }
 
   @override
