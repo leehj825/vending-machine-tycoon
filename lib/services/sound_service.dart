@@ -149,17 +149,10 @@ class SoundService {
           return;
         } else {
           // It's the correct track but it stopped/paused (e.g., interrupted by sound effect).
-          // RESUME instead of restart to keep the position!
-          print('▶️ Resuming background music: $assetPath');
-          try {
-            await _backgroundMusicPlayer.resume();
-            return;
-          } catch (e) {
-            // If resume fails, fall back to restart
-            print('⚠️ Resume failed, restarting: $e');
-            await _restartMusic(assetPath);
-            return;
-          }
+          // Restart from beginning when resuming after pause
+          print('🔄 Restarting background music: $assetPath');
+          await _restartMusic(assetPath);
+          return;
         }
       } catch (e) {
         // If we can't check state, fall back to restart
@@ -337,57 +330,59 @@ class SoundService {
     }
   }
 
-  /// Pause background music (e.g., when app goes to background)
+  /// Stop background music (e.g., when app goes to background)
   Future<void> pauseBackgroundMusic() async {
     try {
       if (_currentMusicPath != null) {
-        // Check if music is actually playing before pausing
+        // Check if music is actually playing before stopping
         final playerState = await _backgroundMusicPlayer.state;
         _wasPlayingBeforePause = (playerState == PlayerState.playing);
         
         if (_wasPlayingBeforePause) {
-          print('⏸️ Pausing background music (app going to background): $_currentMusicPath');
-          await _backgroundMusicPlayer.pause();
+          print('⏸️ Stopping background music (app going to background): $_currentMusicPath');
+          // Stop fade timer
+          _fadeTimer?.cancel();
+          _fadeTimer = null;
+          _isFading = false;
+          // Stop the music (don't clear _currentMusicPath so we know what to restart)
+          await _backgroundMusicPlayer.stop();
         } else {
-          print('ℹ️ Music not playing, nothing to pause');
+          print('ℹ️ Music not playing, nothing to stop');
+          _wasPlayingBeforePause = false;
         }
       } else {
         _wasPlayingBeforePause = false;
       }
     } catch (e) {
-      print('Error pausing background music: $e');
+      print('Error stopping background music: $e');
       _wasPlayingBeforePause = false;
     }
   }
 
-  /// Resume background music (e.g., when app returns to foreground)
+  /// Restart background music from beginning (e.g., when app returns to foreground)
   Future<void> resumeBackgroundMusic() async {
     if (!_isMusicEnabled) {
-      print('🔇 Music is disabled, not resuming');
+      print('🔇 Music is disabled, not restarting');
       _wasPlayingBeforePause = false;
       return;
     }
     
     try {
-      // Only resume if we have a track and it was playing before pause
+      // Only restart if we have a track and it was playing before pause
       if (_currentMusicPath != null && _wasPlayingBeforePause) {
-        print('▶️ Resuming background music (app returning to foreground): $_currentMusicPath');
-        await _backgroundMusicPlayer.resume();
-        // Don't reset flag here - keep it until next pause/resume cycle
+        print('🔄 Restarting background music from beginning (app returning to foreground): $_currentMusicPath');
+        // Restart from beginning instead of resuming
+        await playBackgroundMusic(_currentMusicPath!);
+        _wasPlayingBeforePause = false; // Reset flag after restart
       } else {
         if (_currentMusicPath == null) {
-          print('ℹ️ No music track to resume');
+          print('ℹ️ No music track to restart');
         } else if (!_wasPlayingBeforePause) {
-          print('ℹ️ Music was not playing before pause, not resuming');
+          print('ℹ️ Music was not playing before pause, not restarting');
         }
       }
     } catch (e) {
-      print('Error resuming background music: $e');
-      // Try to restart if resume fails
-      if (_currentMusicPath != null && _wasPlayingBeforePause) {
-        print('⚠️ Resume failed, attempting to restart: $_currentMusicPath');
-        await playBackgroundMusic(_currentMusicPath!);
-      }
+      print('Error restarting background music: $e');
       _wasPlayingBeforePause = false;
     }
   }
