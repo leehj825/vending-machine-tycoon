@@ -113,8 +113,6 @@ flutter:
           weight: 500
         - asset: assets/fonts/Fredoka-SemiBold.ttf
           weight: 600
-        - asset: assets/fonts/Fredoka-Bold.ttf
-          weight: 700
 
 # App Icon Configuration
 flutter_launcher_icons:
