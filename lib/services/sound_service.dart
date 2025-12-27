@@ -25,6 +25,7 @@ class SoundService {
   double? _targetVolume; // Target volume for current track (for fade in/out)
   Duration? _trackDuration; // Duration of current track
   bool _isFading = false; // Track if we're currently fading
+  bool _wasPlayingBeforePause = false; // Track if music was playing before app was paused
 
   /// Initialize audio context to allow mixing with other sounds
   Future<void> _initAudioContext() async {
@@ -298,23 +299,39 @@ class SoundService {
     }
   }
 
-  /// Pause background music
+  /// Pause background music (e.g., when app goes to background)
   Future<void> pauseBackgroundMusic() async {
     try {
-      await _backgroundMusicPlayer.pause();
+      if (_currentMusicPath != null) {
+        // Check if music is actually playing before pausing
+        final playerState = await _backgroundMusicPlayer.state;
+        _wasPlayingBeforePause = (playerState == PlayerState.playing);
+        
+        if (_wasPlayingBeforePause) {
+          print('⏸️ Pausing background music (app going to background)');
+          await _backgroundMusicPlayer.pause();
+        }
+      }
     } catch (e) {
       print('Error pausing background music: $e');
+      _wasPlayingBeforePause = false;
     }
   }
 
-  /// Resume background music
+  /// Resume background music (e.g., when app returns to foreground)
   Future<void> resumeBackgroundMusic() async {
     if (!_isMusicEnabled) return;
     
     try {
-      await _backgroundMusicPlayer.resume();
+      // Only resume if we have a track and it was playing before pause
+      if (_currentMusicPath != null && _wasPlayingBeforePause) {
+        print('▶️ Resuming background music (app returning to foreground)');
+        await _backgroundMusicPlayer.resume();
+        _wasPlayingBeforePause = false; // Reset flag
+      }
     } catch (e) {
       print('Error resuming background music: $e');
+      _wasPlayingBeforePause = false;
     }
   }
 
