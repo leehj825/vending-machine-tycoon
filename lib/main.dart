@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -7,8 +9,15 @@ import 'ui/screens/menu_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Initialize AdMob
-  await MobileAds.instance.initialize();
+  // Initialize AdMob only on Android and iOS (not macOS, Windows, Linux, or Web)
+  if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
+    try {
+      await MobileAds.instance.initialize();
+    } catch (e) {
+      debugPrint('AdMob initialization failed: $e');
+      // Continue app startup even if AdMob fails
+    }
+  }
   
   runApp(
     const ProviderScope(

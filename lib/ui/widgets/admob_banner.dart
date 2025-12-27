@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
@@ -10,7 +12,8 @@ class AdMobBanner extends StatefulWidget {
   const AdMobBanner({
     super.key,
     // Test ad unit ID for banner ads
-    this.adUnitId = 'ca-app-pub-4400173019354346/5798507534',
+    //this.adUnitId = 'ca-app-pub-4400173019354346/5798507534',
+    this.adUnitId = 'ca-app-pub-3940256099942544/6300978111',
   });
 
   @override
@@ -20,12 +23,27 @@ class AdMobBanner extends StatefulWidget {
 class _AdMobBannerState extends State<AdMobBanner> {
   BannerAd? _bannerAd;
   bool _isAdLoaded = false;
-  String? _errorMessage;
+  bool _hasError = false;
 
   @override
   void initState() {
     super.initState();
-    _loadBannerAd();
+    // Only load ads on Android and iOS
+    if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
+      _loadBannerAd();
+      // Set a timeout to stop showing loading indicator after 10 seconds
+      Future.delayed(const Duration(seconds: 10), () {
+        if (mounted && !_isAdLoaded && !_hasError) {
+          setState(() {
+            _hasError = true;
+          });
+          debugPrint('Banner ad loading timeout - hiding banner');
+        }
+      });
+    } else {
+      // On other platforms (macOS, Windows, Linux, Web), don't try to load ads
+      _hasError = true;
+    }
   }
 
   void _loadBannerAd() {
@@ -38,7 +56,7 @@ class _AdMobBannerState extends State<AdMobBanner> {
           if (mounted) {
             setState(() {
               _isAdLoaded = true;
-              _errorMessage = null;
+              _hasError = false;
             });
           }
           debugPrint('Banner ad loaded successfully');
@@ -49,7 +67,7 @@ class _AdMobBannerState extends State<AdMobBanner> {
           if (mounted) {
             setState(() {
               _isAdLoaded = false;
-              _errorMessage = error.message;
+              _hasError = true;
             });
           }
           debugPrint('Banner ad failed to load: ${error.code} - ${error.message}');
@@ -74,13 +92,13 @@ class _AdMobBannerState extends State<AdMobBanner> {
 
   @override
   Widget build(BuildContext context) {
-    // Show error message in debug mode
-    if (_errorMessage != null) {
-      debugPrint('AdMob Banner Error: $_errorMessage');
+    // Hide banner if there's an error or if it hasn't loaded after timeout
+    if (_hasError && !_isAdLoaded) {
+      return const SizedBox.shrink();
     }
 
     if (!_isAdLoaded || _bannerAd == null) {
-      // Show a placeholder with fixed height while loading
+      // Show a placeholder with fixed height while loading (max 10 seconds)
       return Container(
         width: double.infinity,
         height: AdSize.banner.height.toDouble(),

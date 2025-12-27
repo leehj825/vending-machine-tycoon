@@ -45,15 +45,16 @@ class _MainScreenState extends ConsumerState<MainScreen> {
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         elevation: 0,
         toolbarHeight: 0,
-        bottom: PreferredSize(
-          preferredSize: Size.fromHeight(_calculateStatusBarHeight(context)),
-          child: _StatusBar(),
-        ),
       ),
       body: Column(
         children: [
-          // AdMob banner at the top
+          // AdMob banner at the very top
           const AdMobBanner(),
+          // Status bar below the banner
+          PreferredSize(
+            preferredSize: Size.fromHeight(_calculateStatusBarHeight(context)),
+            child: _StatusBar(),
+          ),
           // Game content
           Expanded(
             child: IndexedStack(
