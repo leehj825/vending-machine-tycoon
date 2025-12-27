@@ -51,7 +51,8 @@ android {
                 keyAlias = keystoreProperties["keyAlias"] as String
                 keyPassword = keystoreProperties["keyPassword"] as String
                 val storeFileString = keystoreProperties["storeFile"] as String
-                storeFile = file(storeFileString)
+                // Resolve keystore path relative to root project (android/) directory
+                storeFile = rootProject.file(storeFileString)
                 storePassword = keystoreProperties["storePassword"] as String
             }
         }
