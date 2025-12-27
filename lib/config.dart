@@ -24,15 +24,15 @@ class AppConfig {
   
   /// Individual volume for truck sound (0.0 to 1.0)
   /// Final volume = soundVolumeMultiplier * truckSoundVolume
-  static const double truckSoundVolume = 0.8;
+  static const double truckSoundVolume = 0.5;
   
   /// Individual volume for menu music (0.0 to 1.0)
   /// Final volume = musicVolumeMultiplier * menuMusicVolume
-  static const double menuMusicVolume = 0.6;
+  static const double menuMusicVolume = 0.5;
   
   /// Individual volume for game background music (0.0 to 1.0)
   /// Final volume = musicVolumeMultiplier * gameBackgroundMusicVolume
-  static const double gameBackgroundMusicVolume = 0.3;
+  static const double gameBackgroundMusicVolume = 0.2;
 
   // ============================================================================
   // FONT SIZES - Standardized font sizes for consistent UI
