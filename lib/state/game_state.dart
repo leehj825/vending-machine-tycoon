@@ -1,6 +1,7 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 import '../simulation/models/machine.dart';
 import '../simulation/models/truck.dart';
+import '../simulation/models/product.dart';
 import 'providers.dart';
 import 'city_map_state.dart';
 
@@ -21,6 +22,9 @@ abstract class GlobalGameState with _$GlobalGameState {
     @Default(null) double? warehouseRoadX, // Road tile X coordinate next to warehouse (zone coordinates)
     @Default(null) double? warehouseRoadY, // Road tile Y coordinate next to warehouse (zone coordinates)
     @Default(null) CityMapState? cityMapState, // City map layout (grid, buildings, roads)
+    @Default([]) List<double> dailyRevenueHistory, // Last 7 days of revenue
+    @Default(0.0) double currentDayRevenue, // Revenue accumulated for current day
+    @Default({}) Map<Product, int> productSalesCount, // Global sales count per product
   }) = _GlobalGameState;
 
   const GlobalGameState._();

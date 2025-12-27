@@ -63,6 +63,9 @@ class GameController extends StateNotifier<GlobalGameState> {
           warehouse: Warehouse(),
           warehouseRoadX: null, // Will be set when map is generated
           warehouseRoadY: null, // Will be set when map is generated
+          dailyRevenueHistory: [],
+          currentDayRevenue: 0.0,
+          productSalesCount: {},
         )) {
     _setupSimulationListener();
   }
@@ -100,6 +103,57 @@ class GameController extends StateNotifier<GlobalGameState> {
         return simTruck;
       }).toList();
       
+      // Track revenue changes and detect day rollover
+      final previousHour = state.hourOfDay;
+      final previousDay = state.dayCount;
+      final previousTotalCash = state.cash + state.machines.fold<double>(0.0, (sum, m) => sum + m.currentCash);
+      
+      // Calculate current total cash (player cash + all machine cash)
+      final currentTotalCash = simState.cash + simState.machines.fold<double>(0.0, (sum, m) => sum + m.currentCash);
+      final revenueThisTick = (currentTotalCash - previousTotalCash).clamp(0.0, double.infinity);
+      
+      // Track product sales by comparing machine totalSales
+      final updatedProductSales = Map<Product, int>.from(state.productSalesCount);
+      for (final machine in simState.machines) {
+        final oldMachine = state.machines.firstWhere(
+          (m) => m.id == machine.id,
+          orElse: () => machine,
+        );
+        final salesIncrease = machine.totalSales - oldMachine.totalSales;
+        
+        // Estimate product sales based on inventory changes (simplified approach)
+        // For a more accurate approach, we'd need to track per-product sales in the engine
+        if (salesIncrease > 0) {
+          // Distribute sales increase across products in inventory (rough estimate)
+          final totalInventory = machine.inventory.values.fold<int>(0, (sum, item) => sum + item.quantity);
+          if (totalInventory > 0) {
+            for (final entry in machine.inventory.entries) {
+              final product = entry.key;
+              final quantity = entry.value.quantity;
+              final estimatedSales = ((salesIncrease * quantity) / totalInventory).round();
+              updatedProductSales[product] = (updatedProductSales[product] ?? 0) + estimatedSales;
+            }
+          }
+        }
+      }
+      
+      // Detect day rollover (hour 23 -> 0 or day changed)
+      var updatedDailyRevenueHistory = List<double>.from(state.dailyRevenueHistory);
+      var updatedCurrentDayRevenue = state.currentDayRevenue + revenueThisTick;
+      
+      if (simState.time.day > previousDay || (previousHour == 23 && simState.time.hour == 0)) {
+        // Day rolled over - save previous day's revenue
+        if (previousDay > 0) {
+          updatedDailyRevenueHistory.add(updatedCurrentDayRevenue);
+          // Keep only last 7 days
+          if (updatedDailyRevenueHistory.length > 7) {
+            updatedDailyRevenueHistory = updatedDailyRevenueHistory.sublist(updatedDailyRevenueHistory.length - 7);
+          }
+        }
+        // Reset current day revenue
+        updatedCurrentDayRevenue = revenueThisTick;
+      }
+      
       state = state.copyWith(
         machines: simState.machines,
         trucks: updatedTrucks,
@@ -107,6 +161,9 @@ class GameController extends StateNotifier<GlobalGameState> {
         reputation: simState.reputation,
         dayCount: simState.time.day,
         hourOfDay: simState.time.hour,
+        dailyRevenueHistory: updatedDailyRevenueHistory,
+        currentDayRevenue: updatedCurrentDayRevenue,
+        productSalesCount: updatedProductSales,
         // Warehouse and logs are managed locally by Controller, so we don't overwrite them
       );
     });
@@ -600,6 +657,9 @@ class GameController extends StateNotifier<GlobalGameState> {
       warehouseRoadX: null,
       warehouseRoadY: null,
       logMessages: [],
+      dailyRevenueHistory: [],
+      currentDayRevenue: 0.0,
+      productSalesCount: {},
     );
     
     state = state.addLogMessage('New game started');
