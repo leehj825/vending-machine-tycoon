@@ -286,9 +286,6 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final screenSize = MediaQuery.of(context).size;
-    print('🔵 BUILD DEBUG: Screen size: ${screenSize.width} x ${screenSize.height}');
-    
     final trucks = ref.watch(trucksProvider);
     final machines = ref.watch(machinesProvider);
     final selectedTruckNotifier = ref.watch(selectedTruckIdProvider);
@@ -300,9 +297,6 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> {
             orElse: () => trucks.first, // Fallback to first truck if ID not found
           )
         : null;
-    
-    print('🔵 BUILD DEBUG: Selected truck: ${selectedTruck?.name ?? "null"}');
-    print('🔵 BUILD DEBUG: Selected truck inventory: ${selectedTruck?.inventory.length ?? 0} items');
 
     // Get machines for the selected truck's route
     // Show pending route if it exists (when truck is moving or just became idle)
@@ -604,17 +598,7 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> {
                   final padding = ScreenUtils.relativeSize(context, AppConfig.spacingFactorLarge);
                   final maxItemWidth = screenWidth * AppConfig.truckCargoMaxItemWidthFactor;
                   
-                  print('🔵 CARGO DEBUG: Screen width: $screenWidth');
-                  print('🔵 CARGO DEBUG: Padding: $padding');
-                  print('🔵 CARGO DEBUG: Max item width: $maxItemWidth');
-                  print('🔵 CARGO DEBUG: Selected truck: ${selectedTruck.name}');
-                  print('🔵 CARGO DEBUG: Inventory items: ${selectedTruck.inventory.length}');
-                  selectedTruck.inventory.entries.forEach((entry) {
-                    print('🔵 CARGO DEBUG:   - ${entry.key.name}: ${entry.value}');
-                  });
-                  
                   final containerWidth = screenWidth - (padding * 2);
-                  print('🔵 CARGO DEBUG: Container width: $containerWidth');
                   
                   return SliverToBoxAdapter(
                     child: Padding(
@@ -648,18 +632,15 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> {
                         ),
                         child: LayoutBuilder(
                           builder: (context, constraints) {
-                            print('🔵 CARGO COLUMN DEBUG: Available width: ${constraints.maxWidth}');
                             return Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 LayoutBuilder(
                                   builder: (context, rowConstraints) {
-                                    print('🔵 CARGO ROW DEBUG: Row available width: ${rowConstraints.maxWidth}');
                                     // Use AppConfig.iconSizeSmall directly (it's already in pixels, not a factor)
                                     final iconSize = AppConfig.iconSizeSmall;
                                     final spacing = AppConfig.spacingFactorMedium * ScreenUtils.getSmallerDimension(context);
-                                    print('🔵 CARGO ROW DEBUG: Icon size: $iconSize, Spacing: $spacing');
                                     return Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
@@ -701,7 +682,6 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> {
                               runSpacing: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall),
                               children: selectedTruck.inventory.entries.map((entry) {
                                 final itemText = '${entry.key.name}: ${entry.value}';
-                                print('🔵 CARGO DEBUG: Creating item for: $itemText');
                                 return Container(
                                   constraints: BoxConstraints(
                                     maxWidth: maxItemWidth,
@@ -930,9 +910,6 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> {
                         ),
                         Builder(
                           builder: (context) {
-                            final screenWidth = MediaQuery.of(context).size.width;
-                            print('🔵 STATS ROW DEBUG: Screen width: $screenWidth');
-                            print('🔵 STATS ROW DEBUG: Creating stats row with 3 items');
                             return Row(
                               mainAxisAlignment: MainAxisAlignment.spaceAround,
                               children: [

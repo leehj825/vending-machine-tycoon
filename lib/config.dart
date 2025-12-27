@@ -96,7 +96,7 @@ class AppConfig {
   static const double truckIconContainerBorderRadiusFactor = borderRadiusFactorTiny; // 0.001 - Border radius of icon container
   
   /// Truck name and status sizes
-  static const double truckNameFontSizeFactor = fontSizeFactorMedium; // 0.035 - Truck name font size factor
+  static const double truckNameFontSizeFactor = fontSizeFactorNormal; // 0.032 - Truck name font size factor
   static const double truckStatusFontSizeFactor = fontSizeFactorTiny; // 0.02 - Status badge font size factor
   static const double truckStatusPaddingHorizontalFactor = borderWidthFactorSmall; // 0.002 - Status badge horizontal padding
   static const double truckStatusPaddingVerticalFactor = spacingFactorTiny; // 0.001 - Status badge vertical padding
@@ -169,8 +169,8 @@ class AppConfig {
   static const double numberPadContainerBorderWidthFactor = 0.001; // Pad container border width
   
   /// Number pad buttons (relative to dialog width or screen)
-  static const double numberPadButtonSizeFactor = 0.10; // Button size
-  static const double numberPadButtonFontSizeFactor = 0.06; // Button font size (for dialog-based)
+  static const double numberPadButtonSizeFactor = 0.12; // Button size (increased from 0.10)
+  static const double numberPadButtonFontSizeFactor = 0.09; // Button font size (for dialog-based, increased from 0.06)
   static const double numberPadButtonBorderRadiusMultiplier = 0.2; // Button border radius as multiplier of button size
   static const double numberPadButtonBorderWidthMultiplier = 0.02; // Button border width as multiplier of button size
   static const double numberPadButtonPaddingMultiplier = 0.1; // Button padding as multiplier of button size
@@ -300,6 +300,45 @@ class AppConfig {
   static const double machineStatusDialogCashButtonPaddingFactor = 0.01; // Cash button padding as factor of dialog width
   static const double machineStatusDialogCashButtonBorderRadiusFactor = 0.01; // Cash button border radius as factor of dialog width
   static const double machineStatusDialogCashButtonFontSizeFactor = 0.04; // Cash button font size as factor of dialog width
+  
+  // ============================================================================
+  // MACHINE INTERIOR DIALOG CONSTANTS
+  // ============================================================================
+  
+  /// Machine interior dialog dimensions (relative to screen)
+  static const double machineInteriorDialogWidthFactor = 0.9; // 90% of screen width
+  static const double machineInteriorDialogHeightFactor = 0.8; // 80% of screen height
+  static const double machineInteriorDialogInsetPaddingFactor = 0.04; // Inset padding relative to screen
+  
+  /// Machine interior dialog sizing (relative to dialog width)
+  static const double machineInteriorDialogBorderRadiusFactor = 0.04; // Border radius as factor of dialog width
+  static const double machineInteriorDialogPaddingFactor = 0.04; // Padding as factor of dialog width
+  static const double machineInteriorDialogImageHeightFactor = 0.8; // Image height as factor of dialog width
+  static const double machineInteriorDialogZoneBackgroundAlpha = 0.15; // Zone background color alpha (0.0 to 1.0)
+  
+  /// Machine interior dialog close button
+  static const double machineInteriorDialogCloseButtonSizeFactor = 0.08; // Close button icon size as factor of dialog width
+  static const double machineInteriorDialogCloseButtonPaddingFactor = 0.3; // Close button padding as factor of padding
+  
+  /// Machine interior dialog error text
+  static const double machineInteriorDialogErrorTextFontSizeFactor = 0.04; // Error text font size as factor of dialog width
+  
+  /// Machine interior dialog hitbox zones (relative to dialog width/image height)
+  static const double machineInteriorDialogZoneALeftFactor = 0.8; // Zone A left position as factor of dialog width
+  static const double machineInteriorDialogZoneATopFactor = 0.15; // Zone A top position as factor of image height
+  static const double machineInteriorDialogZoneAWidthFactor = 0.1; // Zone A width as factor of dialog width
+  static const double machineInteriorDialogZoneAHeightFactor = 0.3; // Zone A height as factor of image height
+  
+  static const double machineInteriorDialogZoneBLeftFactor = 0.8; // Zone B left position as factor of dialog width
+  static const double machineInteriorDialogZoneBTopFactor = 0.6; // Zone B top position as factor of image height
+  static const double machineInteriorDialogZoneBWidthFactor = 0.1; // Zone B width as factor of dialog width
+  static const double machineInteriorDialogZoneBHeightFactor = 0.3; // Zone B height as factor of image height
+  
+  /// Machine interior dialog content spacing (relative to padding)
+  static const double machineInteriorDialogContentSpacingFactor = 0.5; // Spacing between content sections as factor of padding
+  static const double machineInteriorDialogCashDisplaySpacingFactor = 0.3; // Spacing in cash display as factor of padding
+  static const double machineInteriorDialogCashDisplayBorderRadiusFactor = 0.5; // Cash display border radius as factor of padding
+  static const double machineInteriorDialogCashDisplayBorderWidth = 2.0; // Cash display border width in pixels
   
   // ============================================================================
   // MARKET PRODUCT CARD CONSTANTS

@@ -638,6 +638,30 @@ class GameController extends StateNotifier<GlobalGameState> {
     state = state.copyWith(cityMapState: mapState);
   }
 
+  /// Update a single machine (used for maintenance status, cash collection, etc.)
+  void updateMachine(Machine updatedMachine) {
+    final machineIndex = state.machines.indexWhere((m) => m.id == updatedMachine.id);
+    if (machineIndex == -1) {
+      state = state.addLogMessage('Machine not found');
+      return;
+    }
+
+    final updatedMachines = [...state.machines];
+    updatedMachines[machineIndex] = updatedMachine;
+
+    // Update state
+    state = state.copyWith(machines: updatedMachines);
+
+    // Sync to simulation engine
+    simulationEngine.updateMachines(updatedMachines);
+  }
+
+  /// Update player cash
+  void updateCash(double newCash) {
+    state = state.copyWith(cash: newCash);
+    simulationEngine.updateCash(newCash);
+  }
+
   /// Retrieve cash from a machine
   void retrieveCash(String machineId) {
     // Find the machine

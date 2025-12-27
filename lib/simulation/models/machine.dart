@@ -53,6 +53,8 @@ abstract class Machine with _$Machine {
     @Default(0.0) double hoursSinceRestock,
     /// Total sales count (for analytics)
     @Default(0) int totalSales,
+    /// Whether the machine is currently under maintenance (e.g., open for cash collection)
+    @Default(false) bool isUnderMaintenance,
   }) = _Machine;
 
   const Machine._();

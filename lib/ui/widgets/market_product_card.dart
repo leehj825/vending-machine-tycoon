@@ -344,8 +344,8 @@ class _BuyStockDialogState extends ConsumerState<_BuyStockDialog> {
                                 _quantity = value.toDouble();
                               });
                             },
-                            dialogWidth: dialogWidth,
-                            padding: padding,
+                            dialogWidth: null, // Use screen-based sizing to match truck cargo loading screen
+                            padding: null,
                           ),
                           SizedBox(height: padding),
                           Container(

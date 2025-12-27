@@ -93,6 +93,8 @@ flutter:
     - assets/images/star_icon.png
     - assets/images/clock_icon.png
     - assets/images/status_icon.png
+    - assets/images/machine_with_money.png
+    - assets/images/machine_without_money.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

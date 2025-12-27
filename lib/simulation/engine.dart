@@ -403,6 +403,14 @@ class SimulationEngine extends StateNotifier<SimulationState> {
     final reputationMultiplier = _calculateReputationMultiplier(currentReputation);
     
     final updatedMachines = machines.map((machine) {
+      // Skip sales processing if machine is under maintenance
+      if (machine.isUnderMaintenance) {
+        // Debug: Only this specific machine is paused
+        return machine.copyWith(
+          hoursSinceRestock: machine.hoursSinceRestock + (1.0 / SimulationConstants.ticksPerHour), // 1 tick = 1/ticksPerHour hours
+        );
+      }
+      
       if (machine.isBroken || machine.isEmpty) {
         return machine.copyWith(
           hoursSinceRestock: machine.hoursSinceRestock + (1.0 / SimulationConstants.ticksPerHour), // 1 tick = 1/ticksPerHour hours
