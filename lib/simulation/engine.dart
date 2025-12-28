@@ -371,10 +371,8 @@ class SimulationEngine extends StateNotifier<SimulationState> {
     // 2. Process Spoilage
     updatedMachines = _processSpoilage(updatedMachines, nextTime);
     
-    // 2.5. Process Random Breakdowns (once per day)
-    if (nextTime.day > currentState.time.day) {
-      updatedMachines = _processRandomBreakdowns(updatedMachines);
-    }
+    // 2.5. Process Random Breakdowns (every tick, total 2% per day)
+    updatedMachines = _processRandomBreakdowns(updatedMachines);
     
     // 3. Process Trucks (Movement)
     var updatedTrucks = _processTruckMovement(currentState.trucks, updatedMachines);
@@ -537,22 +535,29 @@ class SimulationEngine extends StateNotifier<SimulationState> {
     }).toList();
   }
 
-  /// Process random breakdowns - 2% chance per day for each machine
+  /// Process random breakdowns - checks every tick with probability calculated to give 2% per day total
   /// This provides a good balance: frequent enough to be noticeable with multiple machines,
   /// but not so frequent as to be annoying. With 5 machines, expect ~9.6% chance per day
   /// that at least one breaks (happens roughly every 10 days on average).
+  /// 
+  /// Probability per tick: p = 1 - (1 - 0.02)^(1/ticksPerDay)
+  /// This ensures the total probability per day is exactly 2%
   List<Machine> _processRandomBreakdowns(List<Machine> machines) {
+    // Calculate probability per tick to achieve 2% per day total
+    // Formula: 1 - (1 - dailyProbability)^(1/ticksPerDay)
+    // For small probabilities, this approximates to: dailyProbability / ticksPerDay
+    final dailyProbability = 0.02; // 2% per day
+    final breakdownChancePerTick = (1.0 - math.pow(1.0 - dailyProbability, 1.0 / SimulationConstants.ticksPerDay)).toDouble();
+    
     return machines.map((machine) {
       // Skip if already broken
       if (machine.isBroken) {
         return machine;
       }
       
-      // 2% chance per day to break (balanced for gameplay)
-      final breakdownChance = 0.02;
       final randomValue = state.random.nextDouble();
       
-      if (randomValue < breakdownChance) {
+      if (randomValue < breakdownChancePerTick) {
         print('ALERT: Machine ${machine.name} has broken down!');
         return machine.copyWith(
           condition: MachineCondition.broken,

@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:vector_math/vector_math_64.dart' hide Colors;
 import '../../state/providers.dart';
 import '../../state/selectors.dart';
 import '../../state/city_map_state.dart';
@@ -106,6 +107,12 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
   // Debounce tracking
   DateTime? _lastTapTime;
   String? _lastTappedButton;
+  
+  // Draggable message position (null = use default position)
+  Offset? _messagePosition;
+  Offset? _messageDragStartPosition; // Position when drag started
+  Offset _messageDragAccumulatedDelta = Offset.zero; // Accumulated delta during current drag
+  bool _previousRushHourState = false; // Track previous rush hour state to detect transitions
 
   @override
   void initState() {
@@ -745,9 +752,9 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
 
       // 2. Build Purchase Button (if applicable)
       if (_isBuilding(tileType) && tileType != TileType.warehouse && _shouldShowPurchaseButton(x, y, tileType)) {
-        final buildingScaleFactor = _getBuildingScale(tileType);
-        final scaledHeight = buildingImageHeight * buildingScaleFactor;
-        final buildingTop = posY - (scaledHeight - tileHeight);
+        //final buildingScaleFactor = _getBuildingScale(tileType);
+        //final scaledHeight = buildingImageHeight * buildingScaleFactor;
+        //final buildingTop = posY - (scaledHeight - tileHeight);
         
         final buttonSize = ScreenUtils.relativeSizeClamped(
           context, 0.05,
@@ -755,7 +762,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
           max: ScreenUtils.getSmallerDimension(context) * 0.08,
         );
         
-        final buttonTop = buildingTop - buttonSize + ScreenUtils.relativeSize(context, 0.015);
+        final buttonTop = posY;
         final buttonLeft = posX + (tileWidth / 2) - (buttonSize / 2);
         
         buttons.add(
@@ -787,6 +794,12 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
     // Add Marketing Button if position is set (show during rush hour too, but with fire icon)
     final gameState = ref.watch(gameStateProvider);
     
+    // Reset message position when rush hour ends (transitions from true to false)
+    if (_previousRushHourState && !gameState.isRushHour) {
+      _messagePosition = null; // Reset to default position above button
+    }
+    _previousRushHourState = gameState.isRushHour;
+    
     if (gameState.marketingButtonGridX != null && 
         gameState.marketingButtonGridY != null) {
       final buttonGridX = gameState.marketingButtonGridX!;
@@ -807,71 +820,100 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
       
       // Add instruction message above the button (only when not in rush hour)
       if (!gameState.isRushHour) {
-        final messageOffsetX = positionedX - tileWidth * 0.5;
-        final messageOffsetY = positionedY - tileHeight * 1.0; // Lower above button
+        // Calculate default position above the button (rush button during rush hour, marketing button otherwise)
+        final defaultMessageOffsetX = positionedX - tileWidth * 0.5;
+        final defaultMessageOffsetY = positionedY - tileHeight * 1.0; // Lower above button
+        
+        // Use stored position if available, otherwise use default
+        final messageOffsetX = _messagePosition?.dx ?? defaultMessageOffsetX;
+        final messageOffsetY = _messagePosition?.dy ?? defaultMessageOffsetY;
         
         buttons.add(
           Positioned(
             left: messageOffsetX,
             top: messageOffsetY,
-            child: Container(
-            constraints: BoxConstraints(
-              maxWidth: tileWidth * 3.0, // Smaller width
-            ),
-            padding: EdgeInsets.symmetric(
-              horizontal: ScreenUtils.relativeSize(context, 0.01),
-              vertical: ScreenUtils.relativeSize(context, 0.005),
-            ),
-            decoration: BoxDecoration(
-              color: Colors.blue.shade700.withValues(alpha: 0.95),
-              borderRadius: BorderRadius.circular(ScreenUtils.relativeSize(context, AppConfig.borderRadiusFactorSmall)),
-              border: Border.all(
-                color: Colors.white,
-                width: ScreenUtils.relativeSize(context, AppConfig.borderWidthFactorSmall * 1.5),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.4),
-                  blurRadius: 6,
-                  spreadRadius: 1,
+            child: GestureDetector(
+              onPanStart: (details) {
+                // Store the current position when drag starts and reset accumulated delta
+                _messageDragStartPosition = _messagePosition ?? Offset(defaultMessageOffsetX, defaultMessageOffsetY);
+                _messageDragAccumulatedDelta = Offset.zero;
+              },
+              onPanUpdate: (details) {
+                setState(() {
+                  // Accumulate delta and update position
+                  _messageDragAccumulatedDelta += details.delta;
+                  if (_messageDragStartPosition != null) {
+                    _messagePosition = Offset(
+                      _messageDragStartPosition!.dx + _messageDragAccumulatedDelta.dx,
+                      _messageDragStartPosition!.dy + _messageDragAccumulatedDelta.dy,
+                    );
+                  }
+                });
+              },
+              onPanEnd: (details) {
+                // Clear drag start position
+                _messageDragStartPosition = null;
+                _messageDragAccumulatedDelta = Offset.zero;
+              },
+              child: Container(
+                constraints: BoxConstraints(
+                  maxWidth: tileWidth * 3.0, // Smaller width
                 ),
-              ],
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.touch_app,
-                  color: Colors.white,
-                  size: ScreenUtils.relativeSize(context, 0.025), // Smaller icon
+                padding: EdgeInsets.symmetric(
+                  horizontal: ScreenUtils.relativeSize(context, 0.01),
+                  vertical: ScreenUtils.relativeSize(context, 0.005),
                 ),
-                SizedBox(width: ScreenUtils.relativeSize(context, 0.005)),
-                Flexible(
-                  child: Text(
-                    'Keep pressing to rush selling!',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: ScreenUtils.relativeFontSize(
-                        context,
-                        0.018, // Smaller font
-                        min: ScreenUtils.getSmallerDimension(context) * 0.014,
-                        max: ScreenUtils.getSmallerDimension(context) * 0.025,
-                      ),
-                      fontWeight: FontWeight.bold,
-                      shadows: [
-                        Shadow(
-                          color: Colors.black.withValues(alpha: 0.6),
-                          blurRadius: 2,
-                        ),
-                      ],
-                    ),
-                    textAlign: TextAlign.center,
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade700.withValues(alpha: 0.95),
+                  borderRadius: BorderRadius.circular(ScreenUtils.relativeSize(context, AppConfig.borderRadiusFactorSmall)),
+                  border: Border.all(
+                    color: Colors.white,
+                    width: ScreenUtils.relativeSize(context, AppConfig.borderWidthFactorSmall * 1.5),
                   ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.4),
+                      blurRadius: 6,
+                      spreadRadius: 1,
+                    ),
+                  ],
                 ),
-              ],
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.touch_app,
+                      color: Colors.white,
+                      size: ScreenUtils.relativeSize(context, 0.025), // Smaller icon
+                    ),
+                    SizedBox(width: ScreenUtils.relativeSize(context, 0.005)),
+                    Flexible(
+                      child: Text(
+                        'Keep pressing to rush selling!',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: ScreenUtils.relativeFontSize(
+                            context,
+                            0.018, // Smaller font
+                            min: ScreenUtils.getSmallerDimension(context) * 0.014,
+                            max: ScreenUtils.getSmallerDimension(context) * 0.025,
+                          ),
+                          fontWeight: FontWeight.bold,
+                          shadows: [
+                            Shadow(
+                              color: Colors.black.withValues(alpha: 0.6),
+                              blurRadius: 2,
+                            ),
+                          ],
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
-        ),
         );
       }
     }
@@ -944,14 +986,25 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
   }
 
   Widget _buildGameMachine(BuildContext context, sim.Machine machine, Offset centerOffset, double tileWidth, double tileHeight) {
+    // Convert zone coordinates to grid coordinates
+    // Zone coordinates are (gridX + 1.5), so zoneX - 1.0 = gridX + 0.5
+    // Use floor() instead of round() to avoid rounding 0.5 up to the wrong tile
     final gridPos = _zoneToGrid(machine.zone.x, machine.zone.y);
-    final pos = _gridToScreenDouble(context, gridPos.dx, gridPos.dy);
+    final gridX = gridPos.dx.floor();
+    final gridY = gridPos.dy.floor();
+    
+    // Use integer grid coordinates to get exact tile position (same as building tiles)
+    final pos = _gridToScreen(context, gridX, gridY);
     final positionedX = pos.dx + centerOffset.dx;
     final positionedY = pos.dy + centerOffset.dy;
     
-    final double machineSize = tileWidth * 0.3;
-    final left = positionedX + (tileWidth - machineSize) / 2;
-    final top = positionedY + (tileHeight / 2) - machineSize;
+    // Make machine button smaller
+    final double machineSize = tileWidth * 0.2;
+    
+    // Position machine button at bottom center of building tile (not on road)
+    // Use similar centering pattern as message: center horizontally on tile
+    final left = positionedX + (tileWidth - machineSize) / 2; // Center horizontally on tile
+    final top = positionedY + machineSize / 4; // Bottom center of building tile
 
     Color machineColor;
     switch (machine.zone.type) {
@@ -963,35 +1016,129 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
 
     final machineId = machine.id;
 
-    return Positioned(
-      left: left,
-      top: top,
-      width: machineSize,
-      height: machineSize,
-      child: GestureDetector(
-        onTap: () {
-          final machines = ref.read(machinesProvider);
-          final currentMachine = machines.firstWhere(
-            (m) => m.id == machineId,
-            orElse: () => machine,
-          );
-          _showMachineView(context, currentMachine);
-        },
-        child: Container(
-          decoration: BoxDecoration(
-            color: machineColor,
-            shape: BoxShape.circle,
-            border: Border.all(color: Colors.white, width: ScreenUtils.relativeSize(context, 0.002)),
+    // Determine status indicators - positioned at center of tile
+    Widget? statusIndicator;
+    final indicatorSize = tileWidth * 0.15; // Larger indicator for better visibility
+    if (machine.isBroken) {
+      statusIndicator = Container(
+        width: indicatorSize*2,
+        height: indicatorSize*2,
+        decoration: BoxDecoration(
+          color: Colors.red,
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.white, width: 2),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.4),
+              blurRadius: 4,
+              spreadRadius: 1,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Icon(
+          Icons.build,
+          color: Colors.white,
+          size: indicatorSize * 1.2,
+        ),
+      );
+    } else if (machine.totalInventory == 0) {
+      statusIndicator = Container(
+        width: indicatorSize*2,
+        height: indicatorSize*2,
+        decoration: BoxDecoration(
+          color: Colors.red,
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.white, width: 2),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.4),
+              blurRadius: 4,
+              spreadRadius: 1,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Icon(
+          Icons.close,
+          color: Colors.white,
+          size: indicatorSize * 1.2,
+        ),
+      );
+    } else if (machine.totalInventory < 10) { // Low stock threshold
+      statusIndicator = Container(
+        width: indicatorSize*2,
+        height: indicatorSize*2,
+        decoration: BoxDecoration(
+          color: Colors.amber,
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.white, width: 2),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.4),
+              blurRadius: 4,
+              spreadRadius: 1,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Icon(
+          Icons.priority_high,
+          color: Colors.black,
+          size: indicatorSize * 1.2,
+        ),
+      );
+    }
+
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        // Status indicator at center of tile
+        if (statusIndicator != null)
+          Positioned(
+            left: positionedX + (tileWidth / 2) - (indicatorSize),
+            top: positionedY - (indicatorSize *2.0),
+            child: statusIndicator,
           ),
-          child: Center(
-            child: Icon(
-              Icons.search,
-              color: Colors.white,
-              size: machineSize * 0.6,
+        // Machine button at bottom center of tile
+        Positioned(
+          left: left,
+          top: top,
+          width: machineSize,
+          height: machineSize,
+          child: GestureDetector(
+            onTap: () {
+              final machines = ref.read(machinesProvider);
+              final currentMachine = machines.firstWhere(
+                (m) => m.id == machineId,
+                orElse: () => machine,
+              );
+              _showMachineView(context, currentMachine);
+            },
+            child: Container(
+              decoration: BoxDecoration(
+                color: machineColor,
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: ScreenUtils.relativeSize(context, 0.002)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black26,
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Center(
+                child: Icon(
+                  Icons.search,
+                  color: Colors.white,
+                  size: machineSize * 0.6,
+                ),
+              ),
             ),
           ),
         ),
-      ),
+      ],
     );
   }
 
@@ -1352,7 +1499,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
     if (orientation == BuildingOrientation.flippedHorizontal) {
       return Transform(
         alignment: Alignment.bottomCenter,
-        transform: Matrix4.identity()..scale(-1.0, 1.0),
+        transform: Matrix4.identity()..scaleByVector3(Vector3(-1.0, 1.0, 1.0)),
         child: imageWidget,
       );
     }
@@ -1623,6 +1770,7 @@ class _MachineStatusSection extends ConsumerWidget {
     final stockColor = _getStockColor(machine);
     final zoneIcon = machine.zone.type.icon;
     final zoneColor = machine.zone.type.color;
+    final isBroken = machine.isBroken;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1654,54 +1802,27 @@ class _MachineStatusSection extends ConsumerWidget {
                 ),
               ),
             ),
+            if (isBroken)
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.red,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  'BROKEN',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: dialogWidth * 0.035,
+                  ),
+                ),
+              ),
           ],
         ),
         SizedBox(
           height: dialogWidth * AppConfig.machineStatusDialogSectionSpacingFactor,
         ),
-        // Broken indicator
-        if (machine.isBroken)
-          Container(
-            padding: EdgeInsets.all(
-              dialogWidth * AppConfig.machineStatusDialogInfoContainerPaddingFactor,
-            ),
-            decoration: BoxDecoration(
-              color: Colors.red.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(
-                dialogWidth * AppConfig.machineStatusDialogInfoContainerBorderRadiusFactor,
-              ),
-              border: Border.all(
-                color: Colors.red,
-                width: 2,
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.error_outline,
-                  color: Colors.red,
-                  size: dialogWidth * AppConfig.machineStatusDialogZoneIconSizeFactor,
-                ),
-                SizedBox(
-                  width: dialogWidth * AppConfig.machineStatusDialogZoneIconSpacingFactor,
-                ),
-                Expanded(
-                  child: Text(
-                    'BROKEN - Repairs Needed',
-                    style: TextStyle(
-                      fontSize: dialogWidth * AppConfig.machineStatusDialogStockTextFontSizeFactor,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.red,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        if (machine.isBroken)
-          SizedBox(
-            height: dialogWidth * AppConfig.machineStatusDialogSectionSpacingFactor,
-          ),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1870,67 +1991,59 @@ class _MachineStatusSection extends ConsumerWidget {
         SizedBox(
           height: dialogWidth * AppConfig.machineStatusDialogSectionSpacingFactor,
         ),
-        // Repair button (if broken)
-        if (machine.isBroken)
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: () {
-                final controller = ref.read(gameControllerProvider.notifier);
-                final cash = ref.read(cashProvider);
-                const repairCost = 150.0;
-                
-                if (cash < repairCost) {
+        
+        // REPAIR BUTTON (Only if broken)
+        if (isBroken)
+          Padding(
+            padding: EdgeInsets.only(bottom: dialogWidth * 0.03),
+            child: SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  final controller = ref.read(gameControllerProvider.notifier);
+                  // Assuming repairMachine exists in your controller/provider
+                  // Since you mentioned you already implemented it.
+                  controller.repairMachine(machine.id);
+                  // Optionally close dialog or show snackbar
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Insufficient funds. Need \$${repairCost.toStringAsFixed(2)} to repair.'),
-                      duration: AppConfig.snackbarDurationShort,
-                    ),
+                    const SnackBar(content: Text('Machine repaired!'), duration: Duration(seconds: 1)),
                   );
-                  return;
-                }
-                
-                controller.repairMachine(machine.id);
-                Navigator.of(context).pop();
-              },
-              icon: Icon(
-                Icons.build,
-                size: dialogWidth * AppConfig.machineStatusDialogCashIconSizeFactor,
-              ),
-              label: Text(
-                'Repair Machine (\$150)',
-                style: TextStyle(
-                  fontSize: dialogWidth * AppConfig.machineStatusDialogCashTextFontSizeFactor,
+                },
+                icon: Icon(
+                  Icons.build,
+                  size: dialogWidth * AppConfig.machineStatusDialogCashIconSizeFactor,
                 ),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.orange,
-                foregroundColor: Colors.white,
-                padding: EdgeInsets.symmetric(
-                  vertical: dialogWidth * AppConfig.machineStatusDialogCashButtonPaddingFactor,
+                label: Text(
+                  'Repair Machine (\$150)',
+                  style: TextStyle(
+                    fontSize: dialogWidth * AppConfig.machineStatusDialogCashTextFontSizeFactor,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  foregroundColor: Colors.white,
+                  padding: EdgeInsets.symmetric(
+                    vertical: dialogWidth * AppConfig.machineStatusDialogCashButtonPaddingFactor,
+                  ),
                 ),
               ),
             ),
           ),
-        if (machine.isBroken)
-          SizedBox(
-            height: dialogWidth * AppConfig.machineStatusDialogSectionSpacingFactor,
-          ),
-        // Open Machine button (disabled if broken)
+
+        // OPEN MACHINE BUTTON (Always visible now)
         SizedBox(
           width: double.infinity,
           child: ElevatedButton.icon(
-            onPressed: machine.isBroken
-                ? null
-                : () {
-                    // Close current dialog and open interior dialog
-                    Navigator.of(context).pop();
-                    showDialog(
-                      context: context,
-                      barrierColor: Colors.black.withValues(alpha: 0.7),
-                      builder: (context) => MachineInteriorDialog(machine: machine),
-                    );
-                  },
+            onPressed: () {
+              // Close current dialog and open interior dialog
+              Navigator.of(context).pop();
+              showDialog(
+                context: context,
+                barrierColor: Colors.black.withValues(alpha: 0.7),
+                builder: (context) => MachineInteriorDialog(machine: machine),
+              );
+            },
             icon: Icon(
               Icons.open_in_new,
               size: dialogWidth * AppConfig.machineStatusDialogCashIconSizeFactor,
@@ -1944,8 +2057,6 @@ class _MachineStatusSection extends ConsumerWidget {
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.blue,
               foregroundColor: Colors.white,
-              disabledBackgroundColor: Colors.grey,
-              disabledForegroundColor: Colors.grey[400],
               padding: EdgeInsets.symmetric(
                 vertical: dialogWidth * AppConfig.machineStatusDialogCashButtonPaddingFactor,
               ),
