@@ -17,10 +17,9 @@ class MapTruck extends PositionComponent {
     super.position,
   }) : super(
           size: Vector2(30, 20),
-          anchor: Anchor.center, // Flame rotates around this anchor automatically
+          anchor: Anchor.center, 
         );
 
-  /// Update the truck reference (for when truck state changes)
   void updateTruck(Truck newTruck) {
     truck = newTruck;
   }
@@ -37,39 +36,49 @@ class MapTruck extends PositionComponent {
 
     final targetPos = Vector2(truck.currentX * _worldScale, truck.currentY * _worldScale);
 
-    // SAFETY CHECK: Ignore (0,0) targets which occur during simulation init glitches
-    if (targetPos == Vector2.zero()) return;
+    // 1. Ignore initialization glitches (0,0)
+    if (targetPos.length2 < 1.0) return;
 
     final direction = targetPos - position;
     final distance = direction.length;
 
-    // Only move/rotate if distance is significant
-    if (distance > 0.5) { 
-      final normalizedDirection = direction.normalized();
+    // 2. Only move if distance is significant (> 1 pixel)
+    if (distance > 1.0) { 
       
-      // Calculate target angle based on movement vector
-      _targetAngle = atan2(normalizedDirection.y, normalizedDirection.x);
-      
-      // Set angle directly. Flame's PositionComponent handles the rotation rendering!
-      angle = _targetAngle; 
+      // 3. Visual Smoothing: Don't rotate for tiny backward jitters
+      // If the target is extremely close (< 5 pixels) but requires a 
+      // sharp turn (> 90 degrees), it's likely a glitch. Ignore rotation.
+      bool shouldRotate = true;
+      if (distance < 5.0) {
+        final currentDir = Vector2(cos(angle), sin(angle));
+        final newDir = direction.normalized();
+        final dot = currentDir.dot(newDir);
+        if (dot < 0) { // Angle difference > 90 degrees (turning back)
+          shouldRotate = false;
+        }
+      }
 
+      if (shouldRotate) {
+        final normalizedDirection = direction.normalized();
+        _targetAngle = atan2(normalizedDirection.y, normalizedDirection.x);
+        angle = _targetAngle; 
+      }
+
+      // Move
       final moveStep = (_speed * dt);
       if (distance < moveStep) {
          position = targetPos;
       } else {
-         position += normalizedDirection * moveStep;
+         position += direction.normalized() * moveStep;
       }
     } else {
+      // We are at the target
       position = targetPos;
     }
   }
 
   @override
   void render(Canvas canvas) {
-    // NOTE: Do NOT call canvas.rotate() or canvas.translate() here.
-    // PositionComponent has already handled rotation and positioning for you.
-    // The (0,0) point here is the Top-Left of the truck's bounding box.
-
     // Draw truck body (white rectangle)
     final bodyPaint = Paint()
       ..color = Colors.white
@@ -97,13 +106,11 @@ class MapTruck extends PositionComponent {
     canvas.drawCircle(Offset(size.x - wheelOffset, size.y), wheelRadius, wheelPaint);
     canvas.drawCircle(Offset(size.x - wheelOffset, 0), wheelRadius, wheelPaint);
 
-    // Draw Cab (Front)
-    // FIX: Draw cab on the RIGHT side (positive X) because 0 radians = Right/East
+    // Draw Cab (Front - Right Side)
     final cabPaint = Paint()
       ..color = const Color(0xFFE0E0E0)
       ..style = PaintingStyle.fill;
     
-    // Cab width is 30% of truck, placed at the far right
     final cabWidth = size.x * 0.3; 
     final cabRect = Rect.fromLTWH(size.x - cabWidth, 2, cabWidth, size.y - 4);
     
@@ -113,7 +120,6 @@ class MapTruck extends PositionComponent {
     _drawStatusIndicator(canvas);
   }
 
-  /// Draw status indicator (small colored dot)
   void _drawStatusIndicator(Canvas canvas) {
     final paint = Paint()..style = PaintingStyle.fill;
 
@@ -129,9 +135,8 @@ class MapTruck extends PositionComponent {
         break;
     }
 
-    // Draw small circle in top-right corner (size relative to component)
-    final indicatorRadius = size.x * 0.06; // 6% of component width
-    final indicatorOffset = size.x * 0.1; // 10% offset from edges
+    final indicatorRadius = size.x * 0.06;
+    final indicatorOffset = size.x * 0.1;
     canvas.drawCircle(
       Offset(size.x - indicatorOffset, indicatorOffset),
       indicatorRadius,

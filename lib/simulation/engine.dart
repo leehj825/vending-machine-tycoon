@@ -769,18 +769,22 @@ class SimulationEngine extends StateNotifier<SimulationState> {
         if (path.isEmpty || 
             (path.isNotEmpty && (path.last.x != warehouseRoadX || path.last.y != warehouseRoadY)) ||
             pathIndex >= path.length) {
+          
           path = findPath(currentX, currentY, warehouseRoadX, warehouseRoadY);
           pathIndex = 0;
-        }
-        
-        // SAFETY CHECK: If the first target is the current position, skip it
-        // This prevents the truck from trying to move "to itself" or backwards slightly
-        if (path.isNotEmpty && pathIndex < path.length) {
-          final firstTarget = path[pathIndex];
-          final distToFirst = (firstTarget.x - currentX).abs() + (firstTarget.y - currentY).abs();
-          if (distToFirst < 0.01) {
-            pathIndex++;
+
+          // --- CRITICAL FIX: Skip the first node if we are already there ---
+          // This prevents the truck from targeting its current location, 
+          // which causes the "turn back" / "left-bottom" glitch.
+          if (path.isNotEmpty) {
+            final first = path.first;
+            final distToFirst = (first.x - currentX).abs() + (first.y - currentY).abs();
+            // If we are within 0.1 tiles (10 pixels) of the first node, skip it.
+            if (distToFirst < 0.1) {
+              pathIndex = 1;
+            }
           }
+          // -------------------------------------------------------------
         }
         
         // Move along the path
@@ -882,18 +886,22 @@ class SimulationEngine extends StateNotifier<SimulationState> {
       if (path.isEmpty || 
           (path.isNotEmpty && (path.last.x != destRoadX || path.last.y != destRoadY)) ||
           pathIndex >= path.length) {
+        
         path = findPath(currentX, currentY, destRoadX, destRoadY);
         pathIndex = 0;
-      }
-      
-      // SAFETY CHECK: If the first target is the current position, skip it
-      // This prevents the truck from trying to move "to itself" or backwards slightly
-      if (path.isNotEmpty && pathIndex < path.length) {
-        final firstTarget = path[pathIndex];
-        final distToFirst = (firstTarget.x - currentX).abs() + (firstTarget.y - currentY).abs();
-        if (distToFirst < 0.01) {
-          pathIndex++;
+
+        // --- CRITICAL FIX: Skip the first node if we are already there ---
+        // This prevents the truck from targeting its current location, 
+        // which causes the "turn back" / "left-bottom" glitch.
+        if (path.isNotEmpty) {
+          final first = path.first;
+          final distToFirst = (first.x - currentX).abs() + (first.y - currentY).abs();
+          // If we are within 0.1 tiles (10 pixels) of the first node, skip it.
+          if (distToFirst < 0.1) {
+            pathIndex = 1;
+          }
         }
+        // -------------------------------------------------------------
       }
       
       // Move along the path
