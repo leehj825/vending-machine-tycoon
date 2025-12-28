@@ -241,29 +241,27 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
     _updateValidRoads();
   }
   
-  /// Extract road coordinates from grid and update simulation engine
+  /// Extract road tiles from grid and update simulation engine
+  /// Note: This is now handled by updateCityMapState in GameController,
+  /// but we keep this for backward compatibility during map generation
   void _updateValidRoads() {
-    final roadCoordinates = <double>{};
+    final roadTiles = <({double x, double y})>[];
     
-    // Find all unique road X and Y coordinates
+    // Find all road tiles
     for (int y = 0; y < gridSize; y++) {
       for (int x = 0; x < gridSize; x++) {
         if (_grid[y][x] == TileType.road) {
           // Convert grid coordinates to zone coordinates (grid + 1)
-          final zoneX = (x + 1).toDouble();
-          final zoneY = (y + 1).toDouble();
-          roadCoordinates.add(zoneX);
-          roadCoordinates.add(zoneY);
+          roadTiles.add((x: (x + 1).toDouble(), y: (y + 1).toDouble()));
         }
       }
     }
     
-    // Convert to sorted list and update simulation engine
-    final validRoads = roadCoordinates.toList()..sort();
-    if (validRoads.isNotEmpty) {
+    // Update simulation engine with road tiles
+    if (roadTiles.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         final controller = ref.read(gameControllerProvider.notifier);
-        controller.simulationEngine.setValidRoads(validRoads);
+        controller.simulationEngine.setMapLayout(roadTiles);
       });
     }
   }

@@ -127,9 +127,8 @@ class SimulationEngine extends StateNotifier<SimulationState> {
   final StreamController<SimulationState> _streamController = StreamController<SimulationState>.broadcast();
   
   // Pathfinding optimization: cached base graph
-  // Dynamic valid roads (can be set via setValidRoads method)
-  List<double> _validRoads = [4.0, 7.0]; // Default fallback
-  static const List<double> _outwardRoads = []; // Cleared as we only use inner roads 4 and 7
+  // Exact road tile coordinates (set via setMapLayout method)
+  Set<({double x, double y})> _roadTiles = {};
   Map<({double x, double y}), List<({double x, double y})>>? _cachedBaseGraph;
 
   SimulationEngine({
@@ -209,9 +208,9 @@ class SimulationEngine extends StateNotifier<SimulationState> {
     _streamController.add(state);
   }
 
-  /// Set valid roads for pathfinding (called when map is generated/loaded)
-  void setValidRoads(List<double> roads) {
-    _validRoads = roads;
+  /// Set map layout with exact road tile coordinates (called when map is generated/loaded)
+  void setMapLayout(List<({double x, double y})> roadTiles) {
+    _roadTiles = roadTiles.toSet();
     _cachedBaseGraph = null; // Clear cache so graph rebuilds with new roads
   }
 
@@ -289,45 +288,30 @@ class SimulationEngine extends StateNotifier<SimulationState> {
     return Zone.getAllowedProducts(zoneType);
   }
 
-  /// Build the base graph containing permanent road intersections
+  /// Build the base graph containing road tile connections
   /// This is cached to avoid rebuilding on every pathfinding call
   Map<({double x, double y}), List<({double x, double y})>> _getBaseGraph() {
     if (_cachedBaseGraph != null) return _cachedBaseGraph!;
 
     final graph = <({double x, double y}), List<({double x, double y})>>{};
-    
-    // Helper to check if a coordinate is on an outward road
-    bool isOutwardRoad(double coord) => _outwardRoads.contains(coord);
-    
-    // Build basic grid graph (intersections)
-    for (final roadX in _validRoads) {
-      for (final roadY in _validRoads) {
-        final node = (x: roadX, y: roadY);
-        graph[node] = [];
-        
-        // Connect horizontally
-        for (final otherRoadX in _validRoads) {
-          if (otherRoadX != roadX) {
-            final targetNode = (x: otherRoadX, y: roadY);
-            final isCurrentOutward = isOutwardRoad(roadX);
-            final isTargetOutward = isOutwardRoad(otherRoadX);
-            // Avoid outward roads unless already on one
-            if (!isTargetOutward || isCurrentOutward) {
-              graph[node]!.add(targetNode);
-            }
-          }
-        }
-        
-        // Connect vertically
-        for (final otherRoadY in _validRoads) {
-          if (otherRoadY != roadY) {
-            final targetNode = (x: roadX, y: otherRoadY);
-            final isCurrentOutward = isOutwardRoad(roadY);
-            final isTargetOutward = isOutwardRoad(otherRoadY);
-            if (!isTargetOutward || isCurrentOutward) {
-              graph[node]!.add(targetNode);
-            }
-          }
+
+    // Initialize all nodes
+    for (final tile in _roadTiles) {
+      graph[tile] = [];
+    }
+
+    // Connect adjacent road tiles (check 4 directions: Right, Left, Down, Up)
+    for (final tile in _roadTiles) {
+      final neighbors = [
+        (x: tile.x + 1.0, y: tile.y), // Right
+        (x: tile.x - 1.0, y: tile.y), // Left
+        (x: tile.x, y: tile.y + 1.0), // Down
+        (x: tile.x, y: tile.y - 1.0), // Up
+      ];
+
+      for (final neighbor in neighbors) {
+        if (_roadTiles.contains(neighbor)) {
+          graph[tile]!.add(neighbor);
         }
       }
     }
@@ -338,28 +322,23 @@ class SimulationEngine extends StateNotifier<SimulationState> {
 
   /// Helper to find nearest point on the road network from any coordinate
   /// This projects the point perpendicularly onto the nearest road.
+  /// Helper to find nearest road tile from any coordinate using Euclidean distance
   ({double x, double y}) _getNearestRoadPoint(double x, double y) {
-    double minDist = double.infinity;
-    var bestPoint = (x: x, y: y);
+    if (_roadTiles.isEmpty) return (x: x, y: y); // Fallback
 
-    // Check vertical roads (fixed X)
-    for (final roadX in _validRoads) {
-      final dist = (x - roadX).abs();
-      if (dist < minDist) {
-        minDist = dist;
-        bestPoint = (x: roadX, y: y);
+    double minDistance = double.infinity;
+    var nearest = _roadTiles.first;
+
+    for (final tile in _roadTiles) {
+      final dx = tile.x - x;
+      final dy = tile.y - y;
+      final dist = dx * dx + dy * dy; // Squared distance is faster (no sqrt needed for comparison)
+      if (dist < minDistance) {
+        minDistance = dist;
+        nearest = tile;
       }
     }
-
-    // Check horizontal roads (fixed Y)
-    for (final roadY in _validRoads) {
-      final dist = (y - roadY).abs();
-      if (dist < minDist) { 
-        minDist = dist;
-        bestPoint = (x: x, y: roadY);
-      }
-    }
-    return bestPoint;
+    return nearest;
   }
 
   /// Main tick function - called every 1 second (10 minutes in-game)
@@ -644,47 +623,43 @@ class SimulationEngine extends StateNotifier<SimulationState> {
       }
 
       // 5. Connect Entry/Exit points to the rest of the road network
-      // Helper to connect a road point to its neighbors on the same road line
+      // Helper to connect a road point to its neighbors
       void connectToRoadNetwork(({double x, double y}) point) {
-        if (baseGraph.containsKey(point)) return; // Already an intersection
+        if (baseGraph.containsKey(point)) return; // Already in base graph
 
-        // Check if on a vertical road (X is a valid road X)
-        if (_validRoads.contains(point.x)) {
-           // Connect to all intersections on this vertical line
-           for (final rY in _validRoads) {
-             final neighbor = (x: point.x, y: rY);
-             // Ensure neighbor exists in base graph or is effectively a node
-             if (!graph.containsKey(neighbor)) graph[neighbor] = [];
-             
-             // Add edges
-             if (!graph[point]!.contains(neighbor)) graph[point]!.add(neighbor);
-             if (!graph[neighbor]!.contains(point)) graph[neighbor]!.add(point);
-           }
-        }
-        
-        // Check if on a horizontal road (Y is a valid road Y)
-        if (_validRoads.contains(point.y)) {
-           // Connect to all intersections on this horizontal line
-           for (final rX in _validRoads) {
-             final neighbor = (x: rX, y: point.y);
-             if (!graph.containsKey(neighbor)) graph[neighbor] = [];
-             
-             if (!graph[point]!.contains(neighbor)) graph[point]!.add(neighbor);
-             if (!graph[neighbor]!.contains(point)) graph[neighbor]!.add(point);
-           }
+        // Check 4 neighbors (Right, Left, Down, Up)
+        final neighbors = [
+          (x: point.x + 1.0, y: point.y),
+          (x: point.x - 1.0, y: point.y),
+          (x: point.x, y: point.y + 1.0),
+          (x: point.x, y: point.y - 1.0),
+        ];
+
+        for (final neighbor in neighbors) {
+          if (_roadTiles.contains(neighbor)) {
+            if (!graph.containsKey(neighbor)) graph[neighbor] = [];
+            if (!graph.containsKey(point)) graph[point] = [];
+            
+            // Add bidirectional edge
+            if (!graph[point]!.contains(neighbor)) graph[point]!.add(neighbor);
+            if (!graph[neighbor]!.contains(point)) graph[neighbor]!.add(point);
+          }
         }
       }
 
       connectToRoadNetwork(startEntry);
       connectToRoadNetwork(endExit);
 
-      // 6. Direct connection check: If Entry and Exit are on the same road segment, connect them
-      bool sameVertical = (startEntry.x == endExit.x) && _validRoads.contains(startEntry.x);
-      bool sameHorizontal = (startEntry.y == endExit.y) && _validRoads.contains(startEntry.y);
+      // 6. Direct connection check: If Entry and Exit are adjacent road tiles, connect them
+      final dx = (startEntry.x - endExit.x).abs();
+      final dy = (startEntry.y - endExit.y).abs();
+      final isAdjacent = (dx == 1.0 && dy == 0.0) || (dx == 0.0 && dy == 1.0);
       
-      if (sameVertical || sameHorizontal) {
-          if (!graph[startEntry]!.contains(endExit)) graph[startEntry]!.add(endExit);
-          if (!graph[endExit]!.contains(startEntry)) graph[endExit]!.add(startEntry);
+      if (isAdjacent && _roadTiles.contains(startEntry) && _roadTiles.contains(endExit)) {
+        if (!graph.containsKey(startEntry)) graph[startEntry] = [];
+        if (!graph.containsKey(endExit)) graph[endExit] = [];
+        if (!graph[startEntry]!.contains(endExit)) graph[startEntry]!.add(endExit);
+        if (!graph[endExit]!.contains(startEntry)) graph[endExit]!.add(startEntry);
       }
 
       // A* Algorithm
