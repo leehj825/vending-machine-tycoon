@@ -375,15 +375,14 @@ class GameController extends StateNotifier<GlobalGameState> {
       currentCash: 0.0,
     );
 
-    // Update simulation engine
-    final updatedMachines = [...state.machines, newMachine];
-    simulationEngine.updateMachines(updatedMachines);
+    // Update simulation engine (use addMachine to append, not overwrite)
+    simulationEngine.addMachine(newMachine);
 
     // Update state
     final newCash = state.cash - price;
     state = state.copyWith(
       cash: newCash,
-      machines: updatedMachines,
+      machines: [...state.machines, newMachine],
     );
     
     // Create log message
@@ -396,18 +395,9 @@ class GameController extends StateNotifier<GlobalGameState> {
     simulationEngine.updateCash(newCash);
   }
 
-  /// Get allowed products for a zone type
+  /// Get allowed products for a zone type (delegates to Zone.getAllowedProducts)
   List<Product> getAllowedProductsForZone(ZoneType zoneType) {
-    switch (zoneType) {
-      case ZoneType.shop:
-        return [Product.soda, Product.chips];
-      case ZoneType.school:
-        return [Product.soda, Product.chips, Product.sandwich];
-      case ZoneType.gym:
-        return [Product.proteinBar, Product.soda, Product.chips];
-      case ZoneType.office:
-        return [Product.coffee, Product.techGadget];
-    }
+    return Zone.getAllowedProducts(zoneType);
   }
 
   /// Get initial products for a zone type based on progression rules
@@ -828,6 +818,20 @@ class GameController extends StateNotifier<GlobalGameState> {
     // Directly update state - this works around freezed limitations
     // The state will be properly serialized when saving
     state = state.copyWith(cityMapState: mapState);
+    
+    // Extract road tiles from map and update simulation engine pathfinding
+    if (mapState != null) {
+      final roadTiles = <({double x, double y})>[];
+      for (int y = 0; y < mapState.grid.length; y++) {
+        for (int x = 0; x < mapState.grid[y].length; x++) {
+          if (mapState.grid[y][x] == 'road') {
+            // Convert grid coordinates to zone coordinates (grid + 1)
+            roadTiles.add((x: (x + 1).toDouble(), y: (y + 1).toDouble()));
+          }
+        }
+      }
+      simulationEngine.setMapLayout(roadTiles);
+    }
   }
 
   /// Update a single machine (used for maintenance status, cash collection, etc.)
@@ -844,8 +848,8 @@ class GameController extends StateNotifier<GlobalGameState> {
     // Update state
     state = state.copyWith(machines: updatedMachines);
 
-    // Sync to simulation engine
-    simulationEngine.updateMachines(updatedMachines);
+    // Sync to simulation engine (use updateMachine for atomic update)
+    simulationEngine.updateMachine(updatedMachine);
   }
 
   /// Update player cash
@@ -888,8 +892,8 @@ class GameController extends StateNotifier<GlobalGameState> {
       'Retrieved \$${cashToRetrieve.toStringAsFixed(2)} from ${machine.name}',
     );
 
-    // Sync to simulation engine
-    simulationEngine.updateMachines(updatedMachines);
+    // Sync to simulation engine (use updateMachine for atomic update)
+    simulationEngine.updateMachine(updatedMachine);
     simulationEngine.updateCash(newCash);
   }
 
@@ -935,8 +939,8 @@ class GameController extends StateNotifier<GlobalGameState> {
       'Repaired ${machine.name} for \$${repairCost.toStringAsFixed(2)}',
     );
 
-    // Sync to simulation engine
-    simulationEngine.updateMachines(updatedMachines);
+    // Sync to simulation engine (use updateMachine for atomic update)
+    simulationEngine.updateMachine(updatedMachine);
     simulationEngine.updateCash(newCash);
   }
 

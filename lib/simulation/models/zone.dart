@@ -1,4 +1,5 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
+import 'product.dart';
 
 part 'zone.freezed.dart';
 
@@ -27,6 +28,20 @@ abstract class Zone with _$Zone {
   }) = _Zone;
 
   const Zone._();
+
+  /// Get allowed products for a zone type
+  static List<Product> getAllowedProducts(ZoneType type) {
+    switch (type) {
+      case ZoneType.shop:
+        return [Product.soda, Product.chips];
+      case ZoneType.school:
+        return [Product.soda, Product.chips, Product.sandwich];
+      case ZoneType.gym:
+        return [Product.proteinBar, Product.soda, Product.chips];
+      case ZoneType.office:
+        return [Product.coffee, Product.techGadget];
+    }
+  }
 
   /// Get demand multiplier for a specific hour
   /// Interpolates between defined hours in the demand curve

@@ -182,6 +182,9 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
     
     _warehouseX = mapState.warehouseX;
     _warehouseY = mapState.warehouseY;
+    
+    // Update valid roads in simulation engine
+    _updateValidRoads();
   }
   
   /// Save current map to game state
@@ -233,6 +236,34 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
     _generateRoadGrid();
     _placeWarehouse();
     _placeBuildingBlocks();
+    
+    // Update valid roads in simulation engine
+    _updateValidRoads();
+  }
+  
+  /// Extract road tiles from grid and update simulation engine
+  /// Note: This is now handled by updateCityMapState in GameController,
+  /// but we keep this for backward compatibility during map generation
+  void _updateValidRoads() {
+    final roadTiles = <({double x, double y})>[];
+    
+    // Find all road tiles
+    for (int y = 0; y < gridSize; y++) {
+      for (int x = 0; x < gridSize; x++) {
+        if (_grid[y][x] == TileType.road) {
+          // Convert grid coordinates to zone coordinates (grid + 1)
+          roadTiles.add((x: (x + 1).toDouble(), y: (y + 1).toDouble()));
+        }
+      }
+    }
+    
+    // Update simulation engine with road tiles
+    if (roadTiles.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final controller = ref.read(gameControllerProvider.notifier);
+        controller.simulationEngine.setMapLayout(roadTiles);
+      });
+    }
   }
 
   void _generateRoadGrid() {
@@ -1214,7 +1245,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
     
     final double truckSize = tileWidth * 0.4; 
     final left = positionedX + (tileWidth - truckSize) / 2;
-    final top = positionedY + (tileHeight / 2) - truckSize;
+    final top = positionedY + (tileHeight / 2) - truckSize/1.2;
 
     String asset = 'assets/images/tiles/truck_front.png';
     bool flip = false;

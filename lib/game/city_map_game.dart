@@ -31,7 +31,7 @@ class CityMapGame extends FlameGame with ScaleDetector, ScrollDetector, TapDetec
   
   // Sync throttling
   double _timeSinceLastSync = 0.0;
-  static const double _syncInterval = 0.5; // Sync every 0.5 seconds
+  static const double _syncInterval = 0.05; // Sync every 50ms to match engine tick rate
   
   // Legacy callback
   final void Function(Machine)? onMachineTap;
@@ -219,16 +219,17 @@ class CityMapGame extends FlameGame with ScaleDetector, ScrollDetector, TapDetec
       }
       
       for (final t in trucks) {
-        // Trucks must always stay on roads (integer coordinates)
-        // Round to road coordinates for all truck states
-        final roadX = t.currentX.round().toDouble();
-        final roadY = t.currentY.round().toDouble();
-        final posX = roadX * 100;
-        final posY = roadY * 100;
+        // FIX 1: Use EXACT float coordinates. Do NOT round.
+        // The simulation moves in small steps (e.g. 4.1, 4.2), rounding forces it back to 4.0.
+        final posX = t.currentX * 100.0;
+        final posY = t.currentY * 100.0;
         final pos = Vector2(posX, posY);
+
         if (_truckComponents.containsKey(t.id)) {
+           // FIX 2: Only update the data. 
+           // Do NOT force set ".position = pos" here. 
+           // Let the MapTruck component interpolate smoothly in its update() loop.
            _truckComponents[t.id]!.updateTruck(t);
-           _truckComponents[t.id]!.position = pos;
         } else {
            final c = MapTruck(truck: t, position: pos);
            _truckComponents[t.id] = c;
