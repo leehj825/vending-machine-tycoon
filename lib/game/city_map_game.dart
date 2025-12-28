@@ -31,7 +31,7 @@ class CityMapGame extends FlameGame with ScaleDetector, ScrollDetector, TapDetec
   
   // Sync throttling
   double _timeSinceLastSync = 0.0;
-  static const double _syncInterval = 0.5; // Sync every 0.5 seconds
+  static const double _syncInterval = 0.05; // Sync every 50ms to match engine tick rate
   
   // Legacy callback
   final void Function(Machine)? onMachineTap;

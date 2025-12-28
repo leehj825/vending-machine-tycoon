@@ -182,6 +182,9 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
     
     _warehouseX = mapState.warehouseX;
     _warehouseY = mapState.warehouseY;
+    
+    // Update valid roads in simulation engine
+    _updateValidRoads();
   }
   
   /// Save current map to game state
@@ -233,6 +236,36 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
     _generateRoadGrid();
     _placeWarehouse();
     _placeBuildingBlocks();
+    
+    // Update valid roads in simulation engine
+    _updateValidRoads();
+  }
+  
+  /// Extract road coordinates from grid and update simulation engine
+  void _updateValidRoads() {
+    final roadCoordinates = <double>{};
+    
+    // Find all unique road X and Y coordinates
+    for (int y = 0; y < gridSize; y++) {
+      for (int x = 0; x < gridSize; x++) {
+        if (_grid[y][x] == TileType.road) {
+          // Convert grid coordinates to zone coordinates (grid + 1)
+          final zoneX = (x + 1).toDouble();
+          final zoneY = (y + 1).toDouble();
+          roadCoordinates.add(zoneX);
+          roadCoordinates.add(zoneY);
+        }
+      }
+    }
+    
+    // Convert to sorted list and update simulation engine
+    final validRoads = roadCoordinates.toList()..sort();
+    if (validRoads.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final controller = ref.read(gameControllerProvider.notifier);
+        controller.simulationEngine.setValidRoads(validRoads);
+      });
+    }
   }
 
   void _generateRoadGrid() {

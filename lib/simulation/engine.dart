@@ -127,8 +127,8 @@ class SimulationEngine extends StateNotifier<SimulationState> {
   final StreamController<SimulationState> _streamController = StreamController<SimulationState>.broadcast();
   
   // Pathfinding optimization: cached base graph
-  // UPDATED: Valid roads are only at indices 4 and 7 as per map layout
-  static const List<double> _validRoads = [4.0, 7.0];
+  // Dynamic valid roads (can be set via setValidRoads method)
+  List<double> _validRoads = [4.0, 7.0]; // Default fallback
   static const List<double> _outwardRoads = []; // Cleared as we only use inner roads 4 and 7
   Map<({double x, double y}), List<({double x, double y})>>? _cachedBaseGraph;
 
@@ -158,6 +158,17 @@ class SimulationEngine extends StateNotifier<SimulationState> {
     print('🔴 ENGINE: Adding machine ${machine.name}');
     state = state.copyWith(machines: [...state.machines, machine]);
     _streamController.add(state);
+  }
+
+  /// Update a single machine in the simulation (atomic update to prevent race conditions)
+  void updateMachine(Machine updatedMachine) {
+    final index = state.machines.indexWhere((m) => m.id == updatedMachine.id);
+    if (index != -1) {
+      final newMachines = List<Machine>.from(state.machines);
+      newMachines[index] = updatedMachine;
+      state = state.copyWith(machines: newMachines);
+      _streamController.add(state);
+    }
   }
 
   /// Update cash in the simulation
@@ -196,6 +207,12 @@ class SimulationEngine extends StateNotifier<SimulationState> {
     print('🔴 ENGINE: Updating rush multiplier to $multiplier');
     state = state.copyWith(rushMultiplier: multiplier);
     _streamController.add(state);
+  }
+
+  /// Set valid roads for pathfinding (called when map is generated/loaded)
+  void setValidRoads(List<double> roads) {
+    _validRoads = roads;
+    _cachedBaseGraph = null; // Clear cache so graph rebuilds with new roads
   }
 
   /// Restore simulation state (used for loading saved games)
@@ -267,18 +284,9 @@ class SimulationEngine extends StateNotifier<SimulationState> {
     super.dispose();
   }
 
-  /// Get allowed products for a zone type
+  /// Get allowed products for a zone type (delegates to Zone.getAllowedProducts)
   List<Product> _getAllowedProductsForZone(ZoneType zoneType) {
-    switch (zoneType) {
-      case ZoneType.shop:
-        return [Product.soda, Product.chips];
-      case ZoneType.school:
-        return [Product.soda, Product.chips, Product.sandwich];
-      case ZoneType.gym:
-        return [Product.proteinBar, Product.soda, Product.chips];
-      case ZoneType.office:
-        return [Product.coffee, Product.techGadget];
-    }
+    return Zone.getAllowedProducts(zoneType);
   }
 
   /// Build the base graph containing permanent road intersections
@@ -796,27 +804,29 @@ class SimulationEngine extends StateNotifier<SimulationState> {
         var simY = currentY;
         var newStatus = currentStatus == TruckStatus.idle ? TruckStatus.traveling : currentStatus;
 
-        // Process movement
-        while (currentPathIndex < path.length) {
-          final targetWaypoint = path[currentPathIndex];
-          final dx = targetWaypoint.x - simX;
-          final dy = targetWaypoint.y - simY;
-          final distance = math.sqrt(dx * dx + dy * dy);
-          
+      // Process movement using remaining distance approach to prevent infinite loops
+      double remainingDistance = movementSpeed;
+      while (currentPathIndex < path.length && remainingDistance > 0.001) {
+        final targetWaypoint = path[currentPathIndex];
+        final dx = targetWaypoint.x - simX;
+        final dy = targetWaypoint.y - simY;
+        final distance = math.sqrt(dx * dx + dy * dy);
+        
         if (distance < SimulationConstants.roadSnapThreshold) {
           // Reached waypoint, snap and move to next
           simX = targetWaypoint.x;
           simY = targetWaypoint.y;
           currentPathIndex++;
         } else {
-            // Move towards waypoint
-            final moveDistance = movementSpeed.clamp(0.0, distance);
-            final ratio = moveDistance / distance;
-            simX += dx * ratio;
-            simY += dy * ratio;
-            break; // Moved max distance for this tick
-          }
+          // Move towards waypoint, deduct from remaining distance
+          final moveDistance = remainingDistance.clamp(0.0, distance);
+          final ratio = moveDistance / distance;
+          simX += dx * ratio;
+          simY += dy * ratio;
+          remainingDistance -= moveDistance;
+          if (remainingDistance <= 0.001) break; // No more distance to travel this tick
         }
+      }
         
         // Check if we reached the final destination (Warehouse)
         if (currentPathIndex >= path.length) {
@@ -896,8 +906,9 @@ class SimulationEngine extends StateNotifier<SimulationState> {
       var simX = currentX;
       var simY = currentY;
       
-      // Process movement
-      while (currentPathIndex < path.length) {
+      // Process movement using remaining distance approach to prevent infinite loops
+      double remainingDistance = movementSpeed;
+      while (currentPathIndex < path.length && remainingDistance > 0.001) {
         final targetWaypoint = path[currentPathIndex];
         final dx = targetWaypoint.x - simX;
         final dy = targetWaypoint.y - simY;
@@ -909,12 +920,13 @@ class SimulationEngine extends StateNotifier<SimulationState> {
           simY = targetWaypoint.y;
           currentPathIndex++;
         } else {
-          // Move
-          final moveDistance = movementSpeed.clamp(0.0, distance);
+          // Move towards waypoint, deduct from remaining distance
+          final moveDistance = remainingDistance.clamp(0.0, distance);
           final ratio = moveDistance / distance;
           simX += dx * ratio;
           simY += dy * ratio;
-          break;
+          remainingDistance -= moveDistance;
+          if (remainingDistance <= 0.001) break; // No more distance to travel this tick
         }
       }
       
