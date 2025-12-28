@@ -9,7 +9,7 @@ class MapTruck extends PositionComponent {
   // while the map renders on a 1000x1000 world with grid lines every 100.
   // Keep the map in pixel/world space by scaling simulation coords.
   static const double _worldScale = 100.0;
-  static const double _speed = 50.0; // Pixels per second
+  static const double _speed = 100.0; // FIX: Match simulation speed (1 tile/sec * 100 world scale)
   static const double _arrivalThreshold = 2.0; // Distance to consider "arrived"
 
   MapTruck({
