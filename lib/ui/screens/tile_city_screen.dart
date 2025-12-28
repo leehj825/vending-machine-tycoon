@@ -856,7 +856,64 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
     }
 
 
-    // Add Machines and Trucks
+    // Add Pedestrians with proper depth sorting (before machines/trucks)
+    // Create pedestrian widgets with their depth information
+    final pedestrianData = <({Widget widget, int depth, int y, int x})>[];
+    for (final pedestrian in _pedestrians) {
+      final gridX = pedestrian.gridX.floor();
+      final gridY = pedestrian.gridY.floor();
+      final depth = gridX + gridY; // Same depth calculation as tiles
+      final widget = _buildPedestrian(context, pedestrian, centerOffset, tileWidth, tileHeight);
+      pedestrianData.add((widget: widget, depth: depth, y: gridY, x: gridX));
+    }
+    
+    // Sort pedestrians by depth (same as tiles)
+    pedestrianData.sort((a, b) {
+      if (a.depth != b.depth) return a.depth.compareTo(b.depth);
+      return a.y.compareTo(b.y);
+    });
+    
+    // Insert pedestrians into tiles list at correct depth positions
+    // This ensures pedestrians appear behind buildings when building is in front (lower on screen)
+    // Since tileData is sorted by depth, we can use it to find insertion points
+    for (final pedData in pedestrianData) {
+      int insertIndex = tiles.length; // Default: append at end of tiles (before machines/trucks)
+      
+      // Find the right position: insert after tiles with depth < pedestrian depth,
+      // or after buildings with same depth but y >= pedestrian y
+      for (int i = tileData.length - 1; i >= 0; i--) {
+        final tileX = tileData[i]['x'] as int;
+        final tileY = tileData[i]['y'] as int;
+        final tileDepth = tileX + tileY;
+        final tileType = tileData[i]['tileType'] as TileType;
+        
+        // Check if this tile should have pedestrians appear behind it (all except grass and road)
+        if (_shouldPedestrianBeBehindTile(tileType)) {
+          // If tile is in front of pedestrian (lower on screen = higher y, or same y with higher depth)
+          // Pedestrian should be behind it (insert before this tile)
+          if (tileDepth > pedData.depth || 
+              (tileDepth == pedData.depth && tileY > pedData.y)) {
+            // Insert before this tile
+            insertIndex = i;
+            break;
+          } else if (tileDepth == pedData.depth && tileY == pedData.y) {
+            // Same position - insert after tile
+            insertIndex = i + 1;
+            break;
+          }
+        } else if (tileDepth < pedData.depth) {
+          // Past all tiles with lower depth, insert here
+          insertIndex = i + 1;
+          break;
+        }
+      }
+      
+      // Clamp insertIndex to valid range (only within tiles, before machines/trucks)
+      insertIndex = insertIndex.clamp(0, tiles.length);
+      tiles.insert(insertIndex, pedData.widget);
+    }
+    
+    // Add Machines and Trucks (after pedestrians, so they appear on top)
     final gameMachines = ref.watch(machinesProvider);
     for (final machine in gameMachines) {
       tiles.add(_buildGameMachine(context, machine, centerOffset, tileWidth, tileHeight));
@@ -864,11 +921,6 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
     final gameTrucks = ref.watch(trucksProvider);
     for (final truck in gameTrucks) {
       tiles.add(_buildGameTruck(context, truck, centerOffset, tileWidth, tileHeight));
-    }
-    
-    // Add Pedestrians
-    for (final pedestrian in _pedestrians) {
-      tiles.add(_buildPedestrian(context, pedestrian, centerOffset, tileWidth, tileHeight));
     }
 
     // Add Marketing Button if position is set (show during rush hour too, but with fire icon)
@@ -1380,17 +1432,10 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
 
   // --- PEDESTRIAN MANAGEMENT ---
   
-  /// Spawn random number (1-10) of pedestrians with unique personIds on random road tiles
+  /// Spawn random number (1-10) of pedestrians with unique personIds next to buildings
   void _spawnPedestrians() {
-    // Find all road tiles (sidewalks only)
-    final validTiles = <({int x, int y})>[];
-    for (int y = 0; y < _grid.length; y++) {
-      for (int x = 0; x < _grid[y].length; x++) {
-        if (_isValidTileForPedestrian(_grid[y][x])) {
-          validTiles.add((x: x, y: y));
-        }
-      }
-    }
+    // Find all road tiles that are next to buildings
+    final validTiles = _findRoadTilesNextToBuildings();
     
     if (validTiles.isEmpty) return;
     
@@ -1418,17 +1463,10 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
     }
   }
   
-  /// Spawn a single pedestrian at a random road tile (sidewalk)
+  /// Spawn a single pedestrian at a random road tile next to a building
   void _spawnSinglePedestrian() {
-    // Find all road tiles (sidewalks only)
-    final validTiles = <({int x, int y})>[];
-    for (int y = 0; y < _grid.length; y++) {
-      for (int x = 0; x < _grid[y].length; x++) {
-        if (_isValidTileForPedestrian(_grid[y][x])) {
-          validTiles.add((x: x, y: y));
-        }
-      }
-    }
+    // Find all road tiles that are next to buildings
+    final validTiles = _findRoadTilesNextToBuildings();
     
     if (validTiles.isEmpty) return;
     
@@ -1457,6 +1495,11 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
            tileType == TileType.house;
   }
   
+  /// Check if a tile type should have pedestrians appear behind it (all except grass and road)
+  bool _shouldPedestrianBeBehindTile(TileType tileType) {
+    return tileType != TileType.grass && tileType != TileType.road;
+  }
+  
   /// Check if pedestrian is adjacent to a building or house (in front of it)
   bool _isInFrontOfBuildingOrHouse(int gridX, int gridY) {
     // Check all 4 adjacent tiles for buildings or houses
@@ -1477,6 +1520,26 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
     }
     
     return false;
+  }
+  
+  /// Find all road tiles that are adjacent to buildings or houses
+  List<({int x, int y})> _findRoadTilesNextToBuildings() {
+    final spawnTiles = <({int x, int y})>[];
+    
+    // Find all road tiles and check if they're next to buildings
+    for (int y = 0; y < _grid.length; y++) {
+      for (int x = 0; x < _grid[y].length; x++) {
+        // Must be a road tile
+        if (_grid[y][x] == TileType.road) {
+          // Check if adjacent to a building or house
+          if (_isInFrontOfBuildingOrHouse(x, y)) {
+            spawnTiles.add((x: x, y: y));
+          }
+        }
+      }
+    }
+    
+    return spawnTiles;
   }
   
   /// Update pedestrian positions and find new targets
@@ -1574,18 +1637,30 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
           // Upper left (dy < 0, dx < 0): walk_back original
           // Down right (dy > 0, dx > 0): walk_front original
           // Down left (dy > 0, dx < 0): walk_front flipped
-          if (dy < 0) {
-            // Moving up
-            pedestrian.direction = 'back';
-            pedestrian.flipHorizontal = dx > 0; // Flip if moving right
-          } else if (dy > 0) {
-            // Moving down
-            pedestrian.direction = 'front';
-            pedestrian.flipHorizontal = dx < 0; // Flip if moving left
+
+
+          if (dy.abs() > dx.abs()) {
+            // Moving primarily vertical on grid
+            if (dy < 0) {
+              // Moving Up (Grid Y-) -> Visual Upper Right
+              pedestrian.direction = 'front';
+              pedestrian.flipHorizontal = false;
+            } else {
+              // Moving Down (Grid Y+) -> Visual Down Left
+              pedestrian.direction = 'front';
+              pedestrian.flipHorizontal = true;
+            }
           } else {
-            // Moving horizontally (dy == 0)
-            pedestrian.direction = 'front';
-            pedestrian.flipHorizontal = dx < 0; // Flip if moving left
+            // Moving primarily horizontal on grid
+            if (dx < 0) {
+              // Moving Left (Grid X-) -> Visual Upper Left
+              pedestrian.direction = 'front';
+              pedestrian.flipHorizontal = true;
+            } else {
+              // Moving Right (Grid X+) -> Visual Down Right
+              pedestrian.direction = 'front';
+              pedestrian.flipHorizontal = false;
+            }
           }
         } else {
           // Arrived at target
