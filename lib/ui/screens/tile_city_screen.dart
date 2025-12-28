@@ -1245,7 +1245,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
     
     final double truckSize = tileWidth * 0.4; 
     final left = positionedX + (tileWidth - truckSize) / 2;
-    final top = positionedY + (tileHeight / 2) - truckSize;
+    final top = positionedY + (tileHeight / 2) - truckSize/1.2;
 
     String asset = 'assets/images/tiles/truck_front.png';
     bool flip = false;
