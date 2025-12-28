@@ -19,8 +19,9 @@ class AppConfig {
   static const double musicVolumeMultiplier = 1.0;
   
   /// Individual volume for money/coin collect sound (0.0 to 1.0)
-  /// Final volume = soundVolumeMultiplier * moneySoundVolume
-  static const double moneySoundVolume = 1.2;
+  /// Final volume = curved(soundVolumeMultiplier) * moneySoundVolume
+  /// Increased to 2.0 to make money sound more prominent (will be clamped to 1.0 max)
+  static const double moneySoundVolume = 2.0;
   
   /// Individual volume for truck sound (0.0 to 1.0)
   /// Final volume = soundVolumeMultiplier * truckSoundVolume
