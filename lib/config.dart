@@ -25,7 +25,7 @@ class AppConfig {
   
   /// Individual volume for truck sound (0.0 to 1.0)
   /// Final volume = soundVolumeMultiplier * truckSoundVolume
-  static const double truckSoundVolume = 0.5;
+  static const double truckSoundVolume = 0.3;
   
   /// Individual volume for menu music (0.0 to 1.0)
   /// Final volume = musicVolumeMultiplier * menuMusicVolume
