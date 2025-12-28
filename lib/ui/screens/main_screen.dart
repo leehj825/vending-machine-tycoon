@@ -50,7 +50,8 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   @override
   void dispose() {
     // Stop background music when leaving the screen
-    SoundService().stopBackgroundMusic();
+    // Use forceStop to bypass protection mechanism when navigating away
+    SoundService().stopBackgroundMusic(forceStop: true);
     super.dispose();
   }
 

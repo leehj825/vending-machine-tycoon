@@ -18,6 +18,7 @@ class SoundService {
   
   bool _isMusicEnabled = true;
   bool _isSoundEnabled = true;
+  bool _isMusicOperationInProgress = false; // Prevent concurrent music operations
   double _musicVolume = AppConfig.menuMusicVolume; // Base music volume (used for menu music)
   double _gameBackgroundVolume = AppConfig.gameBackgroundMusicVolume; // Lower volume for game background music
   double _soundVolume = 1.0; // Player sound volume (0.0 to 1.0)
@@ -145,43 +146,54 @@ class SoundService {
       return;
     }
     
-    // Check if we are already supposed to be playing this track
-    if (_currentMusicPath == assetPath) {
-      // Check the ACTUAL player state
-      try {
-        final playerState = await _backgroundMusicPlayer.state;
-        if (playerState == PlayerState.playing) {
-          // It is actually playing, so do nothing (seamless)
-          return;
-        } else {
-          // It's the correct track but it stopped/paused (e.g., interrupted by sound effect).
-          // Restart from beginning when resuming after pause
-          print('🔄 Restarting background music: $assetPath');
-          await _restartMusic(assetPath);
-          return;
-        }
-      } catch (e) {
-        // If we can't check state, fall back to restart
-        print('⚠️ Could not check player state, restarting: $e');
-        await _restartMusic(assetPath);
-        return;
+    // Prevent concurrent play operations (but allow play even if stop is in progress)
+    if (_isMusicOperationInProgress) {
+      print('⚠️ Music operation already in progress, waiting...');
+      // Wait a bit and retry (up to 3 times)
+      for (int i = 0; i < 3; i++) {
+        await Future.delayed(const Duration(milliseconds: 100));
+        if (!_isMusicOperationInProgress) break;
+      }
+      if (_isMusicOperationInProgress) {
+        print('⚠️ Music operation still in progress after wait, proceeding anyway to start new music');
+        // Proceed anyway to allow starting new music even if previous operation is finishing
       }
     }
     
+    _isMusicOperationInProgress = true;
+    
     try {
+      // Check if we are already supposed to be playing this track
+      if (_currentMusicPath == assetPath) {
+        // Skip state check to avoid duplicate response errors
+        // If path matches, assume it's playing or restart it
+        // This avoids checking state while operations might be in progress
+        print('🔄 Music path matches current, restarting to ensure it plays: $assetPath');
+        await _restartMusic(assetPath);
+        _isMusicOperationInProgress = false;
+        return;
+      }
+      
       // Stop any currently playing music first (only if different)
       if (_currentMusicPath != null && _currentMusicPath != assetPath) {
         print('🛑 Stopping current music: $_currentMusicPath');
-        await _backgroundMusicPlayer.stop();
+        try {
+          await _backgroundMusicPlayer.stop();
+        } catch (e) {
+          // Ignore errors if player is already stopped
+          print('⚠️ Error stopping previous music (may already be stopped): $e');
+        }
         // Small delay to ensure stop completes
         await Future.delayed(const Duration(milliseconds: 50));
       }
       
       await _restartMusic(assetPath);
+      _isMusicOperationInProgress = false;
     } catch (e, stackTrace) {
       print('❌ Error playing background music ($assetPath): $e');
       print('Stack trace: $stackTrace');
       _currentMusicPath = null; // Reset on error
+      _isMusicOperationInProgress = false;
     }
   }
   
@@ -200,19 +212,40 @@ class SoundService {
     final volume = (baseVolume * curvedMultiplier).clamp(0.0, 1.0);
     _targetVolume = volume;
     
-    // Configure for looping
-    await _backgroundMusicPlayer.setReleaseMode(ReleaseMode.loop);
-    // Start at 0 volume for fade in
-    await _backgroundMusicPlayer.setVolume(0.0);
+    // Set the path and start time BEFORE any player operations to ensure protection is active immediately
+    _currentMusicPath = assetPath; // Track what's playing
+    _lastMusicStartTime = DateTime.now(); // Track when music started (set before play to ensure protection)
     
-    print('🎵 Playing background music: $assetPath (target volume: $volume)');
-    await _backgroundMusicPlayer.play(AssetSource(assetPath));
+    try {
+      // Always stop player first to ensure clean state and avoid duplicate response errors
+      try {
+        await _backgroundMusicPlayer.stop();
+        // Small delay to ensure stop completes before starting new playback
+        await Future.delayed(const Duration(milliseconds: 100));
+      } catch (e) {
+        // Ignore errors - player might already be stopped or disposed
+        print('⚠️ Error stopping before restart (may already be stopped): $e');
+      }
+      
+      // Configure for looping
+      await _backgroundMusicPlayer.setReleaseMode(ReleaseMode.loop);
+      // Start at 0 volume for fade in
+      await _backgroundMusicPlayer.setVolume(0.0);
+      
+      print('🎵 Playing background music: $assetPath (target volume: $volume)');
+      
+      await _backgroundMusicPlayer.play(AssetSource(assetPath));
+    } catch (e) {
+      print('⚠️ Error starting playback: $e');
+      // Reset on error
+      _currentMusicPath = null;
+      _lastMusicStartTime = null;
+      rethrow;
+    }
     
     // Fade in over 0.5 seconds
     const fadeInDuration = Duration(milliseconds: 500);
     _fadeIn(fadeInDuration, volume);
-    _currentMusicPath = assetPath; // Track what's playing
-    _lastMusicStartTime = DateTime.now(); // Track when music started
     _wasPlayingBeforePause = true; // Mark that music is now playing
     
     // Get track duration and start fade monitoring
@@ -307,6 +340,12 @@ class SoundService {
   /// Prevents stopping music that was just started (within last 500ms) to avoid race conditions
   /// Use forceStop parameter to bypass this protection when explicitly needed (e.g., exit to menu)
   Future<void> stopBackgroundMusic({bool forceStop = false}) async {
+    // Prevent concurrent operations
+    if (_isMusicOperationInProgress && !forceStop) {
+      print('⚠️ Music operation in progress, skipping stop request (use forceStop=true to override)');
+      return;
+    }
+    
     try {
       if (_currentMusicPath != null) {
         // Prevent stopping music that was just started (within last 500ms)
@@ -320,18 +359,26 @@ class SoundService {
           }
         }
         
+        _isMusicOperationInProgress = true;
+        
         // Stop fade timer
         _fadeTimer?.cancel();
         _fadeTimer = null;
         _isFading = false;
         
         print('🛑 Stopping background music: $_currentMusicPath');
-        await _backgroundMusicPlayer.stop();
+        try {
+          await _backgroundMusicPlayer.stop();
+        } catch (e) {
+          // Ignore errors if player is already stopped or disposed
+          print('⚠️ Error stopping player (may already be stopped): $e');
+        }
         _currentMusicPath = null; // Clear current track
         _lastMusicStartTime = null; // Clear start time
         _trackDuration = null; // Clear duration
         _targetVolume = null; // Clear target volume
         _wasPlayingBeforePause = false; // Clear playing state
+        _isMusicOperationInProgress = false;
         print('✅ Background music stopped');
       } else {
         print('ℹ️ No background music to stop');
@@ -342,6 +389,7 @@ class SoundService {
       _lastMusicStartTime = null;
       _trackDuration = null;
       _targetVolume = null;
+      _isMusicOperationInProgress = false;
     }
   }
 
@@ -349,9 +397,27 @@ class SoundService {
   Future<void> pauseBackgroundMusic() async {
     try {
       if (_currentMusicPath != null) {
+        // Prevent pausing music that was just started (within last 3000ms)
+        // This prevents race conditions when navigating between screens triggers lifecycle events
+        // Use longer window for menu music since navigation can take time
+        if (_lastMusicStartTime != null) {
+          final timeSinceStart = DateTime.now().difference(_lastMusicStartTime!);
+          if (timeSinceStart.inMilliseconds < 3000) {
+            print('⚠️ Ignoring pause request - music was just started ${timeSinceStart.inMilliseconds}ms ago (protection window: 3000ms)');
+            return;
+          }
+        }
+        
         // Check if music is actually playing before stopping
-        final playerState = await _backgroundMusicPlayer.state;
-        _wasPlayingBeforePause = (playerState == PlayerState.playing);
+        try {
+          final playerState = await _backgroundMusicPlayer.state;
+          _wasPlayingBeforePause = (playerState == PlayerState.playing);
+        } catch (e) {
+          // If we can't check state, assume it's not playing to avoid errors
+          print('⚠️ Could not check player state: $e');
+          _wasPlayingBeforePause = false;
+          return;
+        }
         
         if (_wasPlayingBeforePause) {
           print('⏸️ Stopping background music (app going to background): $_currentMusicPath');
@@ -360,7 +426,12 @@ class SoundService {
           _fadeTimer = null;
           _isFading = false;
           // Stop the music (don't clear _currentMusicPath so we know what to restart)
-          await _backgroundMusicPlayer.stop();
+          try {
+            await _backgroundMusicPlayer.stop();
+          } catch (e) {
+            // Ignore errors if player is already stopped or disposed
+            print('⚠️ Error pausing player (may already be stopped): $e');
+          }
         } else {
           print('ℹ️ Music not playing, nothing to stop');
           _wasPlayingBeforePause = false;

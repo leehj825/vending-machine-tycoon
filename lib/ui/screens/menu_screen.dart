@@ -21,9 +21,10 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
   void initState() {
     super.initState();
     // Play menu background music when screen is shown
-    // Use a delay to ensure any previous music has stopped and screen is fully loaded
+    // Use a longer delay to ensure any previous music has stopped and screen is fully loaded
+    // This is especially important when navigating from game screen
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Future.delayed(const Duration(milliseconds: 300), () {
+      Future.delayed(const Duration(milliseconds: 500), () {
         // Only start music if we're still on this screen (not already navigated away)
         if (mounted) {
           SoundService().playBackgroundMusic('sound/game_menu.m4a');
@@ -35,7 +36,8 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
   @override
   void dispose() {
     // Stop menu music when leaving the screen
-    SoundService().stopBackgroundMusic();
+    // Use forceStop to ensure it stops even if just started
+    SoundService().stopBackgroundMusic(forceStop: true);
     super.dispose();
   }
 
