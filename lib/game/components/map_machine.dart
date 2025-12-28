@@ -9,8 +9,6 @@ import '../../state/providers.dart';
 /// Component that represents a machine on the city map
 class MapMachine extends PositionComponent with TapCallbacks, HasGameReference<CityMapGame> {
   Machine machine;
-  double _blinkTimer = 0.0;
-  static const double _blinkSpeed = 2.0; // Blinks per second
 
   MapMachine({
     required this.machine,
@@ -52,12 +50,6 @@ class MapMachine extends PositionComponent with TapCallbacks, HasGameReference<C
   @override
   void update(double dt) {
     super.update(dt);
-    if (machine.isEmpty) {
-      _blinkTimer += dt * _blinkSpeed;
-      if (_blinkTimer > 1.0) {
-        _blinkTimer -= 1.0;
-      }
-    }
   }
 
   @override
@@ -66,11 +58,6 @@ class MapMachine extends PositionComponent with TapCallbacks, HasGameReference<C
 
     // Draw building based on zone type
     _drawBuilding(canvas, machine.zone.type);
-
-    // Draw status indicator if empty
-    if (machine.isEmpty) {
-      _drawEmptyIndicator(canvas);
-    }
   }
 
   /// Get size for different zone types
@@ -165,44 +152,6 @@ class MapMachine extends PositionComponent with TapCallbacks, HasGameReference<C
         );
         break;
     }
-  }
-
-  /// Draw blinking red exclamation mark indicator for empty machines
-  void _drawEmptyIndicator(Canvas canvas) {
-    // Only show when blinking (visible 50% of the time)
-    if (_blinkTimer > 0.5) return;
-
-    // Draw red circle background
-    final paint = Paint()
-      ..color = Colors.red
-      ..style = PaintingStyle.fill;
-    canvas.drawCircle(
-      Offset(size.x / 2, -20),
-      12,
-      paint,
-    );
-
-    // Draw white exclamation mark
-    // Font size relative to component size (12% of component width)
-    paint.color = Colors.white;
-    paint.style = PaintingStyle.fill;
-    final textPainter = TextPainter(
-      text: const TextSpan(
-        text: '!',
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: 16, // Relative to component size - will be scaled by game zoom
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-      textScaleFactor: size.x / 50.0, // Scale relative to base component size (50px)
-    );
-    textPainter.layout();
-    textPainter.paint(
-      canvas,
-      Offset(size.x / 2 - textPainter.width / 2, -28),
-    );
   }
 }
 

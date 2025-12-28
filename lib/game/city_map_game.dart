@@ -10,6 +10,7 @@ import '../state/providers.dart';
 import 'components/map_machine.dart';
 import 'components/map_truck.dart';
 import '../simulation/models/machine.dart';
+import '../ui/screens/route_planner_screen.dart';
 
 // 1. REMOVED PanDetector. It conflicts with ScaleDetector.
 class CityMapGame extends FlameGame with ScaleDetector, ScrollDetector, TapDetector {
@@ -27,6 +28,10 @@ class CityMapGame extends FlameGame with ScaleDetector, ScrollDetector, TapDetec
   double _maxZoom = 5.0;
   double _startZoom = 1.0;
   bool _hasInitialized = false;
+  
+  // Sync throttling
+  double _timeSinceLastSync = 0.0;
+  static const double _syncInterval = 0.5; // Sync every 0.5 seconds
   
   // Legacy callback
   final void Function(Machine)? onMachineTap;
@@ -47,6 +52,7 @@ class CityMapGame extends FlameGame with ScaleDetector, ScrollDetector, TapDetec
     camera.stop(); // Manual control
 
     world.add(GridComponent());
+    world.add(TruckPathOverlay(ref: ref));
 
     _syncMachines();
     _syncTrucks();
@@ -74,8 +80,14 @@ class CityMapGame extends FlameGame with ScaleDetector, ScrollDetector, TapDetec
   @override
   void update(double dt) {
     super.update(dt);
-    _syncMachines();
-    _syncTrucks();
+    
+    // Throttle sync operations to reduce performance overhead
+    _timeSinceLastSync += dt;
+    if (_timeSinceLastSync >= _syncInterval) {
+      _syncMachines();
+      _syncTrucks();
+      _timeSinceLastSync = 0.0;
+    }
   }
 
   // --- GESTURES ---
@@ -242,6 +254,89 @@ class GridComponent extends PositionComponent {
     for (double i = 0; i <= 1000; i += 100) {
       canvas.drawLine(Offset(i, 0), Offset(i, 1000), paint);
       canvas.drawLine(Offset(0, i), Offset(1000, i), paint);
+    }
+  }
+}
+
+/// Component that visualizes the path of a selected truck
+class TruckPathOverlay extends Component with HasGameReference<CityMapGame> {
+  final WidgetRef ref;
+  static const double _worldScale = 100.0; // Same scale as MapTruck
+
+  TruckPathOverlay({required this.ref});
+
+  @override
+  void render(Canvas canvas) {
+    try {
+      // Get selected truck ID from route planner
+      final selectedTruckNotifier = ref.read(selectedTruckIdProvider);
+      final selectedTruckId = selectedTruckNotifier.selectedId;
+      
+      if (selectedTruckId == null) return;
+
+      // Get trucks list
+      final trucks = ref.read(trucksProvider);
+      final selectedTruck = trucks.firstWhere(
+        (t) => t.id == selectedTruckId,
+        orElse: () => trucks.isNotEmpty ? trucks.first : throw StateError('No trucks'),
+      );
+
+      // Draw path if truck has one
+      if (selectedTruck.path.isEmpty) return;
+
+      // Convert path points from simulation coordinates to world coordinates
+      final pathPoints = selectedTruck.path.map((point) {
+        return Offset(point.x * _worldScale, point.y * _worldScale);
+      }).toList();
+
+      if (pathPoints.length < 2) return;
+
+      // Draw path lines
+      final pathPaint = Paint()
+        ..color = Colors.blue.withOpacity(0.6)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 4.0
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round;
+
+      // Draw lines between path points
+      for (int i = 0; i < pathPoints.length - 1; i++) {
+        canvas.drawLine(pathPoints[i], pathPoints[i + 1], pathPaint);
+      }
+
+      // Draw waypoint markers
+      final waypointPaint = Paint()
+        ..color = Colors.blue
+        ..style = PaintingStyle.fill;
+      
+      for (final point in pathPoints) {
+        canvas.drawCircle(point, 6.0, waypointPaint);
+      }
+
+      // Draw current position marker (different color)
+      final currentPos = Offset(
+        selectedTruck.currentX * _worldScale,
+        selectedTruck.currentY * _worldScale,
+      );
+      final currentPosPaint = Paint()
+        ..color = Colors.green
+        ..style = PaintingStyle.fill;
+      canvas.drawCircle(currentPos, 8.0, currentPosPaint);
+
+      // Draw target position marker
+      if (selectedTruck.targetX > 0 || selectedTruck.targetY > 0) {
+        final targetPos = Offset(
+          selectedTruck.targetX * _worldScale,
+          selectedTruck.targetY * _worldScale,
+        );
+        final targetPosPaint = Paint()
+          ..color = Colors.orange
+          ..style = PaintingStyle.fill;
+        canvas.drawCircle(targetPos, 8.0, targetPosPaint);
+      }
+    } catch (e) {
+      // Silently fail if truck not found or other error
+      // This prevents errors from breaking the game
     }
   }
 }

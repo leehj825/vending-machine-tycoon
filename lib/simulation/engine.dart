@@ -1004,10 +1004,6 @@ class SimulationEngine extends StateNotifier<SimulationState> {
       // Only process trucks that are restocking
       if (truck.status != TruckStatus.restocking) continue;
       
-      // Ensure truck stays on road (snap to nearest road coordinate)
-      final roadX = truck.currentX.round().toDouble();
-      final roadY = truck.currentY.round().toDouble();
-      
       final destinationId = truck.currentDestination;
       if (destinationId == null) continue;
 
@@ -1016,6 +1012,24 @@ class SimulationEngine extends StateNotifier<SimulationState> {
       if (machineIndex == -1) continue;
 
       final machine = updatedMachines[machineIndex];
+      
+      // Calculate the target road coordinates for this machine
+      final machineX = machine.zone.x;
+      final machineY = machine.zone.y;
+      final targetRoadPoint = _getNearestRoadPoint(machineX, machineY);
+      final targetRoadX = targetRoadPoint.x;
+      final targetRoadY = targetRoadPoint.y;
+      
+      // Check if truck is close enough to the target road coordinates
+      final dxToTarget = (truck.currentX - targetRoadX).abs();
+      final dyToTarget = (truck.currentY - targetRoadY).abs();
+      final isCloseEnough = dxToTarget < SimulationConstants.roadSnapThreshold && 
+                             dyToTarget < SimulationConstants.roadSnapThreshold;
+      
+      // Only snap to road if close enough, otherwise keep current position
+      // This prevents teleporting trucks that are mid-movement
+      final roadX = isCloseEnough ? targetRoadX : truck.currentX;
+      final roadY = isCloseEnough ? targetRoadY : truck.currentY;
       var machineInventory = Map<Product, InventoryItem>.from(machine.inventory);
       var truckInventory = Map<Product, int>.from(truck.inventory);
 
@@ -1146,9 +1160,22 @@ class SimulationEngine extends StateNotifier<SimulationState> {
         );
       } else {
         // No items transferred (machine already full or truck empty)
-        // Keep truck on road
-        final roadX = truck.currentX.round().toDouble();
-        final roadY = truck.currentY.round().toDouble();
+        // Calculate target road coordinates for this machine
+        final machineX = machine.zone.x;
+        final machineY = machine.zone.y;
+        final targetRoadPoint = _getNearestRoadPoint(machineX, machineY);
+        final targetRoadX = targetRoadPoint.x;
+        final targetRoadY = targetRoadPoint.y;
+        
+        // Check if truck is close enough to the target road coordinates
+        final dxToTarget = (truck.currentX - targetRoadX).abs();
+        final dyToTarget = (truck.currentY - targetRoadY).abs();
+        final isCloseEnough = dxToTarget < SimulationConstants.roadSnapThreshold && 
+                               dyToTarget < SimulationConstants.roadSnapThreshold;
+        
+        // Only snap to road if close enough, otherwise keep current position
+        final roadX = isCloseEnough ? targetRoadX : truck.currentX;
+        final roadY = isCloseEnough ? targetRoadY : truck.currentY;
         final isTruckEmpty = truck.inventory.isEmpty;
         final hasMoreDestinations = truck.currentRouteIndex + 1 < truck.route.length;
         

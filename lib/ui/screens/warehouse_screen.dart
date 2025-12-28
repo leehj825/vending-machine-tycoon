@@ -1,17 +1,60 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../simulation/models/product.dart';
+import '../../simulation/models/truck.dart';
 import '../../state/providers.dart';
 import '../../config.dart';
 import '../widgets/market_product_card.dart';
 import '../utils/screen_utils.dart';
 
 /// Warehouse & Market Screen
-class WarehouseScreen extends ConsumerWidget {
+class WarehouseScreen extends ConsumerStatefulWidget {
   const WarehouseScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<WarehouseScreen> createState() => _WarehouseScreenState();
+}
+
+class _WarehouseScreenState extends ConsumerState<WarehouseScreen> {
+  void _showLoadTruckDialog() {
+    final warehouse = ref.read(warehouseProvider);
+    final trucks = ref.read(trucksProvider);
+    final controller = ref.read(gameControllerProvider.notifier);
+
+    if (trucks.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'No trucks available',
+            style: TextStyle(
+              fontSize: ScreenUtils.relativeFontSize(
+                context,
+                AppConfig.fontSizeFactorNormal,
+                min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
+                max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+              ),
+            ),
+          ),
+        ),
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => _LoadTruckDialog(
+        trucks: trucks,
+        warehouse: warehouse,
+        onLoad: (truckId, product, quantity) {
+          Navigator.of(dialogContext).pop();
+          controller.loadTruck(truckId, product, quantity);
+        },
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final warehouse = ref.watch(warehouseProvider);
 
     // Calculate warehouse capacity
@@ -82,6 +125,40 @@ class WarehouseScreen extends ConsumerWidget {
                         ),
                       ),
                     ],
+                  ),
+                  SizedBox(height: ScreenUtils.relativeSize(context, AppConfig.spacingFactorXLarge)),
+                  // Load Truck Button
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: _showLoadTruckDialog,
+                      icon: Icon(
+                        Icons.local_shipping,
+                        size: ScreenUtils.relativeSizeClamped(
+                          context,
+                          0.06,
+                          min: ScreenUtils.getSmallerDimension(context) * 0.04,
+                          max: ScreenUtils.getSmallerDimension(context) * 0.08,
+                        ),
+                      ),
+                      label: Text(
+                        'Load Truck',
+                        style: TextStyle(
+                          fontSize: ScreenUtils.relativeFontSize(
+                            context,
+                            AppConfig.fontSizeFactorNormal,
+                            min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
+                            max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+                          ),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        padding: EdgeInsets.all(ScreenUtils.relativeSize(context, AppConfig.spacingFactorLarge)),
+                        backgroundColor: Theme.of(context).colorScheme.primary,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
                   ),
                   SizedBox(height: ScreenUtils.relativeSize(context, AppConfig.spacingFactorXLarge)),
                   // Current stock grid
@@ -235,6 +312,553 @@ class WarehouseScreen extends ConsumerWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Dialog for loading cargo onto a truck from warehouse
+class _LoadTruckDialog extends ConsumerStatefulWidget {
+  final List<Truck> trucks;
+  final Warehouse warehouse;
+  final void Function(String truckId, Product product, int quantity) onLoad;
+
+  const _LoadTruckDialog({
+    required this.trucks,
+    required this.warehouse,
+    required this.onLoad,
+  });
+
+  @override
+  ConsumerState<_LoadTruckDialog> createState() => _LoadTruckDialogState();
+}
+
+class _LoadTruckDialogState extends ConsumerState<_LoadTruckDialog> {
+  Truck? _selectedTruck;
+  Product? _selectedProduct;
+  double _quantity = 0.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final availableProducts = _selectedTruck != null
+        ? Product.values
+            .where((p) => (widget.warehouse.inventory[p] ?? 0) > 0)
+            .toList()
+        : <Product>[];
+    
+    final availableCapacity = _selectedTruck != null
+        ? _selectedTruck!.capacity - _selectedTruck!.currentLoad
+        : 0;
+    
+    final maxQuantity = _selectedProduct != null && _selectedTruck != null
+        ? [
+            widget.warehouse.inventory[_selectedProduct] ?? 0,
+            availableCapacity,
+          ].reduce((a, b) => a < b ? a : b)
+        : 0;
+    
+    final quantityInt = maxQuantity > 0 ? _quantity.round().clamp(1, maxQuantity) : 0;
+
+    return AlertDialog(
+      title: Text(
+        'Load Truck',
+        style: TextStyle(
+          fontSize: ScreenUtils.relativeFontSize(
+            context,
+            AppConfig.fontSizeFactorMedium,
+            min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
+            max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+          ),
+        ),
+      ),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Truck selection
+              Text(
+                'Select Truck:',
+                style: TextStyle(
+                  fontSize: ScreenUtils.relativeFontSize(
+                    context,
+                    AppConfig.fontSizeFactorNormal,
+                    min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
+                    max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+                  ),
+                ),
+              ),
+              SizedBox(
+                height: ScreenUtils.relativeSize(
+                  context,
+                  AppConfig.spacingFactorMedium,
+                ),
+              ),
+              DropdownButtonFormField<Truck>(
+                value: _selectedTruck,
+                style: TextStyle(
+                  fontSize: ScreenUtils.relativeFontSize(
+                    context,
+                    AppConfig.fontSizeFactorNormal,
+                    min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
+                    max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+                  ),
+                  color: Colors.black,
+                ),
+                decoration: InputDecoration(
+                  border: const OutlineInputBorder(),
+                  hintText: 'Choose a truck',
+                  hintStyle: TextStyle(
+                    fontSize: ScreenUtils.relativeFontSize(
+                      context,
+                      AppConfig.fontSizeFactorNormal,
+                      min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
+                      max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+                    ),
+                    color: Colors.black,
+                  ),
+                ),
+                items: widget.trucks.map((truck) {
+                  final load = truck.currentLoad;
+                  final capacity = truck.capacity;
+                  return DropdownMenuItem(
+                    value: truck,
+                    child: Text(
+                      '${truck.name} (Load: $load/$capacity)',
+                      style: TextStyle(
+                        fontSize: ScreenUtils.relativeFontSize(
+                          context,
+                          AppConfig.fontSizeFactorNormal,
+                          min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
+                          max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+                        ),
+                        color: Colors.black,
+                      ),
+                    ),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    _selectedTruck = value;
+                    _selectedProduct = null;
+                    _quantity = 0.0;
+                  });
+                },
+              ),
+              if (_selectedTruck != null) ...[
+                SizedBox(
+                  height: ScreenUtils.relativeSize(
+                    context,
+                    AppConfig.spacingFactorXLarge,
+                  ),
+                ),
+                Text(
+                  'Available Capacity: $availableCapacity / ${_selectedTruck!.capacity}',
+                  style: TextStyle(
+                    fontSize: ScreenUtils.relativeFontSize(
+                      context,
+                      AppConfig.fontSizeFactorNormal,
+                      min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
+                      max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+                    ),
+                  ),
+                ),
+                SizedBox(
+                  height: ScreenUtils.relativeSize(
+                    context,
+                    AppConfig.spacingFactorXLarge,
+                  ),
+                ),
+                Text(
+                  'Select Product:',
+                  style: TextStyle(
+                    fontSize: ScreenUtils.relativeFontSize(
+                      context,
+                      AppConfig.fontSizeFactorNormal,
+                      min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
+                      max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+                    ),
+                  ),
+                ),
+                SizedBox(
+                  height: ScreenUtils.relativeSize(
+                    context,
+                    AppConfig.spacingFactorMedium,
+                  ),
+                ),
+                DropdownButtonFormField<Product>(
+                  value: _selectedProduct,
+                  style: TextStyle(
+                    fontSize: ScreenUtils.relativeFontSize(
+                      context,
+                      AppConfig.fontSizeFactorNormal,
+                      min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
+                      max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+                    ),
+                    color: Colors.black,
+                  ),
+                  decoration: InputDecoration(
+                    border: const OutlineInputBorder(),
+                    hintText: 'Choose a product',
+                    hintStyle: TextStyle(
+                      fontSize: ScreenUtils.relativeFontSize(
+                        context,
+                        AppConfig.fontSizeFactorNormal,
+                        min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
+                        max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+                      ),
+                      color: Colors.black,
+                    ),
+                  ),
+                  items: availableProducts.map((product) {
+                    final stock = widget.warehouse.inventory[product] ?? 0;
+                    return DropdownMenuItem(
+                      value: product,
+                      child: Text(
+                        '${product.name} (Stock: $stock)',
+                        style: TextStyle(
+                          fontSize: ScreenUtils.relativeFontSize(
+                            context,
+                            AppConfig.fontSizeFactorNormal,
+                            min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
+                            max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+                          ),
+                          color: Colors.black,
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedProduct = value;
+                      _quantity = 0.0;
+                    });
+                  },
+                ),
+                if (_selectedProduct != null) ...[
+                  SizedBox(
+                    height: ScreenUtils.relativeSize(
+                      context,
+                      AppConfig.spacingFactorXLarge,
+                    ),
+                  ),
+                  if (maxQuantity > 0) ...[
+                    // Number pad input - reuse from route planner
+                    _NumberPadInput(
+                      value: quantityInt,
+                      maxValue: maxQuantity,
+                      onValueChanged: (value) {
+                        setState(() {
+                          _quantity = value.toDouble();
+                        });
+                      },
+                      dialogWidth: null,
+                      padding: null,
+                    ),
+                  ] else
+                    Text(
+                      'Cannot load: Truck is full or no stock available',
+                      style: TextStyle(
+                        color: Colors.red,
+                        fontSize: ScreenUtils.relativeFontSize(
+                          context,
+                          AppConfig.fontSizeFactorNormal,
+                          min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
+                          max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+                        ),
+                      ),
+                    ),
+                ],
+              ],
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(
+                'Cancel',
+                style: TextStyle(
+                  fontSize: ScreenUtils.relativeFontSize(
+                    context,
+                    AppConfig.fontSizeFactorNormal,
+                    min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
+                    max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(
+              width: ScreenUtils.relativeSize(
+                context,
+                AppConfig.spacingFactorMedium,
+              ),
+            ),
+            ElevatedButton(
+              onPressed: _selectedTruck != null &&
+                      _selectedProduct != null &&
+                      quantityInt > 0 &&
+                      _quantity > 0
+                  ? () {
+                      widget.onLoad(_selectedTruck!.id, _selectedProduct!, quantityInt);
+                    }
+                  : null,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+              ),
+              child: Text(
+                'Load',
+                style: TextStyle(
+                  fontSize: ScreenUtils.relativeFontSize(
+                    context,
+                    AppConfig.fontSizeFactorNormal,
+                    min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
+                    max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+/// Number pad input widget (reused from route planner)
+class _NumberPadInput extends StatefulWidget {
+  final int value;
+  final int maxValue;
+  final ValueChanged<int> onValueChanged;
+  final double? dialogWidth;
+  final double? padding;
+
+  const _NumberPadInput({
+    required this.value,
+    required this.maxValue,
+    required this.onValueChanged,
+    this.dialogWidth,
+    this.padding,
+  });
+
+  @override
+  State<_NumberPadInput> createState() => _NumberPadInputState();
+}
+
+class _NumberPadInputState extends State<_NumberPadInput> {
+  late TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.value > 0 ? widget.value.toString() : '');
+  }
+
+  @override
+  void didUpdateWidget(_NumberPadInput oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.value != oldWidget.value) {
+      _controller.text = widget.value.toString();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _onNumberTap(String number) {
+    final currentText = _controller.text;
+    final newText = currentText.isEmpty ? number : currentText + number;
+    final newValue = int.tryParse(newText) ?? 0;
+    
+    if (newValue <= widget.maxValue) {
+      _controller.text = newText;
+      widget.onValueChanged(newValue);
+    }
+  }
+
+  void _onSetAll() {
+    _controller.text = widget.maxValue.toString();
+    widget.onValueChanged(widget.maxValue);
+  }
+
+  void _onClearAll() {
+    _controller.text = '';
+    widget.onValueChanged(0);
+  }
+
+  double _getSize(double baseSize) {
+    if (widget.dialogWidth != null && widget.padding != null) {
+      return widget.dialogWidth! * baseSize;
+    }
+    return ScreenUtils.relativeSize(context, baseSize);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final buttonSize = _getSize(AppConfig.numberPadButtonSizeFactor);
+    final fontSize = widget.dialogWidth != null 
+        ? widget.dialogWidth! * AppConfig.numberPadButtonFontSizeFactor
+        : ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal);
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Text field to display/edit value
+        Container(
+          padding: EdgeInsets.all(_getSize(AppConfig.numberPadTextFieldPaddingFactor)),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(_getSize(AppConfig.numberPadTextFieldBorderRadiusFactor)),
+            border: Border.all(
+              color: Theme.of(context).colorScheme.primary,
+              width: _getSize(AppConfig.numberPadTextFieldBorderWidthFactor),
+            ),
+          ),
+          child: TextField(
+            controller: _controller,
+            textAlign: TextAlign.center,
+            keyboardType: TextInputType.number,
+            style: TextStyle(
+              fontSize: fontSize,
+              fontWeight: FontWeight.bold,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+            decoration: InputDecoration(
+              border: InputBorder.none,
+              isDense: true,
+              contentPadding: EdgeInsets.zero,
+              hintText: '0',
+              hintStyle: TextStyle(
+                color: Colors.grey[400],
+              ),
+            ),
+            onChanged: (value) {
+              if (value.isEmpty) {
+                widget.onValueChanged(0);
+                return;
+              }
+              final intValue = int.tryParse(value) ?? 0;
+              if (intValue <= widget.maxValue) {
+                widget.onValueChanged(intValue);
+              } else {
+                _controller.text = widget.maxValue.toString();
+                widget.onValueChanged(widget.maxValue);
+              }
+            },
+          ),
+        ),
+        SizedBox(height: _getSize(AppConfig.numberPadSpacingFactor)),
+        // Number pad grid
+        Container(
+          padding: EdgeInsets.all(_getSize(AppConfig.numberPadContainerPaddingFactor)),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(_getSize(AppConfig.numberPadContainerBorderRadiusFactor)),
+            border: Border.all(
+              color: Colors.grey[300]!,
+              width: _getSize(AppConfig.numberPadContainerBorderWidthFactor),
+            ),
+          ),
+          child: Column(
+            children: [
+              // Number buttons 1-9
+              for (int row = 0; row < 3; row++)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    for (int col = 1; col <= 3; col++)
+                      _NumberButton(
+                        label: (row * 3 + col).toString(),
+                        size: buttonSize,
+                        fontSize: fontSize,
+                        onTap: () => _onNumberTap((row * 3 + col).toString()),
+                      ),
+                  ],
+                ),
+              // Bottom row: 0, All (set to max), AC (clear all)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _NumberButton(
+                    label: '0',
+                    size: buttonSize,
+                    fontSize: fontSize,
+                    onTap: () => _onNumberTap('0'),
+                  ),
+                  _NumberButton(
+                    label: 'All',
+                    size: buttonSize,
+                    fontSize: fontSize,
+                    onTap: _onSetAll,
+                  ),
+                  _NumberButton(
+                    label: 'AC',
+                    size: buttonSize,
+                    fontSize: fontSize,
+                    onTap: _onClearAll,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Individual number button for the number pad
+class _NumberButton extends StatelessWidget {
+  final String label;
+  final double size;
+  final double fontSize;
+  final VoidCallback onTap;
+
+  const _NumberButton({
+    required this.label,
+    required this.size,
+    required this.fontSize,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.all(size * AppConfig.numberPadButtonPaddingMultiplier),
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.primaryContainer,
+            borderRadius: BorderRadius.circular(size * AppConfig.numberPadButtonBorderRadiusMultiplier),
+            border: Border.all(
+              color: Theme.of(context).colorScheme.primary,
+              width: size * AppConfig.numberPadButtonBorderWidthMultiplier,
+            ),
+          ),
+          child: Center(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: fontSize,
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.onPrimaryContainer,
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
