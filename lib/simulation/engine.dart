@@ -773,6 +773,16 @@ class SimulationEngine extends StateNotifier<SimulationState> {
           pathIndex = 0;
         }
         
+        // SAFETY CHECK: If the first target is the current position, skip it
+        // This prevents the truck from trying to move "to itself" or backwards slightly
+        if (path.isNotEmpty && pathIndex < path.length) {
+          final firstTarget = path[pathIndex];
+          final distToFirst = (firstTarget.x - currentX).abs() + (firstTarget.y - currentY).abs();
+          if (distToFirst < 0.01) {
+            pathIndex++;
+          }
+        }
+        
         // Move along the path
         var currentPathIndex = pathIndex;
         var simX = currentX;
@@ -874,6 +884,16 @@ class SimulationEngine extends StateNotifier<SimulationState> {
           pathIndex >= path.length) {
         path = findPath(currentX, currentY, destRoadX, destRoadY);
         pathIndex = 0;
+      }
+      
+      // SAFETY CHECK: If the first target is the current position, skip it
+      // This prevents the truck from trying to move "to itself" or backwards slightly
+      if (path.isNotEmpty && pathIndex < path.length) {
+        final firstTarget = path[pathIndex];
+        final distToFirst = (firstTarget.x - currentX).abs() + (firstTarget.y - currentY).abs();
+        if (distToFirst < 0.01) {
+          pathIndex++;
+        }
       }
       
       // Move along the path

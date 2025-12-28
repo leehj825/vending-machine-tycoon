@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flame/components.dart';
 import '../../simulation/models/truck.dart';
@@ -5,19 +6,18 @@ import '../../simulation/models/truck.dart';
 /// Component that represents a truck on the city map
 class MapTruck extends PositionComponent {
   Truck truck;
-  // Simulation coordinates appear to be in "grid units" (e.g., 0-10),
-  // while the map renders on a 1000x1000 world with grid lines every 100.
-  // Keep the map in pixel/world space by scaling simulation coords.
   static const double _worldScale = 100.0;
-  static const double _speed = 100.0; // FIX: Match simulation speed (1 tile/sec * 100 world scale)
-  static const double _arrivalThreshold = 2.0; // Distance to consider "arrived"
+  static const double _speed = 100.0; 
+
+  // Add a smoothing factor for rotation
+  double _targetAngle = 0.0;
 
   MapTruck({
     required this.truck,
     super.position,
   }) : super(
           size: Vector2(30, 20),
-          anchor: Anchor.center,
+          anchor: Anchor.center, // Flame rotates around this anchor automatically
         );
 
   /// Update the truck reference (for when truck state changes)
@@ -28,7 +28,6 @@ class MapTruck extends PositionComponent {
   @override
   void onLoad() {
     super.onLoad();
-    // Initialize position from truck's current position
     position = Vector2(truck.currentX * _worldScale, truck.currentY * _worldScale);
   }
 
@@ -36,27 +35,40 @@ class MapTruck extends PositionComponent {
   void update(double dt) {
     super.update(dt);
 
-    // Update position from truck's current position (synced from simulation)
     final targetPos = Vector2(truck.currentX * _worldScale, truck.currentY * _worldScale);
-    
-    // Move towards target position
+
+    // SAFETY CHECK: Ignore (0,0) targets which occur during simulation init glitches
+    if (targetPos == Vector2.zero()) return;
+
     final direction = targetPos - position;
     final distance = direction.length;
 
-    if (distance > _arrivalThreshold) {
-      // Normalize direction and move
+    // Only move/rotate if distance is significant
+    if (distance > 0.5) { 
       final normalizedDirection = direction.normalized();
-      final moveDistance = (_speed * dt).clamp(0.0, distance);
-      position += normalizedDirection * moveDistance;
+      
+      // Calculate target angle based on movement vector
+      _targetAngle = atan2(normalizedDirection.y, normalizedDirection.x);
+      
+      // Set angle directly. Flame's PositionComponent handles the rotation rendering!
+      angle = _targetAngle; 
+
+      final moveStep = (_speed * dt);
+      if (distance < moveStep) {
+         position = targetPos;
+      } else {
+         position += normalizedDirection * moveStep;
+      }
     } else {
-      // Snap to target if close enough
       position = targetPos;
     }
   }
 
   @override
   void render(Canvas canvas) {
-    super.render(canvas);
+    // NOTE: Do NOT call canvas.rotate() or canvas.translate() here.
+    // PositionComponent has already handled rotation and positioning for you.
+    // The (0,0) point here is the Top-Left of the truck's bounding box.
 
     // Draw truck body (white rectangle)
     final bodyPaint = Paint()
@@ -65,38 +77,39 @@ class MapTruck extends PositionComponent {
     final bodyRect = Rect.fromLTWH(0, 0, size.x, size.y);
     canvas.drawRect(bodyRect, bodyPaint);
 
-    // Draw truck outline (black)
-    // Stroke width relative to component size (2% of component width)
+    // Draw truck outline
     final outlinePaint = Paint()
       ..color = Colors.black
       ..style = PaintingStyle.stroke
-      ..strokeWidth = size.x * 0.02; // 2% of component width
+      ..strokeWidth = size.x * 0.05;
     canvas.drawRect(bodyRect, outlinePaint);
 
-    // Draw wheels (black circles)
+    // Draw wheels
     final wheelPaint = Paint()
       ..color = Colors.black
       ..style = PaintingStyle.fill;
-
-    // Front wheels (size relative to component - 8% of width)
-    final wheelRadius = size.x * 0.08;
-    final wheelOffset = size.x * 0.16;
+    final wheelRadius = size.x * 0.1;
+    final wheelOffset = size.x * 0.2;
+    
+    // Top/Bottom relative to truck orientation
     canvas.drawCircle(Offset(wheelOffset, size.y), wheelRadius, wheelPaint);
     canvas.drawCircle(Offset(wheelOffset, 0), wheelRadius, wheelPaint);
-
-    // Back wheels
     canvas.drawCircle(Offset(size.x - wheelOffset, size.y), wheelRadius, wheelPaint);
     canvas.drawCircle(Offset(size.x - wheelOffset, 0), wheelRadius, wheelPaint);
 
-    // Draw cab (smaller rectangle on front)
+    // Draw Cab (Front)
+    // FIX: Draw cab on the RIGHT side (positive X) because 0 radians = Right/East
     final cabPaint = Paint()
       ..color = const Color(0xFFE0E0E0)
       ..style = PaintingStyle.fill;
-    final cabRect = Rect.fromLTWH(0, 2, size.x * 0.4, size.y - 4);
+    
+    // Cab width is 30% of truck, placed at the far right
+    final cabWidth = size.x * 0.3; 
+    final cabRect = Rect.fromLTWH(size.x - cabWidth, 2, cabWidth, size.y - 4);
+    
     canvas.drawRect(cabRect, cabPaint);
     canvas.drawRect(cabRect, outlinePaint);
 
-    // Draw status indicator based on truck status
     _drawStatusIndicator(canvas);
   }
 
@@ -126,4 +139,3 @@ class MapTruck extends PositionComponent {
     );
   }
 }
-
