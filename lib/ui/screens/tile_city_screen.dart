@@ -1659,6 +1659,49 @@ class _MachineStatusSection extends ConsumerWidget {
         SizedBox(
           height: dialogWidth * AppConfig.machineStatusDialogSectionSpacingFactor,
         ),
+        // Broken indicator
+        if (machine.isBroken)
+          Container(
+            padding: EdgeInsets.all(
+              dialogWidth * AppConfig.machineStatusDialogInfoContainerPaddingFactor,
+            ),
+            decoration: BoxDecoration(
+              color: Colors.red.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(
+                dialogWidth * AppConfig.machineStatusDialogInfoContainerBorderRadiusFactor,
+              ),
+              border: Border.all(
+                color: Colors.red,
+                width: 2,
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.error_outline,
+                  color: Colors.red,
+                  size: dialogWidth * AppConfig.machineStatusDialogZoneIconSizeFactor,
+                ),
+                SizedBox(
+                  width: dialogWidth * AppConfig.machineStatusDialogZoneIconSpacingFactor,
+                ),
+                Expanded(
+                  child: Text(
+                    'BROKEN - Repairs Needed',
+                    style: TextStyle(
+                      fontSize: dialogWidth * AppConfig.machineStatusDialogStockTextFontSizeFactor,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.red,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        if (machine.isBroken)
+          SizedBox(
+            height: dialogWidth * AppConfig.machineStatusDialogSectionSpacingFactor,
+          ),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1827,19 +1870,67 @@ class _MachineStatusSection extends ConsumerWidget {
         SizedBox(
           height: dialogWidth * AppConfig.machineStatusDialogSectionSpacingFactor,
         ),
-        // Open Machine button
+        // Repair button (if broken)
+        if (machine.isBroken)
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                final controller = ref.read(gameControllerProvider.notifier);
+                final cash = ref.read(cashProvider);
+                const repairCost = 150.0;
+                
+                if (cash < repairCost) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Insufficient funds. Need \$${repairCost.toStringAsFixed(2)} to repair.'),
+                      duration: AppConfig.snackbarDurationShort,
+                    ),
+                  );
+                  return;
+                }
+                
+                controller.repairMachine(machine.id);
+                Navigator.of(context).pop();
+              },
+              icon: Icon(
+                Icons.build,
+                size: dialogWidth * AppConfig.machineStatusDialogCashIconSizeFactor,
+              ),
+              label: Text(
+                'Repair Machine (\$150)',
+                style: TextStyle(
+                  fontSize: dialogWidth * AppConfig.machineStatusDialogCashTextFontSizeFactor,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange,
+                foregroundColor: Colors.white,
+                padding: EdgeInsets.symmetric(
+                  vertical: dialogWidth * AppConfig.machineStatusDialogCashButtonPaddingFactor,
+                ),
+              ),
+            ),
+          ),
+        if (machine.isBroken)
+          SizedBox(
+            height: dialogWidth * AppConfig.machineStatusDialogSectionSpacingFactor,
+          ),
+        // Open Machine button (disabled if broken)
         SizedBox(
           width: double.infinity,
           child: ElevatedButton.icon(
-            onPressed: () {
-              // Close current dialog and open interior dialog
-              Navigator.of(context).pop();
-              showDialog(
-                context: context,
-                barrierColor: Colors.black.withValues(alpha: 0.7),
-                builder: (context) => MachineInteriorDialog(machine: machine),
-              );
-            },
+            onPressed: machine.isBroken
+                ? null
+                : () {
+                    // Close current dialog and open interior dialog
+                    Navigator.of(context).pop();
+                    showDialog(
+                      context: context,
+                      barrierColor: Colors.black.withValues(alpha: 0.7),
+                      builder: (context) => MachineInteriorDialog(machine: machine),
+                    );
+                  },
             icon: Icon(
               Icons.open_in_new,
               size: dialogWidth * AppConfig.machineStatusDialogCashIconSizeFactor,
@@ -1853,6 +1944,8 @@ class _MachineStatusSection extends ConsumerWidget {
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.blue,
               foregroundColor: Colors.white,
+              disabledBackgroundColor: Colors.grey,
+              disabledForegroundColor: Colors.grey[400],
               padding: EdgeInsets.symmetric(
                 vertical: dialogWidth * AppConfig.machineStatusDialogCashButtonPaddingFactor,
               ),

@@ -371,6 +371,11 @@ class SimulationEngine extends StateNotifier<SimulationState> {
     // 2. Process Spoilage
     updatedMachines = _processSpoilage(updatedMachines, nextTime);
     
+    // 2.5. Process Random Breakdowns (once per day)
+    if (nextTime.day > currentState.time.day) {
+      updatedMachines = _processRandomBreakdowns(updatedMachines);
+    }
+    
     // 3. Process Trucks (Movement)
     var updatedTrucks = _processTruckMovement(currentState.trucks, updatedMachines);
     
@@ -532,6 +537,31 @@ class SimulationEngine extends StateNotifier<SimulationState> {
     }).toList();
   }
 
+  /// Process random breakdowns - 2% chance per day for each machine
+  /// This provides a good balance: frequent enough to be noticeable with multiple machines,
+  /// but not so frequent as to be annoying. With 5 machines, expect ~9.6% chance per day
+  /// that at least one breaks (happens roughly every 10 days on average).
+  List<Machine> _processRandomBreakdowns(List<Machine> machines) {
+    return machines.map((machine) {
+      // Skip if already broken
+      if (machine.isBroken) {
+        return machine;
+      }
+      
+      // 2% chance per day to break (balanced for gameplay)
+      final breakdownChance = 0.02;
+      final randomValue = state.random.nextDouble();
+      
+      if (randomValue < breakdownChance) {
+        print('ALERT: Machine ${machine.name} has broken down!');
+        return machine.copyWith(
+          condition: MachineCondition.broken,
+        );
+      }
+      
+      return machine;
+    }).toList();
+  }
 
   /// Calculate reputation penalty based on empty machines
   int _calculateReputationPenalty(List<Machine> machines) {

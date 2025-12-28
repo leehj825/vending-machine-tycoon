@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:audioplayers/audioplayers.dart';
 import '../config.dart';
 
@@ -84,7 +85,8 @@ class SoundService {
     _musicVolume = volume.clamp(0.0, 1.0);
     // Update current player volume if menu music is playing (apply music multiplier)
     if (_currentMusicPath != null && !_currentMusicPath!.contains('game_background')) {
-      final finalVolume = (_musicVolume * _musicVolumeMultiplier).clamp(0.0, 1.0);
+      final curvedMultiplier = _applyVolumeCurve(_musicVolumeMultiplier);
+      final finalVolume = (_musicVolume * curvedMultiplier).clamp(0.0, 1.0);
       _backgroundMusicPlayer.setVolume(finalVolume);
       _targetVolume = finalVolume; // Update target volume for fade
     }
@@ -97,7 +99,8 @@ class SoundService {
     _gameBackgroundVolume = volume.clamp(0.0, 1.0);
     // Update current player volume if game background music is playing (apply music multiplier)
     if (_currentMusicPath != null && _currentMusicPath!.contains('game_background')) {
-      final finalVolume = (_gameBackgroundVolume * _musicVolumeMultiplier).clamp(0.0, 1.0);
+      final curvedMultiplier = _applyVolumeCurve(_musicVolumeMultiplier);
+      final finalVolume = (_gameBackgroundVolume * curvedMultiplier).clamp(0.0, 1.0);
       _backgroundMusicPlayer.setVolume(finalVolume);
       _targetVolume = finalVolume; // Update target volume for fade
     }
@@ -125,7 +128,9 @@ class SoundService {
     // Update current music volume if music is playing
     if (_currentMusicPath != null) {
       final baseVolume = _currentMusicPath!.contains('game_background') ? _gameBackgroundVolume : _musicVolume;
-      final finalVolume = (baseVolume * _musicVolumeMultiplier).clamp(0.0, 1.0);
+      // Apply non-linear volume curve for more responsive adjustment
+      final curvedMultiplier = _applyVolumeCurve(_musicVolumeMultiplier);
+      final finalVolume = (baseVolume * curvedMultiplier).clamp(0.0, 1.0);
       _backgroundMusicPlayer.setVolume(finalVolume);
       _targetVolume = finalVolume; // Update target volume for fade
     }
@@ -188,8 +193,10 @@ class SoundService {
     
     // Determine base volume based on which track is playing
     final baseVolume = assetPath.contains('game_background') ? _gameBackgroundVolume : _musicVolume;
+    // Apply non-linear volume curve for more responsive adjustment
+    final curvedMultiplier = _applyVolumeCurve(_musicVolumeMultiplier);
     // Apply overall music volume multiplier (player adjustable)
-    final volume = (baseVolume * _musicVolumeMultiplier).clamp(0.0, 1.0);
+    final volume = (baseVolume * curvedMultiplier).clamp(0.0, 1.0);
     _targetVolume = volume;
     
     // Configure for looping
@@ -387,18 +394,38 @@ class SoundService {
     }
   }
 
+  /// Apply non-linear volume curve for more responsive adjustment at higher percentages
+  /// Uses power curve: volume^2.5 for more aggressive reduction at higher percentages
+  /// This makes volume changes more noticeable at higher slider values
+  double _applyVolumeCurve(double linearVolume) {
+    if (linearVolume <= 0.0) return 0.0;
+    if (linearVolume >= 1.0) return 1.0;
+    
+    // Use power curve: volume^2.5
+    // This means:
+    // - 100% slider = 100% volume
+    // - 50% slider ≈ 18% volume (more responsive)
+    // - 25% slider ≈ 3% volume
+    // - 10% slider ≈ 0.3% volume
+    // - 5% slider ≈ 0.06% volume (less responsive at low end)
+    return linearVolume * linearVolume * math.sqrt(linearVolume);
+  }
+
   /// Play a sound effect (one-shot)
   /// [volumeMultiplier] is an optional multiplier (0.0 to 1.0) to adjust volume for specific sounds
   Future<void> playSoundEffect(String assetPath, {double volumeMultiplier = 1.0}) async {
     if (!_isSoundEnabled) return;
     
     try {
-      // Calculate final volume: overall sound multiplier (player adjustable) * individual sound volume
-      final finalVolume = (_soundVolumeMultiplier * volumeMultiplier).clamp(0.0, 1.0);
+      // Apply non-linear volume curve to the multiplier for more responsive adjustment
+      final curvedMultiplier = _applyVolumeCurve(_soundVolumeMultiplier);
+      
+      // Calculate final volume: curved sound multiplier * individual sound volume
+      final finalVolume = (curvedMultiplier * volumeMultiplier).clamp(0.0, 1.0);
       
       await _soundEffectPlayer.setReleaseMode(ReleaseMode.release);
       await _soundEffectPlayer.setVolume(finalVolume);
-      print('🔊 Playing sound effect: $assetPath (volume: $finalVolume = $_soundVolumeMultiplier * $volumeMultiplier)');
+      print('🔊 Playing sound effect: $assetPath (volume: $finalVolume = curved($_soundVolumeMultiplier) * $volumeMultiplier)');
       await _soundEffectPlayer.play(AssetSource(assetPath));
     } catch (e) {
       print('❌ Error playing sound effect ($assetPath): $e');

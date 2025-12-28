@@ -893,6 +893,53 @@ class GameController extends StateNotifier<GlobalGameState> {
     simulationEngine.updateCash(newCash);
   }
 
+  /// Repair a broken machine
+  void repairMachine(String machineId) {
+    const repairCost = 150.0;
+    
+    // Find the machine
+    final machineIndex = state.machines.indexWhere((m) => m.id == machineId);
+    if (machineIndex == -1) {
+      state = state.addLogMessage('Machine not found');
+      return;
+    }
+
+    final machine = state.machines[machineIndex];
+    
+    // Check if machine is actually broken
+    if (!machine.isBroken) {
+      state = state.addLogMessage('${machine.name} is not broken');
+      return;
+    }
+    
+    // Check if player has enough cash
+    if (state.cash < repairCost) {
+      state = state.addLogMessage('Insufficient funds to repair ${machine.name} (need \$${repairCost.toStringAsFixed(2)})');
+      return;
+    }
+
+    // Repair the machine
+    final updatedMachine = machine.copyWith(condition: MachineCondition.good);
+    final updatedMachines = [...state.machines];
+    updatedMachines[machineIndex] = updatedMachine;
+
+    // Deduct repair cost
+    final newCash = state.cash - repairCost;
+
+    // Update state
+    state = state.copyWith(
+      machines: updatedMachines,
+      cash: newCash,
+    );
+    state = state.addLogMessage(
+      'Repaired ${machine.name} for \$${repairCost.toStringAsFixed(2)}',
+    );
+
+    // Sync to simulation engine
+    simulationEngine.updateMachines(updatedMachines);
+    simulationEngine.updateCash(newCash);
+  }
+
   /// Update hype level (0.0 to 1.0)
   void updateHypeLevel(double newHype) {
     state = state.copyWith(
