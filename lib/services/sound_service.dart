@@ -14,6 +14,7 @@ class SoundService {
 
   final AudioPlayer _backgroundMusicPlayer = AudioPlayer();
   final AudioPlayer _soundEffectPlayer = AudioPlayer();
+  final AudioPlayer _truckSoundPlayer = AudioPlayer(); // Separate player for truck sound to enable fade out
   
   bool _isMusicEnabled = true;
   bool _isSoundEnabled = true;
@@ -201,10 +202,15 @@ class SoundService {
     
     // Configure for looping
     await _backgroundMusicPlayer.setReleaseMode(ReleaseMode.loop);
-    await _backgroundMusicPlayer.setVolume(volume);
+    // Start at 0 volume for fade in
+    await _backgroundMusicPlayer.setVolume(0.0);
     
-    print('🎵 Playing background music: $assetPath (volume: $volume)');
+    print('🎵 Playing background music: $assetPath (target volume: $volume)');
     await _backgroundMusicPlayer.play(AssetSource(assetPath));
+    
+    // Fade in over 0.5 seconds
+    const fadeInDuration = Duration(milliseconds: 500);
+    _fadeIn(fadeInDuration, volume);
     _currentMusicPath = assetPath; // Track what's playing
     _lastMusicStartTime = DateTime.now(); // Track when music started
     _wasPlayingBeforePause = true; // Mark that music is now playing
@@ -245,17 +251,19 @@ class SoundService {
         if (position == null || _trackDuration == null) return;
         
         final timeRemaining = _trackDuration! - position;
-        const fadeDuration = Duration(seconds: 2); // 2 second fade
+        // 4 second fade out for both menu and game background music
+        const fadeOutDuration = Duration(seconds: 4);
         
         // If we're within fade duration of the end, start fading out
-        if (timeRemaining <= fadeDuration && !_isFading) {
+        if (timeRemaining <= fadeOutDuration && !_isFading) {
           _isFading = true;
-          _fadeOut(fadeDuration, targetVolume);
+          _fadeOut(fadeOutDuration, targetVolume);
         }
         // If position resets (looped back to near 0), fade back in
         else if (position.inMilliseconds < 500 && _isFading) {
           _isFading = false;
-          _fadeIn(fadeDuration, _targetVolume ?? targetVolume);
+          const fadeInDuration = Duration(milliseconds: 500); // 0.5 second fade in
+          _fadeIn(fadeInDuration, _targetVolume ?? targetVolume);
         }
       } catch (e) {
         // Ignore errors in monitoring
@@ -442,9 +450,85 @@ class SoundService {
     await playSoundEffect('sound/coin_collect.m4a', volumeMultiplier: AppConfig.moneySoundVolume);
   }
 
-  /// Play truck sound (uses volume from config)
+  /// Play truck sound (uses volume from config) with fade out
   Future<void> playTruckSound() async {
-    await playSoundEffect('sound/truck.mp3', volumeMultiplier: AppConfig.truckSoundVolume);
+    if (!_isSoundEnabled) return;
+    
+    try {
+      // Apply non-linear volume curve to the multiplier for more responsive adjustment
+      final curvedMultiplier = _applyVolumeCurve(_soundVolumeMultiplier);
+      
+      // Calculate final volume: curved sound multiplier * individual sound volume
+      final finalVolume = (curvedMultiplier * AppConfig.truckSoundVolume).clamp(0.0, 1.0);
+      
+      await _truckSoundPlayer.setReleaseMode(ReleaseMode.release);
+      await _truckSoundPlayer.setVolume(finalVolume);
+      print('🔊 Playing truck sound: sound/truck.m4a (volume: $finalVolume)');
+      await _truckSoundPlayer.play(AssetSource('sound/truck.m4a'));
+      
+      // Start monitoring position to fade out 1 second before the end
+      _startTruckSoundFadeMonitoring(finalVolume);
+    } catch (e) {
+      print('❌ Error playing truck sound: $e');
+    }
+  }
+  
+  /// Start monitoring truck sound position for fade-out
+  void _startTruckSoundFadeMonitoring(double startVolume) {
+    Duration? truckDuration;
+    
+    // Get duration after a short delay
+    Future.delayed(const Duration(milliseconds: 100), () async {
+      try {
+        final duration = await _truckSoundPlayer.getDuration();
+        if (duration != null) {
+          truckDuration = duration;
+        }
+      } catch (e) {
+        print('⚠️ Could not get truck sound duration: $e');
+      }
+    });
+    
+    // Monitor position every 50ms
+    Timer.periodic(const Duration(milliseconds: 50), (timer) async {
+      try {
+        final position = await _truckSoundPlayer.getCurrentPosition();
+        if (position == null || truckDuration == null) return;
+        
+        final timeRemaining = truckDuration! - position;
+        const fadeOutDuration = Duration(seconds: 1);
+        
+        // If we're within 1 second of the end, start fading out
+        if (timeRemaining <= fadeOutDuration) {
+          timer.cancel();
+          await _fadeOutTruckSound(fadeOutDuration, startVolume);
+        }
+        // If sound finished, cancel timer
+        else if (position >= truckDuration!) {
+          timer.cancel();
+        }
+      } catch (e) {
+        timer.cancel();
+      }
+    });
+  }
+  
+  /// Fade out truck sound over the specified duration
+  Future<void> _fadeOutTruckSound(Duration duration, double startVolume) async {
+    const steps = 20; // Number of fade steps
+    final stepDuration = duration ~/ steps;
+    final volumeStep = startVolume / steps;
+    
+    for (int i = steps; i >= 0; i--) {
+      try {
+        final currentVolume = volumeStep * i;
+        await _truckSoundPlayer.setVolume(currentVolume);
+        await Future.delayed(stepDuration);
+      } catch (e) {
+        // Sound might have finished, ignore errors
+        break;
+      }
+    }
   }
 
   /// Dispose resources
@@ -453,6 +537,7 @@ class SoundService {
     _fadeTimer = null;
     _backgroundMusicPlayer.dispose();
     _soundEffectPlayer.dispose();
+    _truckSoundPlayer.dispose();
   }
 }
 
