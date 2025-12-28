@@ -97,6 +97,7 @@ flutter:
     - assets/images/status_icon.png
     - assets/images/machine_with_money.png
     - assets/images/machine_without_money.png
+    - assets/images/pedestrian_walk/
     - assets/sound/
 
   # An image asset can refer to one or more resolution-specific "variants", see

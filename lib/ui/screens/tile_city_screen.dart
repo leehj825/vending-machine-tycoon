@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vector_math/vector_math_64.dart' hide Colors;
@@ -37,6 +38,31 @@ enum RoadDirection {
 enum BuildingOrientation {
   normal,
   flippedHorizontal,
+}
+
+/// Pedestrian state class for tile city screen
+class _PedestrianState {
+  final int personId; // 0-9
+  double gridX;
+  double gridY;
+  double? targetGridX;
+  double? targetGridY;
+  String direction; // 'front', 'back'
+  bool flipHorizontal;
+  int stepsWalked; // Track how many steps the pedestrian has taken
+  bool isLeaving; // True when pedestrian is walking toward edge to leave
+  
+  _PedestrianState({
+    required this.personId,
+    required this.gridX,
+    required this.gridY,
+    this.targetGridX,
+    this.targetGridY,
+    this.direction = 'front',
+    this.flipHorizontal = false,
+    this.stepsWalked = 0,
+    this.isLeaving = false,
+  });
 }
 
 class TileCityScreen extends ConsumerStatefulWidget {
@@ -113,6 +139,12 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
   Offset? _messageDragStartPosition; // Position when drag started
   Offset _messageDragAccumulatedDelta = Offset.zero; // Accumulated delta during current drag
   bool _previousRushHourState = false; // Track previous rush hour state to detect transitions
+  
+  // Pedestrian management
+  final List<_PedestrianState> _pedestrians = [];
+  Timer? _pedestrianUpdateTimer;
+  final Set<int> _usedPersonIds = {}; // Track which personIds are currently in use
+  final math.Random _pedestrianRandom = math.Random();
 
   @override
   void initState() {
@@ -146,6 +178,19 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
           !gameState.isRushHour) {
         controller.spawnMarketingButton();
       }
+      
+      // Spawn pedestrians (clear used IDs first)
+      _usedPersonIds.clear();
+      _pedestrians.clear();
+      _spawnPedestrians();
+      
+      // Start pedestrian update timer
+      _pedestrianUpdateTimer = Timer.periodic(const Duration(milliseconds: 50), (timer) {
+        if (mounted) {
+          _updatePedestrians();
+          setState(() {}); // Trigger rebuild to show movement
+        }
+      });
     });
   }
   
@@ -216,6 +261,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
   @override
   void dispose() {
     _transformationController.dispose();
+    _pedestrianUpdateTimer?.cancel();
     super.dispose();
   }
 
@@ -821,6 +867,11 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
     for (final truck in gameTrucks) {
       tiles.add(_buildGameTruck(context, truck, centerOffset, tileWidth, tileHeight));
     }
+    
+    // Add Pedestrians
+    for (final pedestrian in _pedestrians) {
+      tiles.add(_buildPedestrian(context, pedestrian, centerOffset, tileWidth, tileHeight));
+    }
 
     // Add Marketing Button if position is set (show during rush hour too, but with fire icon)
     final gameState = ref.watch(gameStateProvider);
@@ -1326,6 +1377,290 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
       width: truckSize,
       height: truckSize,
       child: img,
+    );
+  }
+
+  // --- PEDESTRIAN MANAGEMENT ---
+  
+  /// Spawn random number (1-10) of pedestrians with unique personIds on random road tiles
+  void _spawnPedestrians() {
+    // Find all road tiles
+    final roadTiles = <({int x, int y})>[];
+    for (int y = 0; y < _grid.length; y++) {
+      for (int x = 0; x < _grid[y].length; x++) {
+        if (_grid[y][x] == TileType.road) {
+          roadTiles.add((x: x, y: y));
+        }
+      }
+    }
+    
+    if (roadTiles.isEmpty) return;
+    
+    // Spawn random number of pedestrians (1-10)
+    final numToSpawn = _pedestrianRandom.nextInt(10) + 1; // 1 to 10
+    
+    // Get available personIds (0-9) that are not currently in use
+    final availablePersonIds = List.generate(10, (i) => i).where((id) => !_usedPersonIds.contains(id)).toList();
+    
+    // Shuffle and take only what we need
+    availablePersonIds.shuffle(_pedestrianRandom);
+    final personIdsToUse = availablePersonIds.take(numToSpawn).toList();
+    
+    // If we don't have enough unique IDs, use what we have
+    for (int i = 0; i < personIdsToUse.length && i < numToSpawn; i++) {
+      final personId = personIdsToUse[i];
+      final roadTile = roadTiles[_pedestrianRandom.nextInt(roadTiles.length)];
+      
+      _pedestrians.add(_PedestrianState(
+        personId: personId,
+        gridX: roadTile.x.toDouble(),
+        gridY: roadTile.y.toDouble(),
+      ));
+      _usedPersonIds.add(personId);
+    }
+  }
+  
+  /// Spawn a single pedestrian at a random road tile
+  void _spawnSinglePedestrian() {
+    // Find all road tiles
+    final roadTiles = <({int x, int y})>[];
+    for (int y = 0; y < _grid.length; y++) {
+      for (int x = 0; x < _grid[y].length; x++) {
+        if (_grid[y][x] == TileType.road) {
+          roadTiles.add((x: x, y: y));
+        }
+      }
+    }
+    
+    if (roadTiles.isEmpty) return;
+    
+    // Get available personIds that are not currently in use
+    final availablePersonIds = List.generate(10, (i) => i).where((id) => !_usedPersonIds.contains(id)).toList();
+    
+    if (availablePersonIds.isEmpty) return; // All personIds are in use
+    
+    final personId = availablePersonIds[_pedestrianRandom.nextInt(availablePersonIds.length)];
+    final roadTile = roadTiles[_pedestrianRandom.nextInt(roadTiles.length)];
+    
+    _pedestrians.add(_PedestrianState(
+      personId: personId,
+      gridX: roadTile.x.toDouble(),
+      gridY: roadTile.y.toDouble(),
+    ));
+    _usedPersonIds.add(personId);
+  }
+  
+  /// Update pedestrian positions and find new targets
+  void _updatePedestrians() {
+    const double speed = 0.01; // Grid units per update (50ms = 0.2 grid units per second) - slower
+    const double arrivalThreshold = 0.1;
+    const int minStepsBeforeLeaving = 30; // Minimum steps before pedestrian starts leaving
+    
+    // Remove pedestrians that have left the map
+    final pedestriansToRemove = <_PedestrianState>[];
+    for (final pedestrian in _pedestrians) {
+      // Check if pedestrian has left the map bounds
+      if (pedestrian.gridX < -0.5 || pedestrian.gridX >= gridSize + 0.5 ||
+          pedestrian.gridY < -0.5 || pedestrian.gridY >= gridSize + 0.5) {
+        pedestriansToRemove.add(pedestrian);
+      }
+    }
+    
+    for (final pedestrian in pedestriansToRemove) {
+      _pedestrians.remove(pedestrian);
+      _usedPersonIds.remove(pedestrian.personId);
+    }
+    
+    // Randomly spawn new pedestrians if we have available personIds
+    if (_pedestrians.length < 10 && _pedestrianRandom.nextDouble() < 0.01) { // 1% chance per update
+      _spawnSinglePedestrian();
+    }
+    
+    for (final pedestrian in _pedestrians) {
+      // Check if pedestrian should start leaving (after walking for a while)
+      if (!pedestrian.isLeaving && pedestrian.stepsWalked > minStepsBeforeLeaving) {
+        // Random chance to start leaving (not too quickly)
+        if (_pedestrianRandom.nextDouble() < 0.001) { // 0.1% chance per update
+          pedestrian.isLeaving = true;
+          // Set target to nearest edge
+          final edgeTarget = _findNearestEdgeTarget(pedestrian.gridX, pedestrian.gridY);
+          pedestrian.targetGridX = edgeTarget.x;
+          pedestrian.targetGridY = edgeTarget.y;
+        }
+      }
+      
+      // Check if we need a new target
+      if (pedestrian.targetGridX == null || pedestrian.targetGridY == null ||
+          ((pedestrian.gridX - pedestrian.targetGridX!).abs() < arrivalThreshold &&
+           (pedestrian.gridY - pedestrian.targetGridY!).abs() < arrivalThreshold)) {
+        
+        if (pedestrian.isLeaving) {
+          // Continue walking toward edge
+          final edgeTarget = _findNearestEdgeTarget(pedestrian.gridX, pedestrian.gridY);
+          pedestrian.targetGridX = edgeTarget.x;
+          pedestrian.targetGridY = edgeTarget.y;
+        } else {
+          // Normal wandering - find adjacent road tiles
+          final adjacentRoads = _getAdjacentRoadTilesForPedestrian(
+            pedestrian.gridX.floor(),
+            pedestrian.gridY.floor(),
+          );
+          
+          if (adjacentRoads.isNotEmpty) {
+            final random = math.Random();
+            final target = adjacentRoads[random.nextInt(adjacentRoads.length)];
+            pedestrian.targetGridX = target.x.toDouble();
+            pedestrian.targetGridY = target.y.toDouble();
+          } else {
+            // Find any nearby road
+            final nearbyRoad = _findNearbyRoadForPedestrian(
+              pedestrian.gridX.floor(),
+              pedestrian.gridY.floor(),
+            );
+            if (nearbyRoad != null) {
+              pedestrian.targetGridX = nearbyRoad.x.toDouble();
+              pedestrian.targetGridY = nearbyRoad.y.toDouble();
+            }
+          }
+        }
+      }
+      
+      // Move towards target
+      if (pedestrian.targetGridX != null && pedestrian.targetGridY != null) {
+        final dx = pedestrian.targetGridX! - pedestrian.gridX;
+        final dy = pedestrian.targetGridY! - pedestrian.gridY;
+        final distance = math.sqrt(dx * dx + dy * dy);
+        
+        if (distance > arrivalThreshold) {
+          final normalizedDx = dx / distance;
+          final normalizedDy = dy / distance;
+          
+          pedestrian.gridX += normalizedDx * speed;
+          pedestrian.gridY += normalizedDy * speed;
+          pedestrian.stepsWalked++; // Increment step counter
+          
+          // Update direction and flip based on movement
+          // Upper right (dy < 0, dx > 0): walk_back flipped
+          // Upper left (dy < 0, dx < 0): walk_back original
+          // Down right (dy > 0, dx > 0): walk_front original
+          // Down left (dy > 0, dx < 0): walk_front flipped
+          if (dy < 0) {
+            // Moving up
+            pedestrian.direction = 'back';
+            pedestrian.flipHorizontal = dx > 0; // Flip if moving right
+          } else if (dy > 0) {
+            // Moving down
+            pedestrian.direction = 'front';
+            pedestrian.flipHorizontal = dx < 0; // Flip if moving left
+          } else {
+            // Moving horizontally (dy == 0)
+            pedestrian.direction = 'front';
+            pedestrian.flipHorizontal = dx < 0; // Flip if moving left
+          }
+        } else {
+          // Arrived at target
+          pedestrian.gridX = pedestrian.targetGridX!;
+          pedestrian.gridY = pedestrian.targetGridY!;
+          pedestrian.targetGridX = null;
+          pedestrian.targetGridY = null;
+        }
+      }
+    }
+  }
+  
+  /// Get adjacent road tiles for pedestrian pathfinding
+  List<({int x, int y})> _getAdjacentRoadTilesForPedestrian(int gridX, int gridY) {
+    final adjacentRoads = <({int x, int y})>[];
+    
+    final directions = [
+      (x: gridX, y: gridY - 1), // Up
+      (x: gridX, y: gridY + 1), // Down
+      (x: gridX - 1, y: gridY), // Left
+      (x: gridX + 1, y: gridY), // Right
+    ];
+    
+    for (final dir in directions) {
+      if (dir.y >= 0 && dir.y < _grid.length &&
+          dir.x >= 0 && dir.x < _grid[dir.y].length &&
+          _grid[dir.y][dir.x] == TileType.road) {
+        adjacentRoads.add(dir);
+      }
+    }
+    
+    return adjacentRoads;
+  }
+  
+  /// Find a nearby road tile if current position is not on a road
+  ({int x, int y})? _findNearbyRoadForPedestrian(int gridX, int gridY) {
+    for (int radius = 1; radius <= 5; radius++) {
+      for (int dy = -radius; dy <= radius; dy++) {
+        for (int dx = -radius; dx <= radius; dx++) {
+          if (dx.abs() == radius || dy.abs() == radius) {
+            final checkX = gridX + dx;
+            final checkY = gridY + dy;
+            
+            if (checkY >= 0 && checkY < _grid.length &&
+                checkX >= 0 && checkX < _grid[checkY].length &&
+                _grid[checkY][checkX] == TileType.road) {
+              return (x: checkX, y: checkY);
+            }
+          }
+        }
+      }
+    }
+    return null;
+  }
+  
+  /// Find the nearest edge target for a pedestrian to walk toward
+  ({double x, double y}) _findNearestEdgeTarget(double gridX, double gridY) {
+    // Calculate distances to each edge
+    final distToLeft = gridX;
+    final distToRight = gridSize - 1 - gridX;
+    final distToTop = gridY;
+    final distToBottom = gridSize - 1 - gridY;
+    
+    // Find the nearest edge
+    final minDist = [distToLeft, distToRight, distToTop, distToBottom].reduce((a, b) => a < b ? a : b);
+    
+    if (minDist == distToLeft) {
+      // Walk toward left edge
+      return (x: -1.0, y: gridY);
+    } else if (minDist == distToRight) {
+      // Walk toward right edge
+      return (x: gridSize.toDouble(), y: gridY);
+    } else if (minDist == distToTop) {
+      // Walk toward top edge
+      return (x: gridX, y: -1.0);
+    } else {
+      // Walk toward bottom edge
+      return (x: gridX, y: gridSize.toDouble());
+    }
+  }
+  
+  /// Build pedestrian widget with animation
+  Widget _buildPedestrian(BuildContext context, _PedestrianState pedestrian, Offset centerOffset, double tileWidth, double tileHeight) {
+    final pos = _gridToScreenDouble(context, pedestrian.gridX, pedestrian.gridY);
+    final positionedX = pos.dx + centerOffset.dx;
+    final positionedY = pos.dy + centerOffset.dy;
+    
+    final double pedestrianSize = tileWidth * 0.3;
+    
+    // Position on sidewalk (edge of tile) - offset to the right side of the tile
+    // Use 75% of tile width to position on the right edge (sidewalk)
+    final sidewalkOffset = tileWidth * 0.75; // Position on right edge of tile
+    final left = positionedX + sidewalkOffset - pedestrianSize / 2;
+    final top = positionedY + (tileHeight / 2) - pedestrianSize / 1.2;
+    
+    return Positioned(
+      left: left,
+      top: top,
+      width: pedestrianSize,
+      height: pedestrianSize,
+      child: _AnimatedPedestrian(
+        personId: pedestrian.personId,
+        direction: pedestrian.direction,
+        flipHorizontal: pedestrian.flipHorizontal,
+      ),
     );
   }
 
@@ -2446,5 +2781,190 @@ class _MachinePurchaseDialog extends ConsumerWidget {
         },
       ),
     );
+  }
+}
+
+/// Widget that renders an animated pedestrian with sprite extraction
+class _AnimatedPedestrian extends StatefulWidget {
+  final int personId; // 0-9
+  final String direction; // 'front' or 'back'
+  final bool flipHorizontal;
+  
+  const _AnimatedPedestrian({
+    required this.personId,
+    required this.direction,
+    required this.flipHorizontal,
+  });
+  
+  @override
+  State<_AnimatedPedestrian> createState() => _AnimatedPedestrianState();
+}
+
+class _AnimatedPedestrianState extends State<_AnimatedPedestrian> 
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  List<ImageProvider>? _frameImages;
+  Size? _spriteSize;
+  bool _isLoading = true;
+  
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 1000), // 10 frames * 100ms
+      vsync: this,
+    )..repeat();
+    
+    _loadFrames();
+  }
+  
+  Future<void> _loadFrames() async {
+    try {
+      // Load first frame to get dimensions
+      final firstFrameAsset = 'assets/images/pedestrian_walk/walk_${widget.direction}_0.png';
+      final firstImage = AssetImage(firstFrameAsset);
+      final completer = Completer<ImageInfo>();
+      final stream = firstImage.resolve(const ImageConfiguration());
+      late ImageStreamListener listener;
+      listener = ImageStreamListener((info, synchronousCall) {
+        completer.complete(info);
+        stream.removeListener(listener);
+      });
+      stream.addListener(listener);
+      final firstImageInfo = await completer.future;
+      final firstImageSize = firstImageInfo.image.width;
+      final firstImageHeight = firstImageInfo.image.height;
+      
+      // Calculate sprite size: 2 rows x 5 columns
+      final spriteWidth = firstImageSize / 5;
+      final spriteHeight = firstImageHeight / 2;
+      _spriteSize = Size(spriteWidth, spriteHeight);
+      
+      // Load all 10 frames
+      final frames = <ImageProvider>[];
+      for (int i = 0; i < 10; i++) {
+        frames.add(AssetImage('assets/images/pedestrian_walk/walk_${widget.direction}_$i.png'));
+      }
+      
+      if (mounted) {
+        setState(() {
+          _frameImages = frames;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading pedestrian frames: $e');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+  
+  @override
+  void didUpdateWidget(_AnimatedPedestrian oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.direction != widget.direction) {
+      _loadFrames();
+    }
+  }
+  
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+  
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading || _frameImages == null || _spriteSize == null) {
+      return Container(
+        color: Colors.transparent,
+        child: const SizedBox.shrink(),
+      );
+    }
+    
+    // Calculate grid position for this personId
+    final row = widget.personId ~/ 5;
+    final col = widget.personId % 5;
+    
+    // Calculate source rect for sprite extraction
+    final srcLeft = col * _spriteSize!.width;
+    final srcTop = row * _spriteSize!.height;
+    
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        // Get current frame index (0-9)
+        final frameIndex = ((_controller.value * 10) % 10).floor();
+        final imageProvider = _frameImages![frameIndex];
+        
+        Widget image = CustomPaint(
+          size: Size(_spriteSize!.width, _spriteSize!.height),
+          painter: _PedestrianSpritePainter(
+            imageProvider: imageProvider,
+            srcRect: Rect.fromLTWH(
+              srcLeft,
+              srcTop,
+              _spriteSize!.width,
+              _spriteSize!.height,
+            ),
+          ),
+        );
+        
+        if (widget.flipHorizontal) {
+          image = Transform(
+            alignment: Alignment.center,
+            transform: Matrix4.identity()..scale(-1.0, 1.0),
+            child: image,
+          );
+        }
+        
+        return image;
+      },
+    );
+  }
+}
+
+/// Custom painter that extracts a sprite from a larger image
+class _PedestrianSpritePainter extends CustomPainter {
+  final ImageProvider imageProvider;
+  final Rect srcRect;
+  ImageInfo? _imageInfo;
+  
+  _PedestrianSpritePainter({
+    required this.imageProvider,
+    required this.srcRect,
+  }) {
+    _loadImage();
+  }
+  
+  void _loadImage() {
+    final stream = imageProvider.resolve(const ImageConfiguration());
+    stream.addListener(ImageStreamListener((info, synchronousCall) {
+      _imageInfo = info;
+    }));
+  }
+  
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (_imageInfo == null) return;
+    
+    final image = _imageInfo!.image;
+    final dstRect = Rect.fromLTWH(0, 0, size.width, size.height);
+    
+    canvas.drawImageRect(
+      image,
+      srcRect,
+      dstRect,
+      Paint(),
+    );
+  }
+  
+  @override
+  bool shouldRepaint(_PedestrianSpritePainter oldDelegate) {
+    return oldDelegate.imageProvider != imageProvider ||
+           oldDelegate.srcRect != srcRect;
   }
 }
