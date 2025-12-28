@@ -574,380 +574,245 @@ class SimulationEngine extends StateNotifier<SimulationState> {
     List<Truck> trucks,
     List<Machine> machines,
   ) {
-    // Movement speed: 0.1 units per tick = 1 tile per second (10 ticks per second)
     const double movementSpeed = AppConfig.movementSpeed;
     
-    // A* pathfinding to find shortest path through road network
     List<({double x, double y})> findPath(
       double startX, double startY,
       double endX, double endY,
     ) {
-      final start = (x: startX, y: startY);
-      final end = (x: endX, y: endY);
-      
-      // If start and end are close enough (e.g. moving slightly on same spot), just go direct
-      if ((start.x - end.x).abs() < SimulationConstants.roadSnapThreshold && 
-          (start.y - end.y).abs() < SimulationConstants.roadSnapThreshold) {
-        return [end];
-      }
-      
-      // 1. Get Base Graph (Intersections)
-      final baseGraph = _getBaseGraph();
-      final graph = Map<({double x, double y}), List<({double x, double y})>>.from(
-        baseGraph.map((key, value) => MapEntry(key, List<({double x, double y})>.from(value))),
-      );
-      
-      // 2. Identify Entry and Exit points on the road network
-      // Use helper to project current/target position onto nearest road line
-      final startEntry = _getNearestRoadPoint(startX, startY);
-      final endExit = _getNearestRoadPoint(endX, endY);
-      
-      // 3. Connect START point to ENTRY point (if different)
-      if (startEntry != start) {
-        // Connect Start -> StartEntry
-        graph[start] = [startEntry];
-        if (!graph.containsKey(startEntry)) graph[startEntry] = [];
-        graph[startEntry]!.add(start); // Undirected for consistency
-      } else {
-        // Start IS on the road, ensure it's in the graph
-        if (!graph.containsKey(start)) graph[start] = [];
-      }
-
-      // 4. Connect END point to EXIT point (if different)
-      if (endExit != end) {
-         if (!graph.containsKey(endExit)) graph[endExit] = [];
-         graph[endExit]!.add(end);
-         graph[end] = [endExit];
-      } else {
-         if (!graph.containsKey(end)) graph[end] = [];
-      }
-
-      // 5. Connect Entry/Exit points to the rest of the road network
-      // Helper to connect a road point to its neighbors
-      void connectToRoadNetwork(({double x, double y}) point) {
-        if (baseGraph.containsKey(point)) return; // Already in base graph
-
-        // Check 4 neighbors (Right, Left, Down, Up)
-        final neighbors = [
-          (x: point.x + 1.0, y: point.y),
-          (x: point.x - 1.0, y: point.y),
-          (x: point.x, y: point.y + 1.0),
-          (x: point.x, y: point.y - 1.0),
-        ];
-
-        for (final neighbor in neighbors) {
-          if (_roadTiles.contains(neighbor)) {
-            if (!graph.containsKey(neighbor)) graph[neighbor] = [];
-            if (!graph.containsKey(point)) graph[point] = [];
-            
-            // Add bidirectional edge
-            if (!graph[point]!.contains(neighbor)) graph[point]!.add(neighbor);
-            if (!graph[neighbor]!.contains(point)) graph[neighbor]!.add(point);
-          }
+        final start = (x: startX, y: startY);
+        final end = (x: endX, y: endY);
+        
+        if ((start.x - end.x).abs() < SimulationConstants.roadSnapThreshold && 
+            (start.y - end.y).abs() < SimulationConstants.roadSnapThreshold) {
+          return [end];
         }
-      }
 
-      connectToRoadNetwork(startEntry);
-      connectToRoadNetwork(endExit);
+        final baseGraph = _getBaseGraph();
+        final graph = Map<({double x, double y}), List<({double x, double y})>>.from(
+          baseGraph.map((key, value) => MapEntry(key, List<({double x, double y})>.from(value))),
+        );
 
-      // 6. Direct connection check: If Entry and Exit are adjacent road tiles, connect them
-      final dx = (startEntry.x - endExit.x).abs();
-      final dy = (startEntry.y - endExit.y).abs();
-      final isAdjacent = (dx == 1.0 && dy == 0.0) || (dx == 0.0 && dy == 1.0);
-      
-      if (isAdjacent && _roadTiles.contains(startEntry) && _roadTiles.contains(endExit)) {
-        if (!graph.containsKey(startEntry)) graph[startEntry] = [];
-        if (!graph.containsKey(endExit)) graph[endExit] = [];
-        if (!graph[startEntry]!.contains(endExit)) graph[startEntry]!.add(endExit);
-        if (!graph[endExit]!.contains(startEntry)) graph[endExit]!.add(startEntry);
-      }
+        final startEntry = _getNearestRoadPoint(startX, startY);
+        final endExit = _getNearestRoadPoint(endX, endY);
 
-      // A* Algorithm
-      final openSet = <({double x, double y})>{start};
-      final cameFrom = <({double x, double y}), ({double x, double y})>{};
-      final gScore = <({double x, double y}), double>{start: 0.0};
-      final fScore = <({double x, double y}), double>{start: (end.x - start.x).abs() + (end.y - start.y).abs()};
-      
-      while (openSet.isNotEmpty) {
-        ({double x, double y})? current;
-        double lowestF = double.infinity;
-        for (final node in openSet) {
-          final f = fScore[node] ?? double.infinity;
-          if (f < lowestF) {
-            lowestF = f;
-            current = node;
-          }
+        // Connect Start to network
+        if (startEntry != start) {
+          graph[start] = [startEntry];
+          if (!graph.containsKey(startEntry)) graph[startEntry] = [];
+          graph[startEntry]!.add(start); 
+        } else {
+          if (!graph.containsKey(start)) graph[start] = [];
         }
-        
-        if (current == null) break;
-        
-        if ((current.x - end.x).abs() < SimulationConstants.roadSnapThreshold && 
-            (current.y - end.y).abs() < SimulationConstants.roadSnapThreshold) {
-          // Reconstruct path
-          final path = <({double x, double y})>[end];
-          var node = current;
-          while (cameFrom.containsKey(node)) {
-            node = cameFrom[node]!;
-            if (node == start) break; // Don't include start in path
-            path.insert(0, node);
-          }
-          if (path.isEmpty || path.last != end) path.add(end);
-          return path;
+
+        // Connect End to network
+        if (endExit != end) {
+           if (!graph.containsKey(endExit)) graph[endExit] = [];
+           graph[endExit]!.add(end);
+           graph[end] = [endExit];
+        } else {
+           if (!graph.containsKey(end)) graph[end] = [];
         }
-        
-        openSet.remove(current);
-        final neighbors = graph[current] ?? [];
-        
-        for (final neighbor in neighbors) {
-          // Manhattan distance as edge cost
-          double edgeCost = (neighbor.x - current.x).abs() + (neighbor.y - current.y).abs();
-          
-          final tentativeG = (gScore[current] ?? double.infinity) + edgeCost;
-          
-          if (tentativeG < (gScore[neighbor] ?? double.infinity)) {
-            cameFrom[neighbor] = current;
-            gScore[neighbor] = tentativeG;
-            fScore[neighbor] = tentativeG + ((end.x - neighbor.x).abs() + (end.y - neighbor.y).abs());
-            if (!openSet.contains(neighbor)) {
-              openSet.add(neighbor);
+
+        // Ensure graph connectivity for dynamic nodes
+        void connectToRoadNetwork(({double x, double y}) point) {
+          if (baseGraph.containsKey(point)) return; 
+          final neighbors = [
+            (x: point.x + 1.0, y: point.y),
+            (x: point.x - 1.0, y: point.y),
+            (x: point.x, y: point.y + 1.0),
+            (x: point.x, y: point.y - 1.0),
+          ];
+          for (final neighbor in neighbors) {
+            if (_roadTiles.contains(neighbor)) {
+              if (!graph.containsKey(neighbor)) graph[neighbor] = [];
+              if (!graph.containsKey(point)) graph[point] = [];
+              if (!graph[point]!.contains(neighbor)) graph[point]!.add(neighbor);
+              if (!graph[neighbor]!.contains(point)) graph[neighbor]!.add(point);
             }
           }
         }
-      }
-      
-      // Fallback
-      return [end];
+        connectToRoadNetwork(startEntry);
+        connectToRoadNetwork(endExit);
+
+        // A* Search
+        final openSet = <({double x, double y})>{start};
+        final cameFrom = <({double x, double y}), ({double x, double y})>{};
+        final gScore = <({double x, double y}), double>{start: 0.0};
+        final fScore = <({double x, double y}), double>{start: (end.x - start.x).abs() + (end.y - start.y).abs()};
+        
+        while (openSet.isNotEmpty) {
+          ({double x, double y})? current;
+          double lowestF = double.infinity;
+          for (final node in openSet) {
+            final f = fScore[node] ?? double.infinity;
+            if (f < lowestF) {
+              lowestF = f;
+              current = node;
+            }
+          }
+          
+          if (current == null) break;
+          
+          if ((current.x - end.x).abs() < SimulationConstants.roadSnapThreshold && 
+              (current.y - end.y).abs() < SimulationConstants.roadSnapThreshold) {
+            final path = <({double x, double y})>[end];
+            var node = current;
+            while (cameFrom.containsKey(node)) {
+              node = cameFrom[node]!;
+              if (node == start) break; // Exclude start node
+              path.insert(0, node);
+            }
+            if (path.isEmpty || path.last != end) path.add(end);
+            return path;
+          }
+          
+          openSet.remove(current);
+          final neighbors = graph[current] ?? [];
+          
+          for (final neighbor in neighbors) {
+            double edgeCost = (neighbor.x - current.x).abs() + (neighbor.y - current.y).abs();
+            final tentativeG = (gScore[current] ?? double.infinity) + edgeCost;
+            if (tentativeG < (gScore[neighbor] ?? double.infinity)) {
+              cameFrom[neighbor] = current;
+              gScore[neighbor] = tentativeG;
+              fScore[neighbor] = tentativeG + ((end.x - neighbor.x).abs() + (end.y - neighbor.y).abs());
+              if (!openSet.contains(neighbor)) openSet.add(neighbor);
+            }
+          }
+        }
+        return [end];
     }
     
     return trucks.map((truck) {
-      // If truck is idle, don't process movement - truck only moves when explicitly started via "Go Stock"
-      if (truck.status == TruckStatus.idle) {
-        return truck; // Return truck unchanged
-      }
+      if (truck.status == TruckStatus.idle) return truck;
       
-      // ---------------------------------------------------------
-      // CASE 1: ROUTE COMPLETE - RETURN TO WAREHOUSE
-      // ---------------------------------------------------------
+      double targetX, targetY;
+      TruckStatus nextStatus = truck.status;
+      bool isRoutingToMachine = false;
+
+      // Determine Destination
       if (truck.isRouteComplete) {
-        // Get warehouse position from simulation state
-        final warehouseRoadX = state.warehouseRoadX ?? 4.0; // Fallback if not set
-        final warehouseRoadY = state.warehouseRoadY ?? 4.0; // Fallback if not set
-        
-        // If truck was restocking but is now complete, ensure it's traveling
-        var currentStatus = truck.status;
-        if (currentStatus == TruckStatus.restocking) {
-            currentStatus = TruckStatus.traveling;
-        }
-
-        final currentX = truck.currentX;
-        final currentY = truck.currentY;
-        
-        // Calculate distance to warehouse
-        final dxToWarehouse = warehouseRoadX - currentX;
-        final dyToWarehouse = warehouseRoadY - currentY;
-        final distanceToWarehouse = math.sqrt(dxToWarehouse * dxToWarehouse + dyToWarehouse * dyToWarehouse);
-        
-        // If already very close to warehouse, mark as Idle
-        if (distanceToWarehouse < SimulationConstants.roadSnapThreshold) {
-          return truck.copyWith(
-            status: TruckStatus.idle,
-            currentX: warehouseRoadX,
-            currentY: warehouseRoadY,
-            targetX: warehouseRoadX,
-            targetY: warehouseRoadY,
-            path: [],
-            pathIndex: 0,
-            currentRouteIndex: truck.route.length, 
-          );
-        }
-        
-        // Not at warehouse yet - calculate movement
-        List<({double x, double y})> path = truck.path;
-        int pathIndex = truck.pathIndex;
-        
-        // Recalculate path if needed
-        if (path.isEmpty || 
-            (path.isNotEmpty && (path.last.x != warehouseRoadX || path.last.y != warehouseRoadY)) ||
-            pathIndex >= path.length) {
-          
-          path = findPath(currentX, currentY, warehouseRoadX, warehouseRoadY);
-          pathIndex = 0;
-
-          // --- CRITICAL FIX: Skip the first node if we are already there ---
-          // This prevents the truck from targeting its current location, 
-          // which causes the "turn back" / "left-bottom" glitch.
-          if (path.isNotEmpty) {
-            final first = path.first;
-            final distToFirst = (first.x - currentX).abs() + (first.y - currentY).abs();
-            // If we are within 0.1 tiles (10 pixels) of the first node, skip it.
-            if (distToFirst < 0.1) {
-              pathIndex = 1;
-            }
-          }
-          // -------------------------------------------------------------
-        }
-        
-        // Move along the path
-        var currentPathIndex = pathIndex;
-        var simX = currentX;
-        var simY = currentY;
-        var newStatus = currentStatus == TruckStatus.idle ? TruckStatus.traveling : currentStatus;
-
-      // Process movement using remaining distance approach to prevent infinite loops
-      double remainingDistance = movementSpeed;
-      while (currentPathIndex < path.length && remainingDistance > 0.001) {
-        final targetWaypoint = path[currentPathIndex];
-        final dx = targetWaypoint.x - simX;
-        final dy = targetWaypoint.y - simY;
-        final distance = math.sqrt(dx * dx + dy * dy);
-        
-        if (distance < SimulationConstants.roadSnapThreshold) {
-          // Reached waypoint, snap and move to next
-          simX = targetWaypoint.x;
-          simY = targetWaypoint.y;
-          currentPathIndex++;
-        } else {
-          // Move towards waypoint, deduct from remaining distance
-          final moveDistance = remainingDistance.clamp(0.0, distance);
-          final ratio = moveDistance / distance;
-          simX += dx * ratio;
-          simY += dy * ratio;
-          remainingDistance -= moveDistance;
-          if (remainingDistance <= 0.001) break; // No more distance to travel this tick
-        }
-      }
-        
-        // Check if we reached the final destination (Warehouse)
-        if (currentPathIndex >= path.length) {
-           newStatus = TruckStatus.idle;
-           simX = warehouseRoadX;
-           simY = warehouseRoadY;
-        }
-
-        return truck.copyWith(
-          status: newStatus,
-          currentX: simX,
-          currentY: simY,
-          targetX: warehouseRoadX,
-          targetY: warehouseRoadY,
-          path: path,
-          pathIndex: currentPathIndex,
-        );
-      }
-      
-      // ---------------------------------------------------------
-      // CASE 2: ROUTE INCOMPLETE - TRAVEL TO NEXT MACHINE
-      // ---------------------------------------------------------
-      
-      final destinationId = truck.currentDestination;
-      
-      if (destinationId == null) {
-        return truck.copyWith(status: TruckStatus.idle);
+        // Return to Warehouse
+        targetX = state.warehouseRoadX ?? 4.0;
+        targetY = state.warehouseRoadY ?? 4.0;
+        if (truck.status == TruckStatus.restocking) nextStatus = TruckStatus.traveling;
+      } else {
+        // Go to Next Machine
+        final destId = truck.currentDestination!;
+        final machine = machines.firstWhere((m) => m.id == destId, orElse: () => machines.first);
+        final roadPt = _getNearestRoadPoint(machine.zone.x, machine.zone.y);
+        targetX = roadPt.x;
+        targetY = roadPt.y;
+        isRoutingToMachine = true;
       }
 
-      final destination = machines.firstWhere(
-        (m) => m.id == destinationId,
-        orElse: () => machines.first,
-      );
-
-      final machineX = destination.zone.x;
-      final machineY = destination.zone.y;
-      
-      // Find the correct stopping point on the road for this machine
-      final destPoint = _getNearestRoadPoint(machineX, machineY);
-      final destRoadX = destPoint.x;
-      final destRoadY = destPoint.y;
-      
-      // Calculate distance to destination road point
-      final currentX = truck.currentX;
-      final currentY = truck.currentY;
-      final dxToRoad = destRoadX - currentX;
-      final dyToRoad = destRoadY - currentY;
-      final manhattanDistance = dxToRoad.abs() + dyToRoad.abs();
-
-      // If truck is at the road stopping point, mark as arrived for restocking
-      if (manhattanDistance < SimulationConstants.roadSnapThreshold) {
-        return truck.copyWith(
-          status: TruckStatus.restocking,
-          currentX: destRoadX,
-          currentY: destRoadY,
-          targetX: destRoadX,
-          targetY: destRoadY,
-          path: [],
-          pathIndex: 0,
-        );
+      // Check Arrival
+      final distToDest = (targetX - truck.currentX).abs() + (targetY - truck.currentY).abs();
+      if (distToDest < SimulationConstants.roadSnapThreshold) {
+         return truck.copyWith(
+           status: isRoutingToMachine ? TruckStatus.restocking : TruckStatus.idle,
+           currentX: targetX,
+           currentY: targetY,
+           targetX: targetX,
+           targetY: targetY,
+           path: [],
+           pathIndex: 0,
+           currentRouteIndex: isRoutingToMachine ? truck.currentRouteIndex : truck.route.length,
+         );
       }
 
-      // Get or calculate path to destination road point
+      // Pathfinding
       List<({double x, double y})> path = truck.path;
       int pathIndex = truck.pathIndex;
-      
-      // Recalculate path if needed
-      if (path.isEmpty || 
-          (path.isNotEmpty && (path.last.x != destRoadX || path.last.y != destRoadY)) ||
-          pathIndex >= path.length) {
-        
-        path = findPath(currentX, currentY, destRoadX, destRoadY);
-        pathIndex = 0;
 
-        // --- CRITICAL FIX: Skip the first node if we are already there ---
-        // This prevents the truck from targeting its current location, 
-        // which causes the "turn back" / "left-bottom" glitch.
-        if (path.isNotEmpty) {
-          final first = path.first;
-          final distToFirst = (first.x - currentX).abs() + (first.y - currentY).abs();
-          // If we are within 0.1 tiles (10 pixels) of the first node, skip it.
-          if (distToFirst < 0.1) {
-            pathIndex = 1;
+      if (path.isEmpty || 
+          (path.isNotEmpty && (path.last.x != targetX || path.last.y != targetY)) ||
+          pathIndex >= path.length) {
+        path = findPath(truck.currentX, truck.currentY, targetX, targetY);
+        pathIndex = 0;
+      }
+
+      // --- FIX: Geometric "Passed Node" Check (Applied Every Tick) ---
+      // Skip nodes that the truck has already passed or is very close to
+      while (pathIndex < path.length) {
+        final currentTarget = path[pathIndex];
+        
+        // First check: Is the truck already at or very close to this node?
+        final distToNode = (currentTarget.x - truck.currentX).abs() + (currentTarget.y - truck.currentY).abs();
+        if (distToNode < 0.15) {
+          // Truck is at this node, skip it
+          pathIndex++;
+          continue;
+        }
+        
+        // Second check: Has the truck passed this node relative to the next node?
+        if (path.length > pathIndex + 1) {
+          final nextTarget = path[pathIndex + 1];
+          // Vector Truck->CurrentNode
+          final dx1 = currentTarget.x - truck.currentX;
+          final dy1 = currentTarget.y - truck.currentY;
+          // Vector CurrentNode->NextNode (path direction)
+          final dx2 = nextTarget.x - currentTarget.x;
+          final dy2 = nextTarget.y - currentTarget.y;
+          
+          // If dot product is negative, the truck is ahead of the current node
+          // Also check if the truck is closer to the next node than the current node
+          final distToNext = (nextTarget.x - truck.currentX).abs() + (nextTarget.y - truck.currentY).abs();
+          if ((dx1 * dx2 + dy1 * dy2) < -0.01 || distToNext < distToNode) {
+            pathIndex++;
+            continue;
           }
         }
-        // -------------------------------------------------------------
-      }
-      
-      // Move along the path
-      var currentPathIndex = pathIndex;
-      var simX = currentX;
-      var simY = currentY;
-      
-      // Process movement using remaining distance approach to prevent infinite loops
-      double remainingDistance = movementSpeed;
-      while (currentPathIndex < path.length && remainingDistance > 0.001) {
-        final targetWaypoint = path[currentPathIndex];
-        final dx = targetWaypoint.x - simX;
-        final dy = targetWaypoint.y - simY;
-        final distance = math.sqrt(dx * dx + dy * dy);
         
-        if (distance < SimulationConstants.roadSnapThreshold) {
-          // Reached waypoint
-          simX = targetWaypoint.x;
-          simY = targetWaypoint.y;
+        // Node is valid, stop checking
+        break;
+      }
+      // ------------------------------------------
+
+      // Movement Execution
+      var simX = truck.currentX;
+      var simY = truck.currentY;
+      var currentPathIndex = pathIndex;
+      double remainingDist = movementSpeed;
+
+      while (currentPathIndex < path.length && remainingDist > 0.001) {
+        final wp = path[currentPathIndex];
+        final dx = wp.x - simX;
+        final dy = wp.y - simY;
+        final dist = math.sqrt(dx * dx + dy * dy);
+
+        if (dist < SimulationConstants.roadSnapThreshold) {
+          simX = wp.x;
+          simY = wp.y;
           currentPathIndex++;
         } else {
-          // Move towards waypoint, deduct from remaining distance
-          final moveDistance = remainingDistance.clamp(0.0, distance);
-          final ratio = moveDistance / distance;
-          simX += dx * ratio;
-          simY += dy * ratio;
-          remainingDistance -= moveDistance;
-          if (remainingDistance <= 0.001) break; // No more distance to travel this tick
+          final move = remainingDist.clamp(0.0, dist);
+          simX += (dx / dist) * move;
+          simY += (dy / dist) * move;
+          remainingDist -= move;
         }
       }
       
-      // Check if reached destination
-      var newStatus = TruckStatus.traveling;
+      // Check Final Arrival after move
       if (currentPathIndex >= path.length) {
-         // Arrived at machine road location
-         newStatus = TruckStatus.restocking;
-         simX = destRoadX;
-         simY = destRoadY;
+         if (isRoutingToMachine) {
+             nextStatus = TruckStatus.restocking;
+         } else {
+             nextStatus = TruckStatus.idle;
+         }
+         simX = targetX;
+         simY = targetY;
+      } else if (nextStatus == TruckStatus.idle) {
+         nextStatus = TruckStatus.traveling;
       }
 
       return truck.copyWith(
-        status: newStatus,
+        status: nextStatus,
         currentX: simX,
         currentY: simY,
-        targetX: destRoadX,
-        targetY: destRoadY,
+        targetX: targetX,
+        targetY: targetY,
         path: path,
         pathIndex: currentPathIndex,
       );
