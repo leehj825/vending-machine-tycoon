@@ -5,7 +5,6 @@ import '../../state/market_provider.dart';
 import '../../state/selectors.dart';
 import '../../state/providers.dart';
 import '../../config.dart';
-import '../../services/sound_service.dart';
 import '../utils/screen_utils.dart';
 
 /// Card widget that displays a product in the market
@@ -433,13 +432,6 @@ class _BuyStockDialogState extends ConsumerState<_BuyStockDialog> {
                                               ),
                                             ),
                                           );
-                                          // Ensure background music continues playing after purchase
-                                          // This safeguard now smart-resumes the music if it was interrupted
-                                          WidgetsBinding.instance.addPostFrameCallback((_) {
-                                            Future.delayed(const Duration(milliseconds: 100), () {
-                                              SoundService().playBackgroundMusic('sound/game_background.m4a');
-                                            });
-                                          });
                                         }
                                       : null,
                                   label: 'Confirm Purchase',

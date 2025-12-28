@@ -165,10 +165,20 @@ class SoundService {
     try {
       // Check if we are already supposed to be playing this track
       if (_currentMusicPath == assetPath) {
-        // Skip state check to avoid duplicate response errors
-        // If path matches, assume it's playing or restart it
-        // This avoids checking state while operations might be in progress
-        print('🔄 Music path matches current, restarting to ensure it plays: $assetPath');
+        // Check if it is actually playing
+        bool isPlaying = false;
+        try {
+          final state = await _backgroundMusicPlayer.state;
+          isPlaying = state == PlayerState.playing;
+        } catch (_) {}
+
+        if (isPlaying) {
+          print('🎵 Music already playing: $assetPath');
+          _isMusicOperationInProgress = false;
+          return; // EXIT EARLY - DO NOT RESTART
+        }
+
+        print('🔄 Music path matches current but stopped, restarting: $assetPath');
         await _restartMusic(assetPath);
         _isMusicOperationInProgress = false;
         return;
