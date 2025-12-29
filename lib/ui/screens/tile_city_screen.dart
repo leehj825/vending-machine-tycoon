@@ -860,25 +860,8 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
       });
     }
     
-    // 4. Add all machines to objectItems
-    final gameMachines = ref.watch(machinesProvider);
-    for (final machine in gameMachines) {
-      // Convert from 1-based zone coordinates to 0-based grid coordinates
-      final machineGridX = (machine.zone.x - 1).floor();
-      final machineGridY = (machine.zone.y - 1).floor();
-      final depth = machineGridX + machineGridY;
-      
-      // Build the machine widget
-      final machineWidget = _buildGameMachine(context, machine, centerOffset, tileWidth, tileHeight);
-      
-      objectItems.add({
-        'type': 'machine',
-        'depth': depth,
-        'y': machineGridY, // Ensure y is an int for sorting
-        'priority': 2, // Machines have Priority 2
-        'widget': machineWidget,
-      });
-    }
+    // 4. Machines are rendered separately after all objects to always appear in front
+    // (Don't add machines to objectItems - they'll be added to tiles list separately)
     
     // 5. Sort objectItems using Painter's Algorithm
     objectItems.sort((a, b) {
@@ -893,7 +876,8 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
       if (yA != yB) return yA.compareTo(yB);
       
       // Tertiary sort: Priority - Ascending
-      // Priority order: 1 (Pedestrians/Trucks) < 2 (Machines) < 3 (Buildings)
+      // Priority order: 1 (Pedestrians/Trucks) < 3 (Buildings)
+      // Note: Machines are rendered separately after all objects, so they always appear on top
       final priorityA = (a['priority'] as int?) ?? 0;
       final priorityB = (b['priority'] as int?) ?? 0;
       return priorityA.compareTo(priorityB);
@@ -905,9 +889,17 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
       objects.add(item['widget'] as Widget);
     }
     
-    // 7. Combine ground tiles and objects into final tiles list
-    // Ground tiles render first (behind), then objects (on top)
-    final tiles = <Widget>[...groundTiles, ...objects];
+    // 7. Add machines separately - always render on top of everything
+    final gameMachines = ref.watch(machinesProvider);
+    final machineWidgets = <Widget>[];
+    for (final machine in gameMachines) {
+      final machineWidget = _buildGameMachine(context, machine, centerOffset, tileWidth, tileHeight);
+      machineWidgets.add(machineWidget);
+    }
+    
+    // 8. Combine ground tiles, objects, and machines into final tiles list
+    // Ground tiles render first (behind), then objects, then machines (always on top)
+    final tiles = <Widget>[...groundTiles, ...objects, ...machineWidgets];
     
     // 7. Build purchase buttons (separate from depth sorting, rendered on top)
     final buttons = <Widget>[];

@@ -556,13 +556,15 @@ class SimulationEngine extends StateNotifier<SimulationState> {
   }
 
   /// Calculate reputation penalty based on empty machines
+  /// Decreases by 1 reputation per second (per tick) for each empty machine
   int _calculateReputationPenalty(List<Machine> machines) {
     int totalPenalty = 0;
     
     for (final machine in machines) {
       if (machine.isEmpty && machine.hoursEmpty >= SimulationConstants.emptyMachinePenaltyHours) {
-        final hoursOverLimit = machine.hoursEmpty - SimulationConstants.emptyMachinePenaltyHours;
-        totalPenalty += (SimulationConstants.reputationPenaltyPerEmptyHour * hoursOverLimit).round();
+        // Apply -1 reputation per second (per tick) for each empty machine
+        // This is much slower than the previous per-hour calculation
+        totalPenalty += 1;
       }
     }
     
