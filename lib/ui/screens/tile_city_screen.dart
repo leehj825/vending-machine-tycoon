@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vector_math/vector_math_64.dart' hide Colors;
@@ -37,6 +38,29 @@ enum RoadDirection {
 enum BuildingOrientation {
   normal,
   flippedHorizontal,
+}
+
+/// Pedestrian state class for tile city screen
+class _PedestrianState {
+  final int personId; // 0-9
+  double gridX;
+  double gridY;
+  double? targetGridX;
+  double? targetGridY;
+  String direction; // 'front', 'back'
+  bool flipHorizontal;
+  int stepsWalked; // Track how many steps the pedestrian has taken
+  
+  _PedestrianState({
+    required this.personId,
+    required this.gridX,
+    required this.gridY,
+    this.targetGridX,
+    this.targetGridY,
+    this.direction = 'front',
+    this.flipHorizontal = false,
+    this.stepsWalked = 0,
+  });
 }
 
 class TileCityScreen extends ConsumerStatefulWidget {
@@ -113,6 +137,12 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
   Offset? _messageDragStartPosition; // Position when drag started
   Offset _messageDragAccumulatedDelta = Offset.zero; // Accumulated delta during current drag
   bool _previousRushHourState = false; // Track previous rush hour state to detect transitions
+  
+  // Pedestrian management
+  final List<_PedestrianState> _pedestrians = [];
+  Timer? _pedestrianUpdateTimer;
+  final Set<int> _usedPersonIds = {}; // Track which personIds are currently in use
+  final math.Random _pedestrianRandom = math.Random();
 
   @override
   void initState() {
@@ -146,6 +176,19 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
           !gameState.isRushHour) {
         controller.spawnMarketingButton();
       }
+      
+      // Spawn pedestrians (clear used IDs first)
+      _usedPersonIds.clear();
+      _pedestrians.clear();
+      _spawnPedestrians();
+      
+      // Start pedestrian update timer
+      _pedestrianUpdateTimer = Timer.periodic(const Duration(milliseconds: 50), (timer) {
+        if (mounted) {
+          _updatePedestrians();
+          setState(() {}); // Trigger rebuild to show movement
+        }
+      });
     });
   }
   
@@ -216,6 +259,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
   @override
   void dispose() {
     _transformationController.dispose();
+    _pedestrianUpdateTimer?.cancel();
     super.dispose();
   }
 
@@ -739,87 +783,157 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
   }
 
   Map<String, List<Widget>> _buildMapComponents(BuildContext context, Offset centerOffset, double tileWidth, double tileHeight, double buildingImageHeight) {
-    final tileData = <Map<String, dynamic>>[];
     final warehouseVerticalOffset = _getWarehouseVerticalOffset(context);
     
+    // Two-Layer Rendering System:
+    // Layer 1: Ground tiles (Grass/Road) - rendered first, always behind everything
+    // Layer 2: Objects (Buildings, Pedestrians, Trucks, Machines) - sorted by depth
+    final groundTiles = <Widget>[];
+    final objectItems = <Map<String, dynamic>>[];
+    
+    // 1. Iterate through the grid and separate ground tiles from buildings
     for (int y = 0; y < gridSize; y++) {
       for (int x = 0; x < gridSize; x++) {
         final screenPos = _gridToScreen(context, x, y);
-        tileData.add({
-          'x': x,
-          'y': y,
-          'tileType': _grid[y][x],
-          'roadDir': _roadDirections[y][x],
-          'buildingOrientation': _buildingOrientations[y][x],
-          'positionedX': screenPos.dx + centerOffset.dx,
-          'positionedY': screenPos.dy + centerOffset.dy,
-        });
+        final tileType = _grid[y][x];
+        
+        // Build the tile widget
+        final tileWidget = _buildSingleTileWidget(
+          context, x, y, tileType, _roadDirections[y][x], _buildingOrientations[y][x],
+          screenPos.dx + centerOffset.dx, screenPos.dy + centerOffset.dy,
+          tileWidth, tileHeight, buildingImageHeight, warehouseVerticalOffset
+        );
+        
+        // Separate ground tiles from buildings
+        if (tileType == TileType.grass || tileType == TileType.road) {
+          // Ground tiles: Add directly to groundTiles (no sorting needed)
+          groundTiles.add(tileWidget);
+        } else {
+          // Buildings: Add to objectItems for depth sorting
+          objectItems.add({
+            'type': 'building',
+            'depth': x + y,
+            'y': y,
+            'priority': 3, // Buildings have Priority 3 (drawn last at same depth)
+            'widget': tileWidget,
+          });
+        }
       }
     }
-
-    // Sort for Painter's Algorithm (Back to Front)
-    tileData.sort((a, b) {
-      final depthA = (a['x'] as int) + (a['y'] as int);
-      final depthB = (b['x'] as int) + (b['y'] as int);
-      if (depthA != depthB) return depthA.compareTo(depthB);
-      return (a['y'] as int).compareTo(b['y'] as int);
-    });
-
-    final tiles = <Widget>[];
-    final buttons = <Widget>[];
     
-    for (final data in tileData) {
-      final int x = data['x'];
-      final int y = data['y'];
-      final TileType tileType = data['tileType'];
-      final double posX = data['positionedX'];
-      final double posY = data['positionedY'];
+    // 2. Add all pedestrians to objectItems
+    for (final pedestrian in _pedestrians) {
+      // Use .round() to assign pedestrian to the visual tile they are closest to
+      final gridX = pedestrian.gridX.round();
+      final gridY = pedestrian.gridY.round();
+      final depth = gridX + gridY;
       
-      // 1. Build Ground/Building Tile
-      tiles.add(_buildSingleTileWidget(
-        context, x, y, tileType, data['roadDir'], data['buildingOrientation'],
-        posX, posY, tileWidth, tileHeight, buildingImageHeight, warehouseVerticalOffset
-      ));
-
-      // 2. Build Purchase Button (if applicable)
-      if (_isBuilding(tileType) && tileType != TileType.warehouse && _shouldShowPurchaseButton(x, y, tileType)) {
-        //final buildingScaleFactor = _getBuildingScale(tileType);
-        //final scaledHeight = buildingImageHeight * buildingScaleFactor;
-        //final buildingTop = posY - (scaledHeight - tileHeight);
-        
-        final buttonSize = ScreenUtils.relativeSizeClamped(
-          context, 0.05,
-          min: ScreenUtils.getSmallerDimension(context) * 0.04,
-          max: ScreenUtils.getSmallerDimension(context) * 0.08,
-        );
-        
-        final buttonTop = posY;
-        final buttonLeft = posX + (tileWidth / 2) - (buttonSize / 2);
-        
-        buttons.add(
-          Positioned(
-            left: buttonLeft,
-            top: buttonTop,
-            width: buttonSize,
-            height: buttonSize,
-            child: _PurchaseButton(
-              size: buttonSize,
-              onTap: () => _handleDebouncedBuildingTap(x, y, tileType),
-            ),
-          ),
-        );
-      }
+      // Build the pedestrian widget
+      final pedestrianWidget = _buildPedestrian(context, pedestrian, centerOffset, tileWidth, tileHeight);
+      
+      objectItems.add({
+        'type': 'pedestrian',
+        'depth': depth,
+        'y': gridY,
+        'priority': 1, // Pedestrians/Trucks have Priority 1
+        'widget': pedestrianWidget,
+      });
     }
-
-
-    // Add Machines and Trucks
-    final gameMachines = ref.watch(machinesProvider);
-    for (final machine in gameMachines) {
-      tiles.add(_buildGameMachine(context, machine, centerOffset, tileWidth, tileHeight));
-    }
+    
+    // 3. Add all trucks to objectItems
     final gameTrucks = ref.watch(trucksProvider);
     for (final truck in gameTrucks) {
-      tiles.add(_buildGameTruck(context, truck, centerOffset, tileWidth, tileHeight));
+      // Convert from 1-based zone coordinates to 0-based grid coordinates
+      final gridX = (truck.currentX - 1.0).round();
+      final gridY = (truck.currentY - 1.0).round();
+      final depth = gridX + gridY;
+      
+      // Build the truck widget
+      final truckWidget = _buildGameTruck(context, truck, centerOffset, tileWidth, tileHeight);
+      
+      objectItems.add({
+        'type': 'truck',
+        'depth': depth,
+        'y': gridY,
+        'priority': 1, // Pedestrians/Trucks have Priority 1
+        'widget': truckWidget,
+      });
+    }
+    
+    // 4. Machines are rendered separately after all objects to always appear in front
+    // (Don't add machines to objectItems - they'll be added to tiles list separately)
+    
+    // 5. Sort objectItems using Painter's Algorithm
+    objectItems.sort((a, b) {
+      // Primary sort: Depth (x + y) - Ascending (lower depth draws first/behind)
+      final depthA = (a['depth'] as int?) ?? 0;
+      final depthB = (b['depth'] as int?) ?? 0;
+      if (depthA != depthB) return depthA.compareTo(depthB);
+      
+      // Secondary sort: Y coordinate - Ascending (higher up on grid draws first/behind)
+      final yA = (a['y'] as int?) ?? 0;
+      final yB = (b['y'] as int?) ?? 0;
+      if (yA != yB) return yA.compareTo(yB);
+      
+      // Tertiary sort: Priority - Ascending
+      // Priority order: 1 (Pedestrians/Trucks) < 3 (Buildings)
+      // Note: Machines are rendered separately after all objects, so they always appear on top
+      final priorityA = (a['priority'] as int?) ?? 0;
+      final priorityB = (b['priority'] as int?) ?? 0;
+      return priorityA.compareTo(priorityB);
+    });
+    
+    // 6. Build objects list from sorted objectItems
+    final objects = <Widget>[];
+    for (final item in objectItems) {
+      objects.add(item['widget'] as Widget);
+    }
+    
+    // 7. Add machines separately - always render on top of everything
+    final gameMachines = ref.watch(machinesProvider);
+    final machineWidgets = <Widget>[];
+    for (final machine in gameMachines) {
+      final machineWidget = _buildGameMachine(context, machine, centerOffset, tileWidth, tileHeight);
+      machineWidgets.add(machineWidget);
+    }
+    
+    // 8. Combine ground tiles, objects, and machines into final tiles list
+    // Ground tiles render first (behind), then objects, then machines (always on top)
+    final tiles = <Widget>[...groundTiles, ...objects, ...machineWidgets];
+    
+    // 7. Build purchase buttons (separate from depth sorting, rendered on top)
+    final buttons = <Widget>[];
+    for (int y = 0; y < gridSize; y++) {
+      for (int x = 0; x < gridSize; x++) {
+        final tileType = _grid[y][x];
+        if (_isBuilding(tileType) && tileType != TileType.warehouse && _shouldShowPurchaseButton(x, y, tileType)) {
+          final screenPos = _gridToScreen(context, x, y);
+          final posX = screenPos.dx + centerOffset.dx;
+          final posY = screenPos.dy + centerOffset.dy;
+          
+          final buttonSize = ScreenUtils.relativeSizeClamped(
+            context, 0.05,
+            min: ScreenUtils.getSmallerDimension(context) * 0.04,
+            max: ScreenUtils.getSmallerDimension(context) * 0.08,
+          );
+          
+          final buttonTop = posY;
+          final buttonLeft = posX + (tileWidth / 2) - (buttonSize / 2);
+          
+          buttons.add(
+            Positioned(
+              left: buttonLeft,
+              top: buttonTop,
+              width: buttonSize,
+              height: buttonSize,
+              child: _PurchaseButton(
+                size: buttonSize,
+                onTap: () => _handleDebouncedBuildingTap(x, y, tileType),
+              ),
+            ),
+          );
+        }
+      }
     }
 
     // Add Marketing Button if position is set (show during rush hour too, but with fire icon)
@@ -993,7 +1107,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
         // The building itself
         Positioned(
           left: posX + (tileWidth - w) / 2,
-          top: posY - (h - tileHeight),
+          top: posY - (h - tileHeight*0.95),
           width: w, height: h,
           child: GestureDetector(
             onTap: () => _handleDebouncedBuildingTap(x, y, tileType),
@@ -1326,6 +1440,319 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
       width: truckSize,
       height: truckSize,
       child: img,
+    );
+  }
+
+  // --- PEDESTRIAN MANAGEMENT ---
+  
+  /// Spawn random number (1-10) of pedestrians with unique personIds next to buildings
+  void _spawnPedestrians() {
+    // Find all road tiles that are next to buildings
+    final validTiles = _findRoadTilesNextToBuildings();
+    
+    if (validTiles.isEmpty) return;
+    
+    // Spawn random number of pedestrians (1-10)
+    final numToSpawn = _pedestrianRandom.nextInt(10) + 1; // 1 to 10
+    
+    // Get available personIds (0-9) that are not currently in use
+    final availablePersonIds = List.generate(10, (i) => i).where((id) => !_usedPersonIds.contains(id)).toList();
+    
+    // Shuffle and take only what we need
+    availablePersonIds.shuffle(_pedestrianRandom);
+    final personIdsToUse = availablePersonIds.take(numToSpawn).toList();
+    
+    // If we don't have enough unique IDs, use what we have
+    for (int i = 0; i < personIdsToUse.length && i < numToSpawn; i++) {
+      final personId = personIdsToUse[i];
+      final validTile = validTiles[_pedestrianRandom.nextInt(validTiles.length)];
+      
+      _pedestrians.add(_PedestrianState(
+        personId: personId,
+        gridX: validTile.x.toDouble(),
+        gridY: validTile.y.toDouble(),
+      ));
+      _usedPersonIds.add(personId);
+    }
+  }
+  
+  /// Spawn a single pedestrian at a random road tile next to a building
+  void _spawnSinglePedestrian() {
+    // Find all road tiles that are next to buildings
+    final validTiles = _findRoadTilesNextToBuildings();
+    
+    if (validTiles.isEmpty) return;
+    
+    // Get available personIds that are not currently in use
+    final availablePersonIds = List.generate(10, (i) => i).where((id) => !_usedPersonIds.contains(id)).toList();
+    
+    if (availablePersonIds.isEmpty) return; // All personIds are in use
+    
+    final personId = availablePersonIds[_pedestrianRandom.nextInt(availablePersonIds.length)];
+    final validTile = validTiles[_pedestrianRandom.nextInt(validTiles.length)];
+    
+    _pedestrians.add(_PedestrianState(
+      personId: personId,
+      gridX: validTile.x.toDouble(),
+      gridY: validTile.y.toDouble(),
+    ));
+    _usedPersonIds.add(personId);
+  }
+  
+  /// Check if a tile type is a building or house
+  bool _isBuildingOrHouse(TileType tileType) {
+    return tileType == TileType.shop ||
+           tileType == TileType.gym ||
+           tileType == TileType.office ||
+           tileType == TileType.school ||
+           tileType == TileType.house;
+  }
+  
+  /// Check if pedestrian is adjacent to a building or house (in front of it)
+  bool _isInFrontOfBuildingOrHouse(int gridX, int gridY) {
+    // Check all 4 adjacent tiles for buildings or houses
+    final directions = [
+      (x: gridX, y: gridY - 1), // Up
+      (x: gridX, y: gridY + 1), // Down
+      (x: gridX - 1, y: gridY), // Left
+      (x: gridX + 1, y: gridY), // Right
+    ];
+    
+    for (final dir in directions) {
+      if (dir.y >= 0 && dir.y < _grid.length &&
+          dir.x >= 0 && dir.x < _grid[dir.y].length) {
+        if (_isBuildingOrHouse(_grid[dir.y][dir.x])) {
+          return true;
+        }
+      }
+    }
+    
+    return false;
+  }
+  
+  /// Find all road tiles that are adjacent to buildings or houses
+  List<({int x, int y})> _findRoadTilesNextToBuildings() {
+    final spawnTiles = <({int x, int y})>[];
+    
+    // Find all road tiles and check if they're next to buildings
+    for (int y = 0; y < _grid.length; y++) {
+      for (int x = 0; x < _grid[y].length; x++) {
+        // Must be a road tile
+        if (_grid[y][x] == TileType.road) {
+          // Check if adjacent to a building or house
+          if (_isInFrontOfBuildingOrHouse(x, y)) {
+            spawnTiles.add((x: x, y: y));
+          }
+        }
+      }
+    }
+    
+    return spawnTiles;
+  }
+  
+  /// Update pedestrian positions and find new targets
+  void _updatePedestrians() {
+    const double speed = 0.01; // Grid units per update (50ms = 0.2 grid units per second) - slower
+    const double arrivalThreshold = 0.1;
+    const int minStepsBeforeDisappear = 30; // Minimum steps before pedestrian can disappear
+    const double disappearChance = 0.005; // 0.5% chance per update to disappear when in front of building
+    
+    // Remove pedestrians that should disappear (only when in front of buildings/houses)
+    final pedestriansToRemove = <_PedestrianState>[];
+    for (final pedestrian in _pedestrians) {
+      if (pedestrian.stepsWalked > minStepsBeforeDisappear) {
+        // Check if pedestrian is in front of a building or house
+        final gridX = pedestrian.gridX.floor();
+        final gridY = pedestrian.gridY.floor();
+        if (_isInFrontOfBuildingOrHouse(gridX, gridY)) {
+          // Only disappear when in front of building/house
+          if (_pedestrianRandom.nextDouble() < disappearChance) {
+            pedestriansToRemove.add(pedestrian);
+          }
+        }
+      }
+    }
+    
+    for (final pedestrian in pedestriansToRemove) {
+      _pedestrians.remove(pedestrian);
+      _usedPersonIds.remove(pedestrian.personId);
+    }
+    
+    // Randomly spawn new pedestrians if we have available personIds
+    if (_pedestrians.length < 10 && _pedestrianRandom.nextDouble() < 0.01) { // 1% chance per update
+      _spawnSinglePedestrian();
+    }
+    
+    for (final pedestrian in _pedestrians) {
+      // Clamp position to stay within map bounds
+      pedestrian.gridX = pedestrian.gridX.clamp(0.0, (gridSize - 1).toDouble());
+      pedestrian.gridY = pedestrian.gridY.clamp(0.0, (gridSize - 1).toDouble());
+      
+      // Check if we need a new target
+      if (pedestrian.targetGridX == null || pedestrian.targetGridY == null ||
+          ((pedestrian.gridX - pedestrian.targetGridX!).abs() < arrivalThreshold &&
+           (pedestrian.gridY - pedestrian.targetGridY!).abs() < arrivalThreshold)) {
+        
+        // Find adjacent valid tiles (road, grass, or park)
+        final adjacentTiles = _getAdjacentValidTilesForPedestrian(
+          pedestrian.gridX.floor(),
+          pedestrian.gridY.floor(),
+        );
+        
+        if (adjacentTiles.isNotEmpty) {
+          final random = math.Random();
+          final target = adjacentTiles[random.nextInt(adjacentTiles.length)];
+          pedestrian.targetGridX = target.x.toDouble();
+          pedestrian.targetGridY = target.y.toDouble();
+        } else {
+          // Find any nearby valid tile
+          final nearbyTile = _findNearbyValidTileForPedestrian(
+            pedestrian.gridX.floor(),
+            pedestrian.gridY.floor(),
+          );
+          if (nearbyTile != null) {
+            pedestrian.targetGridX = nearbyTile.x.toDouble();
+            pedestrian.targetGridY = nearbyTile.y.toDouble();
+          }
+        }
+      }
+      
+      // Move towards target
+      if (pedestrian.targetGridX != null && pedestrian.targetGridY != null) {
+        // Clamp target to map bounds
+        final targetX = pedestrian.targetGridX!.clamp(0.0, (gridSize - 1).toDouble());
+        final targetY = pedestrian.targetGridY!.clamp(0.0, (gridSize - 1).toDouble());
+        
+        final dx = targetX - pedestrian.gridX;
+        final dy = targetY - pedestrian.gridY;
+        final distance = math.sqrt(dx * dx + dy * dy);
+        
+        if (distance > arrivalThreshold) {
+          final normalizedDx = dx / distance;
+          final normalizedDy = dy / distance;
+          
+          pedestrian.gridX += normalizedDx * speed;
+          pedestrian.gridY += normalizedDy * speed;
+          
+          // Clamp position after movement to stay within bounds
+          pedestrian.gridX = pedestrian.gridX.clamp(0.0, (gridSize - 1).toDouble());
+          pedestrian.gridY = pedestrian.gridY.clamp(0.0, (gridSize - 1).toDouble());
+          
+          pedestrian.stepsWalked++; // Increment step counter
+          
+          // Update direction and flip based on movement
+          // Upper right (dy < 0, dx > 0): walk_back flipped
+          // Upper left (dy < 0, dx < 0): walk_back original
+          // Down right (dy > 0, dx > 0): walk_front original
+          // Down left (dy > 0, dx < 0): walk_front flipped
+
+
+          if (dy.abs() > dx.abs()) {
+            // Moving primarily vertical on grid
+            if (dy < 0) {
+              // Moving Up (Grid Y-) -> Visual Upper Right
+              pedestrian.direction = 'front';
+              pedestrian.flipHorizontal = false;
+            } else {
+              // Moving Down (Grid Y+) -> Visual Down Left
+              pedestrian.direction = 'front';
+              pedestrian.flipHorizontal = true;
+            }
+          } else {
+            // Moving primarily horizontal on grid
+            if (dx < 0) {
+              // Moving Left (Grid X-) -> Visual Upper Left
+              pedestrian.direction = 'front';
+              pedestrian.flipHorizontal = true;
+            } else {
+              // Moving Right (Grid X+) -> Visual Down Right
+              pedestrian.direction = 'front';
+              pedestrian.flipHorizontal = false;
+            }
+          }
+        } else {
+          // Arrived at target
+          pedestrian.gridX = pedestrian.targetGridX!;
+          pedestrian.gridY = pedestrian.targetGridY!;
+          pedestrian.targetGridX = null;
+          pedestrian.targetGridY = null;
+        }
+      }
+    }
+  }
+  
+  /// Check if a tile type is valid for pedestrians (only road tiles - sidewalks)
+  bool _isValidTileForPedestrian(TileType tileType) {
+    return tileType == TileType.road;
+  }
+  
+  /// Get adjacent road tiles for pedestrian pathfinding (sidewalks only)
+  List<({int x, int y})> _getAdjacentValidTilesForPedestrian(int gridX, int gridY) {
+    final adjacentTiles = <({int x, int y})>[];
+    
+    final directions = [
+      (x: gridX, y: gridY - 1), // Up
+      (x: gridX, y: gridY + 1), // Down
+      (x: gridX - 1, y: gridY), // Left
+      (x: gridX + 1, y: gridY), // Right
+    ];
+    
+    for (final dir in directions) {
+      if (dir.y >= 0 && dir.y < _grid.length &&
+          dir.x >= 0 && dir.x < _grid[dir.y].length &&
+          _isValidTileForPedestrian(_grid[dir.y][dir.x])) {
+        adjacentTiles.add(dir);
+      }
+    }
+    
+    return adjacentTiles;
+  }
+  
+  /// Find a nearby road tile if current position is not on a road
+  ({int x, int y})? _findNearbyValidTileForPedestrian(int gridX, int gridY) {
+    for (int radius = 1; radius <= 5; radius++) {
+      for (int dy = -radius; dy <= radius; dy++) {
+        for (int dx = -radius; dx <= radius; dx++) {
+          if (dx.abs() == radius || dy.abs() == radius) {
+            final checkX = gridX + dx;
+            final checkY = gridY + dy;
+            
+            if (checkY >= 0 && checkY < _grid.length &&
+                checkX >= 0 && checkX < _grid[checkY].length &&
+                _isValidTileForPedestrian(_grid[checkY][checkX])) {
+              return (x: checkX, y: checkY);
+            }
+          }
+        }
+      }
+    }
+    return null;
+  }
+  
+  /// Build pedestrian widget with animation
+  Widget _buildPedestrian(BuildContext context, _PedestrianState pedestrian, Offset centerOffset, double tileWidth, double tileHeight) {
+    final pos = _gridToScreenDouble(context, pedestrian.gridX, pedestrian.gridY);
+    final positionedX = pos.dx + centerOffset.dx;
+    final positionedY = pos.dy + centerOffset.dy;
+    
+    final double pedestrianSize = tileWidth * 0.3;
+    
+    // Position on sidewalk (edge of tile) - offset to the right side of the tile
+    // Use 75% of tile width to position on the right edge (sidewalk)
+    final sidewalkOffset = tileWidth * 0.75; // Position on right edge of tile
+    final left = positionedX + sidewalkOffset - pedestrianSize / 2;
+    final top = positionedY + (tileHeight / 2) - pedestrianSize / 1.2;
+    
+    return Positioned(
+      left: left,
+      top: top,
+      width: pedestrianSize,
+      height: pedestrianSize,
+      child: _AnimatedPedestrian(
+        personId: pedestrian.personId,
+        direction: pedestrian.direction,
+        flipHorizontal: pedestrian.flipHorizontal,
+      ),
     );
   }
 
@@ -2446,5 +2873,190 @@ class _MachinePurchaseDialog extends ConsumerWidget {
         },
       ),
     );
+  }
+}
+
+/// Widget that renders an animated pedestrian with sprite extraction
+class _AnimatedPedestrian extends StatefulWidget {
+  final int personId; // 0-9
+  final String direction; // 'front' or 'back'
+  final bool flipHorizontal;
+  
+  const _AnimatedPedestrian({
+    required this.personId,
+    required this.direction,
+    required this.flipHorizontal,
+  });
+  
+  @override
+  State<_AnimatedPedestrian> createState() => _AnimatedPedestrianState();
+}
+
+class _AnimatedPedestrianState extends State<_AnimatedPedestrian> 
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  List<ImageProvider>? _frameImages;
+  Size? _spriteSize;
+  bool _isLoading = true;
+  
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 1000), // 10 frames * 100ms
+      vsync: this,
+    )..repeat();
+    
+    _loadFrames();
+  }
+  
+  Future<void> _loadFrames() async {
+    try {
+      // Load first frame to get dimensions
+      final firstFrameAsset = 'assets/images/pedestrian_walk/walk_${widget.direction}_0.png';
+      final firstImage = AssetImage(firstFrameAsset);
+      final completer = Completer<ImageInfo>();
+      final stream = firstImage.resolve(const ImageConfiguration());
+      late ImageStreamListener listener;
+      listener = ImageStreamListener((info, synchronousCall) {
+        completer.complete(info);
+        stream.removeListener(listener);
+      });
+      stream.addListener(listener);
+      final firstImageInfo = await completer.future;
+      final firstImageSize = firstImageInfo.image.width;
+      final firstImageHeight = firstImageInfo.image.height;
+      
+      // Calculate sprite size: 2 rows x 5 columns
+      final spriteWidth = firstImageSize / 5;
+      final spriteHeight = firstImageHeight / 2;
+      _spriteSize = Size(spriteWidth, spriteHeight);
+      
+      // Load all 10 frames
+      final frames = <ImageProvider>[];
+      for (int i = 0; i < 10; i++) {
+        frames.add(AssetImage('assets/images/pedestrian_walk/walk_${widget.direction}_$i.png'));
+      }
+      
+      if (mounted) {
+        setState(() {
+          _frameImages = frames;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading pedestrian frames: $e');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+  
+  @override
+  void didUpdateWidget(_AnimatedPedestrian oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.direction != widget.direction) {
+      _loadFrames();
+    }
+  }
+  
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+  
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading || _frameImages == null || _spriteSize == null) {
+      return Container(
+        color: Colors.transparent,
+        child: const SizedBox.shrink(),
+      );
+    }
+    
+    // Calculate grid position for this personId
+    final row = widget.personId ~/ 5;
+    final col = widget.personId % 5;
+    
+    // Calculate source rect for sprite extraction
+    final srcLeft = col * _spriteSize!.width;
+    final srcTop = row * _spriteSize!.height;
+    
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        // Get current frame index (0-9)
+        final frameIndex = ((_controller.value * 10) % 10).floor();
+        final imageProvider = _frameImages![frameIndex];
+        
+        Widget image = CustomPaint(
+          size: Size(_spriteSize!.width, _spriteSize!.height),
+          painter: _PedestrianSpritePainter(
+            imageProvider: imageProvider,
+            srcRect: Rect.fromLTWH(
+              srcLeft,
+              srcTop,
+              _spriteSize!.width,
+              _spriteSize!.height,
+            ),
+          ),
+        );
+        
+        if (widget.flipHorizontal) {
+          image = Transform(
+            alignment: Alignment.center,
+            transform: Matrix4.identity()..scale(-1.0, 1.0),
+            child: image,
+          );
+        }
+        
+        return image;
+      },
+    );
+  }
+}
+
+/// Custom painter that extracts a sprite from a larger image
+class _PedestrianSpritePainter extends CustomPainter {
+  final ImageProvider imageProvider;
+  final Rect srcRect;
+  ImageInfo? _imageInfo;
+  
+  _PedestrianSpritePainter({
+    required this.imageProvider,
+    required this.srcRect,
+  }) {
+    _loadImage();
+  }
+  
+  void _loadImage() {
+    final stream = imageProvider.resolve(const ImageConfiguration());
+    stream.addListener(ImageStreamListener((info, synchronousCall) {
+      _imageInfo = info;
+    }));
+  }
+  
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (_imageInfo == null) return;
+    
+    final image = _imageInfo!.image;
+    final dstRect = Rect.fromLTWH(0, 0, size.width, size.height);
+    
+    canvas.drawImageRect(
+      image,
+      srcRect,
+      dstRect,
+      Paint(),
+    );
+  }
+  
+  @override
+  bool shouldRepaint(_PedestrianSpritePainter oldDelegate) {
+    return oldDelegate.imageProvider != imageProvider ||
+           oldDelegate.srcRect != srcRect;
   }
 }

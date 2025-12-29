@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../state/providers.dart';
 import 'components/map_machine.dart';
 import 'components/map_truck.dart';
+import 'components/map_pedestrian.dart';
 import '../simulation/models/machine.dart';
 import '../ui/screens/route_planner_screen.dart';
 
@@ -56,6 +57,7 @@ class CityMapGame extends FlameGame with ScaleDetector, ScrollDetector, TapDetec
 
     _syncMachines();
     _syncTrucks();
+    _spawnPedestrians();
   }
 
   @override
@@ -238,6 +240,60 @@ class CityMapGame extends FlameGame with ScaleDetector, ScrollDetector, TapDetec
       }
     } catch (e, stack) {
       debugPrint("Error syncing trucks: $e");
+      debugPrint("Stack trace: $stack");
+    }
+  }
+
+  // --- PEDESTRIAN SPAWNING ---
+  void _spawnPedestrians() {
+    try {
+      final cityMapState = ref.read(gameControllerProvider).cityMapState;
+      if (cityMapState == null || cityMapState.grid.isEmpty) {
+        debugPrint("Cannot spawn pedestrians: city map state not available");
+        return;
+      }
+
+      // Find all valid road coordinates
+      final roadTiles = <({int x, int y})>[];
+      for (int y = 0; y < cityMapState.grid.length; y++) {
+        for (int x = 0; x < cityMapState.grid[y].length; x++) {
+          if (cityMapState.grid[y][x] == 'road') {
+            roadTiles.add((x: x, y: y));
+          }
+        }
+      }
+
+      if (roadTiles.isEmpty) {
+        debugPrint("Cannot spawn pedestrians: no road tiles found");
+        return;
+      }
+
+      // Spawn exactly 10 pedestrians
+      final random = math.Random();
+      for (int i = 0; i < 10; i++) {
+        // Assign random personId (0-9)
+        final personId = random.nextInt(10);
+        
+        // Pick a random road tile
+        final roadTile = roadTiles[random.nextInt(roadTiles.length)];
+        
+        // Convert grid coordinates to world coordinates
+        // x * 100 + 50 centers the pedestrian on the tile
+        final worldX = roadTile.x * 100.0 + 50.0;
+        final worldY = roadTile.y * 100.0 + 50.0;
+        final position = Vector2(worldX, worldY);
+        
+        // Create and add pedestrian
+        final pedestrian = MapPedestrian(
+          personId: personId,
+          ref: ref,
+          position: position,
+        );
+        
+        world.add(pedestrian);
+      }
+    } catch (e, stack) {
+      debugPrint("Error spawning pedestrians: $e");
       debugPrint("Stack trace: $stack");
     }
   }
