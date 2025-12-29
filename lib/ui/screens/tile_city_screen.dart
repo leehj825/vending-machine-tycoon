@@ -864,9 +864,9 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
     final gameMachines = ref.watch(machinesProvider);
     for (final machine in gameMachines) {
       // Convert from 1-based zone coordinates to 0-based grid coordinates
-      final gridX = machine.zone.x - 1;
-      final gridY = machine.zone.y - 1;
-      final depth = gridX + gridY;
+      final machineGridX = (machine.zone.x - 1).floor();
+      final machineGridY = (machine.zone.y - 1).floor();
+      final depth = machineGridX + machineGridY;
       
       // Build the machine widget
       final machineWidget = _buildGameMachine(context, machine, centerOffset, tileWidth, tileHeight);
@@ -874,7 +874,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
       objectItems.add({
         'type': 'machine',
         'depth': depth,
-        'y': gridY,
+        'y': machineGridY, // Ensure y is an int for sorting
         'priority': 2, // Machines have Priority 2
         'widget': machineWidget,
       });
@@ -883,19 +883,19 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
     // 5. Sort objectItems using Painter's Algorithm
     objectItems.sort((a, b) {
       // Primary sort: Depth (x + y) - Ascending (lower depth draws first/behind)
-      final depthA = a['depth'] as int;
-      final depthB = b['depth'] as int;
+      final depthA = (a['depth'] as int?) ?? 0;
+      final depthB = (b['depth'] as int?) ?? 0;
       if (depthA != depthB) return depthA.compareTo(depthB);
       
       // Secondary sort: Y coordinate - Ascending (higher up on grid draws first/behind)
-      final yA = a['y'] as int;
-      final yB = b['y'] as int;
+      final yA = (a['y'] as int?) ?? 0;
+      final yB = (b['y'] as int?) ?? 0;
       if (yA != yB) return yA.compareTo(yB);
       
       // Tertiary sort: Priority - Ascending
       // Priority order: 1 (Pedestrians/Trucks) < 2 (Machines) < 3 (Buildings)
-      final priorityA = a['priority'] as int;
-      final priorityB = b['priority'] as int;
+      final priorityA = (a['priority'] as int?) ?? 0;
+      final priorityB = (b['priority'] as int?) ?? 0;
       return priorityA.compareTo(priorityB);
     });
     
