@@ -2160,6 +2160,22 @@ class _MachineViewDialog extends ConsumerWidget {
                         },
                       ),
                     ),
+                    // Animated person at machine overlay
+                    if (machine != null)
+                      Positioned(
+                        bottom: imageHeight * -0.15, // Position near bottom of image
+                        left: 0, // Base position, will animate from right to left
+                        child: SizedBox(
+                          width: dialogWidth, // Full width to allow movement across entire dialog
+                          height: imageHeight * 1.0, // Keep original height
+                          child: _AnimatedPersonMachine(
+                            zoneType: machine.zone.type,
+                            machineId: machine.id,
+                            dialogWidth: dialogWidth,
+                            imageHeight: imageHeight,
+                          ),
+                        ),
+                      ),
                     Positioned(
                       top: padding * AppConfig.machineStatusDialogHeaderImageTopPaddingFactor,
                       right: padding * AppConfig.machineStatusDialogHeaderImageTopPaddingFactor,
@@ -3058,5 +3074,566 @@ class _PedestrianSpritePainter extends CustomPainter {
   bool shouldRepaint(_PedestrianSpritePainter oldDelegate) {
     return oldDelegate.imageProvider != imageProvider ||
            oldDelegate.srcRect != srcRect;
+  }
+}
+
+/// Widget that renders an animated person at machine using person_machine_walk frames
+/// Each frame is a sprite sheet (2 rows x 5 columns) containing 10 different people
+class _AnimatedPersonMachine extends StatefulWidget {
+  final ZoneType zoneType;
+  final String machineId; // Used to consistently pick between the two person options for each zone
+  final double dialogWidth; // Used for calculating animation distance
+  final double imageHeight; // Image height for positioning
+
+  const _AnimatedPersonMachine({
+    required this.zoneType,
+    required this.machineId,
+    required this.dialogWidth,
+    required this.imageHeight,
+  });
+
+  @override
+  State<_AnimatedPersonMachine> createState() => _AnimatedPersonMachineState();
+}
+
+enum _AnimationState {
+  walkingToMachine, // Walking from right to machine (looping)
+  backAnimation,    // Playing back animation (4 frames, no loop)
+  pausing,          // Pause for 1 second
+  walkingAway,      // Walking left until outside
+}
+
+class _AnimatedPersonMachineState extends State<_AnimatedPersonMachine>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  List<ImageInfo>? _walkFrameImageInfos;
+  List<ImageInfo>? _backFrameImageInfos;
+  Size? _spriteSize;
+  int? _personIndex;
+  bool _isLoading = true;
+  
+  // State Management
+  _AnimationState _currentState = _AnimationState.walkingToMachine;
+  Timer? _pauseTimer;
+  Timer? _walkUpdateTimer; // Timer to update walk position
+  Timer? _walkAwayTimer;   // Timer to update walk away position
+  
+  // Position & Progress Tracking
+  double _vendingMachinePosition = 0.0;
+  DateTime? _walkStartTime; 
+  double _walkProgress = 0.0;     // 0.0 -> 1.0 (Walk In)
+  double _walkAwayProgress = 0.0; // 0.0 -> 1.0 (Walk Out)
+  DateTime? _walkAwayStartTime;
+
+  // --- CONFIGURATION CONSTANTS (TWEAK THESE) ---
+  
+  // 1. STOP POSITION: Machine is on LEFT side of image
+  // Position is calculated as: dialogWidth * (factor + offsetFactor)
+  // Lower values = more LEFT, Higher values = more RIGHT
+  // NOTE: This position represents where the LEFT EDGE of the character stops
+  // Both factor and offsetFactor are relative (0.0 to 1.0 = 0% to 100% of dialog width)
+  // Machine is on far left, so character should be positioned very close to left edge
+  static const double _vendingMachinePositionFactor = 0.0; // Base position factor (0% = left edge)
+  static const double _stopPositionOffsetFactor = -0.25; // Relative offset factor (negative = left, positive = right)
+
+  // 2. FLIP CORRECTION: Compensates for visual jump when sprite flips horizontally
+  // When flipping, the sprite's anchor point may cause a visual offset
+  static const double _flipCorrection = 0.0;
+  
+  // 3. ROW OFFSET: Adjust vertical position for 2nd row characters (indices 5-9)
+  // 2nd row characters appear slightly higher in sprite sheet, so lower them
+  static const double _secondRowVerticalOffset = 10.0; // Pixels to lower 2nd row characters
+  
+  // 4. COLUMN OFFSETS: Adjust horizontal position for each column (0-4) within sprite sheet
+  // Each person in the 5 columns may be positioned differently within their sprite cell
+  // These are relative offsets (as percentage of dialog width) to fine-tune horizontal position
+  static const List<double> _columnHorizontalOffsets = [
+    0.0,   // Column 0: no adjustment
+    0.0,   // Column 1: no adjustment
+    0.0,   // Column 2: no adjustment
+    0.00,   // Column 3: no adjustment
+    0.05,   // Column 4: no adjustment
+  ];
+  
+  // 4. LOOP ANIMATION: Restart animation when character finishes walking away
+  static const bool _loopAnimation = true;
+  
+  // 5. DEBUG: Show bounding box around character (set to true to visualize)
+  static const bool _showDebugBox = false;
+
+  // 3. ANIMATION SETTINGS
+  static const double _spriteScaleX = 0.4; // Width scale
+  static const Duration _walkToMachineDuration = Duration(seconds: 3); 
+  static const Duration _walkAwayDuration = Duration(seconds: 2); // Faster walk away 
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 1000), 
+      vsync: this,
+    )..repeat();
+
+    _calculatePersonIndex();
+    _loadFrames();
+  }
+
+  @override
+  void dispose() {
+    _pauseTimer?.cancel();
+    _walkUpdateTimer?.cancel();
+    _walkAwayTimer?.cancel();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _calculatePersonIndex() {
+    // Special characters (indices 8-9, which are 2nd row columns 3-4) can be used for any zone
+    // For now, they work the same as others but are available for all zones
+    
+    // Use a time-based seed combined with machineId to get different results each restart
+    final seed = (DateTime.now().millisecondsSinceEpoch + widget.machineId.hashCode.abs()) % 1000;
+    
+    // Check if we should use special characters (8-9) - can be used for any zone
+    final useSpecial = (seed % 10) >= 8; // 20% chance to use special
+    
+    if (useSpecial) {
+      // Use special characters 8-9 for any zone
+      _personIndex = 8 + (seed % 2); // Either 8 or 9
+    } else {
+      // Use zone-specific characters (0-7)
+      final baseIndex = _getBasePersonIndexForZone(widget.zoneType);
+      // Each zone has 2 options, randomly pick one
+      final variation = seed % 2;
+      _personIndex = baseIndex + variation;
+    }
+  }
+
+  int _getBasePersonIndexForZone(ZoneType zoneType) {
+    switch (zoneType) {
+      case ZoneType.shop: return 0; // Uses indices 0-1
+      case ZoneType.gym: return 2;  // Uses indices 2-3
+      case ZoneType.school: return 4; // Uses indices 4-5
+      case ZoneType.office: return 6; // Uses indices 6-7
+      // Indices 8-9 are special and can be used for any zone
+    }
+  }
+
+  Future<void> _loadFrames() async {
+    try {
+      // 1. Load first frame to get dimensions
+      final firstFrameAsset = 'assets/images/person_machine/person_machine_walk_0.png';
+      final firstImage = AssetImage(firstFrameAsset);
+      final completer = Completer<ImageInfo>();
+      final stream = firstImage.resolve(const ImageConfiguration());
+      
+      late ImageStreamListener listener;
+      listener = ImageStreamListener((info, synchronousCall) {
+        completer.complete(info);
+        stream.removeListener(listener);
+      });
+      stream.addListener(listener);
+      final firstImageInfo = await completer.future;
+      
+      final spriteWidth = firstImageInfo.image.width / 5;
+      final spriteHeight = firstImageInfo.image.height / 2;
+      _spriteSize = Size(spriteWidth, spriteHeight);
+
+      // 2. Preload Walk Frames
+      final walkFrameImageInfos = <ImageInfo>[];
+      for (int i = 0; i < 10; i++) {
+        final frameAsset = 'assets/images/person_machine/person_machine_walk_$i.png';
+        await _preloadImage(frameAsset).then((info) => walkFrameImageInfos.add(info));
+      }
+
+      // 3. Preload Back Frames
+      final backFrameImageInfos = <ImageInfo>[];
+      for (int i = 1; i <= 4; i++) {
+        final frameAsset = 'assets/images/person_machine/person_machine_back_$i.png';
+        await _preloadImage(frameAsset).then((info) => backFrameImageInfos.add(info));
+      }
+
+      // Calculate the specific pixel position to stop at (left side of dialog)
+      // This is the X coordinate for the LEFT EDGE of the character
+      // Machine is on LEFT side, character faces right (toward machine)
+      // Both factor and offset are relative to dialog width for responsive design
+      _vendingMachinePosition = widget.dialogWidth * (_vendingMachinePositionFactor + _stopPositionOffsetFactor);
+      
+      // Debug: Print the calculated position
+      debugPrint('Machine position: ${_vendingMachinePosition}px (${(_vendingMachinePositionFactor * 100).toStringAsFixed(1)}% of ${widget.dialogWidth.toStringAsFixed(0)}px dialog width)');
+      
+      // Initialize Walk
+      _walkStartTime = DateTime.now();
+      _walkProgress = 0.0;
+      _startWalkInTimer();
+
+      if (mounted) {
+        setState(() {
+          _walkFrameImageInfos = walkFrameImageInfos;
+          _backFrameImageInfos = backFrameImageInfos;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading frames: $e');
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<ImageInfo> _preloadImage(String assetPath) async {
+    final completer = Completer<ImageInfo>();
+    final img = AssetImage(assetPath);
+    final stream = img.resolve(const ImageConfiguration());
+    late ImageStreamListener listener;
+    listener = ImageStreamListener((info, _) {
+      completer.complete(info);
+      stream.removeListener(listener);
+    });
+    stream.addListener(listener);
+    return completer.future;
+  }
+
+  // --- LOGIC: WALK IN ---
+  void _startWalkInTimer() {
+    _walkUpdateTimer?.cancel();
+    _walkUpdateTimer = Timer.periodic(const Duration(milliseconds: 16), (timer) {
+      if (!mounted || _currentState != _AnimationState.walkingToMachine) {
+        timer.cancel();
+        return;
+      }
+
+      final elapsed = DateTime.now().difference(_walkStartTime!);
+      final progress = (elapsed.inMilliseconds / _walkToMachineDuration.inMilliseconds).clamp(0.0, 1.0);
+
+      setState(() {
+        _walkProgress = progress;
+      });
+
+      if (_walkProgress >= 1.0) {
+        timer.cancel();
+        _startBackAnimation();
+      }
+    });
+  }
+
+  // --- LOGIC: INTERACT (BACK ANIMATION) ---
+  void _startBackAnimation() {
+    setState(() {
+      _walkProgress = 1.0; 
+      _currentState = _AnimationState.backAnimation;
+    });
+    
+    _controller.duration = const Duration(milliseconds: 1000); 
+    _controller.reset();
+    _controller.forward().then((_) {
+      if (mounted) {
+        setState(() => _currentState = _AnimationState.pausing);
+        _pauseTimer = Timer(const Duration(seconds: 1), () {
+          if (mounted) _startWalkingAway();
+        });
+      }
+    });
+  }
+
+  // --- LOGIC: WALK AWAY ---
+  void _startWalkingAway() {
+    setState(() {
+      _currentState = _AnimationState.walkingAway;
+      _walkAwayProgress = 0.0;
+      _walkAwayStartTime = DateTime.now();
+    });
+    
+    _controller.duration = const Duration(milliseconds: 1000); 
+    _controller.repeat();
+    
+    _walkAwayTimer?.cancel();
+    _walkAwayTimer = Timer.periodic(const Duration(milliseconds: 16), (timer) {
+      if (!mounted || _currentState != _AnimationState.walkingAway) {
+        timer.cancel();
+        return;
+      }
+
+      final elapsed = DateTime.now().difference(_walkAwayStartTime!);
+      final progress = (elapsed.inMilliseconds / _walkAwayDuration.inMilliseconds).clamp(0.0, 1.0);
+
+      if (mounted) {
+        setState(() {
+          _walkAwayProgress = progress;
+        });
+      }
+
+      // Stop timer when animation completes (character is off-screen)
+      if (progress >= 1.0) {
+        timer.cancel();
+        // Ensure progress is exactly 1.0 to prevent stuck state
+        if (mounted) {
+          setState(() {
+            _walkAwayProgress = 1.0;
+          });
+          
+          // If looping is enabled, restart the animation after a brief delay
+          if (_loopAnimation) {
+            Timer(const Duration(milliseconds: 500), () {
+              if (mounted) {
+                _restartAnimation();
+              }
+            });
+          }
+        }
+      }
+    });
+  }
+
+  // --- LOGIC: RESTART ANIMATION ---
+  void _restartAnimation() {
+    if (!mounted) return;
+    
+    // Select a different person from the allowed characters for this zone
+    _calculatePersonIndex();
+    
+    // Reset all state to initial values
+    setState(() {
+      _currentState = _AnimationState.walkingToMachine;
+      _walkProgress = 0.0;
+      _walkAwayProgress = 0.0;
+      _walkStartTime = DateTime.now();
+      _walkAwayStartTime = null;
+    });
+    
+    // Restart the walk-in timer
+    _startWalkInTimer();
+    
+    // Ensure controller is looping for walk animation
+    _controller.duration = const Duration(milliseconds: 1000);
+    _controller.repeat();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading || _walkFrameImageInfos == null || _backFrameImageInfos == null || 
+        _spriteSize == null || _personIndex == null) {
+      return const SizedBox.shrink();
+    }
+
+    // Grid calculations
+    final row = _personIndex! ~/ 5;
+    final col = _personIndex! % 5;
+    final srcRect = Rect.fromLTWH(
+      col * _spriteSize!.width, 
+      row * _spriteSize!.height, 
+      _spriteSize!.width, 
+      _spriteSize!.height
+    );
+
+    return RepaintBoundary(
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, child) {
+          ImageInfo imageInfo;
+          double horizontalOffset = 0.0;
+          bool flipHorizontal = true; 
+
+          // --- CALCULATE POSITION ---
+          switch (_currentState) {
+            case _AnimationState.walkingToMachine:
+              // 1. Walking IN: From right to machine position (left side)
+              final frameIndex = ((_controller.value * 10) % 10).floor();
+              imageInfo = _walkFrameImageInfos![frameIndex];
+              
+              // Start from right side of dialog (90% from left = right side)
+              final startPos = widget.dialogWidth * 0.9;
+              // End at machine position on LEFT side
+              final endPos = _vendingMachinePosition;
+              
+              // Interpolate: progress 0 = startPos (right), progress 1 = endPos (left)
+              // Formula: startPos + (endPos - startPos) * progress
+              // When progress=0: startPos (right side)
+              // When progress=1: endPos (left side, machine position)
+              horizontalOffset = startPos + (endPos - startPos) * _walkProgress.clamp(0.0, 1.0);
+              flipHorizontal = true; 
+              break;
+
+            case _AnimationState.backAnimation:
+              // 2. Interaction
+              final frameIndex = (_controller.value * 4).floor().clamp(0, 3);
+              imageInfo = _backFrameImageInfos![frameIndex];
+              // Facing right, no flip correction needed
+              horizontalOffset = _vendingMachinePosition;
+              flipHorizontal = false; 
+              break;
+
+            case _AnimationState.pausing:
+              // 3. Pausing
+              imageInfo = _backFrameImageInfos![3]; 
+              // Facing right, no flip correction needed (same as backAnimation)
+              horizontalOffset = _vendingMachinePosition;
+              flipHorizontal = false; 
+              break;
+
+            case _AnimationState.walkingAway:
+              // 4. Walking OUT: From machine position (left side) to off-screen left
+              final frameIndex = ((_controller.value * 10) % 10).floor();
+              imageInfo = _walkFrameImageInfos![frameIndex];
+              
+              // Start from machine position (same as backAnimation/pausing)
+              final startPos = _vendingMachinePosition;
+              // End off-screen to the left (move further left to ensure fully exits dialogue)
+              // Character is 128px wide, so need to move at least that much past left edge
+              final endPos = -widget.dialogWidth * 0.8; // 50% past left edge to fully exit
+              
+              // Interpolate: as progress goes from 0 to 1, move from startPos to endPos
+              // Clamp progress to ensure smooth movement even if timer continues
+              final clampedProgress = _walkAwayProgress.clamp(0.0, 1.0);
+              horizontalOffset = startPos + (endPos - startPos) * clampedProgress;
+              flipHorizontal = true; 
+              break;
+          }
+
+          // --- RENDER SPRITE ---
+          // Calculate actual rendered size after scaling
+          final scaledWidth = _spriteSize!.width * _spriteScaleX;
+          final scaledHeight = _spriteSize!.height;
+          
+          final imageWidget = Transform.scale(
+            scaleX: _spriteScaleX, 
+            scaleY: 1.0, 
+            alignment: Alignment.center,
+            child: CustomPaint(
+              size: _spriteSize!,
+              painter: _PersonMachineSpritePainter(
+                imageInfo: imageInfo,
+                srcRect: srcRect,
+              ),
+            ),
+          );
+
+          // Calculate final visual position
+          // When facing right (backAnimation/pausing): no correction needed
+          // When facing left (walkingToMachine/walkingAway): apply flip correction if needed
+          final baseVisualOffset = horizontalOffset + (flipHorizontal ? _flipCorrection : 0.0);
+          
+          // Calculate column-based horizontal adjustment
+          // Each column (0-4) may need different horizontal positioning within the sprite cell
+          final col = _personIndex! % 5;
+          final columnOffset = widget.dialogWidth * _columnHorizontalOffsets[col];
+          final visualOffset = baseVisualOffset + columnOffset;
+          
+          // Calculate vertical offset for 2nd row characters (indices 5-9)
+          // Row 0 = indices 0-4, Row 1 = indices 5-9
+          final row = _personIndex! ~/ 5;
+          final verticalOffset = row == 1 ? _secondRowVerticalOffset : 0.0;
+          
+          // Debug output for position tracking
+          if (_currentState == _AnimationState.backAnimation || _currentState == _AnimationState.pausing) {
+            final percentFromLeft = (visualOffset / widget.dialogWidth * 100).toStringAsFixed(1);
+            final characterCenter = visualOffset + scaledWidth / 2;
+            final characterRight = visualOffset + scaledWidth;
+            debugPrint('=== CHARACTER POSITION DEBUG ===');
+            debugPrint('Machine target: ${_vendingMachinePosition.toStringAsFixed(1)}px (${(_vendingMachinePositionFactor * 100).toStringAsFixed(1)}% from left)');
+            debugPrint('Character LEFT edge: ${visualOffset.toStringAsFixed(1)}px ($percentFromLeft% from left)');
+            debugPrint('Character CENTER: ${characterCenter.toStringAsFixed(1)}px (${(characterCenter / widget.dialogWidth * 100).toStringAsFixed(1)}% from left)');
+            debugPrint('Character RIGHT edge: ${characterRight.toStringAsFixed(1)}px (${(characterRight / widget.dialogWidth * 100).toStringAsFixed(1)}% from left)');
+            debugPrint('Character size: ${scaledWidth.toStringAsFixed(1)}x${scaledHeight.toStringAsFixed(1)}px');
+            debugPrint('Dialog width: ${widget.dialogWidth.toStringAsFixed(1)}px');
+          }
+
+          Widget characterWidget = Transform(
+            alignment: Alignment.center,
+            transform: Matrix4.identity()..scale(flipHorizontal ? -1.0 : 1.0, 1.0),
+            child: imageWidget,
+          );
+          
+          // Add debug bounding box if enabled - overlay on top of sprite
+          if (_showDebugBox) {
+            characterWidget = Stack(
+              clipBehavior: Clip.none,
+              children: [
+                characterWidget,
+                // Debug bounding box - align with sprite (sprite is centered, so offset by half size)
+                Positioned(
+                  left: (_spriteSize!.width - scaledWidth) / 2, // Account for scaling offset
+                  top: 0, // Align with top of sprite
+                  child: Container(
+                    width: scaledWidth,
+                    height: scaledHeight,
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: Colors.red,
+                        width: 2.0,
+                      ),
+                    ),
+                    child: Stack(
+                      children: [
+                        // Size label
+                        Positioned(
+                          top: 2,
+                          left: 2,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                            color: Colors.red.withOpacity(0.8),
+                            child: Text(
+                              '${scaledWidth.toStringAsFixed(0)}x${scaledHeight.toStringAsFixed(0)}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                        // Position label
+                        Positioned(
+                          bottom: 2,
+                          left: 2,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                            color: Colors.blue.withOpacity(0.8),
+                            child: Text(
+                              'X: ${visualOffset.toStringAsFixed(0)}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            );
+          }
+
+          return Transform.translate(
+            offset: Offset(visualOffset, verticalOffset),
+            child: characterWidget,
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _PersonMachineSpritePainter extends CustomPainter {
+  final ImageInfo imageInfo;
+  final Rect srcRect;
+
+  _PersonMachineSpritePainter({required this.imageInfo, required this.srcRect});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.drawImageRect(
+      imageInfo.image,
+      srcRect,
+      Rect.fromLTWH(0, 0, size.width, size.height),
+      Paint(),
+    );
+  }
+
+  @override
+  bool shouldRepaint(_PersonMachineSpritePainter oldDelegate) {
+    return oldDelegate.imageInfo != imageInfo || oldDelegate.srcRect != srcRect;
   }
 }
