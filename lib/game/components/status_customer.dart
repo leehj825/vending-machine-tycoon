@@ -24,7 +24,7 @@ class StatusCustomer extends SpriteAnimationComponent with HasGameRef<FlameGame>
   // Animations
   late SpriteAnimation _walkAnimation;
   late SpriteAnimation _faceAnimation;
-  Vector2? _spriteSize;
+  Vector2? _rawSpriteSize; // The original pixel size of the image
   
   // State machine
   StatusCustomerState _state = StatusCustomerState.walkIn;
@@ -32,9 +32,9 @@ class StatusCustomer extends SpriteAnimationComponent with HasGameRef<FlameGame>
   
   // Movement
   double _targetX = 0.0;
-  bool _walkingLeft = false; // Direction for walkOut
-  static const double _walkSpeed = 80.0; // pixels per second
-  static const double _idleDuration = 2.0; // seconds to face machine
+  bool _walkingLeft = false; 
+  late double _walkSpeed; // Will be calculated relative to width
+  static const double _idleDuration = 2.0; 
   
   StatusCustomer({
     required this.zoneType,
@@ -46,170 +46,121 @@ class StatusCustomer extends SpriteAnimationComponent with HasGameRef<FlameGame>
   Future<void> onLoad() async {
     super.onLoad();
     
-    // Select person index based on zone type
+    // 1. Select person index
     personIndex = _getPersonIndexForZone(zoneType);
     
-    // Build animations
+    // 2. Build animations (loads the raw images)
     _walkAnimation = await _buildWalkAnimation();
     _faceAnimation = await _buildFaceAnimation();
     
+    // 3. Set Size Relative to Card
+    // We want the person to be 85% of the card's height
+    final desiredHeight = cardHeight * 0.85;
+    
+    // Calculate width based on the image's aspect ratio
+    double aspectRatio = 1.0;
+    if (_rawSpriteSize != null) {
+      aspectRatio = _rawSpriteSize!.x / _rawSpriteSize!.y;
+    }
+    
+    // Apply the scale
+    size = Vector2(desiredHeight * aspectRatio, desiredHeight);
+    
+    // 4. Position
+    // Since anchor is BottomCenter, y = cardHeight puts the feet at the bottom edge
+    position = Vector2(-size.x, cardHeight);
+    
+    // 5. Initialize Movement Logic
+    _walkSpeed = cardWidth * 0.4; // Takes ~2.5 seconds to cross the card
+    _targetX = cardWidth / 2;
+    _walkingLeft = Random().nextBool();
+    
     // Set initial animation
     animation = _walkAnimation;
-    
-    // Initialize size from sprite
-    if (_spriteSize != null) {
-      size = _spriteSize!;
-    }
-    
-    // Start position: off-screen left
-    position = Vector2(-size.x, cardHeight - size.y);
-    
-    // Target position: center of card
-    _targetX = cardWidth / 2;
-    
-    // Randomly decide exit direction (will be set when transitioning to walkOut)
-    _walkingLeft = Random().nextBool();
   }
 
-  /// Get person index (0-9) based on zone type
-  /// Zone Mapping (Row x Col):
-  /// - Shop: Row 1, Col 1 & 2 (Index 0, 1)
-  /// - Gym: Row 1, Col 3 & 4 (Index 2, 3)
-  /// - School: Row 1, Col 5 & Row 2, Col 1 (Index 4, 5)
-  /// - Office: Row 2, Col 2 & 3 (Index 6, 7)
-  /// - Any/Other: Row 2, Col 4 & 5 (Index 8, 9)
   int _getPersonIndexForZone(ZoneType zoneType) {
     final random = Random();
-    
-    // 20% chance to pick the "Any/Common" people (Index 8 or 9)
-    // who can appear at ANY machine.
-    if (random.nextDouble() < 0.2) {
-      return 8 + random.nextInt(2); // Returns 8 or 9
-    }
+    // 20% chance for "Any" people (Index 8-9)
+    if (random.nextDouble() < 0.2) return 8 + random.nextInt(2);
 
-    // Otherwise, pick the zone-specific person
     switch (zoneType) {
-      case ZoneType.shop:
-        return random.nextInt(2); // 0 or 1
-      case ZoneType.gym:
-        return 2 + random.nextInt(2); // 2 or 3
-      case ZoneType.school:
-        return 4 + random.nextInt(2); // 4 or 5
-      case ZoneType.office:
-        return 6 + random.nextInt(2); // 6 or 7
+      case ZoneType.shop: return random.nextInt(2);
+      case ZoneType.gym: return 2 + random.nextInt(2);
+      case ZoneType.school: return 4 + random.nextInt(2);
+      case ZoneType.office: return 6 + random.nextInt(2);
     }
   }
 
-  /// Build walk animation (10 frames)
   Future<SpriteAnimation> _buildWalkAnimation() async {
     final sprites = <Sprite>[];
-    
-    // Load each frame (0-9)
     for (int i = 0; i < 10; i++) {
       final image = await gameRef.images.load('person_machine/person_machine_walk_$i.png');
       
-      // Calculate sprite size: 2 rows x 5 columns
       final spriteWidth = image.width / 5;
       final spriteHeight = image.height / 2;
       
-      // Store sprite size on first frame
-      if (_spriteSize == null) {
-        _spriteSize = Vector2(spriteWidth, spriteHeight);
+      // Store raw size from the first frame
+      if (_rawSpriteSize == null) {
+        _rawSpriteSize = Vector2(spriteWidth, spriteHeight);
       }
       
-      // Calculate grid position for this personIndex
-      // Row 0: Index 0-4 (Col 0-4)
-      // Row 1: Index 5-9 (Col 0-4)
       final row = personIndex ~/ 5;
       final col = personIndex % 5;
       
-      // Extract the specific sprite for this person
-      final sprite = Sprite(
+      sprites.add(Sprite(
         image,
         srcPosition: Vector2(col * spriteWidth, row * spriteHeight),
         srcSize: Vector2(spriteWidth, spriteHeight),
-      );
-      
-      sprites.add(sprite);
+      ));
     }
-    
     return SpriteAnimation.spriteList(sprites, stepTime: 0.1);
   }
 
-  /// Build face animation (4 frames)
-  /// Note: If person_machine_face_ files don't exist, this will try to load them.
-  /// If they fail, we can fall back to using the back animation files.
   Future<SpriteAnimation> _buildFaceAnimation() async {
     final sprites = <Sprite>[];
-    
-    // Try to load face animation frames (0-3)
     for (int i = 0; i < 4; i++) {
       try {
         final image = await gameRef.images.load('person_machine/person_machine_face_$i.png');
-        
-        // Calculate sprite size: 2 rows x 5 columns
         final spriteWidth = image.width / 5;
         final spriteHeight = image.height / 2;
-        
-        // Calculate grid position for this personIndex
         final row = personIndex ~/ 5;
         final col = personIndex % 5;
-        
-        // Extract the specific sprite for this person
-        final sprite = Sprite(
+        sprites.add(Sprite(
           image,
           srcPosition: Vector2(col * spriteWidth, row * spriteHeight),
           srcSize: Vector2(spriteWidth, spriteHeight),
-        );
-        
-        sprites.add(sprite);
+        ));
       } catch (e) {
-        // Fallback: If face files don't exist, try back files
-        // This handles the case where files are named person_machine_back_1.png etc.
+        // Fallback to back animation if face doesn't exist
         try {
-          final backIndex = i + 1; // back files are 1-4, not 0-3
+          final backIndex = i + 1;
           final image = await gameRef.images.load('person_machine/person_machine_back_$backIndex.png');
-          
           final spriteWidth = image.width / 5;
           final spriteHeight = image.height / 2;
-          
           final row = personIndex ~/ 5;
           final col = personIndex % 5;
-          
-          final sprite = Sprite(
-            image,
-            srcPosition: Vector2(col * spriteWidth, row * spriteHeight),
-            srcSize: Vector2(spriteWidth, spriteHeight),
-          );
-          
-          sprites.add(sprite);
+          sprites.add(Sprite(
+             image, 
+             srcPosition: Vector2(col * spriteWidth, row * spriteHeight),
+             srcSize: Vector2(spriteWidth, spriteHeight)
+          ));
         } catch (e2) {
-          // If both fail, reuse the first walk frame as a placeholder
-          if (sprites.isEmpty) {
-            final image = await gameRef.images.load('person_machine/person_machine_walk_0.png');
-            final spriteWidth = image.width / 5;
-            final spriteHeight = image.height / 2;
-            final row = personIndex ~/ 5;
-            final col = personIndex % 5;
-            final sprite = Sprite(
-              image,
-              srcPosition: Vector2(col * spriteWidth, row * spriteHeight),
-              srcSize: Vector2(spriteWidth, spriteHeight),
-            );
-            sprites.add(sprite);
-          } else {
-            // Reuse last sprite if we can't load more
-            sprites.add(sprites.last);
-          }
+           // If all else fails, use the first walk frame
+           if (sprites.isNotEmpty) {
+             sprites.add(sprites.last);
+           } else {
+             // Basic fallback prevents crash
+             final image = await gameRef.images.load('person_machine/person_machine_walk_0.png');
+             final spriteWidth = image.width / 5;
+             final spriteHeight = image.height / 2;
+             final row = personIndex ~/ 5;
+             final col = personIndex % 5;
+             sprites.add(Sprite(image, srcPosition: Vector2(col * spriteWidth, row * spriteHeight), srcSize: Vector2(spriteWidth, spriteHeight)));
+           }
         }
       }
     }
-    
-    // If we only have one sprite, duplicate it to make a 4-frame animation
-    while (sprites.length < 4) {
-      sprites.add(sprites.isNotEmpty ? sprites.last : sprites.first);
-    }
-    
     return SpriteAnimation.spriteList(sprites, stepTime: 0.15);
   }
 
@@ -222,16 +173,12 @@ class StatusCustomer extends SpriteAnimationComponent with HasGameRef<FlameGame>
     switch (_state) {
       case StatusCustomerState.walkIn:
         // Walk right towards center
-        if (position.x < _targetX - 5.0) {
+        if (position.x < _targetX) {
           position.x += _walkSpeed * dt;
-          // Ensure we don't overshoot
-          if (position.x > _targetX) {
-            position.x = _targetX;
-          }
-          // Face right (normal scale)
-          scale = Vector2(1, 1);
+          // Ensure facing right (positive scale)
+          if (scale.x < 0) scale.x = scale.x.abs(); 
         } else {
-          // Reached center, switch to idle state
+          // Reached center
           position.x = _targetX;
           _state = StatusCustomerState.idle;
           _stateTimer = 0.0;
@@ -240,60 +187,38 @@ class StatusCustomer extends SpriteAnimationComponent with HasGameRef<FlameGame>
         break;
         
       case StatusCustomerState.idle:
-        // Stay in place, face the machine
         if (_stateTimer >= _idleDuration) {
-          // Switch to walkOut
           _state = StatusCustomerState.walkOut;
-          _stateTimer = 0.0;
           animation = _walkAnimation;
           
-          // Set exit target based on random direction
           if (_walkingLeft) {
-            _targetX = -size.x; // Off-screen left
-            scale = Vector2(-1, 1); // Flip horizontally
+            _targetX = -size.x - 20; // Target is off-screen left
+            if (scale.x > 0) scale.x = -scale.x; // Flip to face left
           } else {
-            _targetX = cardWidth + size.x; // Off-screen right
-            scale = Vector2(1, 1); // Normal
+            _targetX = cardWidth + size.x + 20; // Target is off-screen right
+            if (scale.x < 0) scale.x = scale.x.abs(); // Face right
           }
         }
         break;
         
       case StatusCustomerState.walkOut:
-        // Walk towards exit
-        if (_walkingLeft) {
-          // Walking left
-          if (position.x > _targetX + 5.0) {
-            position.x -= _walkSpeed * dt;
-            if (position.x < _targetX) {
-              position.x = _targetX;
-            }
-          } else {
-            // Reached exit, remove component and respawn
-            position.x = -size.x; // Reset to start position
-            _state = StatusCustomerState.walkIn;
-            _stateTimer = 0.0;
-            animation = _walkAnimation;
-            scale = Vector2(1, 1);
-            _targetX = cardWidth / 2;
-            _walkingLeft = Random().nextBool(); // New random direction for next cycle
-          }
-        } else {
-          // Walking right
-          if (position.x < _targetX - 5.0) {
-            position.x += _walkSpeed * dt;
-            if (position.x > _targetX) {
-              position.x = _targetX;
-            }
-          } else {
-            // Reached exit, remove component and respawn
-            position.x = -size.x; // Reset to start position
-            _state = StatusCustomerState.walkIn;
-            _stateTimer = 0.0;
-            animation = _walkAnimation;
-            scale = Vector2(1, 1);
-            _targetX = cardWidth / 2;
-            _walkingLeft = Random().nextBool(); // New random direction for next cycle
-          }
+        // Determine direction based on target
+        double dir = (_targetX > position.x) ? 1 : -1;
+        position.x += dir * _walkSpeed * dt;
+        
+        // Check if we arrived (passed the target point)
+        bool arrived = (dir > 0 && position.x > _targetX) || (dir < 0 && position.x < _targetX);
+        
+        if (arrived) {
+           // Reset and restart
+           position.x = -size.x;
+           _state = StatusCustomerState.walkIn;
+           animation = _walkAnimation;
+           if (scale.x < 0) scale.x = scale.x.abs(); // Reset face right
+           _targetX = cardWidth / 2;
+           _walkingLeft = Random().nextBool(); // Randomize next exit
+           
+           // Optional: Reshuffle person? (Requires reloading logic, easiest is just to keep same person)
         }
         break;
     }
