@@ -850,9 +850,20 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
       final yB = b['y'] as int;
       if (yA != yB) return yA.compareTo(yB);
       
-      // Tie-breaker: Layer priority (0 = Ground, 1 = Pedestrian, 2 = Building)
+      // Tie-breaker: Layer priority
+      // When at the same position (same depth and y):
+      // - Ground tiles (priority 0) render first (behind)
+      // - Pedestrians (priority 1) render on top of ground but behind buildings
+      // - Buildings (priority 2) render on top
       final priorityA = a['priority'] as int;
       final priorityB = b['priority'] as int;
+      
+      // Special case: Pedestrians should NEVER be behind grass/road tiles
+      // If one is a pedestrian and one is ground, pedestrian always wins (renders on top)
+      if (priorityA == 1 && priorityB == 0) return 1; // Pedestrian after ground
+      if (priorityA == 0 && priorityB == 1) return -1; // Ground before pedestrian
+      
+      // Normal priority comparison for other cases
       return priorityA.compareTo(priorityB);
     });
     
