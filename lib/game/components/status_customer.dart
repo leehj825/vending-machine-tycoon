@@ -80,6 +80,14 @@ class StatusCustomer extends SpriteAnimationComponent with HasGameRef<FlameGame>
   /// - Any/Other: Row 2, Col 4 & 5 (Index 8, 9)
   int _getPersonIndexForZone(ZoneType zoneType) {
     final random = Random();
+    
+    // 20% chance to pick the "Any/Common" people (Index 8 or 9)
+    // who can appear at ANY machine.
+    if (random.nextDouble() < 0.2) {
+      return 8 + random.nextInt(2); // Returns 8 or 9
+    }
+
+    // Otherwise, pick the zone-specific person
     switch (zoneType) {
       case ZoneType.shop:
         return random.nextInt(2); // 0 or 1
