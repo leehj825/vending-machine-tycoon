@@ -795,8 +795,9 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
         final tileType = _grid[y][x];
         final depth = x + y;
         
-        // Determine priority: 0 for Ground (Grass/Road), 2 for Buildings
-        final priority = (tileType == TileType.grass || tileType == TileType.road) ? 0 : 2;
+        // Determine priority: 0 for Ground (Grass/Road), 10 for Buildings
+        // Using 10 instead of 2 ensures clear separation from pedestrians (priority 5)
+        final priority = (tileType == TileType.grass || tileType == TileType.road) ? 0 : 10;
         
         // Build the tile widget
         final tileWidget = _buildSingleTileWidget(
@@ -833,7 +834,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
         'depth': depth,
         'x': gridX,
         'y': gridY,
-        'priority': 1, // Pedestrians are Priority 1 (between Ground and Buildings)
+        'priority': 5, // Pedestrians are Priority 5 (between Ground=0 and Buildings=10)
         'type': 'pedestrian',
       });
     }
@@ -853,17 +854,14 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
       // Tie-breaker: Layer priority
       // When at the same position (same depth and y):
       // - Ground tiles (priority 0) render first (behind)
-      // - Pedestrians (priority 1) render on top of ground but behind buildings
-      // - Buildings (priority 2) render on top
+      // - Pedestrians (priority 5) render on top of ground but behind buildings
+      // - Buildings (priority 10) render on top
       final priorityA = a['priority'] as int;
       final priorityB = b['priority'] as int;
       
-      // Special case: Pedestrians should NEVER be behind grass/road tiles
-      // If one is a pedestrian and one is ground, pedestrian always wins (renders on top)
-      if (priorityA == 1 && priorityB == 0) return 1; // Pedestrian after ground
-      if (priorityA == 0 && priorityB == 1) return -1; // Ground before pedestrian
-      
-      // Normal priority comparison for other cases
+      // Normal priority comparison ensures correct ordering:
+      // Priority 0 (Ground) < Priority 5 (Pedestrian) < Priority 10 (Building)
+      // This guarantees pedestrians always render on top of ground tiles
       return priorityA.compareTo(priorityB);
     });
     
