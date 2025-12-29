@@ -515,12 +515,12 @@ class AppConfig {
   static const double horizontalSpacingFactor = 0.70;
   
   /// Building scales
-  static const double buildingScale = 0.81;
-  static const double schoolScale = 0.77; // School tile scale (same as other small buildings)
-  static const double gasStationScale = 0.72;
-  static const double parkScale = 0.72;
-  static const double houseScale = 0.72;
-  static const double warehouseScale = 0.72;
+  static const double buildingScale = 0.70;
+  static const double schoolScale = 0.70; // School tile scale (same as other small buildings)
+  static const double gasStationScale = 0.70;
+  static const double parkScale = 0.70;
+  static const double houseScale = 0.70;
+  static const double warehouseScale = 0.70;
   
   /// Building block sizes
   static const int minBlockSize = 2;
