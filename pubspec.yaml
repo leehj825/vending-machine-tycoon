@@ -98,6 +98,7 @@ flutter:
     - assets/images/machine_with_money.png
     - assets/images/machine_without_money.png
     - assets/images/pedestrian_walk/
+    - assets/images/person_machine/
     - assets/sound/
 
   # An image asset can refer to one or more resolution-specific "variants", see

@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flame/game.dart';
 import '../../simulation/models/machine.dart';
 import '../../state/providers.dart';
 import '../../config.dart';
 import '../theme/zone_ui.dart';
 import '../utils/screen_utils.dart';
 import 'game_button.dart';
+import '../../game/mini_games/customer_preview_game.dart';
 
 /// Widget that displays a machine's status in a card format
 class MachineStatusCard extends ConsumerStatefulWidget {
@@ -78,6 +80,60 @@ class _MachineStatusCardState extends ConsumerState<MachineStatusCard> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Machine image with customer animation
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final imageHeight = ScreenUtils.relativeSize(context, 0.15);
+                  final hasCash = machine.currentCash > 0;
+                  final imagePath = 'assets/images/machine${hasCash ? '_with_money' : '_without_money'}.png';
+                  
+                  return Container(
+                    height: imageHeight,
+                    width: double.infinity,
+                    margin: EdgeInsets.only(bottom: ScreenUtils.relativeSize(context, AppConfig.spacingFactorLarge)),
+                    decoration: BoxDecoration(
+                      color: zoneColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(ScreenUtils.relativeSize(context, AppConfig.borderRadiusFactorMedium)),
+                    ),
+                    child: Stack(
+                      children: [
+                        // Machine image
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(ScreenUtils.relativeSize(context, AppConfig.borderRadiusFactorMedium)),
+                          child: Image.asset(
+                            imagePath,
+                            fit: BoxFit.contain,
+                            width: double.infinity,
+                            height: imageHeight,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                width: double.infinity,
+                                height: imageHeight,
+                                color: Colors.grey[300],
+                                child: Icon(
+                                  zoneIcon,
+                                  color: zoneColor,
+                                  size: imageHeight * 0.5,
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                        // Customer animation overlay
+                        Positioned.fill(
+                          child: GameWidget<CustomerPreviewGame>.controlled(
+                            gameFactory: () => CustomerPreviewGame(
+                              zoneType: machine.zone.type,
+                              cardWidth: constraints.maxWidth,
+                              cardHeight: imageHeight,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
               // Main row with machine info
               Row(
                 children: [
