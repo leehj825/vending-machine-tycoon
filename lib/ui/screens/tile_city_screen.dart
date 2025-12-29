@@ -783,137 +783,121 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
   }
 
   Map<String, List<Widget>> _buildMapComponents(BuildContext context, Offset centerOffset, double tileWidth, double tileHeight, double buildingImageHeight) {
-    final tileData = <Map<String, dynamic>>[];
     final warehouseVerticalOffset = _getWarehouseVerticalOffset(context);
     
+    // Unified render list that will contain both tiles and pedestrians
+    final renderItems = <Map<String, dynamic>>[];
+    
+    // 1. Add all tiles to the unified render list
     for (int y = 0; y < gridSize; y++) {
       for (int x = 0; x < gridSize; x++) {
         final screenPos = _gridToScreen(context, x, y);
-        tileData.add({
+        final tileType = _grid[y][x];
+        final depth = x + y;
+        
+        // Determine priority: 0 for Ground (Grass/Road), 2 for Buildings
+        final priority = (tileType == TileType.grass || tileType == TileType.road) ? 0 : 2;
+        
+        // Build the tile widget
+        final tileWidget = _buildSingleTileWidget(
+          context, x, y, tileType, _roadDirections[y][x], _buildingOrientations[y][x],
+          screenPos.dx + centerOffset.dx, screenPos.dy + centerOffset.dy,
+          tileWidth, tileHeight, buildingImageHeight, warehouseVerticalOffset
+        );
+        
+        renderItems.add({
+          'widget': tileWidget,
+          'depth': depth,
           'x': x,
           'y': y,
-          'tileType': _grid[y][x],
-          'roadDir': _roadDirections[y][x],
-          'buildingOrientation': _buildingOrientations[y][x],
+          'priority': priority,
+          'type': 'tile',
+          'tileType': tileType,
           'positionedX': screenPos.dx + centerOffset.dx,
           'positionedY': screenPos.dy + centerOffset.dy,
         });
       }
     }
-
-    // Sort for Painter's Algorithm (Back to Front)
-    tileData.sort((a, b) {
-      final depthA = (a['x'] as int) + (a['y'] as int);
-      final depthB = (b['x'] as int) + (b['y'] as int);
-      if (depthA != depthB) return depthA.compareTo(depthB);
-      return (a['y'] as int).compareTo(b['y'] as int);
-    });
-
-    final tiles = <Widget>[];
-    final buttons = <Widget>[];
     
-    for (final data in tileData) {
-      final int x = data['x'];
-      final int y = data['y'];
-      final TileType tileType = data['tileType'];
-      final double posX = data['positionedX'];
-      final double posY = data['positionedY'];
-      
-      // 1. Build Ground/Building Tile
-      tiles.add(_buildSingleTileWidget(
-        context, x, y, tileType, data['roadDir'], data['buildingOrientation'],
-        posX, posY, tileWidth, tileHeight, buildingImageHeight, warehouseVerticalOffset
-      ));
-
-      // 2. Build Purchase Button (if applicable)
-      if (_isBuilding(tileType) && tileType != TileType.warehouse && _shouldShowPurchaseButton(x, y, tileType)) {
-        //final buildingScaleFactor = _getBuildingScale(tileType);
-        //final scaledHeight = buildingImageHeight * buildingScaleFactor;
-        //final buildingTop = posY - (scaledHeight - tileHeight);
-        
-        final buttonSize = ScreenUtils.relativeSizeClamped(
-          context, 0.05,
-          min: ScreenUtils.getSmallerDimension(context) * 0.04,
-          max: ScreenUtils.getSmallerDimension(context) * 0.08,
-        );
-        
-        final buttonTop = posY;
-        final buttonLeft = posX + (tileWidth / 2) - (buttonSize / 2);
-        
-        buttons.add(
-          Positioned(
-            left: buttonLeft,
-            top: buttonTop,
-            width: buttonSize,
-            height: buttonSize,
-            child: _PurchaseButton(
-              size: buttonSize,
-              onTap: () => _handleDebouncedBuildingTap(x, y, tileType),
-            ),
-          ),
-        );
-      }
-    }
-
-
-    // Add Pedestrians with proper depth sorting (before machines/trucks)
-    // Create pedestrian widgets with their depth information
-    final pedestrianData = <({Widget widget, int depth, int y, int x})>[];
+    // 2. Add all pedestrians to the unified render list
     for (final pedestrian in _pedestrians) {
       final gridX = pedestrian.gridX.floor();
       final gridY = pedestrian.gridY.floor();
-      final depth = gridX + gridY; // Same depth calculation as tiles
-      final widget = _buildPedestrian(context, pedestrian, centerOffset, tileWidth, tileHeight);
-      pedestrianData.add((widget: widget, depth: depth, y: gridY, x: gridX));
+      final depth = gridX + gridY;
+      
+      // Build the pedestrian widget
+      final pedestrianWidget = _buildPedestrian(context, pedestrian, centerOffset, tileWidth, tileHeight);
+      
+      renderItems.add({
+        'widget': pedestrianWidget,
+        'depth': depth,
+        'x': gridX,
+        'y': gridY,
+        'priority': 1, // Pedestrians are Priority 1 (between Ground and Buildings)
+        'type': 'pedestrian',
+      });
     }
     
-    // Sort pedestrians by depth (same as tiles)
-    pedestrianData.sort((a, b) {
-      if (a.depth != b.depth) return a.depth.compareTo(b.depth);
-      return a.y.compareTo(b.y);
+    // 3. Sort unified list using Painter's Algorithm with layer priority
+    renderItems.sort((a, b) {
+      // Primary sort: Depth (x + y)
+      final depthA = a['depth'] as int;
+      final depthB = b['depth'] as int;
+      if (depthA != depthB) return depthA.compareTo(depthB);
+      
+      // Secondary sort: Y coordinate
+      final yA = a['y'] as int;
+      final yB = b['y'] as int;
+      if (yA != yB) return yA.compareTo(yB);
+      
+      // Tie-breaker: Layer priority (0 = Ground, 1 = Pedestrian, 2 = Building)
+      final priorityA = a['priority'] as int;
+      final priorityB = b['priority'] as int;
+      return priorityA.compareTo(priorityB);
     });
     
-    // Insert pedestrians into tiles list at correct depth positions
-    // This ensures pedestrians appear behind buildings when building is in front (lower on screen)
-    // Since tileData is sorted by depth, we can use it to find insertion points
-    for (final pedData in pedestrianData) {
-      int insertIndex = tiles.length; // Default: append at end of tiles (before machines/trucks)
-      
-      // Find the right position: insert after tiles with depth < pedestrian depth,
-      // or after buildings with same depth but y >= pedestrian y
-      for (int i = tileData.length - 1; i >= 0; i--) {
-        final tileX = tileData[i]['x'] as int;
-        final tileY = tileData[i]['y'] as int;
-        final tileDepth = tileX + tileY;
-        final tileType = tileData[i]['tileType'] as TileType;
-        
-        // Check if this tile should have pedestrians appear behind it (all except grass and road)
-        if (_shouldPedestrianBeBehindTile(tileType)) {
-          // If tile is in front of pedestrian (lower on screen = higher y, or same y with higher depth)
-          // Pedestrian should be behind it (insert before this tile)
-          if (tileDepth > pedData.depth || 
-              (tileDepth == pedData.depth && tileY > pedData.y)) {
-            // Insert before this tile
-            insertIndex = i;
-            break;
-          } else if (tileDepth == pedData.depth && tileY == pedData.y) {
-            // Same position - insert after tile
-            insertIndex = i + 1;
-            break;
-          }
-        } else if (tileDepth < pedData.depth) {
-          // Past all tiles with lower depth, insert here
-          insertIndex = i + 1;
-          break;
-        }
-      }
-      
-      // Clamp insertIndex to valid range (only within tiles, before machines/trucks)
-      insertIndex = insertIndex.clamp(0, tiles.length);
-      tiles.insert(insertIndex, pedData.widget);
+    // 4. Build tiles list from sorted render items
+    final tiles = <Widget>[];
+    for (final item in renderItems) {
+      tiles.add(item['widget'] as Widget);
     }
     
-    // Add Machines and Trucks (after pedestrians, so they appear on top)
+    // 5. Build purchase buttons (separate from depth sorting)
+    final buttons = <Widget>[];
+    for (int y = 0; y < gridSize; y++) {
+      for (int x = 0; x < gridSize; x++) {
+        final tileType = _grid[y][x];
+        if (_isBuilding(tileType) && tileType != TileType.warehouse && _shouldShowPurchaseButton(x, y, tileType)) {
+          final screenPos = _gridToScreen(context, x, y);
+          final posX = screenPos.dx + centerOffset.dx;
+          final posY = screenPos.dy + centerOffset.dy;
+          
+          final buttonSize = ScreenUtils.relativeSizeClamped(
+            context, 0.05,
+            min: ScreenUtils.getSmallerDimension(context) * 0.04,
+            max: ScreenUtils.getSmallerDimension(context) * 0.08,
+          );
+          
+          final buttonTop = posY;
+          final buttonLeft = posX + (tileWidth / 2) - (buttonSize / 2);
+          
+          buttons.add(
+            Positioned(
+              left: buttonLeft,
+              top: buttonTop,
+              width: buttonSize,
+              height: buttonSize,
+              child: _PurchaseButton(
+                size: buttonSize,
+                onTap: () => _handleDebouncedBuildingTap(x, y, tileType),
+              ),
+            ),
+          );
+        }
+      }
+    }
+    
+    // 6. Add Machines and Trucks (after map layer, so they appear on top)
     final gameMachines = ref.watch(machinesProvider);
     for (final machine in gameMachines) {
       tiles.add(_buildGameMachine(context, machine, centerOffset, tileWidth, tileHeight));
@@ -1493,11 +1477,6 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
            tileType == TileType.office ||
            tileType == TileType.school ||
            tileType == TileType.house;
-  }
-  
-  /// Check if a tile type should have pedestrians appear behind it (all except grass and road)
-  bool _shouldPedestrianBeBehindTile(TileType tileType) {
-    return tileType != TileType.grass && tileType != TileType.road;
   }
   
   /// Check if pedestrian is adjacent to a building or house (in front of it)
