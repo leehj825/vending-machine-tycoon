@@ -785,7 +785,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
   Map<String, List<Widget>> _buildMapComponents(BuildContext context, Offset centerOffset, double tileWidth, double tileHeight, double buildingImageHeight) {
     final warehouseVerticalOffset = _getWarehouseVerticalOffset(context);
     
-    // Unified render list that will contain both tiles and pedestrians
+    // Unified render list that will contain all map entities (Tiles, Pedestrians, Trucks, Machines)
     final renderItems = <Map<String, dynamic>>[];
     
     // 1. Add all tiles to the unified render list
@@ -796,7 +796,6 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
         final depth = x + y;
         
         // Determine priority: 0 for Ground (Grass/Road), 10 for Buildings
-        // Using 10 instead of 2 ensures clear separation from pedestrians (priority 5)
         final priority = (tileType == TileType.grass || tileType == TileType.road) ? 0 : 10;
         
         // Build the tile widget
@@ -809,21 +808,18 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
         renderItems.add({
           'widget': tileWidget,
           'depth': depth,
-          'x': x,
           'y': y,
           'priority': priority,
-          'type': 'tile',
-          'tileType': tileType,
-          'positionedX': screenPos.dx + centerOffset.dx,
-          'positionedY': screenPos.dy + centerOffset.dy,
         });
       }
     }
     
     // 2. Add all pedestrians to the unified render list
     for (final pedestrian in _pedestrians) {
-      final gridX = pedestrian.gridX.floor();
-      final gridY = pedestrian.gridY.floor();
+      // Use .round() to assign pedestrian to the visual tile they are closest to
+      // This prevents them from being covered by the next tile when walking between them
+      final gridX = pedestrian.gridX.round();
+      final gridY = pedestrian.gridY.round();
       final depth = gridX + gridY;
       
       // Build the pedestrian widget
@@ -832,46 +828,75 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
       renderItems.add({
         'widget': pedestrianWidget,
         'depth': depth,
-        'x': gridX,
         'y': gridY,
-        'priority': 5, // Pedestrians are Priority 5 (between Ground=0 and Buildings=10)
-        'type': 'pedestrian',
+        'priority': 5, // Priority 5: Draws on top of Roads [0], but behind Buildings [10]
       });
     }
     
-    // 3. Sort unified list using Painter's Algorithm with layer priority
+    // 3. Add all trucks to the unified render list
+    final gameTrucks = ref.watch(trucksProvider);
+    for (final truck in gameTrucks) {
+      // Convert from 1-based zone coordinates to 0-based grid coordinates
+      final gridX = (truck.currentX - 1.0).round();
+      final gridY = (truck.currentY - 1.0).round();
+      final depth = gridX + gridY;
+      
+      // Build the truck widget
+      final truckWidget = _buildGameTruck(context, truck, centerOffset, tileWidth, tileHeight);
+      
+      renderItems.add({
+        'widget': truckWidget,
+        'depth': depth,
+        'y': gridY,
+        'priority': 6, // Priority 6: Draws on top of Pedestrians [5]
+      });
+    }
+    
+    // 4. Add all machines to the unified render list
+    final gameMachines = ref.watch(machinesProvider);
+    for (final machine in gameMachines) {
+      // Convert from 1-based zone coordinates to 0-based grid coordinates
+      final gridX = (machine.zone.x - 1).floor();
+      final gridY = (machine.zone.y - 1).floor();
+      final depth = gridX + gridY;
+      
+      // Build the machine widget
+      final machineWidget = _buildGameMachine(context, machine, centerOffset, tileWidth, tileHeight);
+      
+      renderItems.add({
+        'widget': machineWidget,
+        'depth': depth,
+        'y': gridY,
+        'priority': 15, // Priority 15: Draws on top of Buildings [10], so they are visible in front of shops
+      });
+    }
+    
+    // 5. Sort unified list using Painter's Algorithm with layer priority
     renderItems.sort((a, b) {
-      // Primary sort: Depth (x + y)
+      // Primary sort: Depth (x + y) - Ascending (lower depth draws first/behind)
       final depthA = a['depth'] as int;
       final depthB = b['depth'] as int;
       if (depthA != depthB) return depthA.compareTo(depthB);
       
-      // Secondary sort: Y coordinate
+      // Secondary sort: Y coordinate - Ascending (higher up on grid draws first/behind)
       final yA = a['y'] as int;
       final yB = b['y'] as int;
       if (yA != yB) return yA.compareTo(yB);
       
-      // Tie-breaker: Layer priority
-      // When at the same position (same depth and y):
-      // - Ground tiles (priority 0) render first (behind)
-      // - Pedestrians (priority 5) render on top of ground but behind buildings
-      // - Buildings (priority 10) render on top
+      // Tie-breaker: Priority - Ascending
+      // Priority order: 0 (Ground) < 5 (Pedestrian) < 6 (Truck) < 10 (Building) < 15 (Machine)
       final priorityA = a['priority'] as int;
       final priorityB = b['priority'] as int;
-      
-      // Normal priority comparison ensures correct ordering:
-      // Priority 0 (Ground) < Priority 5 (Pedestrian) < Priority 10 (Building)
-      // This guarantees pedestrians always render on top of ground tiles
       return priorityA.compareTo(priorityB);
     });
     
-    // 4. Build tiles list from sorted render items
+    // 6. Build tiles list from sorted render items
     final tiles = <Widget>[];
     for (final item in renderItems) {
       tiles.add(item['widget'] as Widget);
     }
     
-    // 5. Build purchase buttons (separate from depth sorting)
+    // 7. Build purchase buttons (separate from depth sorting, rendered on top)
     final buttons = <Widget>[];
     for (int y = 0; y < gridSize; y++) {
       for (int x = 0; x < gridSize; x++) {
@@ -904,16 +929,6 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
           );
         }
       }
-    }
-    
-    // 6. Add Machines and Trucks (after map layer, so they appear on top)
-    final gameMachines = ref.watch(machinesProvider);
-    for (final machine in gameMachines) {
-      tiles.add(_buildGameMachine(context, machine, centerOffset, tileWidth, tileHeight));
-    }
-    final gameTrucks = ref.watch(trucksProvider);
-    for (final truck in gameTrucks) {
-      tiles.add(_buildGameTruck(context, truck, centerOffset, tileWidth, tileHeight));
     }
 
     // Add Marketing Button if position is set (show during rush hour too, but with fire icon)
