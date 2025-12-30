@@ -71,7 +71,7 @@ class _VendingMachineTycoonAppState extends State<VendingMachineTycoonApp> with 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
-    final soundService = SoundService();
+    final soundService = SoundService.instance;
     
     switch (state) {
       case AppLifecycleState.paused:

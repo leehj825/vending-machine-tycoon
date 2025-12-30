@@ -8,6 +8,9 @@ class SoundService {
   static final SoundService _instance = SoundService._internal();
   factory SoundService() => _instance;
   
+  /// Public static getter for singleton instance
+  static SoundService get instance => _instance;
+  
   SoundService._internal() {
     _initAudioContext();
   }
