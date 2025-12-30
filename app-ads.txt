@@ -1,0 +1,4 @@
+# app-ads.txt file for Vending Machine Tycoon
+# This file authorizes Google AdMob to serve ads in this app
+google.com, pub-4400173019354346, DIRECT
+
