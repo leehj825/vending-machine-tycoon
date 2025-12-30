@@ -49,6 +49,7 @@ class GameController extends StateNotifier<GlobalGameState> {
   final Ref ref;
 
   bool _isSimulationRunning = false;
+  Timer? _marketingButtonSpawnTimer;
 
   GameController(this.ref)
       : simulationEngine = SimulationEngine(
@@ -185,6 +186,22 @@ class GameController extends StateNotifier<GlobalGameState> {
   /// Public method to spawn marketing button (called from UI)
   void spawnMarketingButton() {
     _spawnMarketingButton();
+  }
+
+  /// Hide marketing button (called when auto-hide timer expires)
+  void hideMarketingButton() {
+    state = state.copyWith(
+      marketingButtonGridX: null,
+      marketingButtonGridY: null,
+    );
+    
+    // After hiding, schedule next appearance after 10-30 seconds
+    _marketingButtonSpawnTimer?.cancel();
+    final random = math.Random();
+    final delaySeconds = 10 + random.nextInt(21); // 10-30 seconds
+    _marketingButtonSpawnTimer = Timer(Duration(seconds: delaySeconds), () {
+      _spawnMarketingButton();
+    });
   }
 
   /// Public getter to access current state
@@ -965,20 +982,35 @@ class GameController extends StateNotifier<GlobalGameState> {
 
   /// End Rush Hour - resets multiplier to 1.0 and spawns marketing button at random location
   void endRushHour() {
-    // Spawn marketing button at new random location
-    _spawnMarketingButton();
+    // Clear any existing timer
+    _marketingButtonSpawnTimer?.cancel();
     
+    // Update rush hour state immediately
     state = state.copyWith(
       isRushHour: false,
       rushMultiplier: 1.0,
+      // Clear marketing button position so it doesn't show immediately
+      marketingButtonGridX: null,
+      marketingButtonGridY: null,
     );
     // Sync rush multiplier to simulation engine
     simulationEngine.updateRushMultiplier(1.0);
+    
+    // Spawn marketing button after random delay (10 to 30 seconds)
+    final random = math.Random();
+    final delaySeconds = 10 + random.nextInt(21); // 10-30 seconds
+    _marketingButtonSpawnTimer = Timer(Duration(seconds: delaySeconds), () {
+      _spawnMarketingButton();
+    });
     state = state.addLogMessage('Rush Hour ended. Marketing opportunity appeared!');
   }
 
   @override
+  @override
   void dispose() {
+    // Cancel the marketing button spawn timer
+    _marketingButtonSpawnTimer?.cancel();
+    
     // Cancel the stream subscription to prevent updates after disposal
     _simSubscription?.cancel();
     _simSubscription = null;

@@ -2005,102 +2005,83 @@ class _MachineViewDialog extends ConsumerWidget {
     required this.imagePath,
   });
 
+  /// Handles the logic when a customer makes a purchase
+  void _handlePurchase(WidgetRef ref, bool isSpecial) {
+    // 1. Get current machine state
+    final machines = ref.read(machinesProvider);
+    final machineIndex = machines.indexWhere((m) => m.id == machineId);
+    if (machineIndex == -1) return;
+    final machine = machines[machineIndex];
+
+    // 2. Determine "Bundle" size
+    // Normal: 1 Soda + 1 Chips
+    // Special: 2 Soda + 2 Chips (Double Benefit)
+    final multiplier = isSpecial ? 2 : 1;
+    final requiredSoda = 1 * multiplier;
+    final requiredChips = 1 * multiplier;
+
+    // 3. Check and deduct inventory
+    final newInventory = Map<Product, sim.InventoryItem>.from(machine.inventory);
+    double earnedCash = 0.0;
+    bool soldAnything = false;
+
+    // Process Soda
+    if (newInventory.containsKey(Product.soda)) {
+      final item = newInventory[Product.soda]!;
+      final soldQty = math.min(item.quantity, requiredSoda);
+      if (soldQty > 0) {
+        newInventory[Product.soda] = item.copyWith(quantity: item.quantity - soldQty);
+        earnedCash += soldQty * Product.soda.basePrice;
+        soldAnything = true;
+      }
+    }
+
+    // Process Chips
+    if (newInventory.containsKey(Product.chips)) {
+      final item = newInventory[Product.chips]!;
+      final soldQty = math.min(item.quantity, requiredChips);
+      if (soldQty > 0) {
+        newInventory[Product.chips] = item.copyWith(quantity: item.quantity - soldQty);
+        earnedCash += soldQty * Product.chips.basePrice;
+        soldAnything = true;
+      }
+    }
+
+    // 4. Apply Updates if purchase happened
+    if (soldAnything) {
+      // If Special person (Any Zone), apply Double Benefit to the cash earned
+      // (They buy 2x items naturally, but we can add a bonus multiplier if desired. 
+      //  Here we stick to the volume benefit: 2x items = 2x cash).
+      
+      final updatedMachine = machine.copyWith(
+        inventory: newInventory,
+        currentCash: machine.currentCash + earnedCash,
+        totalSales: machine.totalSales + (isSpecial ? 2 : 1), 
+      );
+
+      // Update Controller
+      ref.read(gameControllerProvider.notifier).updateMachine(updatedMachine);
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final machines = ref.watch(machinesProvider);
     
     sim.Machine? machine;
     try {
-      machine = machines.firstWhere(
-        (m) => m.id == machineId,
-      );
+      machine = machines.firstWhere((m) => m.id == machineId);
     } catch (e) {
       return Dialog(
         backgroundColor: Colors.transparent,
-        insetPadding: EdgeInsets.all(ScreenUtils.relativeSize(context, 0.04)),
         child: Container(
-          padding: EdgeInsets.all(ScreenUtils.relativeSize(context, 0.04)),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(
-              ScreenUtils.relativeSize(context, 0.03),
-            ),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Machine not found',
-                style: TextStyle(
-                  fontSize: ScreenUtils.relativeFontSize(
-                    context,
-                    AppConfig.fontSizeFactorLarge,
-                    min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                    max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                  ),
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              SizedBox(height: ScreenUtils.relativeSize(context, 0.01)),
-              Text(
-                'Looking for ID: $machineId',
-                style: TextStyle(
-                  fontSize: ScreenUtils.relativeFontSize(
-                    context,
-                    AppConfig.fontSizeFactorNormal,
-                    min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                    max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                  ),
-                ),
-              ),
-              SizedBox(height: ScreenUtils.relativeSize(context, 0.01)),
-              Text(
-                'Total machines: ${machines.length}',
-                style: TextStyle(
-                  fontSize: ScreenUtils.relativeFontSize(
-                    context,
-                    AppConfig.fontSizeFactorNormal,
-                    min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                    max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                  ),
-                ),
-              ),
-              if (machines.isNotEmpty) ...[
-                SizedBox(height: ScreenUtils.relativeSize(context, 0.01)),
-                Text(
-                  'Available IDs: ${machines.map((m) => m.id).join(', ')}',
-                  style: TextStyle(
-                    fontSize: ScreenUtils.relativeFontSize(
-                      context,
-                      AppConfig.fontSizeFactorSmall,
-                      min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                      max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                    ),
-                  ),
-                ),
-              ],
-              SizedBox(height: ScreenUtils.relativeSize(context, 0.02)),
-              ElevatedButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: Text(
-                  'Close',
-                  style: TextStyle(
-                    fontSize: ScreenUtils.relativeFontSize(
-                      context,
-                      AppConfig.fontSizeFactorNormal,
-                      min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                      max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
+          padding: EdgeInsets.all(20),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+          child: const Text('Machine not found', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
         ),
       );
     }
     
-    // Calculate the actual dialog width
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
     final dialogMaxWidth = screenWidth * AppConfig.machineStatusDialogWidthFactor;
@@ -2112,7 +2093,6 @@ class _MachineViewDialog extends ConsumerWidget {
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
-          // Use the actual constrained width for sizing
           final dialogWidth = constraints.maxWidth;
           final imageHeight = dialogWidth * AppConfig.machineStatusDialogImageHeightFactor;
           final borderRadius = dialogWidth * AppConfig.machineStatusDialogBorderRadiusFactor;
@@ -2142,37 +2122,27 @@ class _MachineViewDialog extends ConsumerWidget {
                         fit: BoxFit.cover,
                         width: double.infinity,
                         height: imageHeight,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                            width: double.infinity,
-                            height: imageHeight,
-                            color: Colors.grey[800],
-                            child: Center(
-                              child: Text(
-                                'View image not found',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: dialogWidth * AppConfig.machineStatusDialogErrorTextFontSizeFactor,
-                                ),
-                              ),
-                            ),
-                          );
-                        },
+                        errorBuilder: (context, error, stackTrace) => Container(
+                          width: double.infinity, 
+                          height: imageHeight, 
+                          color: Colors.grey[800]
+                        ),
                       ),
                     ),
                     // Animated person at machine overlay
                     if (machine != null)
                       Positioned(
-                        bottom: imageHeight * -0.15, // Position near bottom of image
-                        left: 0, // Base position, will animate from right to left
+                        bottom: imageHeight * -0.15, 
+                        left: 0, 
                         child: SizedBox(
-                          width: dialogWidth, // Full width to allow movement across entire dialog
-                          height: imageHeight * 1.0, // Keep original height
+                          width: dialogWidth, 
+                          height: imageHeight * 1.0, 
                           child: _AnimatedPersonMachine(
                             zoneType: machine.zone.type,
                             machineId: machine.id,
                             dialogWidth: dialogWidth,
                             imageHeight: imageHeight,
+                            onPurchase: (isSpecial) => _handlePurchase(ref, isSpecial), // Pass callback
                           ),
                         ),
                       ),
@@ -2180,18 +2150,9 @@ class _MachineViewDialog extends ConsumerWidget {
                       top: padding * AppConfig.machineStatusDialogHeaderImageTopPaddingFactor,
                       right: padding * AppConfig.machineStatusDialogHeaderImageTopPaddingFactor,
                       child: IconButton(
-                        icon: Icon(
-                          Icons.close,
-                          color: Colors.white,
-                          size: dialogWidth * AppConfig.machineStatusDialogCloseButtonSizeFactor,
-                        ),
+                        icon: Icon(Icons.close, color: Colors.white, size: dialogWidth * AppConfig.machineStatusDialogCloseButtonSizeFactor),
                         onPressed: () => Navigator.of(context).pop(),
-                        style: IconButton.styleFrom(
-                          backgroundColor: Colors.black.withValues(alpha: 0.5),
-                          padding: EdgeInsets.all(
-                            padding * AppConfig.machineStatusDialogCloseButtonPaddingFactor,
-                          ),
-                        ),
+                        style: IconButton.styleFrom(backgroundColor: Colors.black.withValues(alpha: 0.5), padding: EdgeInsets.all(padding * AppConfig.machineStatusDialogCloseButtonPaddingFactor)),
                       ),
                     ),
                   ],
@@ -2200,10 +2161,7 @@ class _MachineViewDialog extends ConsumerWidget {
                   child: SingleChildScrollView(
                     child: Padding(
                       padding: EdgeInsets.all(padding),
-                      child: _MachineStatusSection(
-                        machine: machine!,
-                        dialogWidth: dialogWidth,
-                      ),
+                      child: _MachineStatusSection(machine: machine!, dialogWidth: dialogWidth),
                     ),
                   ),
                 ),
@@ -3077,30 +3035,31 @@ class _PedestrianSpritePainter extends CustomPainter {
   }
 }
 
-/// Widget that renders an animated person at machine using person_machine_walk frames
-/// Each frame is a sprite sheet (2 rows x 5 columns) containing 10 different people
+enum _AnimationState {
+  waiting,          // New state: Waiting for customer to appear
+  walkingToMachine, 
+  backAnimation,    
+  pausing,          
+  walkingAway,      
+}
+
 class _AnimatedPersonMachine extends StatefulWidget {
   final ZoneType zoneType;
-  final String machineId; // Used to consistently pick between the two person options for each zone
-  final double dialogWidth; // Used for calculating animation distance
-  final double imageHeight; // Image height for positioning
+  final String machineId; 
+  final double dialogWidth; 
+  final double imageHeight; 
+  final Function(bool isSpecial) onPurchase; // Callback for purchase
 
   const _AnimatedPersonMachine({
     required this.zoneType,
     required this.machineId,
     required this.dialogWidth,
     required this.imageHeight,
+    required this.onPurchase,
   });
 
   @override
   State<_AnimatedPersonMachine> createState() => _AnimatedPersonMachineState();
-}
-
-enum _AnimationState {
-  walkingToMachine, // Walking from right to machine (looping)
-  backAnimation,    // Playing back animation (4 frames, no loop)
-  pausing,          // Pause for 1 second
-  walkingAway,      // Walking left until outside
 }
 
 class _AnimatedPersonMachineState extends State<_AnimatedPersonMachine>
@@ -3111,18 +3070,18 @@ class _AnimatedPersonMachineState extends State<_AnimatedPersonMachine>
   Size? _spriteSize;
   int? _personIndex;
   bool _isLoading = true;
+  bool _isSpecial = false; 
   
   // State Management
-  _AnimationState _currentState = _AnimationState.walkingToMachine;
+  _AnimationState _currentState = _AnimationState.waiting; 
   Timer? _pauseTimer;
-  Timer? _walkUpdateTimer; // Timer to update walk position
-  Timer? _walkAwayTimer;   // Timer to update walk away position
+  Timer? _walkUpdateTimer; 
+  Timer? _walkAwayTimer;   
   
-  // Position & Progress Tracking
   double _vendingMachinePosition = 0.0;
   DateTime? _walkStartTime; 
-  double _walkProgress = 0.0;     // 0.0 -> 1.0 (Walk In)
-  double _walkAwayProgress = 0.0; // 0.0 -> 1.0 (Walk Out)
+  double _walkProgress = 0.0;     
+  double _walkAwayProgress = 0.0; 
   DateTime? _walkAwayStartTime;
 
   // --- CONFIGURATION CONSTANTS (TWEAK THESE) ---
@@ -3188,24 +3147,18 @@ class _AnimatedPersonMachineState extends State<_AnimatedPersonMachine>
   }
 
   void _calculatePersonIndex() {
-    // Special characters (indices 8-9, which are 2nd row columns 3-4) can be used for any zone
-    // For now, they work the same as others but are available for all zones
+    final random = math.Random();
     
-    // Use a time-based seed combined with machineId to get different results each restart
-    final seed = (DateTime.now().millisecondsSinceEpoch + widget.machineId.hashCode.abs()) % 1000;
-    
-    // Check if we should use special characters (8-9) - can be used for any zone
-    final useSpecial = (seed % 10) >= 8; // 20% chance to use special
-    
-    if (useSpecial) {
-      // Use special characters 8-9 for any zone
-      _personIndex = 8 + (seed % 2); // Either 8 or 9
+    // 1. Determine if "Special" (Any Zone)
+    // 20% chance for Special (Indices 8, 9)
+    if (random.nextDouble() < 0.20) { 
+      _isSpecial = true;
+      _personIndex = 8 + random.nextInt(2); 
     } else {
-      // Use zone-specific characters (0-7)
+      _isSpecial = false;
+      // Zone specific (Normal)
       final baseIndex = _getBasePersonIndexForZone(widget.zoneType);
-      // Each zone has 2 options, randomly pick one
-      final variation = seed % 2;
-      _personIndex = baseIndex + variation;
+      _personIndex = baseIndex + random.nextInt(2); 
     }
   }
 
@@ -3253,26 +3206,16 @@ class _AnimatedPersonMachineState extends State<_AnimatedPersonMachine>
         await _preloadImage(frameAsset).then((info) => backFrameImageInfos.add(info));
       }
 
-      // Calculate the specific pixel position to stop at (left side of dialog)
-      // This is the X coordinate for the LEFT EDGE of the character
-      // Machine is on LEFT side, character faces right (toward machine)
-      // Both factor and offset are relative to dialog width for responsive design
       _vendingMachinePosition = widget.dialogWidth * (_vendingMachinePositionFactor + _stopPositionOffsetFactor);
       
-      // Debug: Print the calculated position
-      debugPrint('Machine position: ${_vendingMachinePosition}px (${(_vendingMachinePositionFactor * 100).toStringAsFixed(1)}% of ${widget.dialogWidth.toStringAsFixed(0)}px dialog width)');
-      
-      // Initialize Walk
-      _walkStartTime = DateTime.now();
-      _walkProgress = 0.0;
-      _startWalkInTimer();
-
       if (mounted) {
         setState(() {
           _walkFrameImageInfos = walkFrameImageInfos;
           _backFrameImageInfos = backFrameImageInfos;
           _isLoading = false;
         });
+        // Start waiting cycle instead of walking immediately
+        _startWaiting();
       }
     } catch (e) {
       debugPrint('Error loading frames: $e');
@@ -3291,6 +3234,23 @@ class _AnimatedPersonMachineState extends State<_AnimatedPersonMachine>
     });
     stream.addListener(listener);
     return completer.future;
+  }
+
+  // --- LOGIC: WAITING ---
+  void _startWaiting() {
+    setState(() => _currentState = _AnimationState.waiting);
+    // Random wait time (5 to 30 seconds) - customers appear less often
+    final waitTime = Duration(milliseconds: 5000 + math.Random().nextInt(25000));
+    
+    _pauseTimer?.cancel();
+    _pauseTimer = Timer(waitTime, () {
+      if (mounted) {
+        _walkStartTime = DateTime.now();
+        _walkProgress = 0.0;
+        _startWalkInTimer();
+        setState(() => _currentState = _AnimationState.walkingToMachine);
+      }
+    });
   }
 
   // --- LOGIC: WALK IN ---
@@ -3316,13 +3276,16 @@ class _AnimatedPersonMachineState extends State<_AnimatedPersonMachine>
     });
   }
 
-  // --- LOGIC: INTERACT (BACK ANIMATION) ---
+  // --- LOGIC: INTERACT ---
   void _startBackAnimation() {
     setState(() {
       _walkProgress = 1.0; 
       _currentState = _AnimationState.backAnimation;
     });
     
+    // TRIGGER PURCHASE HERE
+    widget.onPurchase(_isSpecial);
+
     _controller.duration = const Duration(milliseconds: 1000); 
     _controller.reset();
     _controller.forward().then((_) {
@@ -3384,33 +3347,21 @@ class _AnimatedPersonMachineState extends State<_AnimatedPersonMachine>
     });
   }
 
-  // --- LOGIC: RESTART ANIMATION ---
+  // --- LOGIC: RESTART ---
   void _restartAnimation() {
     if (!mounted) return;
     
-    // Select a different person from the allowed characters for this zone
+    // Pick new person type for next appearance
     _calculatePersonIndex();
     
-    // Reset all state to initial values
-    setState(() {
-      _currentState = _AnimationState.walkingToMachine;
-      _walkProgress = 0.0;
-      _walkAwayProgress = 0.0;
-      _walkStartTime = DateTime.now();
-      _walkAwayStartTime = null;
-    });
-    
-    // Restart the walk-in timer
-    _startWalkInTimer();
-    
-    // Ensure controller is looping for walk animation
-    _controller.duration = const Duration(milliseconds: 1000);
-    _controller.repeat();
+    // Go back to waiting state
+    _startWaiting();
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading || _walkFrameImageInfos == null || _backFrameImageInfos == null || 
+    if (_currentState == _AnimationState.waiting || _isLoading || 
+        _walkFrameImageInfos == null || _backFrameImageInfos == null || 
         _spriteSize == null || _personIndex == null) {
       return const SizedBox.shrink();
     }
@@ -3433,8 +3384,10 @@ class _AnimatedPersonMachineState extends State<_AnimatedPersonMachine>
           double horizontalOffset = 0.0;
           bool flipHorizontal = true; 
 
-          // --- CALCULATE POSITION ---
           switch (_currentState) {
+            case _AnimationState.waiting:
+               return const SizedBox.shrink();
+
             case _AnimationState.walkingToMachine:
               // 1. Walking IN: From right to machine position (left side)
               final frameIndex = ((_controller.value * 10) % 10).floor();

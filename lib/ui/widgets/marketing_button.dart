@@ -31,12 +31,14 @@ class _MarketingButtonState extends ConsumerState<MarketingButton>
     with TickerProviderStateMixin {
   Timer? _decayTimer;
   Timer? _rushHourTimer;
+  Timer? _autoHideTimer; // Timer to auto-hide button after 5 seconds
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
   late AnimationController _flashController;
   late Animation<double> _flashAnimation;
 
   bool _rushHourTimerStarted = false;
+  bool _autoHideTimerStarted = false; // Track if auto-hide timer is running
 
   @override
   void initState() {
@@ -66,12 +68,33 @@ class _MarketingButtonState extends ConsumerState<MarketingButton>
     _flashController.repeat(reverse: true);
     
     _startDecayTimer();
+    // Auto-hide timer will be started in build() when button is visible
+  }
+
+  void _startAutoHideTimer() {
+    // Cancel any existing timer
+    _autoHideTimer?.cancel();
+    _autoHideTimerStarted = true;
+    
+    // Start 5-second timer to auto-hide button if not pressed
+    _autoHideTimer = Timer(const Duration(seconds: 5), () {
+      if (mounted) {
+        _autoHideTimerStarted = false;
+        final gameState = ref.read(gameStateProvider);
+        // Only hide if not in rush hour
+        if (!gameState.isRushHour) {
+          final controller = ref.read(gameControllerProvider.notifier);
+          controller.hideMarketingButton();
+        }
+      }
+    });
   }
 
   @override
   void dispose() {
     _decayTimer?.cancel();
     _rushHourTimer?.cancel();
+    _autoHideTimer?.cancel();
     _pulseController.dispose();
     _flashController.dispose();
     super.dispose();
@@ -100,6 +123,10 @@ class _MarketingButtonState extends ConsumerState<MarketingButton>
       // Rush Hour is active, don't allow tapping
       return;
     }
+    
+    // Reset auto-hide timer when button is pressed (resets to 5 seconds)
+    _autoHideTimerStarted = false; // Reset flag so timer can restart
+    _startAutoHideTimer();
     
     // Add 0.05 (5%) to hype level
     final newHype = (gameState.hypeLevel + 0.05).clamp(0.0, 1.0);
@@ -146,6 +173,9 @@ class _MarketingButtonState extends ConsumerState<MarketingButton>
     
     // Restart decay timer
     _startDecayTimer();
+    
+    // Start auto-hide timer when rush hour ends (button will appear after delay)
+    // The timer will start when the button actually appears
   }
 
   @override
@@ -153,6 +183,25 @@ class _MarketingButtonState extends ConsumerState<MarketingButton>
     final gameState = ref.watch(gameStateProvider);
     final hypeLevel = gameState.hypeLevel;
     final isRushHour = gameState.isRushHour;
+    
+    // Start auto-hide timer when button is visible and not in rush hour
+    if (!isRushHour && gameState.marketingButtonGridX != null && gameState.marketingButtonGridY != null) {
+      // Check if button is at our position (meaning it's visible)
+      if (gameState.marketingButtonGridX == widget.gridX && gameState.marketingButtonGridY == widget.gridY) {
+        // Start auto-hide timer only if not already started
+        if (!_autoHideTimerStarted) {
+          _startAutoHideTimer();
+        }
+      } else {
+        // Button position changed, reset timer state
+        _autoHideTimerStarted = false;
+        _autoHideTimer?.cancel();
+      }
+    } else {
+      // Cancel timer if button is hidden or rush hour is active
+      _autoHideTimerStarted = false;
+      _autoHideTimer?.cancel();
+    }
     
     // Sync rush hour timer when state changes
     if (isRushHour) {
