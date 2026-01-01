@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../simulation/models/machine.dart';
 import '../../simulation/models/zone.dart';
 import '../../state/providers.dart';
@@ -21,15 +22,33 @@ class MachineInteriorDialog extends ConsumerStatefulWidget {
   ConsumerState<MachineInteriorDialog> createState() => _MachineInteriorDialogState();
 }
 
-class _MachineInteriorDialogState extends ConsumerState<MachineInteriorDialog> {
+class _MachineInteriorDialogState extends ConsumerState<MachineInteriorDialog> with TickerProviderStateMixin {
   late Machine _currentMachine;
   bool _hasCash = false;
+  bool _showTutorial = false;
+  late AnimationController _flashController;
+  late Animation<double> _flashAnimation;
 
   @override
   void initState() {
     super.initState();
     _currentMachine = widget.machine;
     _hasCash = _currentMachine.currentCash > 0;
+    
+    // Flash animation - continuously flashing (same as rush sell button)
+    _flashController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+    _flashAnimation = Tween<double>(begin: 0.3, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _flashController,
+        curve: Curves.easeInOut,
+      ),
+    );
+    
+    // Check if this is the first time opening with money
+    _checkFirstTimeWithMoney();
     
     // Set machine to under maintenance when dialog opens (after build completes)
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -38,9 +57,53 @@ class _MachineInteriorDialogState extends ConsumerState<MachineInteriorDialog> {
       }
     });
   }
+  
+  /// Check if this is the first time opening machine interior with money
+  Future<void> _checkFirstTimeWithMoney() async {
+    // Only show tutorial if money is available
+    if (!_hasCash) {
+      print('💰 Tutorial check: No cash available, skipping tutorial');
+      return;
+    }
+    
+    final prefs = await SharedPreferences.getInstance();
+    final hasSeenTutorial = prefs.getBool('has_seen_money_extraction_tutorial') ?? false;
+    
+    print('💰 Tutorial check: hasCash=$_hasCash, hasSeenTutorial=$hasSeenTutorial');
+    
+    // For testing: Uncomment the line below to reset the tutorial flag
+    // await prefs.remove('has_seen_money_extraction_tutorial');
+    // final hasSeenTutorial = false; // Use this instead after resetting
+    
+    if (!hasSeenTutorial) {
+      print('💰 Tutorial: Showing blinking circles for first time');
+      if (mounted) {
+        setState(() {
+          _showTutorial = true;
+        });
+        _flashController.repeat(reverse: true);
+      }
+      // Tutorial will stay until user collects cash (no auto-hide)
+    } else {
+      print('💰 Tutorial: Already seen, not showing');
+    }
+  }
+  
+  /// Mark the tutorial as seen
+  Future<void> _markTutorialAsSeen() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('has_seen_money_extraction_tutorial', true);
+    if (mounted) {
+      setState(() {
+        _showTutorial = false;
+      });
+      _flashController.stop();
+    }
+  }
 
   @override
   void dispose() {
+    _flashController.dispose();
     // Note: Maintenance status is cleared in _handleClose() before dispose is called
     // This is just a safety fallback
     super.dispose();
@@ -140,6 +203,11 @@ class _MachineInteriorDialogState extends ConsumerState<MachineInteriorDialog> {
       _hasCash = false;
       _currentMachine = updatedMachine;
     });
+    
+    // Hide tutorial if it was showing
+    if (_showTutorial) {
+      _markTutorialAsSeen();
+    }
 
     // Play coin collect sound
     SoundService().playCoinCollectSound();
@@ -254,11 +322,52 @@ class _MachineInteriorDialogState extends ConsumerState<MachineInteriorDialog> {
                                 top: imageHeight * AppConfig.machineInteriorDialogZoneATopFactor,
                                 width: dialogWidth * AppConfig.machineInteriorDialogZoneAWidthFactor,
                                 height: imageHeight * AppConfig.machineInteriorDialogZoneAHeightFactor,
-                                child: GestureDetector(
-                                  onTap: () => _collectCash('A'),
-                                  child: Container(
-                                    color: Colors.transparent,
-                                  ),
+                                child: Stack(
+                                  children: [
+                                    // Touchable area (behind the circle)
+                                    GestureDetector(
+                                      onTap: () => _collectCash('A'),
+                                      child: Container(
+                                        color: Colors.transparent,
+                                      ),
+                                    ),
+                                    // Blinking circle indicator (first time only) - on top
+                                    if (_showTutorial)
+                                      Positioned.fill(
+                                        child: AnimatedBuilder(
+                                          animation: _flashAnimation,
+                                          builder: (context, child) {
+                                            final flashAlpha = _flashAnimation.value;
+                                            final zoneWidth = dialogWidth * AppConfig.machineInteriorDialogZoneAWidthFactor;
+                                            final zoneHeight = imageHeight * AppConfig.machineInteriorDialogZoneAHeightFactor;
+                                            final circleSize = (zoneWidth > zoneHeight ? zoneWidth : zoneHeight) * 1.7;
+                                            
+                                            return Center(
+                                              child: IgnorePointer(
+                                                child: Container(
+                                                  width: circleSize,
+                                                  height: circleSize,
+                                                  decoration: BoxDecoration(
+                                                    shape: BoxShape.circle,
+                                                    border: Border.all(
+                                                      color: Colors.green.withValues(alpha: flashAlpha),
+                                                      width: 4.0,
+                                                    ),
+                                                    boxShadow: [
+                                                      BoxShadow(
+                                                        color: Colors.green.withValues(alpha: 0.5 * flashAlpha),
+                                                        blurRadius: 12.0 * flashAlpha,
+                                                        spreadRadius: 2.0 * flashAlpha,
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                  ],
                                 ),
                               ),
                             // Zone B: Coin Drop/Bin area (bottom area)
@@ -269,10 +378,116 @@ class _MachineInteriorDialogState extends ConsumerState<MachineInteriorDialog> {
                                 top: imageHeight * AppConfig.machineInteriorDialogZoneBTopFactor,
                                 width: dialogWidth * AppConfig.machineInteriorDialogZoneBWidthFactor,
                                 height: imageHeight * AppConfig.machineInteriorDialogZoneBHeightFactor,
-                                child: GestureDetector(
-                                  onTap: () => _collectCash('B'),
-                                  child: Container(
-                                    color: Colors.transparent,
+                                child: Stack(
+                                  children: [
+                                    // Touchable area (behind the circle)
+                                    GestureDetector(
+                                      onTap: () => _collectCash('B'),
+                                      child: Container(
+                                        color: Colors.transparent,
+                                      ),
+                                    ),
+                                    // Blinking circle indicator (first time only) - on top
+                                    if (_showTutorial)
+                                      Positioned.fill(
+                                        child: AnimatedBuilder(
+                                          animation: _flashAnimation,
+                                          builder: (context, child) {
+                                            final flashAlpha = _flashAnimation.value;
+                                            final zoneWidth = dialogWidth * AppConfig.machineInteriorDialogZoneBWidthFactor;
+                                            final zoneHeight = imageHeight * AppConfig.machineInteriorDialogZoneBHeightFactor;
+                                            final circleSize = (zoneWidth > zoneHeight ? zoneWidth : zoneHeight) * 1.7;
+                                            
+                                            return Center(
+                                              child: IgnorePointer(
+                                                child: Container(
+                                                  width: circleSize,
+                                                  height: circleSize,
+                                                  decoration: BoxDecoration(
+                                                    shape: BoxShape.circle,
+                                                    border: Border.all(
+                                                      color: Colors.green.withValues(alpha: flashAlpha),
+                                                      width: 4.0,
+                                                    ),
+                                                    boxShadow: [
+                                                      BoxShadow(
+                                                        color: Colors.green.withValues(alpha: 0.5 * flashAlpha),
+                                                        blurRadius: 12.0 * flashAlpha,
+                                                        spreadRadius: 2.0 * flashAlpha,
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            // Tutorial message (similar to rush sell message)
+                            if (_showTutorial)
+                              Positioned(
+                                left: dialogWidth * 0.1,
+                                top: imageHeight * 0.1,
+                                right: dialogWidth * 0.1,
+                                child: Container(
+                                  constraints: BoxConstraints(
+                                    maxWidth: dialogWidth * 0.8,
+                                  ),
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: padding * 0.5,
+                                    vertical: padding * 0.3,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.green.shade700.withValues(alpha: 0.95),
+                                    borderRadius: BorderRadius.circular(padding * AppConfig.machineInteriorDialogCashDisplayBorderRadiusFactor),
+                                    border: Border.all(
+                                      color: Colors.white,
+                                      width: dialogWidth * AppConfig.machineInteriorDialogCashDisplayBorderWidthFactor * 2,
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(alpha: 0.4),
+                                        blurRadius: 8,
+                                        spreadRadius: 2,
+                                      ),
+                                    ],
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.touch_app,
+                                        color: Colors.white,
+                                        size: dialogWidth * AppConfig.machineInteriorDialogCloseButtonSizeFactor * 0.6,
+                                      ),
+                                      SizedBox(width: padding * 0.3),
+                                      Flexible(
+                                        child: Text(
+                                          'Tap the green circles to collect cash!',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: ScreenUtils.relativeFontSize(
+                                              context,
+                                              AppConfig.fontSizeFactorSmall,
+                                              min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
+                                              max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+                                            ),
+                                            fontWeight: FontWeight.bold,
+                                            shadows: [
+                                              Shadow(
+                                                color: Colors.black.withValues(alpha: 0.6),
+                                                blurRadius: 2,
+                                              ),
+                                            ],
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ),

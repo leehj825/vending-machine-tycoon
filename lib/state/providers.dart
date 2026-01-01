@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart' show StateNotifierProvider, StateProvider;
 import 'package:state_notifier/state_notifier.dart';
 import 'package:uuid/uuid.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../config.dart';
 import '../simulation/engine.dart';
 import '../simulation/models/product.dart';
@@ -50,6 +51,9 @@ class GameController extends StateNotifier<GlobalGameState> {
 
   bool _isSimulationRunning = false;
   Timer? _marketingButtonSpawnTimer;
+  
+  // Debug output throttling - only print once per second
+  DateTime? _lastDebugPrint;
 
   GameController(this.ref)
       : simulationEngine = SimulationEngine(
@@ -217,8 +221,12 @@ class GameController extends StateNotifier<GlobalGameState> {
       // Check if controller is still alive
       if (!mounted) return;
       
-      // This print confirms data is flowing from Engine -> UI
-      print('🟡 CONTROLLER SYNC: Received update. Cash: \$${simState.cash.toStringAsFixed(2)}, Machines: ${simState.machines.length}');
+      // This print confirms data is flowing from Engine -> UI - only once per second
+      final now = DateTime.now();
+      if (_lastDebugPrint == null || now.difference(_lastDebugPrint!).inSeconds >= 1) {
+        print('🟡 CONTROLLER SYNC: Received update. Cash: \$${simState.cash.toStringAsFixed(2)}, Machines: ${simState.machines.length}');
+        _lastDebugPrint = now;
+      }
       
       // Apply pending routes for trucks that just became idle
       var updatedTrucks = simState.trucks.map((simTruck) {
@@ -795,7 +803,21 @@ class GameController extends StateNotifier<GlobalGameState> {
     // Reset rush multiplier in simulation engine
     simulationEngine.updateRushMultiplier(1.0);
     
+    // Reset tutorial flag for new game
+    _resetTutorialFlag();
+    
     state = state.addLogMessage('New game started');
+  }
+  
+  /// Reset tutorial flag (for new games)
+  Future<void> _resetTutorialFlag() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('has_seen_money_extraction_tutorial');
+      print('💰 Tutorial flag reset for new game');
+    } catch (e) {
+      print('⚠️ Could not reset tutorial flag: $e');
+    }
   }
 
   /// Load game state from saved data

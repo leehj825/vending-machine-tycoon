@@ -130,6 +130,9 @@ class SimulationEngine extends StateNotifier<SimulationState> {
   // Exact road tile coordinates (set via setMapLayout method)
   Set<({double x, double y})> _roadTiles = {};
   Map<({double x, double y}), List<({double x, double y})>>? _cachedBaseGraph;
+  
+  // Debug output throttling - only print once per second
+  DateTime? _lastDebugPrint;
 
   SimulationEngine({
     required List<Machine> initialMachines,
@@ -345,8 +348,12 @@ class SimulationEngine extends StateNotifier<SimulationState> {
   void _tick() {
     final currentState = state;
     
-    // DEBUG PRINT
-    print('🔴 ENGINE TICK: Day ${currentState.time.day} ${currentState.time.hour}:00 | Machines: ${currentState.machines.length} | Cash: \$${currentState.cash.toStringAsFixed(2)}');
+    // DEBUG PRINT - only once per second
+    final now = DateTime.now();
+    if (_lastDebugPrint == null || now.difference(_lastDebugPrint!).inSeconds >= 1) {
+      print('🔴 ENGINE TICK: Day ${currentState.time.day} ${currentState.time.hour}:00 | Machines: ${currentState.machines.length} | Cash: \$${currentState.cash.toStringAsFixed(2)}');
+      _lastDebugPrint = now;
+    }
 
     final nextTime = currentState.time.nextTick();
 
