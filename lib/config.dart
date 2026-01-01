@@ -245,10 +245,10 @@ class AppConfig {
   static const double saveExitButtonWidthFactor = 0.10; // Width as factor of screen width
   
   /// Top status bar boxes (cash, reputation, time)
-  static const double statusCardWidthFactor = 0.75; // Width as factor of smaller dimension (0.25 * 3.0)
-  static const double statusCardWidthMinFactor = 0.25; // Minimum width as factor of smaller dimension
-  static const double statusCardWidthMaxFactor = 0.25; // Maximum width as factor of smaller dimension
-  static const double statusCardHeightRatio = 1.0; // Height ratio relative to card width
+  static const double statusCardWidthFactor = 0.72; // Width as factor of smaller dimension (0.25 * 3.0)
+  static const double statusCardWidthMinFactor = 0.24; // Minimum width as factor of smaller dimension
+  static const double statusCardWidthMaxFactor = 0.24; // Maximum width as factor of smaller dimension
+  static const double statusCardHeightRatio = 0.9; // Height ratio relative to card width
   
   /// Status card icon settings - Removed min/max duplicates
   static const double statusCardIconSizeFactor = 0.60; // Icon size factor relative to card width
@@ -508,7 +508,7 @@ class AppConfig {
   // ============================================================================
   
   /// Grid size
-  static const int cityGridSize = 10;
+  static const int cityGridSize = 15;
   
   /// Tile spacing factors
   static const double tileSpacingFactor = 0.80;
@@ -523,8 +523,8 @@ class AppConfig {
   static const double warehouseScale = 0.70;
   
   /// Building block sizes
-  static const int minBlockSize = 2;
-  static const int maxBlockSize = 3;
+  static const int minBlockSize = 3;
+  static const int maxBlockSize = 4;
   
   /// Map padding factors (relative to map dimensions)
   static const double mapSidePaddingFactor = 0.1;    // 10% of map width (100px on 1000px map)

@@ -14,6 +14,12 @@ extension ZoneTypeUI on ZoneType {
         return Icons.fitness_center;
       case ZoneType.office:
         return Icons.business;
+      case ZoneType.subway:
+        return Icons.train;
+      case ZoneType.hospital:
+        return Icons.local_hospital;
+      case ZoneType.university:
+        return Icons.school;
     }
   }
 
@@ -28,6 +34,12 @@ extension ZoneTypeUI on ZoneType {
         return Colors.orange;
       case ZoneType.office:
         return Colors.blue;
+      case ZoneType.subway:
+        return Colors.blueGrey;
+      case ZoneType.hospital:
+        return Colors.red;
+      case ZoneType.university:
+        return Colors.indigo;
     }
   }
 }
