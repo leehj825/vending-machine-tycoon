@@ -910,6 +910,46 @@ class GameController extends StateNotifier<GlobalGameState> {
     simulationEngine.updateMachine(updatedMachine);
   }
 
+  /// Update machine inventory item allocation
+  void updateMachineAllocation(String machineId, Product product, int newAllocation) {
+    final machineIndex = state.machines.indexWhere((m) => m.id == machineId);
+    if (machineIndex == -1) {
+      state = state.addLogMessage('Machine not found');
+      return;
+    }
+
+    final machine = state.machines[machineIndex];
+    final currentItem = machine.inventory[product];
+    
+    // Calculate new total allocation
+    final currentTotalAllocation = machine.totalAllocation;
+    final currentItemAllocation = currentItem?.allocation ?? 0;
+    final newTotalAllocation = currentTotalAllocation - currentItemAllocation + newAllocation;
+    
+    // Check if new allocation exceeds max capacity
+    if (newTotalAllocation > machine.maxCapacity) {
+      state = state.addLogMessage('Cannot exceed machine capacity of ${machine.maxCapacity} items');
+      return;
+    }
+
+    // Update or create inventory item
+    final updatedInventory = Map<Product, InventoryItem>.from(machine.inventory);
+    if (currentItem != null) {
+      updatedInventory[product] = currentItem.copyWith(allocation: newAllocation);
+    } else {
+      // Create new item with 0 quantity and specified allocation
+      updatedInventory[product] = InventoryItem(
+        product: product,
+        quantity: 0,
+        dayAdded: simulationEngine.state.time.day,
+        allocation: newAllocation,
+      );
+    }
+
+    final updatedMachine = machine.copyWith(inventory: updatedInventory);
+    updateMachine(updatedMachine);
+  }
+
   /// Update player cash
   void updateCash(double newCash) {
     state = state.copyWith(cash: newCash);

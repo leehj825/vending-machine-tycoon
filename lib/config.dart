@@ -457,7 +457,7 @@ class AppConfig {
   static const int machineMaxItemsPerProduct = 20;
   
   /// Machine purchase limits per type
-  static const int machineLimitPerType = 2;
+  static const int machineLimitPerType = 4;
   
   /// Fuel cost per unit distance
   static const double fuelCostPerUnit = 0.50;

@@ -464,15 +464,11 @@ class SimulationEngine extends StateNotifier<SimulationState> {
           final newQuantity = item.quantity - 1;
           final remainingProgress = newSalesProgress - 1.0; // Carry over remainder
           
-          if (newQuantity > 0) {
-            updatedInventory[product] = item.copyWith(
-              quantity: newQuantity,
-              salesProgress: remainingProgress,
-            );
-          } else {
-            // Item sold out, remove from inventory (don't carry progress to empty slot)
-            updatedInventory.remove(product);
-          }
+          // Keep the item in inventory even if quantity reaches 0 to preserve allocation
+          updatedInventory[product] = item.copyWith(
+            quantity: newQuantity.clamp(0, double.infinity).toInt(),
+            salesProgress: remainingProgress,
+          );
 
           updatedCash += product.basePrice;
           salesCount++;
@@ -497,26 +493,20 @@ class SimulationEngine extends StateNotifier<SimulationState> {
     return (machines: updatedMachines, totalSales: totalSales);
   }
 
-  /// Process spoilage - remove expired items and charge disposal cost
+  /// Process spoilage - set expired items to 0 quantity (preserve allocation) and charge disposal cost
   List<Machine> _processSpoilage(List<Machine> machines, GameTime time) {
     return machines.map((machine) {
       var updatedInventory = Map<Product, InventoryItem>.from(machine.inventory);
       var disposalCost = 0.0;
 
       // Check each inventory item for expiration
-      final itemsToRemove = <Product>[];
       for (final entry in updatedInventory.entries) {
         final item = entry.value;
         if (item.isExpired(time.day)) {
-          // Item expired - remove and charge disposal
+          // Item expired - set quantity to 0 (preserve allocation) and charge disposal
           disposalCost += SimulationConstants.disposalCostPerExpiredItem * item.quantity;
-          itemsToRemove.add(entry.key);
+          updatedInventory[entry.key] = item.copyWith(quantity: 0);
         }
-      }
-
-      // Remove expired items
-      for (final product in itemsToRemove) {
-        updatedInventory.remove(product);
       }
 
       // Deduct disposal cost from machine cash
@@ -957,10 +947,7 @@ class SimulationEngine extends StateNotifier<SimulationState> {
       var machineInventory = Map<Product, InventoryItem>.from(machine.inventory);
       var truckInventory = Map<Product, int>.from(truck.inventory);
 
-      // Transfer items from truck to machine (up to machine capacity)
-      // Each product type has a limit of 20 items per machine
-      const maxItemsPerProduct = 20;
-
+      // Transfer items from truck to machine (up to allocation target for each product)
       if (truckInventory.isNotEmpty) {
         var itemsToTransfer = <Product, int>{};
 
@@ -977,31 +964,37 @@ class SimulationEngine extends StateNotifier<SimulationState> {
             continue;
           }
 
-          // Check current stock of this product in machine
-          final currentProductStock = machineInventory[product]?.quantity ?? 0;
-          final availableSpaceForProduct = maxItemsPerProduct - currentProductStock;
+          // Get current stock and allocation target for this product
+          final existingItem = machineInventory[product];
+          final currentProductStock = existingItem?.quantity ?? 0;
+          final allocationTarget = existingItem?.allocation ?? 20; // Default to 20 if new product
           
-          if (availableSpaceForProduct <= 0) {
+          // Calculate how much we need to reach allocation target
+          final neededToReachAllocation = allocationTarget - currentProductStock;
+          
+          if (neededToReachAllocation <= 0) {
+            // Already at or above allocation target
             itemsToTransfer[product] = truckQuantity;
             continue;
           }
 
-          // Transfer up to the limit for this product
-          final transferAmount = (truckQuantity < availableSpaceForProduct)
+          // Transfer up to the allocation target
+          final transferAmount = ((truckQuantity < neededToReachAllocation)
               ? truckQuantity
-              : availableSpaceForProduct;
+              : neededToReachAllocation).toInt();
 
           // Update machine inventory
-          final existingItem = machineInventory[product];
           if (existingItem != null) {
             machineInventory[product] = existingItem.copyWith(
               quantity: existingItem.quantity + transferAmount,
             );
           } else {
+            // New product - create with default allocation of 20
             machineInventory[product] = InventoryItem(
               product: product,
               quantity: transferAmount,
               dayAdded: currentDay,
+              allocation: 20,
             );
           }
 
@@ -1036,8 +1029,10 @@ class SimulationEngine extends StateNotifier<SimulationState> {
               final truckQuantity = entry.value;
               if (truckQuantity <= 0) continue;
               
-              final currentProductStock = remainingMachine.inventory[product]?.quantity ?? 0;
-              if (currentProductStock < maxItemsPerProduct) {
+              final existingItem = remainingMachine.inventory[product];
+              final currentProductStock = existingItem?.quantity ?? 0;
+              final allocationTarget = existingItem?.allocation ?? 20;
+              if (currentProductStock < allocationTarget) {
                 remainingDestinationsNeedItems = true;
                 break;
               }
@@ -1120,8 +1115,10 @@ class SimulationEngine extends StateNotifier<SimulationState> {
               final truckQuantity = entry.value;
               if (truckQuantity <= 0) continue;
               
-              final currentProductStock = remainingMachine.inventory[product]?.quantity ?? 0;
-              if (currentProductStock < maxItemsPerProduct) {
+              final existingItem = remainingMachine.inventory[product];
+              final currentProductStock = existingItem?.quantity ?? 0;
+              final allocationTarget = existingItem?.allocation ?? 20;
+              if (currentProductStock < allocationTarget) {
                 remainingDestinationsNeedItems = true;
                 break;
               }

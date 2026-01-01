@@ -71,10 +71,14 @@ class MapMachine extends PositionComponent with TapCallbacks, HasGameReference<C
         return Vector2(50, 50); // Square
       case ZoneType.school:
         return Vector2(45, 45);
+      case ZoneType.subway:
+      case ZoneType.hospital:
+      case ZoneType.university:
+        return Vector2(50, 50); // Default square size
     }
   }
 
-  /// Draw building procedurally based on zone type
+  /// Draw building proceduwatrally based on zone type
   void _drawBuilding(Canvas canvas, ZoneType zoneType) {
     final paint = Paint();
     final rect = Rect.fromLTWH(0, 0, size.x, size.y);
@@ -148,6 +152,60 @@ class MapMachine extends PositionComponent with TapCallbacks, HasGameReference<C
         canvas.drawCircle(
           Offset(size.x / 2, size.y / 2),
           size.x / 4,
+          paint,
+        );
+        break;
+
+      case ZoneType.subway:
+        // Grey rectangle with horizontal lines (subway entrance)
+        paint.color = const Color(0xFF757575);
+        canvas.drawRect(rect, paint);
+        paint.color = Colors.white;
+        for (int i = 0; i < 3; i++) {
+          canvas.drawLine(
+            Offset(5, size.y / 4 + i * (size.y / 2)),
+            Offset(size.x - 5, size.y / 4 + i * (size.y / 2)),
+            paint,
+          );
+        }
+        break;
+
+      case ZoneType.hospital:
+        // White rectangle with red cross
+        paint.color = Colors.white;
+        canvas.drawRect(rect, paint);
+        paint.color = const Color(0xFFD32F2F); // Red
+        paint.strokeWidth = 4;
+        paint.style = PaintingStyle.stroke;
+        canvas.drawLine(
+          Offset(size.x / 2, 5),
+          Offset(size.x / 2, size.y - 5),
+          paint,
+        );
+        canvas.drawLine(
+          Offset(5, size.y / 2),
+          Offset(size.x - 5, size.y / 2),
+          paint,
+        );
+        break;
+
+      case ZoneType.university:
+        // Brown rectangle with cap on top
+        paint.color = const Color(0xFF5D4037);
+        canvas.drawRect(rect, paint);
+        // Draw graduation cap
+        paint.color = const Color(0xFF212121);
+        final capRect = Rect.fromLTWH(
+          size.x / 2 - 15,
+          -10,
+          30,
+          15,
+        );
+        canvas.drawRect(capRect, paint);
+        paint.color = const Color(0xFFFFD700);
+        canvas.drawCircle(
+          Offset(size.x / 2, -2.5),
+          3,
           paint,
         );
         break;

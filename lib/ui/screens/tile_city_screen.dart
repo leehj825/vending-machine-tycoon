@@ -1,6 +1,8 @@
 import 'dart:math' as math;
 import 'dart:async';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vector_math/vector_math_64.dart' hide Colors;
 import '../../state/providers.dart';
@@ -95,6 +97,31 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
     );
   }
   
+  // Road tile dimensions (scaled relative to regular tiles)
+  // These multipliers scale road tiles proportionally with regular tiles
+  double _getRoadTileWidth(BuildContext context) {
+    final regularWidth = _getTileWidth(context);
+    return regularWidth * 0.70; // 47% of regular tile width (adjust multiplier to change road tile width)
+  }
+  
+  double _getRoadTileHeight(BuildContext context) {
+    final regularHeight = _getTileHeight(context);
+    return regularHeight * 0.93; // 93% of regular tile height (adjust multiplier to change road tile height)
+  }
+  
+  // Road tile position offsets (adjust to shift road tiles)
+  double _getRoadTileOffsetX(BuildContext context) {
+    // Adjust this value to shift road tiles horizontally
+    // Positive = move right, Negative = move left
+    return 11; // No offset by default
+  }
+  
+  double _getRoadTileOffsetY(BuildContext context) {
+    // Adjust this value to shift road tiles vertically
+    // Positive = move down, Negative = move up
+    return 1.5; // No offset by default
+  }
+  
   double _getBuildingImageHeight(BuildContext context) {
     return ScreenUtils.relativeSizeClamped(
       context,
@@ -134,6 +161,10 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
   late List<List<RoadDirection?>> _roadDirections;
   late List<List<BuildingOrientation?>> _buildingOrientations;
   
+  // Sprite sheet for road tiles
+  ui.Image? _roadTilesSpriteSheet;
+  bool _isLoadingSpriteSheet = false;
+  
   int? _warehouseX;
   int? _warehouseY;
   
@@ -165,6 +196,9 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
     
     // Listen to transformation changes to detect panning
     _transformationController.addListener(_onTransformationChanged);
+    
+    // Load road tiles sprite sheet
+    _loadRoadTilesSpriteSheet();
     
     // Initialize map immediately - check if map state exists in saved game, otherwise generate new map
     final gameState = ref.read(gameControllerProvider);
@@ -350,28 +384,317 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
   void _generateRoadGrid() {
     final random = math.Random();
     
-    // Generate horizontal roads with dynamic spacing (2x3 or 2x4 blocks)
-    int currentY = 3;
-    while (currentY < gridSize - 2) {
+    // Clear grid: Start with all tiles as grass
+    for (int y = 0; y < gridSize; y++) {
       for (int x = 0; x < gridSize; x++) {
-        _grid[currentY][x] = TileType.road;
+        _grid[y][x] = TileType.grass;
       }
-      // Randomly choose spacing: 3 (2x3 block) or 4 (2x4 block)
-      final spacing = random.nextBool() ? 3 : 4;
-      currentY += spacing;
     }
     
-    // Generate vertical roads with dynamic spacing (2x3 or 2x4 blocks)
-    int currentX = 3;
-    while (currentX < gridSize - 2) {
-      for (int y = 0; y < gridSize; y++) {
-        _grid[y][currentX] = TileType.road;
+    // Step 1: Main Horizontal Arteries (Edge-to-Edge)
+    // Generate 2-3 horizontal roads that run the full width of the map
+    final numHorizontalRoads = 2 + random.nextInt(2); // 2 or 3 roads
+    final horizontalRoads = <int>[];
+    final usedY = <int>{};
+    
+    for (int i = 0; i < numHorizontalRoads; i++) {
+      int attempts = 0;
+      int y;
+      do {
+        // Avoid edges (y=0 and y=gridSize-1) and ensure spacing
+        y = 2 + random.nextInt(gridSize - 4);
+        attempts++;
+      } while (attempts < 50 && (usedY.contains(y) || 
+             usedY.any((used) => (y - used).abs() < 3)));
+      
+      if (attempts < 50) {
+        horizontalRoads.add(y);
+        usedY.add(y);
+        // Draw full-width horizontal road
+        for (int x = 0; x < gridSize; x++) {
+          _grid[y][x] = TileType.road;
+        }
       }
-      // Randomly choose spacing: 3 (2x3 block) or 4 (2x4 block)
-      final spacing = random.nextBool() ? 3 : 4;
-      currentX += spacing;
     }
+    
+    // Step 2: Main Vertical Arteries (Edge-to-Edge)
+    // Generate 2-3 vertical roads that run the full height of the map
+    final numVerticalRoads = 2 + random.nextInt(2); // 2 or 3 roads
+    final verticalRoads = <int>[];
+    final usedX = <int>{};
+    
+    for (int i = 0; i < numVerticalRoads; i++) {
+      int attempts = 0;
+      int x;
+      do {
+        // Avoid edges (x=0 and x=gridSize-1) and ensure spacing
+        x = 2 + random.nextInt(gridSize - 4);
+        attempts++;
+      } while (attempts < 50 && (usedX.contains(x) || 
+             usedX.any((used) => (x - used).abs() < 3)));
+      
+      if (attempts < 50) {
+        verticalRoads.add(x);
+        usedX.add(x);
+        // Draw full-height vertical road
+        for (int y = 0; y < gridSize; y++) {
+          _grid[y][x] = TileType.road;
+        }
+      }
+    }
+    
+    // Step 3: Secondary Connectors (Road-to-Road)
+    // Add internal roads that connect existing roads
+    const minSegmentLength = 3;
+    const maxConnectorAttempts = 8;
+    
+    for (int attempt = 0; attempt < maxConnectorAttempts; attempt++) {
+      // Find all existing road tiles
+      final roadTiles = <List<int>>[];
+      for (int y = 0; y < gridSize; y++) {
+        for (int x = 0; x < gridSize; x++) {
+          if (_grid[y][x] == TileType.road) {
+            roadTiles.add([x, y]);
+          }
+        }
+      }
+      
+      if (roadTiles.isEmpty) break;
+      
+      // Pick a random start point on an existing road
+      final startPoint = roadTiles[random.nextInt(roadTiles.length)];
+      final startX = startPoint[0];
+      final startY = startPoint[1];
+      
+      // Pick a perpendicular direction (horizontal or vertical)
+      final isHorizontal = random.nextBool();
+      
+      if (isHorizontal) {
+        // Extend horizontally (left or right)
+        final goRight = random.nextBool();
+        final path = <int>[];
+        int currentX = startX;
+        
+        // Extend in the chosen direction until we hit another road or map edge
+        while (true) {
+          // Move to next position
+          currentX += goRight ? 1 : -1;
+          
+          // Check bounds
+          if (currentX < 0 || currentX >= gridSize) {
+            // Hit map edge - valid end point
+            break;
+          }
+          
+          // Check if we hit another road (this is a valid connection)
+          if (_grid[startY][currentX] == TileType.road) {
+            // We've connected to another road - valid end point
+            break;
+          }
+          
+          // Add this position to the path
+          path.add(currentX);
+        }
+        
+        // Only create the road if it's long enough
+        if (path.length >= minSegmentLength) {
+          for (final x in path) {
+            if (_grid[startY][x] == TileType.grass) {
+              _grid[startY][x] = TileType.road;
+            }
+          }
+        }
+      } else {
+        // Extend vertically (up or down)
+        final goDown = random.nextBool();
+        final path = <int>[];
+        int currentY = startY;
+        
+        // Extend in the chosen direction until we hit another road or map edge
+        while (true) {
+          // Move to next position
+          currentY += goDown ? 1 : -1;
+          
+          // Check bounds
+          if (currentY < 0 || currentY >= gridSize) {
+            // Hit map edge - valid end point
+            break;
+          }
+          
+          // Check if we hit another road (this is a valid connection)
+          if (_grid[currentY][startX] == TileType.road) {
+            // We've connected to another road - valid end point
+            break;
+          }
+          
+          // Add this position to the path
+          path.add(currentY);
+        }
+        
+        // Only create the road if it's long enough
+        if (path.length >= minSegmentLength) {
+          for (final y in path) {
+            if (_grid[y][startX] == TileType.grass) {
+              _grid[y][startX] = TileType.road;
+            }
+          }
+        }
+      }
+    }
+    
     _updateRoadDirections();
+  }
+  
+  /// Connect all road ends in the middle of the map to other roads using 90-degree turns
+  void _connectRoadEnds() {
+    final centerX = gridSize ~/ 2;
+    final centerY = gridSize ~/ 2;
+    final centerRadius = gridSize ~/ 3; // Only connect ends in the central area
+    
+    // Find all road ends in the middle of the map
+    final roadEnds = <List<int>>[];
+    for (int y = 0; y < gridSize; y++) {
+      for (int x = 0; x < gridSize; x++) {
+        if (_grid[y][x] == TileType.road) {
+          // Check if this is a road end (has exactly 1 road neighbor)
+          final neighbors = _countRoadNeighbors(x, y);
+          if (neighbors == 1) {
+            // Only connect if it's in the central area
+            final distFromCenter = math.sqrt(
+              math.pow(x - centerX, 2) + math.pow(y - centerY, 2)
+            );
+            if (distFromCenter < centerRadius) {
+              roadEnds.add([x, y]);
+            }
+          }
+        }
+      }
+    }
+    
+    // Connect each road end to the nearest road
+    for (final end in roadEnds) {
+      final endX = end[0];
+      final endY = end[1];
+      
+      // Find the direction of the road (where the neighbor is)
+      int roadDirX = 0, roadDirY = 0;
+      if (endY > 0 && _grid[endY - 1][endX] == TileType.road) {
+        roadDirY = -1; // Road comes from North
+      } else if (endY < gridSize - 1 && _grid[endY + 1][endX] == TileType.road) {
+        roadDirY = 1; // Road comes from South
+      } else if (endX > 0 && _grid[endY][endX - 1] == TileType.road) {
+        roadDirX = -1; // Road comes from West
+      } else if (endX < gridSize - 1 && _grid[endY][endX + 1] == TileType.road) {
+        roadDirX = 1; // Road comes from East
+      }
+      
+      // Find the nearest road in perpendicular directions
+      int bestX = -1, bestY = -1;
+      double bestDist = double.infinity;
+      
+      // Search in perpendicular directions (90-degree turns)
+      final searchDirections = <List<int>>[];
+      if (roadDirX != 0) {
+        // Road is horizontal, search vertically
+        searchDirections.addAll([[0, -1], [0, 1]]);
+      } else if (roadDirY != 0) {
+        // Road is vertical, search horizontally
+        searchDirections.addAll([[-1, 0], [1, 0]]);
+      }
+      
+      for (final dir in searchDirections) {
+        final dirX = dir[0];
+        final dirY = dir[1];
+        
+        // Search in this direction for a road
+        for (int dist = 1; dist < gridSize ~/ 2; dist++) {
+          final checkX = endX + dirX * dist;
+          final checkY = endY + dirY * dist;
+          
+          if (checkX < 0 || checkX >= gridSize || checkY < 0 || checkY >= gridSize) {
+            break;
+          }
+          
+          if (_grid[checkY][checkX] == TileType.road) {
+            final distance = dist.toDouble();
+            if (distance < bestDist) {
+              bestDist = distance;
+              bestX = checkX;
+              bestY = checkY;
+            }
+            break; // Found a road, stop searching in this direction
+          }
+        }
+      }
+      
+      // Connect the road end to the nearest road with a 90-degree turn
+      if (bestX != -1 && bestY != -1 && bestDist < gridSize ~/ 3) {
+        // Determine the turn direction
+        final turnDirX = (bestX - endX).sign;
+        final turnDirY = (bestY - endY).sign;
+        
+        // Create the connecting path (L-shaped with 90-degree turn)
+        if (roadDirX != 0) {
+          // Road is horizontal, turn vertically first (perpendicular)
+          // Choose the direction that gets us closer to the target
+          final turnY = endY + turnDirY;
+          if (turnY >= 0 && turnY < gridSize) {
+            // First segment: vertical turn
+            if (_grid[turnY][endX] == TileType.grass) {
+              _grid[turnY][endX] = TileType.road;
+            }
+            
+            // Second segment: horizontal connection to target
+            final startX = math.min(endX, bestX);
+            final endXCoord = math.max(endX, bestX);
+            for (int x = startX; x <= endXCoord; x++) {
+              if (x >= 0 && x < gridSize && turnY >= 0 && turnY < gridSize) {
+                if (_grid[turnY][x] == TileType.grass) {
+                  _grid[turnY][x] = TileType.road;
+                }
+              }
+            }
+          }
+        } else if (roadDirY != 0) {
+          // Road is vertical, turn horizontally first (perpendicular)
+          // Choose the direction that gets us closer to the target
+          final turnX = endX + turnDirX;
+          if (turnX >= 0 && turnX < gridSize) {
+            // First segment: horizontal turn
+            if (_grid[endY][turnX] == TileType.grass) {
+              _grid[endY][turnX] = TileType.road;
+            }
+            
+            // Second segment: vertical connection to target
+            final startY = math.min(endY, bestY);
+            final endYCoord = math.max(endY, bestY);
+            for (int y = startY; y <= endYCoord; y++) {
+              if (y >= 0 && y < gridSize && turnX >= 0 && turnX < gridSize) {
+                if (_grid[y][turnX] == TileType.grass) {
+                  _grid[y][turnX] = TileType.road;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  
+  /// Count the number of road neighbors (N, E, S, W)
+  int _countRoadNeighbors(int x, int y) {
+    int count = 0;
+    if (y > 0 && _grid[y - 1][x] == TileType.road) count++;
+    if (x < gridSize - 1 && _grid[y][x + 1] == TileType.road) count++;
+    if (y < gridSize - 1 && _grid[y + 1][x] == TileType.road) count++;
+    if (x > 0 && _grid[y][x - 1] == TileType.road) count++;
+    return count;
+  }
+  
+  /// Check if a tile is at the end of a road (has exactly 1 road neighbor)
+  bool _isRoadEnd(int x, int y) {
+    if (_grid[y][x] != TileType.road) return false;
+    return _countRoadNeighbors(x, y) == 1;
   }
 
   void _placeWarehouse() {
@@ -432,6 +755,33 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
     }
   }
 
+  /// Load the road tiles sprite sheet image
+  Future<void> _loadRoadTilesSpriteSheet() async {
+    if (_isLoadingSpriteSheet) return;
+    _isLoadingSpriteSheet = true;
+    
+    try {
+      final ByteData data = await rootBundle.load('assets/images/tiles/road_tiles_all.png');
+      final Uint8List bytes = data.buffer.asUint8List();
+      final ui.Codec codec = await ui.instantiateImageCodec(bytes);
+      final ui.FrameInfo frameInfo = await codec.getNextFrame();
+      
+      if (mounted) {
+        setState(() {
+          _roadTilesSpriteSheet = frameInfo.image;
+          _isLoadingSpriteSheet = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading road tiles sprite sheet: $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingSpriteSheet = false;
+        });
+      }
+    }
+  }
+
   void _updateRoadDirections() {
     for (int y = 0; y < gridSize; y++) {
       for (int x = 0; x < gridSize; x++) {
@@ -439,6 +789,81 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
           _roadDirections[y][x] = _getRoadDirection(x, y);
         }
       }
+    }
+  }
+
+  /// Calculate neighbor bitmask for road tile
+  /// North (Y-1): Bit 1, East (X+1): Bit 2, South (Y+1): Bit 4, West (X-1): Bit 8
+  int _calculateRoadMask(int x, int y) {
+    int mask = 0;
+    if (y > 0 && _grid[y - 1][x] == TileType.road) mask |= 1; // North
+    if (x < gridSize - 1 && _grid[y][x + 1] == TileType.road) mask |= 2; // East
+    if (y < gridSize - 1 && _grid[y + 1][x] == TileType.road) mask |= 4; // South
+    if (x > 0 && _grid[y][x - 1] == TileType.road) mask |= 8; // West
+    return mask;
+  }
+
+  /// Get road tile index (row, col) and flip info from sprite sheet based on neighbor connections
+  /// Uses strict auto-tiling algorithm with bitmasking - NO vertical flipping, horizontal flipping only
+  /// Returns (row, col, flipHorizontal, flipVertical) where row and col are 0-indexed
+  /// Note: flipVertical is ignored by RoadTilePainter - only horizontal flipping is used
+  ({int row, int col, bool flipHorizontal, bool flipVertical}) _getRoadTileIndex(int x, int y) {
+    final mask = _calculateRoadMask(x, y);
+    
+    // Strict bitmask lookup table - NO vertical flipping, fallback to straights for missing corners
+    switch (mask) {
+      // 1. Straight Roads (Cleanest Fallback)
+      case 5: // S+N (South + North) - Straight V
+        return (row: 1, col: 1, flipHorizontal: false, flipVertical: false); // Straight V (Row 1, Col 1)
+      
+      case 10: // W+E (West + East) - Straight H
+        return (row: 1, col: 2, flipHorizontal: false, flipVertical: false); // Straight H (Row 1, Col 2)
+      
+      // Dead Ends - Map to closest Straight
+      case 0: // No connections - fallback to Straight V
+      case 1: // N only - fallback to Straight V
+      case 4: // S only - fallback to Straight V
+        return (row: 1, col: 1, flipHorizontal: false, flipVertical: false); // Straight V
+      
+      case 2: // E only - fallback to Straight H
+      case 8: // W only - fallback to Straight H
+        return (row: 1, col: 2, flipHorizontal: false, flipVertical: false); // Straight H
+      
+      // 2. South Corners (Available Sprites)
+      case 6: // S+E (South + East) - Elbow SE
+        return (row: 0, col: 0, flipHorizontal: false, flipVertical: false); // Elbow SE (Row 0, Col 0)
+      
+      case 12: // S+W (South + West) - Elbow SW
+        return (row: 0, col: 2, flipHorizontal: false, flipVertical: false); // Elbow SW (Row 0, Col 2)
+      
+      // 3. North Corners (Missing Sprites & No Vertical Flip - Fallback to Straight)
+      case 3: // N+E (North + East) - Cannot make with horizontal flip, fallback to Straight V
+        return (row: 1, col: 1, flipHorizontal: false, flipVertical: false); // Straight V fallback
+      
+      case 9: // N+W (North + West) - Cannot make with horizontal flip, fallback to Straight V
+        return (row: 1, col: 1, flipHorizontal: false, flipVertical: false); // Straight V fallback
+      
+      // 4. T-Junctions (Horizontal Flip Allowed)
+      case 7: // S+E+N (South + East + North) - T-Junction SEN
+        return (row: 0, col: 1, flipHorizontal: false, flipVertical: false); // T-Junction SEN (Row 0, Col 1)
+      
+      case 11: // W+N+E (West + North + East) - T-Junction WNE
+        return (row: 1, col: 0, flipHorizontal: false, flipVertical: false); // T-Junction WNE (Row 1, Col 0)
+      
+      case 13: // N+W+S (North + West + South) - T-Junction SEN with FLIP HORIZONTAL
+        // Logic: S stays S, N stays N, E becomes W. Result: S+W+N. Correct.
+        return (row: 0, col: 1, flipHorizontal: true, flipVertical: false); // T-Junction SEN, FLIP X
+      
+      case 14: // S+W+E (South + West + East) - Fallback to Round Curve
+        return (row: 0, col: 3, flipHorizontal: false, flipVertical: false); // Round Curve (Row 0, Col 3)
+      
+      // 5. Intersections
+      case 15: // All 4 directions - Cross
+        return (row: 1, col: 3, flipHorizontal: false, flipVertical: false); // Cross (Row 1, Col 3)
+      
+      // Fallback - default to horizontal straight (should not happen with valid masks 0-15)
+      default:
+        return (row: 1, col: 2, flipHorizontal: false, flipVertical: false); // Straight H as fallback
     }
   }
 
@@ -563,6 +988,9 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
         
         if (!_isTileAdjacentToRoad(bx, by)) continue;
         
+        // Skip if this tile is at the end of a road (only place buildings on the sides)
+        if (_isTileAtRoadEnd(bx, by)) continue;
+        
         final availableTypes = buildingTypes.where((type) => 
           !blockBuildingTypes.contains(type) && buildingCounts[type]! < maxBuildingCounts[type]!
         ).toList();
@@ -633,6 +1061,16 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
     if (x < gridSize - 1 && _grid[y][x + 1] == TileType.road) return true;
     if (y > 0 && _grid[y - 1][x] == TileType.road) return true;
     if (y < gridSize - 1 && _grid[y + 1][x] == TileType.road) return true;
+    return false;
+  }
+  
+  /// Check if a tile is adjacent to a road end (building should not be placed here)
+  bool _isTileAtRoadEnd(int x, int y) {
+    // Check all 4 adjacent tiles - if any is a road end, this tile is at a road end
+    if (x > 0 && _isRoadEnd(x - 1, y)) return true;
+    if (x < gridSize - 1 && _isRoadEnd(x + 1, y)) return true;
+    if (y > 0 && _isRoadEnd(x, y - 1)) return true;
+    if (y < gridSize - 1 && _isRoadEnd(x, y + 1)) return true;
     return false;
   }
 
@@ -1134,14 +1572,20 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
         left: posX + (tileWidth - w) / 2,
         top: posY - (h - tileHeight) - warehouseOffset,
         width: w, height: h,
-        child: _buildGroundTile(tileType, roadDir),
+        child: _buildGroundTile(tileType, roadDir, x, y, context: context),
       );
     } 
     
     if (!_isBuilding(tileType)) {
+      // Use road tile dimensions for roads, regular dimensions for other tiles
+      final width = tileType == TileType.road ? _getRoadTileWidth(context) : tileWidth;
+      final height = tileType == TileType.road ? _getRoadTileHeight(context) : tileHeight;
+      // Apply position offsets for road tiles
+      final offsetX = tileType == TileType.road ? _getRoadTileOffsetX(context) : 0.0;
+      final offsetY = tileType == TileType.road ? _getRoadTileOffsetY(context) : 0.0;
       return Positioned(
-        left: posX, top: posY, width: tileWidth, height: tileHeight,
-        child: _buildGroundTile(tileType, roadDir),
+        left: posX + offsetX, top: posY + offsetY, width: width, height: height,
+        child: _buildGroundTile(tileType, roadDir, x, y, context: context),
       );
     }
     
@@ -1154,11 +1598,6 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        // Ground patch under building
-        Positioned(
-          left: posX, top: posY, width: tileWidth, height: tileHeight,
-          child: _buildGroundTile(TileType.grass, null),
-        ),
         // The building itself
         Positioned(
           left: posX + (tileWidth - w) / 2,
@@ -1932,7 +2371,26 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
     return 'Can purchase ${zoneType.name} machines ($machinesOfType/$limit)';
   }
 
-  Widget _buildGroundTile(TileType tileType, RoadDirection? roadDir) {
+  Widget _buildGroundTile(TileType tileType, RoadDirection? roadDir, int x, int y, {BuildContext? context}) {
+    // For roads, use sprite sheet if available
+    if (tileType == TileType.road && _roadTilesSpriteSheet != null && context != null) {
+      // Get the tile index and flip info based on neighbor connections
+      final tileInfo = _getRoadTileIndex(x, y);
+      final roadWidth = _getRoadTileWidth(context);
+      final roadHeight = _getRoadTileHeight(context);
+      return CustomPaint(
+        painter: RoadTilePainter(
+          spriteSheet: _roadTilesSpriteSheet!,
+          row: tileInfo.row,
+          col: tileInfo.col,
+          flipHorizontal: tileInfo.flipHorizontal,
+          flipVertical: tileInfo.flipVertical,
+        ),
+        size: Size(roadWidth, roadHeight),
+      );
+    }
+    
+    // For non-roads or when sprite sheet not loaded, use old method
     final isRoad = tileType == TileType.road;
     final needsFlip = isRoad && roadDir == RoadDirection.vertical;
 
@@ -2383,22 +2841,18 @@ class _MachineStatusSection extends ConsumerWidget {
         SizedBox(
           height: dialogWidth * AppConfig.machineStatusDialogStockDetailsSpacingFactor,
         ),
-        if (machine.inventory.isEmpty)
-          Padding(
-            padding: EdgeInsets.symmetric(
-              vertical: dialogWidth * AppConfig.machineStatusDialogStockItemPaddingFactor,
-            ),
-            child: Text(
-              'Empty',
-              style: TextStyle(
-                fontSize: dialogWidth * AppConfig.machineStatusDialogStockItemFontSizeFactor,
-                fontStyle: FontStyle.italic,
-                color: Colors.grey[600],
-              ),
-            ),
-          )
-        else
-          ...machine.inventory.values.map((item) => Padding(
+        // Show all allowed products for this zone type, not just those in inventory
+        ...Zone.getAllowedProducts(machine.zone.type).map((product) {
+          // Get existing inventory item or create a dummy one
+          final currentDay = ref.watch(dayCountProvider);
+          final item = machine.inventory[product] ?? sim.InventoryItem(
+            product: product,
+            quantity: 0,
+            dayAdded: currentDay,
+            allocation: 0,
+          );
+          
+          return Padding(
             padding: EdgeInsets.only(
               bottom: dialogWidth * AppConfig.machineStatusDialogStockItemPaddingFactor,
             ),
@@ -2427,48 +2881,96 @@ class _MachineStatusSection extends ConsumerWidget {
                               fontWeight: FontWeight.w500,
                             ),
                           ),
+                          SizedBox(height: dialogWidth * AppConfig.machineStatusDialogStockItemPaddingFactor * 0.3),
+                          Text(
+                            'Stock: ${item.quantity} / ${item.allocation}',
+                            style: TextStyle(
+                              fontSize: dialogWidth * AppConfig.machineStatusDialogStockItemFontSizeFactor * 0.85,
+                              color: Colors.grey[600],
+                            ),
+                          ),
                         ],
                       ),
                     ),
-                    Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: dialogWidth * AppConfig.machineStatusDialogStockItemBadgePaddingHorizontalFactor,
-                        vertical: dialogWidth * AppConfig.machineStatusDialogStockItemBadgePaddingVerticalFactor,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.shade50,
-                        borderRadius: BorderRadius.circular(
-                          dialogWidth * AppConfig.machineStatusDialogStockItemBadgeBorderRadiusFactor,
+                    // Allocation controls
+                    Row(
+                      children: [
+                        IconButton(
+                          icon: Icon(Icons.remove, size: dialogWidth * 0.04),
+                          onPressed: () {
+                            if (item.allocation > 0) {
+                              final controller = ref.read(gameControllerProvider.notifier);
+                              controller.updateMachineAllocation(machine.id, product, item.allocation - 1);
+                            }
+                          },
+                          padding: EdgeInsets.all(dialogWidth * 0.01),
+                          constraints: BoxConstraints(),
                         ),
-                      ),
-                      child: Text(
-                        '${item.quantity}',
-                        style: TextStyle(
-                          fontSize: dialogWidth * AppConfig.machineStatusDialogStockItemBadgeFontSizeFactor,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.blue.shade900,
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: dialogWidth * AppConfig.machineStatusDialogStockItemBadgePaddingHorizontalFactor,
+                            vertical: dialogWidth * AppConfig.machineStatusDialogStockItemBadgePaddingVerticalFactor,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade50,
+                            borderRadius: BorderRadius.circular(
+                              dialogWidth * AppConfig.machineStatusDialogStockItemBadgeBorderRadiusFactor,
+                            ),
+                          ),
+                          child: Text(
+                            '${item.allocation}',
+                            style: TextStyle(
+                              fontSize: dialogWidth * AppConfig.machineStatusDialogStockItemBadgeFontSizeFactor,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue.shade900,
+                            ),
+                          ),
                         ),
-                      ),
+                        IconButton(
+                          icon: Icon(Icons.add, size: dialogWidth * 0.04),
+                          onPressed: () {
+                            final controller = ref.read(gameControllerProvider.notifier);
+                            final currentTotalAllocation = machine.totalAllocation;
+                            final currentItemAllocation = item.allocation;
+                            final newTotalAllocation = currentTotalAllocation - currentItemAllocation + (item.allocation + 1);
+                            
+                            if (newTotalAllocation > machine.maxCapacity) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Cannot exceed machine capacity of ${machine.maxCapacity} items'),
+                                  duration: AppConfig.snackbarDurationShort,
+                                ),
+                              );
+                            } else {
+                              controller.updateMachineAllocation(machine.id, product, item.allocation + 1);
+                            }
+                          },
+                          padding: EdgeInsets.all(dialogWidth * 0.01),
+                          constraints: BoxConstraints(),
+                        ),
+                      ],
                     ),
                   ],
                 ),
                 SizedBox(height: dialogWidth * AppConfig.machineStatusDialogStockItemPaddingFactor * 0.5),
-                // Customer Interest Progress Bar
-                LinearProgressIndicator(
-                  value: item.customerInterest,
-                  backgroundColor: Colors.grey[200],
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    item.customerInterest > 0.7 
-                      ? Colors.green 
-                      : item.customerInterest > 0.4 
-                        ? Colors.orange 
-                        : Colors.blue,
+                // Customer Interest Progress Bar (only show if item has quantity > 0)
+                if (item.quantity > 0)
+                  LinearProgressIndicator(
+                    value: item.customerInterest,
+                    backgroundColor: Colors.grey[200],
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      item.customerInterest > 0.7 
+                        ? Colors.green 
+                        : item.customerInterest > 0.4 
+                          ? Colors.orange 
+                          : Colors.blue,
+                    ),
+                    minHeight: dialogWidth * 0.008,
                   ),
-                  minHeight: dialogWidth * 0.008,
-                ),
               ],
             ),
-          )),
+          );
+        }).toList(),
         SizedBox(
           height: dialogWidth * AppConfig.machineStatusDialogSectionSpacingFactor,
         ),
@@ -3045,6 +3547,83 @@ class _AnimatedPedestrianState extends State<_AnimatedPedestrian>
         return image;
       },
     );
+  }
+}
+
+/// Custom painter for road tiles from sprite sheet with auto-tiling and flipping support
+class RoadTilePainter extends CustomPainter {
+  final ui.Image spriteSheet;
+  final int row;
+  final int col;
+  final bool flipHorizontal;
+  final bool flipVertical;
+  final int spriteSheetRows;
+  final int spriteSheetCols;
+  
+  RoadTilePainter({
+    required this.spriteSheet,
+    required this.row,
+    required this.col,
+    this.flipHorizontal = false,
+    this.flipVertical = false,
+    this.spriteSheetRows = 2,
+    this.spriteSheetCols = 4,
+  });
+  
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (spriteSheet.width == 0 || spriteSheet.height == 0) return;
+    
+    // Calculate sprite dimensions
+    final spriteWidth = spriteSheet.width / spriteSheetCols;
+    final spriteHeight = spriteSheet.height / spriteSheetRows;
+    
+    // Calculate source rectangle (the specific sprite from the sheet)
+    final srcRect = Rect.fromLTWH(
+      col * spriteWidth,
+      row * spriteHeight,
+      spriteWidth,
+      spriteHeight,
+    );
+    
+    // Destination rectangle (fill the entire size)
+    final dstRect = Rect.fromLTWH(0, 0, size.width, size.height);
+    
+    // Save canvas state for transformations
+    canvas.save();
+    
+    // Apply transformations for horizontal flipping ONLY (NO vertical flipping)
+    if (flipHorizontal) {
+      // Translate to center of tile
+      canvas.translate(size.width / 2, size.height / 2);
+      
+      // Apply horizontal flip (scale X = -1, scale Y = 1)
+      canvas.scale(-1.0, 1.0);
+      
+      // Translate back to origin
+      canvas.translate(-size.width / 2, -size.height / 2);
+    }
+    // Note: flipVertical is ignored - we do NOT use vertical flipping
+    
+    // Draw the sprite
+    canvas.drawImageRect(
+      spriteSheet,
+      srcRect,
+      dstRect,
+      Paint(),
+    );
+    
+    // Restore canvas state
+    canvas.restore();
+  }
+  
+  @override
+  bool shouldRepaint(RoadTilePainter oldDelegate) {
+    return oldDelegate.row != row || 
+           oldDelegate.col != col ||
+           oldDelegate.flipHorizontal != flipHorizontal ||
+           oldDelegate.flipVertical != flipVertical ||
+           oldDelegate.spriteSheet != spriteSheet;
   }
 }
 

@@ -97,6 +97,11 @@ class MachineStatusCustomer extends SpriteAnimationComponent with HasGameRef<Fla
         return 4 + random.nextInt(2); // 4 or 5
       case ZoneType.office:
         return 6 + random.nextInt(2); // 6 or 7
+      case ZoneType.subway:
+      case ZoneType.hospital:
+      case ZoneType.university:
+        // Use random zone-specific person (0-7) for these zones
+        return random.nextInt(8);
     }
   }
 

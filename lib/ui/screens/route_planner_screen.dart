@@ -1202,10 +1202,12 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> with Ti
               )
             else
               SliverToBoxAdapter(
-                child: SizedBox(
-                  height: MediaQuery.of(context).size.height * AppConfig.routeListMaxHeightFactor,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxHeight: MediaQuery.of(context).size.height * AppConfig.routeListMaxHeightFactor,
+                  ),
                   child: ReorderableListView.builder(
-                    physics: const ClampingScrollPhysics(),
+                    physics: const AlwaysScrollableScrollPhysics(),
                     padding: EdgeInsets.symmetric(
                       horizontal: ScreenUtils.relativeSize(context, AppConfig.spacingFactorMedium),
                       vertical: ScreenUtils.relativeSize(context, AppConfig.spacingFactorMedium),
