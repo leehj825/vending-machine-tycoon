@@ -457,7 +457,7 @@ class AppConfig {
   static const int machineMaxItemsPerProduct = 20;
   
   /// Machine purchase limits per type
-  static const int machineLimitPerType = 4;
+  static const int machineLimitPerType = 2;
   
   /// Fuel cost per unit distance
   static const double fuelCostPerUnit = 0.50;
@@ -515,15 +515,24 @@ class AppConfig {
   static const double horizontalSpacingFactor = 0.70;
   
   /// Building scales
-  static const double buildingScale = 0.70;
-  static const double schoolScale = 0.70; // School tile scale (same as other small buildings)
-  static const double gasStationScale = 0.70;
+  static const double buildingScale = 0.75;
+  static const double schoolScale = 0.80; // School tile scale (same as other small buildings)
+  static const double gasStationScale = 0.73;
   static const double parkScale = 0.70;
   static const double houseScale = 0.70;
   static const double warehouseScale = 0.70;
+  static const double subwayScale = 0.72; // Subway tile scale
+  static const double universityScale = 0.72; // University tile scale
+  static const double hospitalScale = 0.72; // Hospital tile scale
+  
+  /// Building vertical offsets (relative size multipliers)
+  static const double schoolVerticalOffset = -0.005; // School vertical offset (adjust this value to change position)
+  static const double subwayVerticalOffset = 0.0035; // Subway vertical offset
+  static const double hospitalVerticalOffset = 0.0035; // Hospital vertical offset
+  static const double universityVerticalOffset = 0.0035; // University vertical offset
   
   /// Building block sizes
-  static const int minBlockSize = 2;
+  static const int minBlockSize = 4; // Increased to prevent road clustering
   static const int maxBlockSize = 3;
   
   /// Map padding factors (relative to map dimensions)
