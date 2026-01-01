@@ -13,6 +13,7 @@ class SoundService {
   static SoundService get instance => _instance;
   
   SoundService._internal() {
+    _settingsLoadCompleter = Completer<void>();
     _initAudioContext();
     _loadVolumeSettings();
   }
@@ -35,9 +36,35 @@ class SoundService {
       }
       
       print('🔊 Loaded volume settings: Sound=${_soundVolumeMultiplier.toStringAsFixed(2)}, Music=${_musicVolumeMultiplier.toStringAsFixed(2)}');
+      
+      // If music is already playing, update its volume with the loaded settings
+      if (_currentMusicPath != null) {
+        final baseVolume = _currentMusicPath!.contains('game_background') ? _gameBackgroundVolume : _musicVolume;
+        final curvedMultiplier = _applyVolumeCurve(_musicVolumeMultiplier);
+        final finalVolume = (baseVolume * curvedMultiplier).clamp(0.0, 1.0);
+        _backgroundMusicPlayer.setVolume(finalVolume);
+        _targetVolume = finalVolume; // Update target volume for fade
+        print('🔊 Updated playing music volume to: ${finalVolume.toStringAsFixed(2)}');
+      }
+      
+      // Complete the completer to signal that settings are loaded
+      if (!_settingsLoadCompleter!.isCompleted) {
+        _settingsLoadCompleter!.complete();
+      }
     } catch (e) {
       print('⚠️ Error loading volume settings: $e');
       // Continue with default values if loading fails
+      // Complete the completer even on error so music can still play
+      if (_settingsLoadCompleter != null && !_settingsLoadCompleter!.isCompleted) {
+        _settingsLoadCompleter!.complete();
+      }
+    }
+  }
+  
+  /// Wait for volume settings to be loaded (used before playing music)
+  Future<void> _ensureSettingsLoaded() async {
+    if (_settingsLoadCompleter != null && !_settingsLoadCompleter!.isCompleted) {
+      await _settingsLoadCompleter!.future;
     }
   }
   
@@ -72,6 +99,7 @@ class SoundService {
   Duration? _trackDuration; // Duration of current track
   bool _isFading = false; // Track if we're currently fading
   bool _wasPlayingBeforePause = false; // Track if music was playing before app was paused
+  Completer<void>? _settingsLoadCompleter; // Completer to track when settings are loaded
 
   /// Initialize audio context to allow mixing with other sounds
   Future<void> _initAudioContext() async {
@@ -188,6 +216,9 @@ class SoundService {
       print('🔇 Music is disabled, skipping: $assetPath');
       return;
     }
+    
+    // Wait for volume settings to be loaded before playing music
+    await _ensureSettingsLoaded();
     
     // Prevent concurrent play operations (but allow play even if stop is in progress)
     if (_isMusicOperationInProgress) {

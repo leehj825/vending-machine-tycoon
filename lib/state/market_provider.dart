@@ -45,6 +45,9 @@ class BaseMarketPrices {
     Product.proteinBar: 1.50,
     Product.techGadget: 8.00, // Wholesale price
     Product.sandwich: 2.00, // Wholesale price
+    Product.freshSalad: 2.50, // Wholesale price
+    Product.newspaper: 0.40, // Wholesale price
+    Product.energyDrink: 1.20, // Wholesale price
   };
 
   static double getPrice(Product product) {

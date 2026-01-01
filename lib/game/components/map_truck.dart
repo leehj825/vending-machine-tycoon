@@ -6,7 +6,7 @@ import '../../simulation/models/truck.dart';
 class MapTruck extends PositionComponent {
   Truck truck;
   static const double _worldScale = 100.0;
-  static const double _speed = 100.0; 
+  static const double _speed = 150.0; // Increased from 100.0 to 150.0 (50% faster) 
 
   double _targetAngle = 0.0;
 

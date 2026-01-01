@@ -27,6 +27,9 @@ class MachinePrices {
     ZoneType.school: 1.5,  // $600
     ZoneType.gym: 2.0,     // $800
     ZoneType.shop: 1.0,    // $400 - shop machines
+    ZoneType.subway: 2.2,  // $880
+    ZoneType.hospital: 2.8, // $1120
+    ZoneType.university: 2.3, // $920
   };
 
   static double getPrice(ZoneType zoneType) {
@@ -446,6 +449,12 @@ class GameController extends StateNotifier<GlobalGameState> {
         return 'Gym';
       case ZoneType.office:
         return 'Office';
+      case ZoneType.subway:
+        return 'Subway';
+      case ZoneType.hospital:
+        return 'Hospital';
+      case ZoneType.university:
+        return 'University';
     }
   }
 
@@ -463,6 +472,12 @@ class GameController extends StateNotifier<GlobalGameState> {
         return ZoneFactory.createSchool(id: id, name: name, x: x, y: y);
       case ZoneType.gym:
         return ZoneFactory.createGym(id: id, name: name, x: x, y: y);
+      case ZoneType.subway:
+        return ZoneFactory.createSubway(id: id, name: name, x: x, y: y);
+      case ZoneType.hospital:
+        return ZoneFactory.createHospital(id: id, name: name, x: x, y: y);
+      case ZoneType.university:
+        return ZoneFactory.createUniversity(id: id, name: name, x: x, y: y);
     }
   }
 

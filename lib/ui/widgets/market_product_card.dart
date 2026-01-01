@@ -33,6 +33,12 @@ class MarketProductCard extends ConsumerWidget {
         return 'assets/images/items/tech_gadget.png';
       case Product.sandwich:
         return 'assets/images/items/sandwich.png';
+      case Product.freshSalad:
+        return 'assets/images/items/fresh_salad.png';
+      case Product.newspaper:
+        return 'assets/images/items/newspaper.png';
+      case Product.energyDrink:
+        return 'assets/images/items/energy_drink.png';
     }
   }
 
@@ -211,6 +217,12 @@ class _BuyStockDialogState extends ConsumerState<_BuyStockDialog> {
         return 'assets/images/items/tech_gadget.png';
       case Product.sandwich:
         return 'assets/images/items/sandwich.png';
+      case Product.freshSalad:
+        return 'assets/images/items/fresh_salad.png';
+      case Product.newspaper:
+        return 'assets/images/items/newspaper.png';
+      case Product.energyDrink:
+        return 'assets/images/items/energy_drink.png';
     }
   }
 

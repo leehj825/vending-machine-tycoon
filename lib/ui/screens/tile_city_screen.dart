@@ -27,6 +27,9 @@ enum TileType {
   park,
   house,
   warehouse,
+  subway,
+  hospital,
+  university,
 }
 
 enum RoadDirection {
@@ -71,7 +74,7 @@ class TileCityScreen extends ConsumerStatefulWidget {
 }
 
 class _TileCityScreenState extends ConsumerState<TileCityScreen> {
-  static const int gridSize = 10; // Using AppConfig.cityGridSize value
+  static const int gridSize = 15; // Using AppConfig.cityGridSize value
   
   // Tile dimensions will be calculated relative to screen size
   double _getTileWidth(BuildContext context) {
@@ -115,6 +118,14 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
   double _getWarehouseVerticalOffset(BuildContext context) {
     return ScreenUtils.relativeSize(context, 0.007);
   }
+
+  double _getSpecialBuildingVerticalOffset(BuildContext context, TileType tileType) {
+    // Hospital, subway, and university tiles need to be moved up a bit
+    if (tileType == TileType.hospital || tileType == TileType.subway || tileType == TileType.university) {
+      return ScreenUtils.relativeSize(context, 0.007); // Adjust this value to move up more/less
+    }
+    return 0.0;
+  }
   
   static const int minBlockSize = AppConfig.minBlockSize;
   static const int maxBlockSize = AppConfig.maxBlockSize;
@@ -127,6 +138,8 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
   int? _warehouseY;
   
   late TransformationController _transformationController;
+  bool _isPanning = false;
+  Timer? _panEndTimer;
   
   // Debounce tracking
   DateTime? _lastTapTime;
@@ -149,6 +162,9 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
     super.initState();
     // Initialize with a zoomed-in view (scale 1.5)
     _transformationController = TransformationController();
+    
+    // Listen to transformation changes to detect panning
+    _transformationController.addListener(_onTransformationChanged);
     
     // Initialize map immediately - check if map state exists in saved game, otherwise generate new map
     final gameState = ref.read(gameControllerProvider);
@@ -258,9 +274,30 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
 
   @override
   void dispose() {
+    _transformationController.removeListener(_onTransformationChanged);
     _transformationController.dispose();
     _pedestrianUpdateTimer?.cancel();
+    _panEndTimer?.cancel();
     super.dispose();
+  }
+  
+  void _onTransformationChanged() {
+    // Detect if transformation is changing (panning/zooming)
+    if (!_isPanning) {
+      setState(() {
+        _isPanning = true;
+      });
+    }
+    
+    // Reset timer - if no changes for 200ms, consider panning stopped
+    _panEndTimer?.cancel();
+    _panEndTimer = Timer(const Duration(milliseconds: 200), () {
+      if (mounted && _isPanning) {
+        setState(() {
+          _isPanning = false;
+        });
+      }
+    });
   }
 
   void _generateMap() {
@@ -311,20 +348,28 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
   }
 
   void _generateRoadGrid() {
+    final random = math.Random();
+    
+    // Generate horizontal roads with dynamic spacing (2x3 or 2x4 blocks)
     int currentY = 3;
     while (currentY < gridSize - 2) {
       for (int x = 0; x < gridSize; x++) {
         _grid[currentY][x] = TileType.road;
       }
-      currentY += 3;
+      // Randomly choose spacing: 3 (2x3 block) or 4 (2x4 block)
+      final spacing = random.nextBool() ? 3 : 4;
+      currentY += spacing;
     }
     
+    // Generate vertical roads with dynamic spacing (2x3 or 2x4 blocks)
     int currentX = 3;
     while (currentX < gridSize - 2) {
       for (int y = 0; y < gridSize; y++) {
         _grid[y][currentX] = TileType.road;
       }
-      currentX += 3;
+      // Randomly choose spacing: 3 (2x3 block) or 4 (2x4 block)
+      final spacing = random.nextBool() ? 3 : 4;
+      currentX += spacing;
     }
     _updateRoadDirections();
   }
@@ -425,16 +470,19 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
     final buildingTypes = [
       TileType.shop, TileType.gym, TileType.office, TileType.school,
       TileType.gasStation, TileType.park, TileType.house,
+      TileType.subway, TileType.hospital, TileType.university,
     ];
 
     final buildingCounts = <TileType, int>{
       TileType.shop: 0, TileType.gym: 0, TileType.office: 0, TileType.school: 0,
       TileType.gasStation: 0, TileType.park: 0, TileType.house: 0,
+      TileType.subway: 0, TileType.hospital: 0, TileType.university: 0,
     };
     
     final maxBuildingCounts = <TileType, int>{
-      TileType.shop: 2, TileType.gym: 2, TileType.office: 2, TileType.school: 2,
-      TileType.gasStation: 2, TileType.park: 4, TileType.house: 4,
+      TileType.shop: 4, TileType.gym: 4, TileType.office: 4, TileType.school: 4,
+      TileType.gasStation: 4, TileType.park: 6, TileType.house: 6,
+      TileType.subway: 4, TileType.hospital: 4, TileType.university: 4,
     };
 
     final validBlocks = <Map<String, dynamic>>[];
@@ -505,6 +553,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
       final priorityTypes = [
         TileType.gasStation, TileType.park, TileType.house,
         TileType.shop, TileType.gym, TileType.office, TileType.school,
+        TileType.subway, TileType.hospital, TileType.university,
       ];
       
       for (int i = 0; i < numBuildings && i < blockTiles.length; i++) {
@@ -635,6 +684,9 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
       case TileType.park: return 'assets/images/tiles/park.png';
       case TileType.house: return 'assets/images/tiles/house.png';
       case TileType.warehouse: return 'assets/images/tiles/warehouse.png';
+      case TileType.subway: return 'assets/images/tiles/subway.png';
+      case TileType.hospital: return 'assets/images/tiles/hospital.png';
+      case TileType.university: return 'assets/images/tiles/university.png';
     }
   }
 
@@ -642,7 +694,9 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
     return tileType == TileType.shop || tileType == TileType.gym ||
         tileType == TileType.office || tileType == TileType.school ||
         tileType == TileType.gasStation || tileType == TileType.park ||
-        tileType == TileType.house || tileType == TileType.warehouse;
+        tileType == TileType.house || tileType == TileType.warehouse ||
+        tileType == TileType.subway || tileType == TileType.hospital ||
+        tileType == TileType.university;
   }
 
   double _getBuildingScale(TileType tileType) {
@@ -770,8 +824,8 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
                   clipBehavior: Clip.none,
                   children: [
                     ...components['tiles']!,
-                    // Buttons on top
-                    ...components['buttons']!,
+                    // Buttons on top (hidden during panning)
+                    if (!_isPanning) ...components['buttons']!,
                   ],
                 ),
               ),
@@ -912,9 +966,9 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
           final posY = screenPos.dy + centerOffset.dy;
           
           final buttonSize = ScreenUtils.relativeSizeClamped(
-            context, 0.05,
-            min: ScreenUtils.getSmallerDimension(context) * 0.04,
-            max: ScreenUtils.getSmallerDimension(context) * 0.08,
+            context, 0.03,
+            min: ScreenUtils.getSmallerDimension(context) * 0.03,
+            max: ScreenUtils.getSmallerDimension(context) * 0.03,
           );
           
           final buttonTop = posY;
@@ -1095,6 +1149,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
     final scale = _getBuildingScale(tileType);
     final w = tileWidth * scale;
     final h = buildingImageHeight * scale;
+    final verticalOffset = _getSpecialBuildingVerticalOffset(context, tileType);
     
     return Stack(
       clipBehavior: Clip.none,
@@ -1107,7 +1162,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
         // The building itself
         Positioned(
           left: posX + (tileWidth - w) / 2,
-          top: posY - (h - tileHeight*0.95),
+          top: posY - (h - tileHeight*0.95) - verticalOffset,
           width: w, height: h,
           child: GestureDetector(
             onTap: () => _handleDebouncedBuildingTap(x, y, tileType),
@@ -1157,6 +1212,9 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
       case ZoneType.school: machineColor = Colors.purple; break;
       case ZoneType.gym: machineColor = Colors.red; break;
       case ZoneType.office: machineColor = Colors.orange; break;
+      case ZoneType.subway: machineColor = Colors.blueGrey; break;
+      case ZoneType.hospital: machineColor = Colors.red; break;
+      case ZoneType.university: machineColor = Colors.indigo; break;
     }
 
     final machineId = machine.id;
@@ -1293,6 +1351,9 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
       case ZoneType.school: return 'assets/images/views/school_view.png';
       case ZoneType.gym: return 'assets/images/views/gym_view.png';
       case ZoneType.office: return 'assets/images/views/office_view.png';
+      case ZoneType.subway: return 'assets/images/views/subway_view.png';
+      case ZoneType.hospital: return 'assets/images/views/hospital_view.png';
+      case ZoneType.university: return 'assets/images/views/university_view.png';
     }
   }
 
@@ -1505,7 +1566,10 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
            tileType == TileType.gym ||
            tileType == TileType.office ||
            tileType == TileType.school ||
-           tileType == TileType.house;
+           tileType == TileType.house ||
+           tileType == TileType.subway ||
+           tileType == TileType.hospital ||
+           tileType == TileType.university;
   }
   
   /// Check if pedestrian is adjacent to a building or house (in front of it)
@@ -1843,50 +1907,29 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
       case TileType.school: return ZoneType.school;
       case TileType.gym: return ZoneType.gym;
       case TileType.office: return ZoneType.office;
+      case TileType.subway: return ZoneType.subway;
+      case TileType.hospital: return ZoneType.hospital;
+      case TileType.university: return ZoneType.university;
       default: return null;
     }
   }
 
   bool _canPurchaseMachine(ZoneType zoneType) {
     final machines = ref.read(machinesProvider);
-    final shopMachines = machines.where((m) => m.zone.type == ZoneType.shop).length;
-    final schoolMachines = machines.where((m) => m.zone.type == ZoneType.school).length;
-    final gymMachines = machines.where((m) => m.zone.type == ZoneType.gym).length;
-    final officeMachines = machines.where((m) => m.zone.type == ZoneType.office).length;
-
-    switch (zoneType) {
-      case ZoneType.shop: return shopMachines < AppConfig.machineLimitPerType;
-      case ZoneType.school: return shopMachines >= AppConfig.machineLimitPerType && schoolMachines < AppConfig.machineLimitPerType;
-      case ZoneType.gym: return schoolMachines >= AppConfig.machineLimitPerType && gymMachines < AppConfig.machineLimitPerType;
-      case ZoneType.office: return gymMachines >= AppConfig.machineLimitPerType && officeMachines < AppConfig.machineLimitPerType;
-    }
+    // All machine types are available from the start - just check if under limit
+    final machinesOfType = machines.where((m) => m.zone.type == zoneType).length;
+    return machinesOfType < AppConfig.machineLimitPerType;
   }
 
   String _getProgressionMessage(ZoneType zoneType) {
     final machines = ref.read(machinesProvider);
-    final shopMachines = machines.where((m) => m.zone.type == ZoneType.shop).length;
-    final schoolMachines = machines.where((m) => m.zone.type == ZoneType.school).length;
-    final gymMachines = machines.where((m) => m.zone.type == ZoneType.gym).length;
-    final officeMachines = machines.where((m) => m.zone.type == ZoneType.office).length;
-    
+    final machinesOfType = machines.where((m) => m.zone.type == zoneType).length;
     final limit = AppConfig.machineLimitPerType;
-    switch (zoneType) {
-      case ZoneType.shop:
-        if (shopMachines >= limit) return 'Shop limit reached (have $shopMachines/$limit). Buy $limit school machines next.';
-        return 'Can purchase shop machines ($shopMachines/$limit)';
-      case ZoneType.school:
-        if (shopMachines < limit) return 'Need $limit shop machines first (have $shopMachines/$limit)';
-        if (schoolMachines >= limit) return 'School limit reached (have $schoolMachines/$limit). Buy $limit gym machines next.';
-        return 'Can purchase school machines ($schoolMachines/$limit)';
-      case ZoneType.gym:
-        if (schoolMachines < limit) return 'Need $limit school machines first (have $schoolMachines/$limit)';
-        if (gymMachines >= limit) return 'Gym limit reached (have $gymMachines/$limit). Buy office machines next.';
-        return 'Can purchase gym machines ($gymMachines/$limit)';
-      case ZoneType.office:
-        if (gymMachines < limit) return 'Need $limit gym machines first (have $gymMachines/$limit)';
-        if (officeMachines >= limit) return 'Office limit reached (have $officeMachines/$limit). Maximum machines reached.';
-        return 'Can purchase office machines ($officeMachines/$limit)';
+    
+    if (machinesOfType >= limit) {
+      return '${zoneType.name.toUpperCase()} limit reached (have $machinesOfType/$limit)';
     }
+    return 'Can purchase ${zoneType.name} machines ($machinesOfType/$limit)';
   }
 
   Widget _buildGroundTile(TileType tileType, RoadDirection? roadDir) {
@@ -1977,6 +2020,9 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
       case TileType.park: return Colors.green.shade400;
       case TileType.house: return Colors.brown.shade300;
       case TileType.warehouse: return Colors.grey.shade400;
+      case TileType.subway: return Colors.blueGrey.shade300;
+      case TileType.hospital: return Colors.white;
+      case TileType.university: return Colors.indigo.shade300;
     }
   }
 
@@ -1992,6 +2038,9 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
       case TileType.park: return 'P';
       case TileType.house: return 'H';
       case TileType.warehouse: return 'W';
+      case TileType.subway: return 'Sub';
+      case TileType.hospital: return 'Hos';
+      case TileType.university: return 'Uni';
     }
   }
 }
@@ -2602,6 +2651,12 @@ class _MachinePurchaseDialog extends ConsumerWidget {
         return 'Gym';
       case ZoneType.office:
         return 'Office';
+      case ZoneType.subway:
+        return 'Subway';
+      case ZoneType.hospital:
+        return 'Hospital';
+      case ZoneType.university:
+        return 'University';
     }
   }
 
@@ -3149,16 +3204,33 @@ class _AnimatedPersonMachineState extends State<_AnimatedPersonMachine>
   void _calculatePersonIndex() {
     final random = math.Random();
     
-    // 1. Determine if "Special" (Any Zone)
-    // 20% chance for Special (Indices 8, 9)
-    if (random.nextDouble() < 0.20) { 
-      _isSpecial = true;
-      _personIndex = 8 + random.nextInt(2); 
+    // Hospital and Subway can use any customer type (shop, school, gym, office, or special)
+    if (widget.zoneType == ZoneType.hospital || widget.zoneType == ZoneType.subway) {
+      // Randomly select from all available customer types
+      final customerType = random.nextInt(5); // 0-4 for shop, gym, school, office, special
+      
+      if (customerType == 4) {
+        // Special customers (20% chance)
+        _isSpecial = true;
+        _personIndex = 8 + random.nextInt(2);
+      } else {
+        // Regular customer types (80% chance)
+        _isSpecial = false;
+        final baseIndex = customerType * 2; // 0, 2, 4, or 6
+        _personIndex = baseIndex + random.nextInt(2);
+      }
     } else {
-      _isSpecial = false;
-      // Zone specific (Normal)
-      final baseIndex = _getBasePersonIndexForZone(widget.zoneType);
-      _personIndex = baseIndex + random.nextInt(2); 
+      // 1. Determine if "Special" (Any Zone)
+      // 20% chance for Special (Indices 8, 9)
+      if (random.nextDouble() < 0.20) { 
+        _isSpecial = true;
+        _personIndex = 8 + random.nextInt(2); 
+      } else {
+        _isSpecial = false;
+        // Zone specific (Normal)
+        final baseIndex = _getBasePersonIndexForZone(widget.zoneType);
+        _personIndex = baseIndex + random.nextInt(2); 
+      }
     }
   }
 
@@ -3168,6 +3240,10 @@ class _AnimatedPersonMachineState extends State<_AnimatedPersonMachine>
       case ZoneType.gym: return 2;  // Uses indices 2-3
       case ZoneType.school: return 4; // Uses indices 4-5
       case ZoneType.office: return 6; // Uses indices 6-7
+      case ZoneType.university: return 0; // Uses indices 0-1 (same as shop)
+      case ZoneType.subway: // Always uses special (8-9), handled in _calculatePersonIndex
+      case ZoneType.hospital: // Always uses special (8-9), handled in _calculatePersonIndex
+        return 0; // Fallback, but should not be reached
       // Indices 8-9 are special and can be used for any zone
     }
   }

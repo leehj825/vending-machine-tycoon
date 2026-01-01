@@ -245,17 +245,17 @@ class AppConfig {
   static const double saveExitButtonWidthFactor = 0.10; // Width as factor of screen width
   
   /// Top status bar boxes (cash, reputation, time)
-  static const double statusCardWidthFactor = 0.75; // Width as factor of smaller dimension (0.25 * 3.0)
-  static const double statusCardWidthMinFactor = 0.25; // Minimum width as factor of smaller dimension
-  static const double statusCardWidthMaxFactor = 0.25; // Maximum width as factor of smaller dimension
-  static const double statusCardHeightRatio = 1.0; // Height ratio relative to card width
+  static const double statusCardWidthFactor = 0.90; // Width as factor of smaller dimension (increased from 0.75)
+  static const double statusCardWidthMinFactor = 0.30; // Minimum width as factor of smaller dimension (increased from 0.25)
+  static const double statusCardWidthMaxFactor = 0.30; // Maximum width as factor of smaller dimension (increased from 0.25)
+  static const double statusCardHeightRatio = 0.75; // Height ratio relative to card width (decreased to maintain same height)
   
   /// Status card icon settings - Removed min/max duplicates
-  static const double statusCardIconSizeFactor = 0.60; // Icon size factor relative to card width
-  static const double statusCardIconTopPositionFactor = 0.05; // Icon top position as factor of card height (relative to card height)
+  static const double statusCardIconSizeFactor = 0.50; // Icon size factor relative to card width
+  static const double statusCardIconTopPositionFactor = 0.1; // Icon top position as factor of card height (relative to card height)
   
   /// Status card text settings
-  static const double statusCardTextSizeFactor = 0.030; // Text font size factor (relative to smaller screen dimension)
+  static const double statusCardTextSizeFactor = 0.025; // Text font size factor (relative to smaller screen dimension)
   static const double statusCardTextBottomPositionFactor = 0.05; // Text bottom position as factor of card height (relative to card height)
   
   /// Status card padding and spacing - Removed min/max duplicates
@@ -501,14 +501,14 @@ class AppConfig {
   static const double wrongWayPenalty = 10.0;
   
   /// Movement speed
-  static const double movementSpeed = 0.1;
+  static const double movementSpeed = 0.15; // Increased from 0.1 to 0.15 (50% faster)
   
   // ============================================================================
   // CITY MAP CONSTANTS
   // ============================================================================
   
   /// Grid size
-  static const int cityGridSize = 10;
+  static const int cityGridSize = 15;
   
   /// Tile spacing factors
   static const double tileSpacingFactor = 0.80;
@@ -595,7 +595,7 @@ class AppConfig {
   static const double mapHeight = 1000.0;
   
   static const double worldScale = 100.0;
-  static const double truckSpeed = 50.0; // Pixels per second
+  static const double truckSpeed = 75.0; // Pixels per second (increased from 50.0 to 75.0 - 50% faster)
   static const double arrivalThreshold = 2.0;
   static const double blinkSpeed = 2.0; // Blinks per second
 }

@@ -6,6 +6,9 @@ enum Product {
   coffee,
   techGadget,
   sandwich, // Has spoilage (expires after 3 game days)
+  freshSalad, // Healthy product for hospitals
+  newspaper, // For transit stations
+  energyDrink, // For universities
 }
 
 extension ProductExtension on Product {
@@ -24,6 +27,12 @@ extension ProductExtension on Product {
         return 'Tech Gadget';
       case Product.sandwich:
         return 'Sandwich';
+      case Product.freshSalad:
+        return 'Fresh Salad';
+      case Product.newspaper:
+        return 'Newspaper';
+      case Product.energyDrink:
+        return 'Energy Drink';
     }
   }
 
@@ -42,6 +51,12 @@ extension ProductExtension on Product {
         return 25.00;
       case Product.sandwich:
         return 5.50;
+      case Product.freshSalad:
+        return 6.00;
+      case Product.newspaper:
+        return 2.00;
+      case Product.energyDrink:
+        return 4.50;
     }
   }
 
@@ -60,13 +75,24 @@ extension ProductExtension on Product {
         return 0.14; // 14% per hour (+10 percentage points from 4%)
       case Product.sandwich:
         return 0.28; // 28% per hour (+10 percentage points from 18%)
+      case Product.freshSalad:
+        return 0.25; // 25% per hour
+      case Product.newspaper:
+        return 0.20; // 20% per hour
+      case Product.energyDrink:
+        return 0.32; // 32% per hour
     }
   }
 
   /// Whether this product can spoil
-  bool get canSpoil => this == Product.sandwich;
+  bool get canSpoil => this == Product.sandwich || this == Product.freshSalad;
 
   /// Days until spoilage (only relevant for spoilable products)
-  int get spoilageDays => canSpoil ? 3 : -1;
+  int get spoilageDays {
+    if (!canSpoil) return -1;
+    if (this == Product.sandwich) return 3;
+    if (this == Product.freshSalad) return 2; // Fresh salad spoils faster
+    return -1;
+  }
 }
 
