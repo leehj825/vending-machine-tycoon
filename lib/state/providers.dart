@@ -809,14 +809,18 @@ class GameController extends StateNotifier<GlobalGameState> {
     state = state.addLogMessage('New game started');
   }
   
-  /// Reset tutorial flag (for new games)
+  /// Reset tutorial flags (for new games)
   Future<void> _resetTutorialFlag() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('has_seen_money_extraction_tutorial');
-      print('💰 Tutorial flag reset for new game');
+      await prefs.remove('has_seen_market_tutorial');
+      await prefs.remove('has_seen_truck_tutorial');
+      await prefs.remove('has_seen_buy_truck_tutorial');
+      await prefs.remove('has_seen_go_stock_tutorial');
+      print('💰 Tutorial flags reset for new game');
     } catch (e) {
-      print('⚠️ Could not reset tutorial flag: $e');
+      print('⚠️ Could not reset tutorial flags: $e');
     }
   }
 

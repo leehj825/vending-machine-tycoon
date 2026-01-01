@@ -10,10 +10,12 @@ import '../utils/screen_utils.dart';
 /// Card widget that displays a product in the market
 class MarketProductCard extends ConsumerWidget {
   final Product product;
+  final VoidCallback? onProductTapped;
 
   const MarketProductCard({
     super.key,
     required this.product,
+    this.onProductTapped,
   });
 
   /// Get image asset path for product
@@ -41,7 +43,7 @@ class MarketProductCard extends ConsumerWidget {
     final trend = market.getPriceTrend(product);
 
     return GestureDetector(
-      onTap: () => _showBuyDialog(context, ref, product, unitPrice),
+      onTap: () => _showBuyDialog(context, ref, product, unitPrice, onProductTapped),
       child: Card(
         elevation: ScreenUtils.relativeSize(context, AppConfig.cardElevationFactor * 0.5),
         shape: RoundedRectangleBorder(
@@ -162,7 +164,10 @@ class MarketProductCard extends ConsumerWidget {
     );
   }
 
-  void _showBuyDialog(BuildContext context, WidgetRef ref, Product product, double unitPrice) {
+  void _showBuyDialog(BuildContext context, WidgetRef ref, Product product, double unitPrice, VoidCallback? onProductTapped) {
+    // Notify parent if callback provided (for tutorial tracking)
+    onProductTapped?.call();
+    
     showDialog(
       context: context,
       builder: (dialogContext) => _BuyStockDialog(

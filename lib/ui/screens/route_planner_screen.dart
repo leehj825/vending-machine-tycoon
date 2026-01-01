@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:state_notifier/state_notifier.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../state/providers.dart';
 import '../../simulation/models/machine.dart';
 import '../../simulation/models/truck.dart';
@@ -37,10 +38,28 @@ class RoutePlannerScreen extends ConsumerStatefulWidget {
   ConsumerState<RoutePlannerScreen> createState() => _RoutePlannerScreenState();
 }
 
-class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> {
+class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> with TickerProviderStateMixin {
+  bool _showTutorial = false;
+  String? _tutorialType; // 'buy_truck', 'select_truck', 'go_stock'
+  late AnimationController _flashController;
+  late Animation<double> _flashAnimation;
+
   @override
   void initState() {
     super.initState();
+    
+    // Flash animation - continuously flashing (same as other tutorials)
+    _flashController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+    _flashAnimation = Tween<double>(begin: 0.3, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _flashController,
+        curve: Curves.easeInOut,
+      ),
+    );
+    
     // Auto-select first truck if available
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final trucks = ref.read(trucksProvider);
@@ -48,7 +67,115 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> {
       if (trucks.isNotEmpty && notifier.selectedId == null) {
         notifier.selectTruck(trucks.first.id);
       }
+      
+      // Check if this is the first time opening route planner with trucks
+      _checkFirstTimeWithTrucks();
     });
+  }
+  
+  /// Check if this is the first time opening route planner with trucks
+  Future<void> _checkFirstTimeWithTrucks() async {
+    final trucks = ref.read(trucksProvider);
+    final prefs = await SharedPreferences.getInstance();
+    
+    // Check for "buy truck" tutorial when no trucks exist
+    if (trucks.isEmpty) {
+      final hasSeenBuyTruckTutorial = prefs.getBool('has_seen_buy_truck_tutorial') ?? false;
+      if (!hasSeenBuyTruckTutorial) {
+        print('🚛 Tutorial: Showing buy truck tutorial');
+        if (mounted) {
+          setState(() {
+            _showTutorial = true;
+            _tutorialType = 'buy_truck';
+          });
+          _flashController.repeat(reverse: true);
+        }
+      }
+      return;
+    }
+    
+    // Check for "select truck" tutorial when trucks exist
+    final hasSeenTutorial = prefs.getBool('has_seen_truck_tutorial') ?? false;
+    print('🚛 Tutorial check: trucks=${trucks.length}, hasSeenTutorial=$hasSeenTutorial');
+    
+    if (!hasSeenTutorial) {
+      print('🚛 Tutorial: Showing select truck tutorial');
+      if (mounted) {
+        setState(() {
+          _showTutorial = true;
+          _tutorialType = 'select_truck';
+        });
+        _flashController.repeat(reverse: true);
+      }
+    } else {
+      print('🚛 Tutorial: Already seen, checking for go stock tutorial');
+      // Check for "go stock" tutorial
+      _checkGoStockTutorial();
+    }
+  }
+  
+  /// Check if we should show "go stock" tutorial
+  void _checkGoStockTutorial() {
+    final trucks = ref.read(trucksProvider);
+    final selectedTruckNotifier = ref.read(selectedTruckIdProvider);
+    final selectedTruckId = selectedTruckNotifier.selectedId;
+    
+    if (selectedTruckId == null || trucks.isEmpty) return;
+    
+    final selectedTruck = trucks.firstWhere(
+      (t) => t.id == selectedTruckId,
+      orElse: () => trucks.first,
+    );
+    
+    // Show tutorial if truck has cargo and route but hasn't started
+    final hasCargo = selectedTruck.inventory.isNotEmpty;
+    final hasRoute = selectedTruck.route.isNotEmpty;
+    final isIdle = selectedTruck.status == TruckStatus.idle;
+    
+    if (hasCargo && hasRoute && isIdle) {
+      SharedPreferences.getInstance().then((prefs) async {
+        final hasSeenGoStockTutorial = prefs.getBool('has_seen_go_stock_tutorial') ?? false;
+        if (!hasSeenGoStockTutorial && mounted) {
+          setState(() {
+            _showTutorial = true;
+            _tutorialType = 'go_stock';
+          });
+          _flashController.repeat(reverse: true);
+        }
+      });
+    }
+  }
+  
+  /// Mark the tutorial as seen
+  Future<void> _markTutorialAsSeen([String? tutorialKey]) async {
+    final prefs = await SharedPreferences.getInstance();
+    final key = tutorialKey ?? _tutorialType ?? 'has_seen_truck_tutorial';
+    
+    switch (key) {
+      case 'buy_truck':
+        await prefs.setBool('has_seen_buy_truck_tutorial', true);
+        break;
+      case 'select_truck':
+        await prefs.setBool('has_seen_truck_tutorial', true);
+        break;
+      case 'go_stock':
+        await prefs.setBool('has_seen_go_stock_tutorial', true);
+        break;
+    }
+    
+    if (mounted) {
+      setState(() {
+        _showTutorial = false;
+        _tutorialType = null;
+      });
+      _flashController.stop();
+    }
+  }
+
+  @override
+  void dispose() {
+    _flashController.dispose();
+    super.dispose();
   }
 
   /// Calculate Euclidean distance between two points
@@ -194,6 +321,16 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> {
     );
     final newRoute = [...truck.route, machineId];
     controller.updateRoute(truckId, newRoute);
+    
+    // Mark select truck tutorial as seen when machine is added to route
+    if (_showTutorial && _tutorialType == 'select_truck') {
+      _markTutorialAsSeen('select_truck');
+    }
+    
+    // Check for go stock tutorial after adding machine
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkGoStockTutorial();
+    });
   }
 
   void _removeStopFromRoute(String truckId, String machineId) {
@@ -238,6 +375,11 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> {
           Navigator.of(dialogContext).pop();
           // Perform the load operation
           controller.loadTruck(truck.id, product, quantity);
+          
+          // Check for go stock tutorial after loading cargo
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _checkGoStockTutorial();
+          });
         },
       ),
     );
@@ -277,6 +419,11 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> {
   void _goStock(Truck truck) {
     final controller = ref.read(gameControllerProvider.notifier);
     controller.goStock(truck.id);
+    
+    // Mark go stock tutorial as seen
+    if (_showTutorial && _tutorialType == 'go_stock') {
+      _markTutorialAsSeen('go_stock');
+    }
     
     // Play truck sound when "Go Stock" is pressed
     SoundService().playTruckSound();
@@ -337,11 +484,86 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> {
     // Calculate dynamic truck price (base price + 500 per existing truck)
     final controller = ref.read(gameControllerProvider.notifier);
     final truckPrice = controller.getTruckPrice();
+    
+    // Check for go stock tutorial when truck state changes (if no other tutorial is showing)
+    if (selectedTruck != null && !_showTutorial) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _checkGoStockTutorial();
+      });
+    }
 
     return Scaffold(
       // AppBar removed - managed by MainScreen
       body: CustomScrollView(
         slivers: [
+          // Tutorial message (similar to rush sell message)
+          if (_showTutorial)
+            SliverToBoxAdapter(
+              child: Container(
+                margin: EdgeInsets.all(ScreenUtils.relativeSize(context, AppConfig.spacingFactorLarge)),
+                padding: EdgeInsets.symmetric(
+                  horizontal: ScreenUtils.relativeSize(context, AppConfig.spacingFactorLarge),
+                  vertical: ScreenUtils.relativeSize(context, AppConfig.spacingFactorMedium),
+                ),
+                decoration: BoxDecoration(
+                  color: (_tutorialType == 'buy_truck' 
+                      ? Colors.blue 
+                      : _tutorialType == 'go_stock' 
+                          ? Colors.green 
+                          : Colors.orange).shade700.withValues(alpha: 0.95),
+                  borderRadius: BorderRadius.circular(ScreenUtils.relativeSize(context, AppConfig.borderRadiusFactorMedium)),
+                  border: Border.all(
+                    color: Colors.white,
+                    width: ScreenUtils.relativeSize(context, AppConfig.borderWidthFactorSmall * 2),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.4),
+                      blurRadius: 8,
+                      spreadRadius: 2,
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.touch_app,
+                      color: Colors.white,
+                      size: ScreenUtils.relativeSize(context, 0.04),
+                    ),
+                    SizedBox(width: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall)),
+                    Flexible(
+                      child: Text(
+                        _tutorialType == 'buy_truck'
+                            ? 'Buy your first truck to start managing routes!'
+                            : _tutorialType == 'go_stock'
+                                ? 'Press "Go Stock" to start the delivery route!'
+                                : 'Select a truck, add machines to route, then load cargo!',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: ScreenUtils.relativeFontSize(
+                            context,
+                            AppConfig.fontSizeFactorSmall,
+                            min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
+                            max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+                          ),
+                          fontWeight: FontWeight.bold,
+                          shadows: [
+                            Shadow(
+                              color: Colors.black.withValues(alpha: 0.6),
+                              blurRadius: 2,
+                            ),
+                          ],
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           // Top Section: Truck Selector
           SliverToBoxAdapter(
             child: Container(
@@ -385,33 +607,91 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> {
                             itemBuilder: (context, index) {
                               // Last item is always the Buy Truck button
                               if (index == trucks.length) {
-                                return _BuyTruckButton(
-                                  width: ScreenUtils.relativeSize(
-                                    context,
-                                    AppConfig.truckCardWidthFactor,
-                                  ),
-                                  margin: EdgeInsets.symmetric(
-                                    horizontal: ScreenUtils.relativeSize(
-                                      context,
-                                      AppConfig.truckCardMarginHorizontalFactor,
+                                return Stack(
+                                  children: [
+                                    _BuyTruckButton(
+                                      width: ScreenUtils.relativeSize(
+                                        context,
+                                        AppConfig.truckCardWidthFactor,
+                                      ),
+                                      margin: EdgeInsets.symmetric(
+                                        horizontal: ScreenUtils.relativeSize(
+                                          context,
+                                          AppConfig.truckCardMarginHorizontalFactor,
+                                        ),
+                                      ),
+                                      onPressed: () {
+                                        controller.buyTruck();
+                                        // Mark buy truck tutorial as seen
+                                        if (_showTutorial && _tutorialType == 'buy_truck') {
+                                          _markTutorialAsSeen('buy_truck');
+                                        }
+                                      },
+                                      price: truckPrice,
                                     ),
-                                  ),
-                                  onPressed: () {
-                                    controller.buyTruck();
-                                  },
-                                  price: truckPrice,
+                                    // Blinking circle indicator on buy truck button (first time only)
+                                    if (_showTutorial && _tutorialType == 'buy_truck')
+                                      Positioned.fill(
+                                        child: AnimatedBuilder(
+                                          animation: _flashAnimation,
+                                          builder: (context, child) {
+                                            final flashAlpha = _flashAnimation.value;
+                                            final cardWidth = ScreenUtils.relativeSize(
+                                              context,
+                                              AppConfig.truckCardWidthFactor,
+                                            );
+                                            final cardHeight = ScreenUtils.relativeSize(
+                                              context,
+                                              AppConfig.truckCardHeightFactor,
+                                            );
+                                            
+                                            return Center(
+                                              child: IgnorePointer(
+                                                child: Container(
+                                                  width: cardWidth * 1.2,
+                                                  height: cardHeight * 1.2,
+                                                  decoration: BoxDecoration(
+                                                    borderRadius: BorderRadius.circular(
+                                                      ScreenUtils.relativeSize(context, AppConfig.truckCardBorderRadiusFactor),
+                                                    ),
+                                                    border: Border.all(
+                                                      color: Colors.blue.withValues(alpha: flashAlpha),
+                                                      width: 4.0,
+                                                    ),
+                                                    boxShadow: [
+                                                      BoxShadow(
+                                                        color: Colors.blue.withValues(alpha: 0.5 * flashAlpha),
+                                                        blurRadius: 12.0 * flashAlpha,
+                                                        spreadRadius: 2.0 * flashAlpha,
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                  ],
                                 );
                               }
                               
                               final truck = trucks[index];
                               final isSelected = truck.id == selectedTruckId;
+                              final isFirstTruck = index == 0;
 
-                            return GestureDetector(
-                              onTap: () {
-                                ref.read(selectedTruckIdProvider)
-                                    .selectTruck(truck.id);
-                              },
-                              child: Container(
+                            return Stack(
+                              children: [
+                                GestureDetector(
+                                  onTap: () {
+                                    ref.read(selectedTruckIdProvider)
+                                        .selectTruck(truck.id);
+                                    // Mark select truck tutorial as seen when truck is selected
+                                    if (_showTutorial && _tutorialType == 'select_truck') {
+                                      _markTutorialAsSeen('select_truck');
+                                    }
+                                  },
+                                  child: Container(
                                 width: ScreenUtils.relativeSize(
                                   context,
                                   AppConfig.truckCardWidthFactor,
@@ -572,7 +852,52 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> {
                                   ),
                                 ),
                               ),
-                            );
+                                ),
+                              // Blinking circle indicator on first truck (only for select_truck tutorial)
+                              if (_showTutorial && isFirstTruck && _tutorialType == 'select_truck')
+                                Positioned.fill(
+                                  child: AnimatedBuilder(
+                                    animation: _flashAnimation,
+                                    builder: (context, child) {
+                                      final flashAlpha = _flashAnimation.value;
+                                      final cardWidth = ScreenUtils.relativeSize(
+                                        context,
+                                        AppConfig.truckCardWidthFactor,
+                                      );
+                                      final cardHeight = ScreenUtils.relativeSize(
+                                        context,
+                                        AppConfig.truckCardHeightFactor,
+                                      );
+                                      
+                                      return Center(
+                                        child: IgnorePointer(
+                                          child: Container(
+                                            width: cardWidth * 1.2,
+                                            height: cardHeight * 1.2,
+                                            decoration: BoxDecoration(
+                                              borderRadius: BorderRadius.circular(
+                                                ScreenUtils.relativeSize(context, AppConfig.truckCardBorderRadiusFactor),
+                                              ),
+                                              border: Border.all(
+                                                color: Colors.orange.withValues(alpha: flashAlpha),
+                                                width: 4.0,
+                                              ),
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: Colors.orange.withValues(alpha: 0.5 * flashAlpha),
+                                                  blurRadius: 12.0 * flashAlpha,
+                                                  spreadRadius: 2.0 * flashAlpha,
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                            ],
+                          );
                           },
                         ),
                   ),
@@ -776,13 +1101,51 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> {
                           label: 'Add Stop',
                           color: Colors.blue,
                         ),
-                        GameButton(
-                          onPressed: _canGoStock(selectedTruck, routeMachines)
-                              ? () => _goStock(selectedTruck)
-                              : null,
-                          icon: Icons.local_shipping,
-                          label: 'Go Stock',
-                          color: Colors.orange,
+                        Stack(
+                          children: [
+                            GameButton(
+                              onPressed: _canGoStock(selectedTruck, routeMachines)
+                                  ? () => _goStock(selectedTruck)
+                                  : null,
+                              icon: Icons.local_shipping,
+                              label: 'Go Stock',
+                              color: Colors.orange,
+                            ),
+                            // Blinking circle indicator on go stock button (when tutorial active)
+                            if (_showTutorial && _tutorialType == 'go_stock' && _canGoStock(selectedTruck, routeMachines))
+                              Positioned.fill(
+                                child: AnimatedBuilder(
+                                  animation: _flashAnimation,
+                                  builder: (context, child) {
+                                    final flashAlpha = _flashAnimation.value;
+                                    final buttonSize = ScreenUtils.relativeSize(context, 0.12);
+                                    
+                                    return Center(
+                                      child: IgnorePointer(
+                                        child: Container(
+                                          width: buttonSize * 1.3,
+                                          height: buttonSize * 1.3,
+                                          decoration: BoxDecoration(
+                                            borderRadius: BorderRadius.circular(buttonSize * 0.2),
+                                            border: Border.all(
+                                              color: Colors.green.withValues(alpha: flashAlpha),
+                                              width: 4.0,
+                                            ),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: Colors.green.withValues(alpha: 0.5 * flashAlpha),
+                                                blurRadius: 12.0 * flashAlpha,
+                                                spreadRadius: 2.0 * flashAlpha,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                          ],
                         ),
                       ],
                     ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../simulation/models/product.dart';
 import '../../simulation/models/truck.dart';
 import '../../state/providers.dart';
@@ -15,7 +16,68 @@ class WarehouseScreen extends ConsumerStatefulWidget {
   ConsumerState<WarehouseScreen> createState() => _WarehouseScreenState();
 }
 
-class _WarehouseScreenState extends ConsumerState<WarehouseScreen> {
+class _WarehouseScreenState extends ConsumerState<WarehouseScreen> with TickerProviderStateMixin {
+  bool _showTutorial = false;
+  late AnimationController _flashController;
+  late Animation<double> _flashAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    
+    // Flash animation - continuously flashing (same as machine interior tutorial)
+    _flashController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+    _flashAnimation = Tween<double>(begin: 0.3, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _flashController,
+        curve: Curves.easeInOut,
+      ),
+    );
+    
+    // Check if this is the first time opening market with cash
+    _checkFirstTimeWithCash();
+  }
+  
+  /// Check if this is the first time opening market with cash
+  Future<void> _checkFirstTimeWithCash() async {
+    final gameState = ref.read(gameStateProvider);
+    // Only show tutorial if cash is available
+    if (gameState.cash <= 0) return;
+    
+    final prefs = await SharedPreferences.getInstance();
+    final hasSeenTutorial = prefs.getBool('has_seen_market_tutorial') ?? false;
+    
+    if (!hasSeenTutorial) {
+      if (mounted) {
+        setState(() {
+          _showTutorial = true;
+        });
+        _flashController.repeat(reverse: true);
+      }
+    }
+  }
+  
+  /// Mark the tutorial as seen
+  Future<void> _markTutorialAsSeen() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('has_seen_market_tutorial', true);
+    if (mounted) {
+      setState(() {
+        _showTutorial = false;
+      });
+      _flashController.stop();
+    }
+  }
+
+  @override
+  void dispose() {
+    _flashController.dispose();
+    super.dispose();
+  }
+
   void _showLoadTruckDialog() {
     final warehouse = ref.read(warehouseProvider);
     final trucks = ref.read(trucksProvider);
@@ -301,12 +363,117 @@ class _WarehouseScreenState extends ConsumerState<WarehouseScreen> {
               ),
             ),
           ),
+          // Tutorial message (similar to rush sell message)
+          if (_showTutorial)
+            SliverToBoxAdapter(
+              child: Container(
+                margin: EdgeInsets.all(ScreenUtils.relativeSize(context, AppConfig.spacingFactorLarge)),
+                padding: EdgeInsets.symmetric(
+                  horizontal: ScreenUtils.relativeSize(context, AppConfig.spacingFactorLarge),
+                  vertical: ScreenUtils.relativeSize(context, AppConfig.spacingFactorMedium),
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade700.withValues(alpha: 0.95),
+                  borderRadius: BorderRadius.circular(ScreenUtils.relativeSize(context, AppConfig.borderRadiusFactorMedium)),
+                  border: Border.all(
+                    color: Colors.white,
+                    width: ScreenUtils.relativeSize(context, AppConfig.borderWidthFactorSmall * 2),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.4),
+                      blurRadius: 8,
+                      spreadRadius: 2,
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.touch_app,
+                      color: Colors.white,
+                      size: ScreenUtils.relativeSize(context, 0.04),
+                    ),
+                    SizedBox(width: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall)),
+                    Flexible(
+                      child: Text(
+                        'Tap product cards to buy items for your warehouse!',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: ScreenUtils.relativeFontSize(
+                            context,
+                            AppConfig.fontSizeFactorSmall,
+                            min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
+                            max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+                          ),
+                          fontWeight: FontWeight.bold,
+                          shadows: [
+                            Shadow(
+                              color: Colors.black.withValues(alpha: 0.6),
+                              blurRadius: 2,
+                            ),
+                          ],
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           // Market Product List
           SliverList(
             delegate: SliverChildBuilderDelegate(
               (context, index) {
                 final product = Product.values[index];
-                return MarketProductCard(product: product);
+                final isFirstProduct = index == 0;
+                return Stack(
+                  children: [
+                    MarketProductCard(
+                      product: product,
+                      onProductTapped: _showTutorial ? () => _markTutorialAsSeen() : null,
+                    ),
+                    // Blinking circle indicator on first product (first time only)
+                    if (_showTutorial && isFirstProduct)
+                      Positioned.fill(
+                        child: AnimatedBuilder(
+                          animation: _flashAnimation,
+                          builder: (context, child) {
+                            final flashAlpha = _flashAnimation.value;
+                            final screenWidth = MediaQuery.of(context).size.width;
+                            final cardHeight = ScreenUtils.relativeSize(context, 0.15);
+                            
+                            return Center(
+                              child: IgnorePointer(
+                                child: Container(
+                                  width: screenWidth * 0.9,
+                                  height: cardHeight * 1.2,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(
+                                      ScreenUtils.relativeSize(context, AppConfig.borderRadiusFactorMedium),
+                                    ),
+                                    border: Border.all(
+                                      color: Colors.blue.withValues(alpha: flashAlpha),
+                                      width: 4.0,
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.blue.withValues(alpha: 0.5 * flashAlpha),
+                                        blurRadius: 12.0 * flashAlpha,
+                                        spreadRadius: 2.0 * flashAlpha,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                  ],
+                );
               },
               childCount: Product.values.length,
             ),

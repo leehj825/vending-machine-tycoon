@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:audioplayers/audioplayers.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../config.dart';
 
 /// Service for managing game audio (sound effects and background music)
@@ -13,6 +14,43 @@ class SoundService {
   
   SoundService._internal() {
     _initAudioContext();
+    _loadVolumeSettings();
+  }
+  
+  /// Load volume settings from SharedPreferences
+  Future<void> _loadVolumeSettings() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      
+      // Load sound volume multiplier (default to config value if not set)
+      final savedSoundVolume = prefs.getDouble('sound_volume_multiplier');
+      if (savedSoundVolume != null) {
+        _soundVolumeMultiplier = savedSoundVolume.clamp(0.0, 1.0);
+      }
+      
+      // Load music volume multiplier (default to config value if not set)
+      final savedMusicVolume = prefs.getDouble('music_volume_multiplier');
+      if (savedMusicVolume != null) {
+        _musicVolumeMultiplier = savedMusicVolume.clamp(0.0, 1.0);
+      }
+      
+      print('🔊 Loaded volume settings: Sound=${_soundVolumeMultiplier.toStringAsFixed(2)}, Music=${_musicVolumeMultiplier.toStringAsFixed(2)}');
+    } catch (e) {
+      print('⚠️ Error loading volume settings: $e');
+      // Continue with default values if loading fails
+    }
+  }
+  
+  /// Save volume settings to SharedPreferences
+  Future<void> _saveVolumeSettings() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setDouble('sound_volume_multiplier', _soundVolumeMultiplier);
+      await prefs.setDouble('music_volume_multiplier', _musicVolumeMultiplier);
+      print('💾 Saved volume settings: Sound=${_soundVolumeMultiplier.toStringAsFixed(2)}, Music=${_musicVolumeMultiplier.toStringAsFixed(2)}');
+    } catch (e) {
+      print('⚠️ Error saving volume settings: $e');
+    }
   }
 
   final AudioPlayer _backgroundMusicPlayer = AudioPlayer();
@@ -124,12 +162,14 @@ class SoundService {
   /// This multiplier applies to all sound effects
   void setSoundVolumeMultiplier(double multiplier) {
     _soundVolumeMultiplier = multiplier.clamp(0.0, 1.0);
+    _saveVolumeSettings(); // Save to SharedPreferences
   }
   
   /// Set music volume multiplier (0.0 to 1.0)
   /// This multiplier applies to all background music
   void setMusicVolumeMultiplier(double multiplier) {
     _musicVolumeMultiplier = multiplier.clamp(0.0, 1.0);
+    _saveVolumeSettings(); // Save to SharedPreferences
     // Update current music volume if music is playing
     if (_currentMusicPath != null) {
       final baseVolume = _currentMusicPath!.contains('game_background') ? _gameBackgroundVolume : _musicVolume;
