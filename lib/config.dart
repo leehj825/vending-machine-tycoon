@@ -251,11 +251,11 @@ class AppConfig {
   static const double statusCardHeightRatio = 0.75; // Height ratio relative to card width (decreased to maintain same height)
   
   /// Status card icon settings - Removed min/max duplicates
-  static const double statusCardIconSizeFactor = 0.60; // Icon size factor relative to card width
-  static const double statusCardIconTopPositionFactor = 0.05; // Icon top position as factor of card height (relative to card height)
+  static const double statusCardIconSizeFactor = 0.50; // Icon size factor relative to card width
+  static const double statusCardIconTopPositionFactor = 0.1; // Icon top position as factor of card height (relative to card height)
   
   /// Status card text settings
-  static const double statusCardTextSizeFactor = 0.030; // Text font size factor (relative to smaller screen dimension)
+  static const double statusCardTextSizeFactor = 0.025; // Text font size factor (relative to smaller screen dimension)
   static const double statusCardTextBottomPositionFactor = 0.05; // Text bottom position as factor of card height (relative to card height)
   
   /// Status card padding and spacing - Removed min/max duplicates
