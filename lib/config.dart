@@ -501,7 +501,7 @@ class AppConfig {
   static const double wrongWayPenalty = 10.0;
   
   /// Movement speed
-  static const double movementSpeed = 0.1;
+  static const double movementSpeed = 0.15; // Increased from 0.1 to 0.15 (50% faster)
   
   // ============================================================================
   // CITY MAP CONSTANTS
@@ -523,8 +523,8 @@ class AppConfig {
   static const double warehouseScale = 0.70;
   
   /// Building block sizes
-  static const int minBlockSize = 3;
-  static const int maxBlockSize = 4;
+  static const int minBlockSize = 2;
+  static const int maxBlockSize = 3;
   
   /// Map padding factors (relative to map dimensions)
   static const double mapSidePaddingFactor = 0.1;    // 10% of map width (100px on 1000px map)
@@ -595,7 +595,7 @@ class AppConfig {
   static const double mapHeight = 1000.0;
   
   static const double worldScale = 100.0;
-  static const double truckSpeed = 50.0; // Pixels per second
+  static const double truckSpeed = 75.0; // Pixels per second (increased from 50.0 to 75.0 - 50% faster)
   static const double arrivalThreshold = 2.0;
   static const double blinkSpeed = 2.0; // Blinks per second
 }

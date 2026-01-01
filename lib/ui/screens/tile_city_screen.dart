@@ -138,6 +138,8 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
   int? _warehouseY;
   
   late TransformationController _transformationController;
+  bool _isPanning = false;
+  Timer? _panEndTimer;
   
   // Debounce tracking
   DateTime? _lastTapTime;
@@ -160,6 +162,9 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
     super.initState();
     // Initialize with a zoomed-in view (scale 1.5)
     _transformationController = TransformationController();
+    
+    // Listen to transformation changes to detect panning
+    _transformationController.addListener(_onTransformationChanged);
     
     // Initialize map immediately - check if map state exists in saved game, otherwise generate new map
     final gameState = ref.read(gameControllerProvider);
@@ -269,9 +274,30 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
 
   @override
   void dispose() {
+    _transformationController.removeListener(_onTransformationChanged);
     _transformationController.dispose();
     _pedestrianUpdateTimer?.cancel();
+    _panEndTimer?.cancel();
     super.dispose();
+  }
+  
+  void _onTransformationChanged() {
+    // Detect if transformation is changing (panning/zooming)
+    if (!_isPanning) {
+      setState(() {
+        _isPanning = true;
+      });
+    }
+    
+    // Reset timer - if no changes for 200ms, consider panning stopped
+    _panEndTimer?.cancel();
+    _panEndTimer = Timer(const Duration(milliseconds: 200), () {
+      if (mounted && _isPanning) {
+        setState(() {
+          _isPanning = false;
+        });
+      }
+    });
   }
 
   void _generateMap() {
@@ -465,7 +491,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
       for (int startX = 0; startX < gridSize; startX++) {
         for (int blockWidth = minBlockSize; blockWidth <= maxBlockSize; blockWidth++) {
           for (int blockHeight = minBlockSize; blockHeight <= maxBlockSize; blockHeight++) {
-            // Allow 3x3 and 3x4 blocks (removed the restriction)
+            if (blockWidth == 3 && blockHeight == 3) continue;
             if (_canPlaceBlock(startX, startY, blockWidth, blockHeight)) {
               validBlocks.add({
                 'x': startX, 'y': startY, 'width': blockWidth, 'height': blockHeight,
@@ -798,8 +824,8 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
                   clipBehavior: Clip.none,
                   children: [
                     ...components['tiles']!,
-                    // Buttons on top
-                    ...components['buttons']!,
+                    // Buttons on top (hidden during panning)
+                    if (!_isPanning) ...components['buttons']!,
                   ],
                 ),
               ),
