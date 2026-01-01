@@ -15,7 +15,8 @@ T _$identity<T>(T value) => value;
 mixin _$InventoryItem {
 
  Product get product; int get quantity; int get dayAdded;// Game day when item was added
- double get salesProgress;
+ double get salesProgress;// Accumulator for customer interest (0.0 to 1.0+)
+ int get allocation;
 /// Create a copy of InventoryItem
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -26,16 +27,16 @@ $InventoryItemCopyWith<InventoryItem> get copyWith => _$InventoryItemCopyWithImp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is InventoryItem&&(identical(other.product, product) || other.product == product)&&(identical(other.quantity, quantity) || other.quantity == quantity)&&(identical(other.dayAdded, dayAdded) || other.dayAdded == dayAdded)&&(identical(other.salesProgress, salesProgress) || other.salesProgress == salesProgress));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is InventoryItem&&(identical(other.product, product) || other.product == product)&&(identical(other.quantity, quantity) || other.quantity == quantity)&&(identical(other.dayAdded, dayAdded) || other.dayAdded == dayAdded)&&(identical(other.salesProgress, salesProgress) || other.salesProgress == salesProgress)&&(identical(other.allocation, allocation) || other.allocation == allocation));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,product,quantity,dayAdded,salesProgress);
+int get hashCode => Object.hash(runtimeType,product,quantity,dayAdded,salesProgress,allocation);
 
 @override
 String toString() {
-  return 'InventoryItem(product: $product, quantity: $quantity, dayAdded: $dayAdded, salesProgress: $salesProgress)';
+  return 'InventoryItem(product: $product, quantity: $quantity, dayAdded: $dayAdded, salesProgress: $salesProgress, allocation: $allocation)';
 }
 
 
@@ -46,7 +47,7 @@ abstract mixin class $InventoryItemCopyWith<$Res>  {
   factory $InventoryItemCopyWith(InventoryItem value, $Res Function(InventoryItem) _then) = _$InventoryItemCopyWithImpl;
 @useResult
 $Res call({
- Product product, int quantity, int dayAdded, double salesProgress
+ Product product, int quantity, int dayAdded, double salesProgress, int allocation
 });
 
 
@@ -63,13 +64,14 @@ class _$InventoryItemCopyWithImpl<$Res>
 
 /// Create a copy of InventoryItem
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? product = null,Object? quantity = null,Object? dayAdded = null,Object? salesProgress = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? product = null,Object? quantity = null,Object? dayAdded = null,Object? salesProgress = null,Object? allocation = null,}) {
   return _then(_self.copyWith(
 product: null == product ? _self.product : product // ignore: cast_nullable_to_non_nullable
 as Product,quantity: null == quantity ? _self.quantity : quantity // ignore: cast_nullable_to_non_nullable
 as int,dayAdded: null == dayAdded ? _self.dayAdded : dayAdded // ignore: cast_nullable_to_non_nullable
 as int,salesProgress: null == salesProgress ? _self.salesProgress : salesProgress // ignore: cast_nullable_to_non_nullable
-as double,
+as double,allocation: null == allocation ? _self.allocation : allocation // ignore: cast_nullable_to_non_nullable
+as int,
   ));
 }
 
@@ -154,10 +156,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( Product product,  int quantity,  int dayAdded,  double salesProgress)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( Product product,  int quantity,  int dayAdded,  double salesProgress,  int allocation)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _InventoryItem() when $default != null:
-return $default(_that.product,_that.quantity,_that.dayAdded,_that.salesProgress);case _:
+return $default(_that.product,_that.quantity,_that.dayAdded,_that.salesProgress,_that.allocation);case _:
   return orElse();
 
 }
@@ -175,10 +177,10 @@ return $default(_that.product,_that.quantity,_that.dayAdded,_that.salesProgress)
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( Product product,  int quantity,  int dayAdded,  double salesProgress)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( Product product,  int quantity,  int dayAdded,  double salesProgress,  int allocation)  $default,) {final _that = this;
 switch (_that) {
 case _InventoryItem():
-return $default(_that.product,_that.quantity,_that.dayAdded,_that.salesProgress);case _:
+return $default(_that.product,_that.quantity,_that.dayAdded,_that.salesProgress,_that.allocation);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -195,10 +197,10 @@ return $default(_that.product,_that.quantity,_that.dayAdded,_that.salesProgress)
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( Product product,  int quantity,  int dayAdded,  double salesProgress)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( Product product,  int quantity,  int dayAdded,  double salesProgress,  int allocation)?  $default,) {final _that = this;
 switch (_that) {
 case _InventoryItem() when $default != null:
-return $default(_that.product,_that.quantity,_that.dayAdded,_that.salesProgress);case _:
+return $default(_that.product,_that.quantity,_that.dayAdded,_that.salesProgress,_that.allocation);case _:
   return null;
 
 }
@@ -210,7 +212,7 @@ return $default(_that.product,_that.quantity,_that.dayAdded,_that.salesProgress)
 
 
 class _InventoryItem extends InventoryItem {
-  const _InventoryItem({required this.product, required this.quantity, required this.dayAdded, this.salesProgress = 0.0}): super._();
+  const _InventoryItem({required this.product, required this.quantity, required this.dayAdded, this.salesProgress = 0.0, this.allocation = 20}): super._();
   
 
 @override final  Product product;
@@ -218,6 +220,8 @@ class _InventoryItem extends InventoryItem {
 @override final  int dayAdded;
 // Game day when item was added
 @override@JsonKey() final  double salesProgress;
+// Accumulator for customer interest (0.0 to 1.0+)
+@override@JsonKey() final  int allocation;
 
 /// Create a copy of InventoryItem
 /// with the given fields replaced by the non-null parameter values.
@@ -229,16 +233,16 @@ _$InventoryItemCopyWith<_InventoryItem> get copyWith => __$InventoryItemCopyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _InventoryItem&&(identical(other.product, product) || other.product == product)&&(identical(other.quantity, quantity) || other.quantity == quantity)&&(identical(other.dayAdded, dayAdded) || other.dayAdded == dayAdded)&&(identical(other.salesProgress, salesProgress) || other.salesProgress == salesProgress));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _InventoryItem&&(identical(other.product, product) || other.product == product)&&(identical(other.quantity, quantity) || other.quantity == quantity)&&(identical(other.dayAdded, dayAdded) || other.dayAdded == dayAdded)&&(identical(other.salesProgress, salesProgress) || other.salesProgress == salesProgress)&&(identical(other.allocation, allocation) || other.allocation == allocation));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,product,quantity,dayAdded,salesProgress);
+int get hashCode => Object.hash(runtimeType,product,quantity,dayAdded,salesProgress,allocation);
 
 @override
 String toString() {
-  return 'InventoryItem(product: $product, quantity: $quantity, dayAdded: $dayAdded, salesProgress: $salesProgress)';
+  return 'InventoryItem(product: $product, quantity: $quantity, dayAdded: $dayAdded, salesProgress: $salesProgress, allocation: $allocation)';
 }
 
 
@@ -249,7 +253,7 @@ abstract mixin class _$InventoryItemCopyWith<$Res> implements $InventoryItemCopy
   factory _$InventoryItemCopyWith(_InventoryItem value, $Res Function(_InventoryItem) _then) = __$InventoryItemCopyWithImpl;
 @override @useResult
 $Res call({
- Product product, int quantity, int dayAdded, double salesProgress
+ Product product, int quantity, int dayAdded, double salesProgress, int allocation
 });
 
 
@@ -266,13 +270,14 @@ class __$InventoryItemCopyWithImpl<$Res>
 
 /// Create a copy of InventoryItem
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? product = null,Object? quantity = null,Object? dayAdded = null,Object? salesProgress = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? product = null,Object? quantity = null,Object? dayAdded = null,Object? salesProgress = null,Object? allocation = null,}) {
   return _then(_InventoryItem(
 product: null == product ? _self.product : product // ignore: cast_nullable_to_non_nullable
 as Product,quantity: null == quantity ? _self.quantity : quantity // ignore: cast_nullable_to_non_nullable
 as int,dayAdded: null == dayAdded ? _self.dayAdded : dayAdded // ignore: cast_nullable_to_non_nullable
 as int,salesProgress: null == salesProgress ? _self.salesProgress : salesProgress // ignore: cast_nullable_to_non_nullable
-as double,
+as double,allocation: null == allocation ? _self.allocation : allocation // ignore: cast_nullable_to_non_nullable
+as int,
   ));
 }
 
