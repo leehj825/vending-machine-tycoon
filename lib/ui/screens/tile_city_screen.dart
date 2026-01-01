@@ -113,7 +113,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
   double _getRoadTileOffsetX(BuildContext context) {
     // Adjust this value to shift road tiles horizontally
     // Positive = move right, Negative = move left
-    return 11; // No offset by default
+    return 13; // No offset by default
   }
   
   double _getRoadTileOffsetY(BuildContext context) {
@@ -141,21 +141,38 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
   static const double parkScale = AppConfig.parkScale;
   static const double houseScale = AppConfig.houseScale;
   static const double warehouseScale = AppConfig.warehouseScale;
+  static const double subwayScale = AppConfig.subwayScale;
+  static const double universityScale = AppConfig.universityScale;
+  static const double hospitalScale = AppConfig.hospitalScale;
+  
+  static const double schoolVerticalOffset = AppConfig.schoolVerticalOffset;
+  static const double subwayVerticalOffset = AppConfig.subwayVerticalOffset;
+  static const double hospitalVerticalOffset = AppConfig.hospitalVerticalOffset;
+  static const double universityVerticalOffset = AppConfig.universityVerticalOffset;
   
   double _getWarehouseVerticalOffset(BuildContext context) {
     return ScreenUtils.relativeSize(context, 0.007);
   }
 
   double _getSpecialBuildingVerticalOffset(BuildContext context, TileType tileType) {
-    // Hospital, subway, and university tiles need to be moved up a bit
-    if (tileType == TileType.hospital || tileType == TileType.subway || tileType == TileType.university) {
-      return ScreenUtils.relativeSize(context, 0.007); // Adjust this value to move up more/less
-    }
+    // Each building type has its own vertical offset
+    switch (tileType) {
+      case TileType.school:
+        return ScreenUtils.relativeSize(context, schoolVerticalOffset);
+      case TileType.subway:
+        return ScreenUtils.relativeSize(context, subwayVerticalOffset);
+      case TileType.hospital:
+        return ScreenUtils.relativeSize(context, hospitalVerticalOffset);
+      case TileType.university:
+        return ScreenUtils.relativeSize(context, universityVerticalOffset);
+      default:
     return 0.0;
+    }
   }
   
   static const int minBlockSize = AppConfig.minBlockSize;
   static const int maxBlockSize = AppConfig.maxBlockSize;
+  static const double stopProbability = 0.3; // Chance to stop splitting early (creates large grass areas for buildings)
   
   late List<List<TileType>> _grid;
   late List<List<RoadDirection?>> _roadDirections;
@@ -348,9 +365,8 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
       (_) => List.filled(gridSize, null),
     );
 
-    _generateRoadGrid();
-    _placeWarehouse();
-    _placeBuildingBlocks();
+    _loadMap();
+    _placeBuildings();
     
     // Update valid roads in simulation engine
     _updateValidRoads();
@@ -381,303 +397,388 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
     }
   }
 
-  void _generateRoadGrid() {
-    final random = math.Random();
-    
-    // Clear grid: Start with all tiles as grass
+  // A 15x15 map with 3 main loops and edge connections. 
+  // No dead ends inside the map.
+  // R = Road, . = Grass (Valid spot for buildings), X = Grass (Reserved/Decor)
+  static const List<String> _naturalRoadMap = [
+    "R...R......R...", // Exits North
+    "R...R......R...",
+    "RRRRRRRRRRRRRRR", // North Artery
+    "..R.......R....",
+    "..R.......R....",
+    ".RRRRRRRRRRRRR.", // Middle Loop Top
+    ".R......R....R.",
+    ".R...RRRRR...R.", // Inner Square
+    ".R...R...R...R.",
+    ".R...RRRRR...R.",
+    ".R....R......R.",
+    ".RRRRRRRRRRRRR.", // Middle Loop Bottom
+    "....R.....R....",
+    "RRRRRRRRRRRRRRR", // South Artery
+    "....R.....R....", // Exits South
+  ];
+
+  /// Load the fixed natural road map layout
+  void _loadMap() {
+    // Initialize grid to grass
     for (int y = 0; y < gridSize; y++) {
       for (int x = 0; x < gridSize; x++) {
         _grid[y][x] = TileType.grass;
       }
     }
-    
-    // Step 1: Main Horizontal Arteries (Edge-to-Edge)
-    // Generate 2-3 horizontal roads that run the full width of the map
-    final numHorizontalRoads = 2 + random.nextInt(2); // 2 or 3 roads
-    final horizontalRoads = <int>[];
-    final usedY = <int>{};
-    
-    for (int i = 0; i < numHorizontalRoads; i++) {
-      int attempts = 0;
-      int y;
-      do {
-        // Avoid edges (y=0 and y=gridSize-1) and ensure spacing
-        y = 2 + random.nextInt(gridSize - 4);
-        attempts++;
-      } while (attempts < 50 && (usedY.contains(y) || 
-             usedY.any((used) => (y - used).abs() < 3)));
-      
-      if (attempts < 50) {
-        horizontalRoads.add(y);
-        usedY.add(y);
-        // Draw full-width horizontal road
-        for (int x = 0; x < gridSize; x++) {
-          _grid[y][x] = TileType.road;
+
+    // Parse the natural road map layout
+    for (int y = 0; y < gridSize && y < _naturalRoadMap.length; y++) {
+      final row = _naturalRoadMap[y];
+      for (int x = 0; x < gridSize && x < row.length; x++) {
+        final char = row[x];
+        
+        switch (char) {
+          case 'R':
+            _grid[y][x] = TileType.road;
+            break;
+          case '.':
+          case 'X':
+            // Both . and X are grass (X is reserved/decor but can be used if needed)
+            _grid[y][x] = TileType.grass;
+            break;
+          default:
+            _grid[y][x] = TileType.grass;
+            break;
         }
       }
     }
-    
-    // Step 2: Main Vertical Arteries (Edge-to-Edge)
-    // Generate 2-3 vertical roads that run the full height of the map
-    final numVerticalRoads = 2 + random.nextInt(2); // 2 or 3 roads
-    final verticalRoads = <int>[];
-    final usedX = <int>{};
-    
-    for (int i = 0; i < numVerticalRoads; i++) {
-      int attempts = 0;
-      int x;
-      do {
-        // Avoid edges (x=0 and x=gridSize-1) and ensure spacing
-        x = 2 + random.nextInt(gridSize - 4);
-        attempts++;
-      } while (attempts < 50 && (usedX.contains(x) || 
-             usedX.any((used) => (x - used).abs() < 3)));
-      
-      if (attempts < 50) {
-        verticalRoads.add(x);
-        usedX.add(x);
-        // Draw full-height vertical road
-        for (int y = 0; y < gridSize; y++) {
-          _grid[y][x] = TileType.road;
-        }
-      }
-    }
-    
-    // Step 3: Secondary Connectors (Road-to-Road)
-    // Add internal roads that connect existing roads
-    const minSegmentLength = 3;
-    const maxConnectorAttempts = 8;
-    
-    for (int attempt = 0; attempt < maxConnectorAttempts; attempt++) {
-      // Find all existing road tiles
-      final roadTiles = <List<int>>[];
-      for (int y = 0; y < gridSize; y++) {
-        for (int x = 0; x < gridSize; x++) {
-          if (_grid[y][x] == TileType.road) {
-            roadTiles.add([x, y]);
-          }
-        }
-      }
-      
-      if (roadTiles.isEmpty) break;
-      
-      // Pick a random start point on an existing road
-      final startPoint = roadTiles[random.nextInt(roadTiles.length)];
-      final startX = startPoint[0];
-      final startY = startPoint[1];
-      
-      // Pick a perpendicular direction (horizontal or vertical)
-      final isHorizontal = random.nextBool();
-      
-      if (isHorizontal) {
-        // Extend horizontally (left or right)
-        final goRight = random.nextBool();
-        final path = <int>[];
-        int currentX = startX;
-        
-        // Extend in the chosen direction until we hit another road or map edge
-        while (true) {
-          // Move to next position
-          currentX += goRight ? 1 : -1;
-          
-          // Check bounds
-          if (currentX < 0 || currentX >= gridSize) {
-            // Hit map edge - valid end point
-            break;
-          }
-          
-          // Check if we hit another road (this is a valid connection)
-          if (_grid[startY][currentX] == TileType.road) {
-            // We've connected to another road - valid end point
-            break;
-          }
-          
-          // Add this position to the path
-          path.add(currentX);
-        }
-        
-        // Only create the road if it's long enough
-        if (path.length >= minSegmentLength) {
-          for (final x in path) {
-            if (_grid[startY][x] == TileType.grass) {
-              _grid[startY][x] = TileType.road;
-            }
-          }
-        }
-      } else {
-        // Extend vertically (up or down)
-        final goDown = random.nextBool();
-        final path = <int>[];
-        int currentY = startY;
-        
-        // Extend in the chosen direction until we hit another road or map edge
-        while (true) {
-          // Move to next position
-          currentY += goDown ? 1 : -1;
-          
-          // Check bounds
-          if (currentY < 0 || currentY >= gridSize) {
-            // Hit map edge - valid end point
-            break;
-          }
-          
-          // Check if we hit another road (this is a valid connection)
-          if (_grid[currentY][startX] == TileType.road) {
-            // We've connected to another road - valid end point
-            break;
-          }
-          
-          // Add this position to the path
-          path.add(currentY);
-        }
-        
-        // Only create the road if it's long enough
-        if (path.length >= minSegmentLength) {
-          for (final y in path) {
-            if (_grid[y][startX] == TileType.grass) {
-              _grid[y][startX] = TileType.road;
-            }
-          }
-        }
-      }
-    }
-    
+
+    // Update bitmasks for road rendering
     _updateRoadDirections();
   }
+
+  /// Helper function to calculate distance between two points
+  double _distance(int x1, int y1, int x2, int y2) {
+    final dx = x2 - x1;
+    final dy = y2 - y1;
+    return math.sqrt(dx * dx + dy * dy);
+  }
   
-  /// Connect all road ends in the middle of the map to other roads using 90-degree turns
-  void _connectRoadEnds() {
-    final centerX = gridSize ~/ 2;
-    final centerY = gridSize ~/ 2;
-    final centerRadius = gridSize ~/ 3; // Only connect ends in the central area
+  /// Helper function to find the best spot that's far from existing buildings of the SAME type
+  List<int>? _findSpreadOutSpot(
+    List<List<int>> availableSpots,
+    Map<TileType, List<List<int>>> buildingsByType,
+    TileType buildingType,
+    double minDistance,
+    math.Random random,
+  ) {
+    if (availableSpots.isEmpty) return null;
     
-    // Find all road ends in the middle of the map
-    final roadEnds = <List<int>>[];
+    // Get only buildings of the same type
+    final sameTypeBuildings = buildingsByType[buildingType] ?? [];
+    
+    // If no buildings of this type exist yet, just pick a random spot
+    if (sameTypeBuildings.isEmpty) {
+      availableSpots.shuffle(random);
+      return availableSpots[0];
+    }
+    
+    // Shuffle to add randomness
+    final shuffled = List<List<int>>.from(availableSpots);
+    shuffled.shuffle(random);
+    
+    // Try to find a spot that's at least minDistance away from all buildings of the same type
+    for (final spot in shuffled) {
+      bool tooClose = false;
+      for (final building in sameTypeBuildings) {
+        final dist = _distance(spot[0], spot[1], building[0], building[1]);
+        if (dist < minDistance) {
+          tooClose = true;
+          break;
+        }
+      }
+      if (!tooClose) {
+        return spot;
+      }
+    }
+    
+    // If no spot meets the distance requirement, find the one that's farthest from same-type buildings
+    List<int>? bestSpot;
+    double maxMinDistance = -1;
+    for (final spot in shuffled) {
+      double minDistToAnyBuilding = double.infinity;
+      for (final building in sameTypeBuildings) {
+        final dist = _distance(spot[0], spot[1], building[0], building[1]);
+        if (dist < minDistToAnyBuilding) {
+          minDistToAnyBuilding = dist;
+        }
+      }
+      if (minDistToAnyBuilding > maxMinDistance) {
+        maxMinDistance = minDistToAnyBuilding;
+        bestSpot = spot;
+      }
+    }
+    
+    return bestSpot ?? shuffled[0];
+  }
+
+  /// Place buildings randomly on grass tiles adjacent to roads, spread out evenly
+  void _placeBuildings() {
+    final random = math.Random();
+    
+    // Step A: Find Valid Spots (grass tiles adjacent to at least one road)
+    final validSpots = <List<int>>[];
+    final northSpots = <List<int>>[]; // Spots in top rows (for gas stations)
+    final southSpots = <List<int>>[]; // Spots in bottom rows (for gas stations)
+    final otherSpots = <List<int>>[]; // Other spots (for other buildings)
+    
     for (int y = 0; y < gridSize; y++) {
       for (int x = 0; x < gridSize; x++) {
-        if (_grid[y][x] == TileType.road) {
-          // Check if this is a road end (has exactly 1 road neighbor)
-          final neighbors = _countRoadNeighbors(x, y);
-          if (neighbors == 1) {
-            // Only connect if it's in the central area
-            final distFromCenter = math.sqrt(
-              math.pow(x - centerX, 2) + math.pow(y - centerY, 2)
-            );
-            if (distFromCenter < centerRadius) {
-              roadEnds.add([x, y]);
+        if (_grid[y][x] == TileType.grass) {
+          // Check if at least one neighbor is a road
+          bool hasRoadNeighbor = false;
+          if (y > 0 && _grid[y - 1][x] == TileType.road) hasRoadNeighbor = true;
+          if (y < gridSize - 1 && _grid[y + 1][x] == TileType.road) hasRoadNeighbor = true;
+          if (x > 0 && _grid[y][x - 1] == TileType.road) hasRoadNeighbor = true;
+          if (x < gridSize - 1 && _grid[y][x + 1] == TileType.road) hasRoadNeighbor = true;
+          
+          if (hasRoadNeighbor) {
+            validSpots.add([x, y]);
+            // Categorize spots for gas station placement
+            if (y < 3) {
+              // Top 3 rows - north area
+              northSpots.add([x, y]);
+            } else if (y >= gridSize - 3) {
+              // Bottom 3 rows - south area
+              southSpots.add([x, y]);
+            } else {
+              // Middle area
+              otherSpots.add([x, y]);
             }
           }
         }
       }
     }
     
-    // Connect each road end to the nearest road
-    for (final end in roadEnds) {
-      final endX = end[0];
-      final endY = end[1];
-      
-      // Find the direction of the road (where the neighbor is)
-      int roadDirX = 0, roadDirY = 0;
-      if (endY > 0 && _grid[endY - 1][endX] == TileType.road) {
-        roadDirY = -1; // Road comes from North
-      } else if (endY < gridSize - 1 && _grid[endY + 1][endX] == TileType.road) {
-        roadDirY = 1; // Road comes from South
-      } else if (endX > 0 && _grid[endY][endX - 1] == TileType.road) {
-        roadDirX = -1; // Road comes from West
-      } else if (endX < gridSize - 1 && _grid[endY][endX + 1] == TileType.road) {
-        roadDirX = 1; // Road comes from East
+    // Track buildings by type for distance checking (only same-type buildings need spacing)
+    final buildingsByType = <TileType, List<List<int>>>{};
+    final minDistance = 2.5; // Minimum distance between buildings of the SAME type (in grid units)
+    
+    // Helper to add a building to the tracking map
+    void addBuilding(TileType type, List<int> spot) {
+      if (!buildingsByType.containsKey(type)) {
+        buildingsByType[type] = [];
       }
+      buildingsByType[type]!.add(spot);
+    }
+    
+    // Step B: Place Items (in specific order with strict counts, spread out)
+    
+    // Warehouse: Exactly 1 (Critical - place first, near center if possible)
+    if (validSpots.isNotEmpty) {
+      // Prefer center area for warehouse
+      final centerSpots = validSpots.where((spot) {
+        final centerX = gridSize ~/ 2;
+        final centerY = gridSize ~/ 2;
+        final dist = _distance(spot[0], spot[1], centerX, centerY);
+        return dist < gridSize / 3;
+      }).toList();
       
-      // Find the nearest road in perpendicular directions
-      int bestX = -1, bestY = -1;
-      double bestDist = double.infinity;
+      final spot = centerSpots.isNotEmpty 
+          ? centerSpots[random.nextInt(centerSpots.length)]
+          : validSpots[random.nextInt(validSpots.length)];
       
-      // Search in perpendicular directions (90-degree turns)
-      final searchDirections = <List<int>>[];
-      if (roadDirX != 0) {
-        // Road is horizontal, search vertically
-        searchDirections.addAll([[0, -1], [0, 1]]);
-      } else if (roadDirY != 0) {
-        // Road is vertical, search horizontally
-        searchDirections.addAll([[-1, 0], [1, 0]]);
-      }
-      
-      for (final dir in searchDirections) {
-        final dirX = dir[0];
-        final dirY = dir[1];
+      _grid[spot[1]][spot[0]] = TileType.warehouse;
+      _warehouseX = spot[0];
+      _warehouseY = spot[1];
+      _updateWarehouseRoadPosition();
+      addBuilding(TileType.warehouse, spot);
+      validSpots.remove(spot);
+      otherSpots.remove(spot);
+      northSpots.remove(spot);
+      southSpots.remove(spot);
+    }
+    
+    // Gas Stations: Exactly 2 - Place far north and south, spread out from each other
+    if (northSpots.isNotEmpty) {
+      final spot = _findSpreadOutSpot(northSpots, buildingsByType, TileType.gasStation, minDistance, random) ?? northSpots[0];
+      _grid[spot[1]][spot[0]] = TileType.gasStation;
+      addBuilding(TileType.gasStation, spot);
+      validSpots.remove(spot);
+      otherSpots.remove(spot);
+      northSpots.remove(spot);
+    }
+    if (southSpots.isNotEmpty) {
+      final spot = _findSpreadOutSpot(southSpots, buildingsByType, TileType.gasStation, minDistance, random) ?? southSpots[0];
+      _grid[spot[1]][spot[0]] = TileType.gasStation;
+      addBuilding(TileType.gasStation, spot);
+      validSpots.remove(spot);
+      otherSpots.remove(spot);
+      southSpots.remove(spot);
+    }
+    
+    // Machine Locations: Exactly 4 of EACH type (Shop, Office, School, Gym, Hospital, University, Subway)
+    final machineTypes = [
+      TileType.shop,
+      TileType.office,
+      TileType.school,
+      TileType.gym,
+      TileType.hospital,
+      TileType.university,
+      TileType.subway,
+    ];
+    
+    // Place 4 of each machine type, spread out from each other (but can be next to different types)
+    // Use ALL valid spots (including outer areas) to avoid clustering around loops
+    for (final machineType in machineTypes) {
+      for (int i = 0; i < 4; i++) {
+        // Use all valid spots across the entire map, not just middle area
+        final spot = _findSpreadOutSpot(validSpots, buildingsByType, machineType, minDistance, random);
         
-        // Search in this direction for a road
-        for (int dist = 1; dist < gridSize ~/ 2; dist++) {
-          final checkX = endX + dirX * dist;
-          final checkY = endY + dirY * dist;
-          
-          if (checkX < 0 || checkX >= gridSize || checkY < 0 || checkY >= gridSize) {
-            break;
-          }
-          
-          if (_grid[checkY][checkX] == TileType.road) {
-            final distance = dist.toDouble();
-            if (distance < bestDist) {
-              bestDist = distance;
-              bestX = checkX;
-              bestY = checkY;
-            }
-            break; // Found a road, stop searching in this direction
+        if (spot != null) {
+          _grid[spot[1]][spot[0]] = machineType;
+          addBuilding(machineType, spot);
+          validSpots.remove(spot);
+          otherSpots.remove(spot);
+          northSpots.remove(spot);
+          southSpots.remove(spot);
+        }
+      }
+    }
+    
+    // Houses: Up to 6, spread out from each other - use all valid spots
+    for (int i = 0; i < 6; i++) {
+      final spot = _findSpreadOutSpot(validSpots, buildingsByType, TileType.house, minDistance, random);
+      
+      if (spot != null) {
+        _grid[spot[1]][spot[0]] = TileType.house;
+        addBuilding(TileType.house, spot);
+        validSpots.remove(spot);
+        otherSpots.remove(spot);
+        northSpots.remove(spot);
+        southSpots.remove(spot);
+      }
+    }
+    
+    // Parks: Up to 6, spread out from each other - use all valid spots
+    for (int i = 0; i < 6; i++) {
+      final spot = _findSpreadOutSpot(validSpots, buildingsByType, TileType.park, minDistance, random);
+      
+      if (spot != null) {
+        _grid[spot[1]][spot[0]] = TileType.park;
+        addBuilding(TileType.park, spot);
+        validSpots.remove(spot);
+        otherSpots.remove(spot);
+        northSpots.remove(spot);
+        southSpots.remove(spot);
+      }
+    }
+    
+    // Remaining spots: Leave as Grass (TileType.grass) - already set
+  }
+
+  void _generateRoadGrid() {
+    final random = math.Random();
+
+    // 1. Clear Grid
+      for (int y = 0; y < gridSize; y++) {
+      for (int x = 0; x < gridSize; x++) {
+        _grid[y][x] = TileType.grass;
+      }
+    }
+
+    // 2. Recursive Division (Main Network)
+    // Start with the full map area
+    _splitRect(0, 0, gridSize, gridSize, random);
+
+    // 3. Smart Exits (Connect Borders to Network with Guaranteed Connectivity)
+    // Add 1-2 exits on the West (Left) and South (Bottom) edges
+    final numExits = 2; 
+    
+    // West Exits (Connect Left -> Right)
+    for (int i = 0; i < numExits; i++) {
+      int exitY = 2 + random.nextInt(gridSize - 4); // Avoid corners
+      
+      // Find the nearest existing road to connect to
+      int nearestRoadX = -1;
+      int minDistance = gridSize;
+      for (int x = 1; x < gridSize; x++) {
+        if (_grid[exitY][x] == TileType.road) {
+          int distance = x;
+          if (distance < minDistance) {
+            minDistance = distance;
+            nearestRoadX = x;
           }
         }
       }
       
-      // Connect the road end to the nearest road with a 90-degree turn
-      if (bestX != -1 && bestY != -1 && bestDist < gridSize ~/ 3) {
-        // Determine the turn direction
-        final turnDirX = (bestX - endX).sign;
-        final turnDirY = (bestY - endY).sign;
-        
-        // Create the connecting path (L-shaped with 90-degree turn)
-        if (roadDirX != 0) {
-          // Road is horizontal, turn vertically first (perpendicular)
-          // Choose the direction that gets us closer to the target
-          final turnY = endY + turnDirY;
-          if (turnY >= 0 && turnY < gridSize) {
-            // First segment: vertical turn
-            if (_grid[turnY][endX] == TileType.grass) {
-              _grid[turnY][endX] = TileType.road;
-            }
-            
-            // Second segment: horizontal connection to target
-            final startX = math.min(endX, bestX);
-            final endXCoord = math.max(endX, bestX);
-            for (int x = startX; x <= endXCoord; x++) {
-              if (x >= 0 && x < gridSize && turnY >= 0 && turnY < gridSize) {
-                if (_grid[turnY][x] == TileType.grass) {
-                  _grid[turnY][x] = TileType.road;
-                }
-              }
-            }
-          }
-        } else if (roadDirY != 0) {
-          // Road is vertical, turn horizontally first (perpendicular)
-          // Choose the direction that gets us closer to the target
-          final turnX = endX + turnDirX;
-          if (turnX >= 0 && turnX < gridSize) {
-            // First segment: horizontal turn
-            if (_grid[endY][turnX] == TileType.grass) {
-              _grid[endY][turnX] = TileType.road;
-            }
-            
-            // Second segment: vertical connection to target
-            final startY = math.min(endY, bestY);
-            final endYCoord = math.max(endY, bestY);
-            for (int y = startY; y <= endYCoord; y++) {
-              if (y >= 0 && y < gridSize && turnX >= 0 && turnX < gridSize) {
-                if (_grid[y][turnX] == TileType.grass) {
-                  _grid[y][turnX] = TileType.road;
-                }
-              }
-            }
+      // Draw road from x=0 inwards until we hit the nearest road
+      final targetX = nearestRoadX > 0 ? nearestRoadX : gridSize ~/ 2; // Fallback to center if no road found
+      for (int x = 0; x <= targetX; x++) {
+        _grid[exitY][x] = TileType.road;
+      }
+    }
+
+    // South Exits (Connect Bottom -> Top)
+    for (int i = 0; i < numExits; i++) {
+      int exitX = 2 + random.nextInt(gridSize - 4); // Avoid corners
+      
+      // Find the nearest existing road to connect to
+      int nearestRoadY = -1;
+      int minDistance = gridSize;
+      for (int y = 0; y < gridSize - 1; y++) {
+        if (_grid[y][exitX] == TileType.road) {
+          int distance = (gridSize - 1) - y;
+          if (distance < minDistance) {
+            minDistance = distance;
+            nearestRoadY = y;
           }
         }
       }
+      
+      // Draw road from y=gridSize-1 upwards until we hit the nearest road
+      final targetY = nearestRoadY >= 0 ? nearestRoadY : gridSize ~/ 2; // Fallback to center if no road found
+      for (int y = gridSize - 1; y >= targetY; y--) {
+        _grid[y][exitX] = TileType.road;
+      }
+    }
+
+    // 4. Update Bitmasks
+    _updateRoadDirections();
+  }
+
+  void _splitRect(int x, int y, int width, int height, math.Random random) {
+    // Stop if block is too small
+    if (width <= minBlockSize * 2 || height <= minBlockSize * 2) return;
+    
+    // Chance to stop early (creates large city blocks/parks)
+    if (random.nextDouble() < stopProbability) return;
+
+    // Determine split direction (favor splitting the longer dimension)
+    bool splitVertically = width > height;
+    if (width == height) splitVertically = random.nextBool();
+
+    if (splitVertically) {
+      // Split Vertically (Draw Vertical Line)
+      // Pick split point with padding
+      final splitX = x + minBlockSize + random.nextInt(width - 2 * minBlockSize);
+      
+      // Draw the road
+      for (int i = y; i < y + height; i++) {
+        _grid[i][splitX] = TileType.road;
+      }
+      
+      // Recurse Left and Right
+      _splitRect(x, y, splitX - x, height, random);
+      _splitRect(splitX + 1, y, width - (splitX + 1 - x), height, random);
+    } else {
+      // Split Horizontally (Draw Horizontal Line)
+      final splitY = y + minBlockSize + random.nextInt(height - 2 * minBlockSize);
+      
+      // Draw the road
+      for (int i = x; i < x + width; i++) {
+        _grid[splitY][i] = TileType.road;
+      }
+      
+      // Recurse Top and Bottom
+      _splitRect(x, y, width, splitY - y, random);
+      _splitRect(x, splitY + 1, width, height - (splitY + 1 - y), random);
     }
   }
   
@@ -792,10 +893,11 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
     }
   }
 
-  /// Calculate neighbor bitmask for road tile
+  /// Calculate neighbor bitmask for road tile with safe boundary checks
   /// North (Y-1): Bit 1, East (X+1): Bit 2, South (Y+1): Bit 4, West (X-1): Bit 8
   int _calculateRoadMask(int x, int y) {
     int mask = 0;
+    // Safe boundary checks to prevent "Elbow in T-Junction" bugs
     if (y > 0 && _grid[y - 1][x] == TileType.road) mask |= 1; // North
     if (x < gridSize - 1 && _grid[y][x + 1] == TileType.road) mask |= 2; // East
     if (y < gridSize - 1 && _grid[y + 1][x] == TileType.road) mask |= 4; // South
@@ -810,60 +912,63 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
   ({int row, int col, bool flipHorizontal, bool flipVertical}) _getRoadTileIndex(int x, int y) {
     final mask = _calculateRoadMask(x, y);
     
-    // Strict bitmask lookup table - NO vertical flipping, fallback to straights for missing corners
+    // Exact lookup table matching road_tiles_all.png sprite sheet
+    // R0, C0: Elbow SE (Sharp), R0, C1: T-Junction SEN (Right), R0, C2: Elbow SW, R0, C3: Elbow SE (Rounded)
+    // R1, C0: T-Junction WNE (Up), R1, C1: Straight V, R1, C2: Straight H, R1, C3: Cross
     switch (mask) {
-      // 1. Straight Roads (Cleanest Fallback)
+      // Straight Roads
       case 5: // S+N (South + North) - Straight V
-        return (row: 1, col: 1, flipHorizontal: false, flipVertical: false); // Straight V (Row 1, Col 1)
+        return (row: 1, col: 1, flipHorizontal: false, flipVertical: false);
       
       case 10: // W+E (West + East) - Straight H
-        return (row: 1, col: 2, flipHorizontal: false, flipVertical: false); // Straight H (Row 1, Col 2)
+        return (row: 1, col: 2, flipHorizontal: false, flipVertical: false);
       
-      // Dead Ends - Map to closest Straight
-      case 0: // No connections - fallback to Straight V
-      case 1: // N only - fallback to Straight V
-      case 4: // S only - fallback to Straight V
+      // Dead Ends - Map to respective Straight orientation
+      case 0: // No connections
+      case 1: // N only
+      case 4: // S only
         return (row: 1, col: 1, flipHorizontal: false, flipVertical: false); // Straight V
       
-      case 2: // E only - fallback to Straight H
-      case 8: // W only - fallback to Straight H
+      case 2: // E only
+      case 8: // W only
         return (row: 1, col: 2, flipHorizontal: false, flipVertical: false); // Straight H
       
-      // 2. South Corners (Available Sprites)
-      case 6: // S+E (South + East) - Elbow SE
-        return (row: 0, col: 0, flipHorizontal: false, flipVertical: false); // Elbow SE (Row 0, Col 0)
+      // Corners
+      case 6: // S+E (South + East) - Sharp Elbow SE - Row 0, Col 0
+        return (row: 0, col: 0, flipHorizontal: false, flipVertical: false);
       
       case 12: // S+W (South + West) - Elbow SW
-        return (row: 0, col: 2, flipHorizontal: false, flipVertical: false); // Elbow SW (Row 0, Col 2)
+        return (row: 0, col: 2, flipHorizontal: false, flipVertical: false);
       
-      // 3. North Corners (Missing Sprites & No Vertical Flip - Fallback to Straight)
-      case 3: // N+E (North + East) - Cannot make with horizontal flip, fallback to Straight V
-        return (row: 1, col: 1, flipHorizontal: false, flipVertical: false); // Straight V fallback
+      // North Corners (No Vertical Flip allowed - Use flipped South corners)
+      case 3: // N+E (North + East) - Use Elbow SW (Row 0, Col 2) flipped horizontally
+        return (row: 0, col: 2, flipHorizontal: true, flipVertical: false);
       
-      case 9: // N+W (North + West) - Cannot make with horizontal flip, fallback to Straight V
-        return (row: 1, col: 1, flipHorizontal: false, flipVertical: false); // Straight V fallback
+      case 9: // N+W (North + West) - Rounded Elbow SE - Row 0, Col 3
+        return (row: 0, col: 3, flipHorizontal: false, flipVertical: false);
       
-      // 4. T-Junctions (Horizontal Flip Allowed)
-      case 7: // S+E+N (South + East + North) - T-Junction SEN
-        return (row: 0, col: 1, flipHorizontal: false, flipVertical: false); // T-Junction SEN (Row 0, Col 1)
+      // T-Junctions (NEVER fall back to elbows)
+      case 7: // S+E+N (South + East + North) - T-Junction SEN (Right) - NO FLIP
+        return (row: 0, col: 1, flipHorizontal: false, flipVertical: false);
       
-      case 11: // W+N+E (West + North + East) - T-Junction WNE
-        return (row: 1, col: 0, flipHorizontal: false, flipVertical: false); // T-Junction WNE (Row 1, Col 0)
+      case 11: // W+N+E (West + North + East) - T-Junction WNE (Up) - NO FLIP
+        return (row: 1, col: 0, flipHorizontal: false, flipVertical: false);
       
-      case 13: // N+W+S (North + West + South) - T-Junction SEN with FLIP HORIZONTAL
-        // Logic: S stays S, N stays N, E becomes W. Result: S+W+N. Correct.
-        return (row: 0, col: 1, flipHorizontal: true, flipVertical: false); // T-Junction SEN, FLIP X
+      case 13: // N+W+S (North + West + South) - T-Junction SEN with FLIP HORIZONTAL (Left)
+        // SEN (Right) flipped horizontally -> S stays S, N stays N, E becomes W. Result: S+W+N. Correct.
+        return (row: 0, col: 1, flipHorizontal: true, flipVertical: false);
       
-      case 14: // S+W+E (South + West + East) - Fallback to Round Curve
-        return (row: 0, col: 3, flipHorizontal: false, flipVertical: false); // Round Curve (Row 0, Col 3)
+      case 14: // S+W+E (South + West + East) - T-Junction SEN with FLIP HORIZONTAL (Down)
+        // Use T-Junction SEN (Row 0, Col 1) flipped horizontally to create Down-pointing T
+        return (row: 0, col: 1, flipHorizontal: true, flipVertical: false);
       
-      // 5. Intersections
+      // Intersection
       case 15: // All 4 directions - Cross
-        return (row: 1, col: 3, flipHorizontal: false, flipVertical: false); // Cross (Row 1, Col 3)
+        return (row: 1, col: 3, flipHorizontal: false, flipVertical: false);
       
-      // Fallback - default to horizontal straight (should not happen with valid masks 0-15)
+      // Fallback
       default:
-        return (row: 1, col: 2, flipHorizontal: false, flipVertical: false); // Straight H as fallback
+        return (row: 1, col: 1, flipHorizontal: false, flipVertical: false); // Straight V
     }
   }
 
@@ -1144,6 +1249,9 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
       case TileType.park: return parkScale;
       case TileType.house: return houseScale;
       case TileType.warehouse: return warehouseScale;
+      case TileType.subway: return subwayScale;
+      case TileType.university: return universityScale;
+      case TileType.hospital: return hospitalScale;
       default: return buildingScale;
     }
   }
@@ -1277,37 +1385,99 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
   Map<String, List<Widget>> _buildMapComponents(BuildContext context, Offset centerOffset, double tileWidth, double tileHeight, double buildingImageHeight) {
     final warehouseVerticalOffset = _getWarehouseVerticalOffset(context);
     
-    // Two-Layer Rendering System:
-    // Layer 1: Ground tiles (Grass/Road) - rendered first, always behind everything
+    // Three-Layer Rendering System:
+    // Layer 1: Ground tiles (Grass/Road) - rendered first, sorted by depth, cached to prevent re-rendering
+    //   - Grass tiles rendered under buildings and for empty grass spots
+    //   - Road tiles rendered where roads exist
+    //   - Both sorted by depth (x + y) so deeper tiles render first
     // Layer 2: Objects (Buildings, Pedestrians, Trucks, Machines) - sorted by depth
-    final groundTiles = <Widget>[];
+    final groundTileItems = <Map<String, dynamic>>[];
     final objectItems = <Map<String, dynamic>>[];
     
-    // 1. Iterate through the grid and separate ground tiles from buildings
+    // Collect all ground tiles with depth information for sorting
+    for (int y = 0; y < gridSize; y++) {
+      for (int x = 0; x < gridSize; x++) {
+        final screenPos = _gridToScreen(context, x, y);
+        final tileType = _grid[y][x];
+        final depth = x + y;
+        
+        // Render grass under buildings (not under roads)
+        if (tileType != TileType.road && tileType != TileType.grass) {
+          final grassWidget = _buildSingleTileWidget(
+            context, x, y, TileType.grass, null, _buildingOrientations[y][x],
+            screenPos.dx + centerOffset.dx, screenPos.dy + centerOffset.dy,
+            tileWidth, tileHeight, buildingImageHeight, warehouseVerticalOffset
+          );
+          groundTileItems.add({
+            'depth': depth,
+            'y': y,
+            'widget': grassWidget,
+          });
+        }
+        
+        // Render grass for empty grass spots
+        if (tileType == TileType.grass) {
+          final grassWidget = _buildSingleTileWidget(
+            context, x, y, TileType.grass, null, _buildingOrientations[y][x],
+            screenPos.dx + centerOffset.dx, screenPos.dy + centerOffset.dy,
+            tileWidth, tileHeight, buildingImageHeight, warehouseVerticalOffset
+          );
+          groundTileItems.add({
+            'depth': depth,
+            'y': y,
+            'widget': grassWidget,
+          });
+        }
+        
+        // Render roads
+        if (tileType == TileType.road) {
+          final roadWidget = _buildSingleTileWidget(
+            context, x, y, TileType.road, _roadDirections[y][x], _buildingOrientations[y][x],
+            screenPos.dx + centerOffset.dx, screenPos.dy + centerOffset.dy,
+            tileWidth, tileHeight, buildingImageHeight, warehouseVerticalOffset
+          );
+          groundTileItems.add({
+            'depth': depth,
+            'y': y,
+            'widget': roadWidget,
+          });
+        }
+      }
+    }
+    
+    // Sort ground tiles by depth (deeper tiles render first/behind)
+    groundTileItems.sort((a, b) {
+      final depthA = (a['depth'] as int?) ?? 0;
+      final depthB = (b['depth'] as int?) ?? 0;
+      if (depthA != depthB) return depthA.compareTo(depthB);
+      // Secondary sort by Y coordinate
+      final yA = (a['y'] as int?) ?? 0;
+      final yB = (b['y'] as int?) ?? 0;
+      return yA.compareTo(yB);
+    });
+    
+    // Build ground tiles list from sorted items
+    final groundTiles = groundTileItems.map((item) => item['widget'] as Widget).toList();
+    
+    // 4. Fourth pass: Render buildings on top of grass
     for (int y = 0; y < gridSize; y++) {
       for (int x = 0; x < gridSize; x++) {
         final screenPos = _gridToScreen(context, x, y);
         final tileType = _grid[y][x];
         
-        // Build the tile widget
-        final tileWidget = _buildSingleTileWidget(
-          context, x, y, tileType, _roadDirections[y][x], _buildingOrientations[y][x],
-          screenPos.dx + centerOffset.dx, screenPos.dy + centerOffset.dy,
-          tileWidth, tileHeight, buildingImageHeight, warehouseVerticalOffset
-        );
-        
-        // Separate ground tiles from buildings
-        if (tileType == TileType.grass || tileType == TileType.road) {
-          // Ground tiles: Add directly to groundTiles (no sorting needed)
-          groundTiles.add(tileWidget);
-        } else {
-          // Buildings: Add to objectItems for depth sorting
+        // Only render buildings (not grass or road)
+        if (tileType != TileType.grass && tileType != TileType.road) {
+          final buildingWidget = _buildSingleTileWidget(
+            context, x, y, tileType, _roadDirections[y][x], _buildingOrientations[y][x],
+            screenPos.dx + centerOffset.dx, screenPos.dy + centerOffset.dy,
+            tileWidth, tileHeight, buildingImageHeight, warehouseVerticalOffset
+          );
           objectItems.add({
             'type': 'building',
             'depth': x + y,
             'y': y,
             'priority': 3, // Buildings have Priority 3 (drawn last at same depth)
-            'widget': tileWidget,
+            'widget': buildingWidget,
           });
         }
       }
@@ -1389,9 +1559,15 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
       machineWidgets.add(machineWidget);
     }
     
-    // 8. Combine ground tiles, objects, and machines into final tiles list
+    // 8. Wrap ground tiles in RepaintBoundary to prevent re-rendering when buildings change
     // Ground tiles render first (behind), then objects, then machines (always on top)
-    final tiles = <Widget>[...groundTiles, ...objects, ...machineWidgets];
+    final cachedGroundLayer = RepaintBoundary(
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: groundTiles,
+      ),
+    );
+    final tiles = <Widget>[cachedGroundLayer, ...objects, ...machineWidgets];
     
     // 7. Build purchase buttons (separate from depth sorting, rendered on top)
     final buttons = <Widget>[];
@@ -2905,26 +3081,26 @@ class _MachineStatusSection extends ConsumerWidget {
                           },
                           padding: EdgeInsets.all(dialogWidth * 0.01),
                           constraints: BoxConstraints(),
+                    ),
+                    Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: dialogWidth * AppConfig.machineStatusDialogStockItemBadgePaddingHorizontalFactor,
+                        vertical: dialogWidth * AppConfig.machineStatusDialogStockItemBadgePaddingVerticalFactor,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade50,
+                        borderRadius: BorderRadius.circular(
+                          dialogWidth * AppConfig.machineStatusDialogStockItemBadgeBorderRadiusFactor,
                         ),
-                        Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: dialogWidth * AppConfig.machineStatusDialogStockItemBadgePaddingHorizontalFactor,
-                            vertical: dialogWidth * AppConfig.machineStatusDialogStockItemBadgePaddingVerticalFactor,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.blue.shade50,
-                            borderRadius: BorderRadius.circular(
-                              dialogWidth * AppConfig.machineStatusDialogStockItemBadgeBorderRadiusFactor,
-                            ),
-                          ),
-                          child: Text(
+                      ),
+                      child: Text(
                             '${item.allocation}',
-                            style: TextStyle(
-                              fontSize: dialogWidth * AppConfig.machineStatusDialogStockItemBadgeFontSizeFactor,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.blue.shade900,
-                            ),
-                          ),
+                        style: TextStyle(
+                          fontSize: dialogWidth * AppConfig.machineStatusDialogStockItemBadgeFontSizeFactor,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue.shade900,
+                        ),
+                      ),
                         ),
                         IconButton(
                           icon: Icon(Icons.add, size: dialogWidth * 0.04),
@@ -2955,18 +3131,18 @@ class _MachineStatusSection extends ConsumerWidget {
                 SizedBox(height: dialogWidth * AppConfig.machineStatusDialogStockItemPaddingFactor * 0.5),
                 // Customer Interest Progress Bar (only show if item has quantity > 0)
                 if (item.quantity > 0)
-                  LinearProgressIndicator(
-                    value: item.customerInterest,
-                    backgroundColor: Colors.grey[200],
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      item.customerInterest > 0.7 
-                        ? Colors.green 
-                        : item.customerInterest > 0.4 
-                          ? Colors.orange 
-                          : Colors.blue,
-                    ),
-                    minHeight: dialogWidth * 0.008,
+                LinearProgressIndicator(
+                  value: item.customerInterest,
+                  backgroundColor: Colors.grey[200],
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    item.customerInterest > 0.7 
+                      ? Colors.green 
+                      : item.customerInterest > 0.4 
+                        ? Colors.orange 
+                        : Colors.blue,
                   ),
+                  minHeight: dialogWidth * 0.008,
+                ),
               ],
             ),
           );
