@@ -202,7 +202,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
   // Pedestrian management
   final List<_PedestrianState> _pedestrians = [];
   Timer? _pedestrianUpdateTimer;
-  final Set<int> _usedPersonIds = {}; // Track which personIds are currently in use
+  final Map<int, int> _personIdCounts = {}; // Track count of each personId (max 2 per personId)
   final math.Random _pedestrianRandom = math.Random();
 
   @override
@@ -245,7 +245,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
       }
       
       // Spawn pedestrians (clear used IDs first)
-      _usedPersonIds.clear();
+      _personIdCounts.clear();
       _pedestrians.clear();
       _spawnPedestrians();
       
@@ -1405,9 +1405,9 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
         if (tileType != TileType.road && tileType != TileType.grass) {
           final grassWidget = _buildSingleTileWidget(
             context, x, y, TileType.grass, null, _buildingOrientations[y][x],
-            screenPos.dx + centerOffset.dx, screenPos.dy + centerOffset.dy,
-            tileWidth, tileHeight, buildingImageHeight, warehouseVerticalOffset
-          );
+          screenPos.dx + centerOffset.dx, screenPos.dy + centerOffset.dy,
+          tileWidth, tileHeight, buildingImageHeight, warehouseVerticalOffset
+        );
           groundTileItems.add({
             'depth': depth,
             'y': y,
@@ -2121,58 +2121,114 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
 
   // --- PEDESTRIAN MANAGEMENT ---
   
-  /// Spawn random number (1-10) of pedestrians with unique personIds next to buildings
+  /// Spawn random number (1-20) of pedestrians, allowing up to 2 of the same personId (not at same block)
   void _spawnPedestrians() {
     // Find all road tiles that are next to buildings
     final validTiles = _findRoadTilesNextToBuildings();
     
     if (validTiles.isEmpty) return;
     
-    // Spawn random number of pedestrians (1-10)
-    final numToSpawn = _pedestrianRandom.nextInt(10) + 1; // 1 to 10
+    // Spawn random number of pedestrians (1-20)
+    final numToSpawn = _pedestrianRandom.nextInt(20) + 1; // 1 to 20
     
-    // Get available personIds (0-9) that are not currently in use
-    final availablePersonIds = List.generate(10, (i) => i).where((id) => !_usedPersonIds.contains(id)).toList();
+    // Get available personIds (0-9) that have less than 2 instances
+    final availablePersonIds = List.generate(10, (i) => i).where((id) => 
+      (_personIdCounts[id] ?? 0) < 2
+    ).toList();
     
-    // Shuffle and take only what we need
+    // Track occupied grid positions to prevent same personId at same block
+    final occupiedPositions = <String>{}; // Format: "x,y"
+    
+    // Shuffle available personIds for variety
     availablePersonIds.shuffle(_pedestrianRandom);
-    final personIdsToUse = availablePersonIds.take(numToSpawn).toList();
     
-    // If we don't have enough unique IDs, use what we have
-    for (int i = 0; i < personIdsToUse.length && i < numToSpawn; i++) {
-      final personId = personIdsToUse[i];
-      final validTile = validTiles[_pedestrianRandom.nextInt(validTiles.length)];
+    int spawned = 0;
+    int attempts = 0;
+    const maxAttempts = 100; // Prevent infinite loop
+    
+    while (spawned < numToSpawn && attempts < maxAttempts) {
+      attempts++;
+      
+      // Get a personId (can reuse if count < 2)
+      if (availablePersonIds.isEmpty) break;
+      final personId = availablePersonIds[_pedestrianRandom.nextInt(availablePersonIds.length)];
+      
+      // Find a valid tile that's not occupied by the same personId
+      final availableTiles = validTiles.where((tile) {
+        final posKey = '${tile.x},${tile.y}';
+        // Check if this position is already occupied by the same personId
+        return !occupiedPositions.contains(posKey) || 
+               !_pedestrians.any((p) => p.personId == personId && 
+                                        p.gridX.floor() == tile.x && 
+                                        p.gridY.floor() == tile.y);
+      }).toList();
+      
+      if (availableTiles.isEmpty) {
+        // No available tiles for this personId, try next
+        continue;
+      }
+      
+      final validTile = availableTiles[_pedestrianRandom.nextInt(availableTiles.length)];
+      final posKey = '${validTile.x},${validTile.y}';
       
       _pedestrians.add(_PedestrianState(
         personId: personId,
         gridX: validTile.x.toDouble(),
         gridY: validTile.y.toDouble(),
       ));
-      _usedPersonIds.add(personId);
+      
+      // Update count
+      _personIdCounts[personId] = (_personIdCounts[personId] ?? 0) + 1;
+      
+      // Mark position as occupied by this personId
+      occupiedPositions.add(posKey);
+      
+      spawned++;
+      
+      // Remove personId from available list if we've reached max (2)
+      if (_personIdCounts[personId]! >= 2) {
+        availablePersonIds.remove(personId);
+      }
     }
   }
   
   /// Spawn a single pedestrian at a random road tile next to a building
+  /// Allows up to 2 of the same personId, but not at the same block
   void _spawnSinglePedestrian() {
     // Find all road tiles that are next to buildings
     final validTiles = _findRoadTilesNextToBuildings();
     
     if (validTiles.isEmpty) return;
     
-    // Get available personIds that are not currently in use
-    final availablePersonIds = List.generate(10, (i) => i).where((id) => !_usedPersonIds.contains(id)).toList();
+    // Get available personIds that have less than 2 instances
+    final availablePersonIds = List.generate(10, (i) => i).where((id) => 
+      (_personIdCounts[id] ?? 0) < 2
+    ).toList();
     
-    if (availablePersonIds.isEmpty) return; // All personIds are in use
+    if (availablePersonIds.isEmpty) return; // All personIds are at max (2 each)
     
     final personId = availablePersonIds[_pedestrianRandom.nextInt(availablePersonIds.length)];
-    final validTile = validTiles[_pedestrianRandom.nextInt(validTiles.length)];
+    
+    // Find a valid tile that's not occupied by the same personId
+    final availableTiles = validTiles.where((tile) {
+      // Check if this position is already occupied by the same personId
+      return !_pedestrians.any((p) => p.personId == personId && 
+                                      p.gridX.floor() == tile.x && 
+                                      p.gridY.floor() == tile.y);
+    }).toList();
+    
+    if (availableTiles.isEmpty) return; // No available positions for this personId
+    
+    final validTile = availableTiles[_pedestrianRandom.nextInt(availableTiles.length)];
     
     _pedestrians.add(_PedestrianState(
       personId: personId,
       gridX: validTile.x.toDouble(),
       gridY: validTile.y.toDouble(),
     ));
-    _usedPersonIds.add(personId);
+    
+    // Update count
+    _personIdCounts[personId] = (_personIdCounts[personId] ?? 0) + 1;
   }
   
   /// Check if a tile type is a building or house
@@ -2254,11 +2310,15 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
     
     for (final pedestrian in pedestriansToRemove) {
       _pedestrians.remove(pedestrian);
-      _usedPersonIds.remove(pedestrian.personId);
+      // Decrement count instead of removing
+      final count = _personIdCounts[pedestrian.personId] ?? 0;
+      if (count > 0) {
+        _personIdCounts[pedestrian.personId] = count - 1;
+      }
     }
     
-    // Randomly spawn new pedestrians if we have available personIds
-    if (_pedestrians.length < 10 && _pedestrianRandom.nextDouble() < 0.01) { // 1% chance per update
+    // Randomly spawn new pedestrians if we have available personIds (max 20 pedestrians)
+    if (_pedestrians.length < 20 && _pedestrianRandom.nextDouble() < 0.01) { // 1% chance per update
       _spawnSinglePedestrian();
     }
     

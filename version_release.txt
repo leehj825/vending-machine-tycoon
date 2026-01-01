@@ -5,13 +5,11 @@ Version 1.1.8
 -------------
 Release Date: [To be filled]
 ## Bug Fixes
-- Fixed machine purchasing limit - increased from 2 to 4 machines per type
-- Fixed fleet management stops list - now scrollable when many stops are added
+- Various bug fixes and improvements
 
 ## New Features
-- **User-Defined Stock Allocations**: Inventory management now uses customizable allocation targets per product instead of fixed limits
-- **Allocation Controls**: Added [-] and [+] buttons to adjust stock allocation targets for each product
-- **Smart Restocking**: Trucks now respect user-defined allocation targets when restocking machines
+- **User-Defined Stock Allocations**: Customizable allocation targets per product with [-] and [+] controls
+- **Smart Restocking**: Trucks respect user-defined allocation targets
 
 ---
 
