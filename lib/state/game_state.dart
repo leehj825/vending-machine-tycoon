@@ -30,6 +30,13 @@ abstract class GlobalGameState with _$GlobalGameState {
     @Default(1.0) double rushMultiplier, // Sales multiplier during Rush Hour (default 1.0, 10.0 during rush)
     @Default(null) int? marketingButtonGridX, // Marketing button grid X position (0-9)
     @Default(null) int? marketingButtonGridY, // Marketing button grid Y position (0-9)
+    // Tutorial flags - saved with game state
+    @Default(false) bool hasSeenPedestrianTapTutorial,
+    @Default(false) bool hasSeenBuyTruckTutorial,
+    @Default(false) bool hasSeenTruckTutorial,
+    @Default(false) bool hasSeenGoStockTutorial,
+    @Default(false) bool hasSeenMarketTutorial,
+    @Default(false) bool hasSeenMoneyExtractionTutorial,
   }) = _GlobalGameState;
 
   const GlobalGameState._();

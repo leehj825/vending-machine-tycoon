@@ -37,6 +37,7 @@ abstract class Truck with _$Truck {
     /// Current index in the path
     @Default(0) int pathIndex,
     @Default({}) Map<Product, int> inventory,
+    @Default(false) bool hasDriver, // Whether truck has a driver for auto-restock
   }) = _Truck;
 
   const Truck._();

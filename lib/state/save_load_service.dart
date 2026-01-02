@@ -221,6 +221,21 @@ class SaveLoadService {
       'warehouseRoadX': state.warehouseRoadX,
       'warehouseRoadY': state.warehouseRoadY,
       'cityMapState': state.cityMapState?.toJson(),
+      'dailyRevenueHistory': state.dailyRevenueHistory,
+      'currentDayRevenue': state.currentDayRevenue,
+      'productSalesCount': state.productSalesCount.map((key, value) => MapEntry(key.name, value)),
+      'hypeLevel': state.hypeLevel,
+      'isRushHour': state.isRushHour,
+      'rushMultiplier': state.rushMultiplier,
+      'marketingButtonGridX': state.marketingButtonGridX,
+      'marketingButtonGridY': state.marketingButtonGridY,
+      // Tutorial flags
+      'hasSeenPedestrianTapTutorial': state.hasSeenPedestrianTapTutorial,
+      'hasSeenBuyTruckTutorial': state.hasSeenBuyTruckTutorial,
+      'hasSeenTruckTutorial': state.hasSeenTruckTutorial,
+      'hasSeenGoStockTutorial': state.hasSeenGoStockTutorial,
+      'hasSeenMarketTutorial': state.hasSeenMarketTutorial,
+      'hasSeenMoneyExtractionTutorial': state.hasSeenMoneyExtractionTutorial,
     };
     return jsonEncode(map);
   }
@@ -268,6 +283,28 @@ class SaveLoadService {
         cityMapState: gameStateMap['cityMapState'] != null
             ? CityMapState.fromJson(gameStateMap['cityMapState'] as Map<String, dynamic>)
             : null,
+        dailyRevenueHistory: gameStateMap['dailyRevenueHistory'] != null
+            ? List<double>.from((gameStateMap['dailyRevenueHistory'] as List).map((e) => (e as num).toDouble()))
+            : [],
+        currentDayRevenue: (gameStateMap['currentDayRevenue'] as num?)?.toDouble() ?? 0.0,
+        productSalesCount: gameStateMap['productSalesCount'] != null
+            ? (gameStateMap['productSalesCount'] as Map<String, dynamic>).map((key, value) {
+                final product = Product.values.firstWhere((p) => p.name == key, orElse: () => Product.values.first);
+                return MapEntry(product, value as int);
+              })
+            : {},
+        hypeLevel: (gameStateMap['hypeLevel'] as num?)?.toDouble() ?? 0.0,
+        isRushHour: gameStateMap['isRushHour'] as bool? ?? false,
+        rushMultiplier: (gameStateMap['rushMultiplier'] as num?)?.toDouble() ?? 1.0,
+        marketingButtonGridX: gameStateMap['marketingButtonGridX'] as int?,
+        marketingButtonGridY: gameStateMap['marketingButtonGridY'] as int?,
+        // Tutorial flags (default to false for backward compatibility with old saves)
+        hasSeenPedestrianTapTutorial: gameStateMap['hasSeenPedestrianTapTutorial'] as bool? ?? false,
+        hasSeenBuyTruckTutorial: gameStateMap['hasSeenBuyTruckTutorial'] as bool? ?? false,
+        hasSeenTruckTutorial: gameStateMap['hasSeenTruckTutorial'] as bool? ?? false,
+        hasSeenGoStockTutorial: gameStateMap['hasSeenGoStockTutorial'] as bool? ?? false,
+        hasSeenMarketTutorial: gameStateMap['hasSeenMarketTutorial'] as bool? ?? false,
+        hasSeenMoneyExtractionTutorial: gameStateMap['hasSeenMoneyExtractionTutorial'] as bool? ?? false,
       );
     } catch (e) {
       print('Error deserializing game state: $e');

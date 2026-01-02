@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../simulation/models/product.dart';
 import '../../simulation/models/truck.dart';
 import '../../state/providers.dart';
@@ -42,13 +41,12 @@ class _WarehouseScreenState extends ConsumerState<WarehouseScreen> with TickerPr
   }
   
   /// Check if this is the first time opening market with cash
-  Future<void> _checkFirstTimeWithCash() async {
+  void _checkFirstTimeWithCash() {
     final gameState = ref.read(gameStateProvider);
     // Only show tutorial if cash is available
     if (gameState.cash <= 0) return;
     
-    final prefs = await SharedPreferences.getInstance();
-    final hasSeenTutorial = prefs.getBool('has_seen_market_tutorial') ?? false;
+    final hasSeenTutorial = gameState.hasSeenMarketTutorial;
     
     if (!hasSeenTutorial) {
       if (mounted) {
@@ -61,9 +59,9 @@ class _WarehouseScreenState extends ConsumerState<WarehouseScreen> with TickerPr
   }
   
   /// Mark the tutorial as seen
-  Future<void> _markTutorialAsSeen() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('has_seen_market_tutorial', true);
+  void _markTutorialAsSeen() {
+    final controller = ref.read(gameControllerProvider.notifier);
+    controller.state = controller.state.copyWith(hasSeenMarketTutorial: true);
     if (mounted) {
       setState(() {
         _showTutorial = false;

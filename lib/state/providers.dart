@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart' show StateNotifierProvider, StateProvider;
 import 'package:state_notifier/state_notifier.dart';
 import 'package:uuid/uuid.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../config.dart';
 import '../simulation/engine.dart';
 import '../simulation/models/product.dart';
@@ -64,6 +63,7 @@ class GameController extends StateNotifier<GlobalGameState> {
           initialTrucks: [],
           initialCash: 2000.0,
           initialReputation: 100,
+          initialWarehouse: const Warehouse(),
         ),
         super(const GlobalGameState(
           cash: 2000.0, // Starting cash: $2000
@@ -299,6 +299,12 @@ class GameController extends StateNotifier<GlobalGameState> {
         updatedCurrentDayRevenue = revenueThisTick;
       }
       
+      // Process pending messages from engine (e.g., auto-restock errors)
+      final pendingMessages = simulationEngine.getAndClearPendingMessages();
+      for (final message in pendingMessages) {
+        state = state.addLogMessage(message);
+      }
+
       state = state.copyWith(
         machines: simState.machines,
         trucks: updatedTrucks,
@@ -309,7 +315,8 @@ class GameController extends StateNotifier<GlobalGameState> {
         dailyRevenueHistory: updatedDailyRevenueHistory,
         currentDayRevenue: updatedCurrentDayRevenue,
         productSalesCount: updatedProductSales,
-        // Warehouse and logs are managed locally by Controller, so we don't overwrite them
+        warehouse: simState.warehouse, // Sync warehouse from engine (for auto-restock)
+        // Logs are managed locally by Controller, so we don't overwrite them
       );
     });
   }
@@ -497,14 +504,16 @@ class GameController extends StateNotifier<GlobalGameState> {
     final newCashAmount = state.cash - totalPrice;
     
     // Update the STATE object completely
+    final newWarehouse = state.warehouse.copyWith(inventory: newInventory);
     state = state.copyWith(
       cash: state.cash - totalPrice,
-      warehouse: state.warehouse.copyWith(inventory: newInventory),
+      warehouse: newWarehouse,
     );
     state = state.addLogMessage("Bought $quantity ${product.name}");
     
-    // Sync cash to simulation engine to prevent reversion on next tick
+    // Sync cash and warehouse to simulation engine to prevent reversion on next tick
     simulationEngine.updateCash(newCashAmount);
+    simulationEngine.updateWarehouse(newWarehouse);
   }
 
   /// Assign a route to a truck
@@ -706,6 +715,7 @@ class GameController extends StateNotifier<GlobalGameState> {
     
     // Sync to simulation engine to prevent reversion on next tick
     simulationEngine.updateTrucks(updatedTrucks);
+    simulationEngine.updateWarehouse(newWarehouse);
   }
 
   /// Get the current truck price based on number of trucks owned
@@ -755,6 +765,30 @@ class GameController extends StateNotifier<GlobalGameState> {
     simulationEngine.updateCash(newCash);
   }
 
+  /// Hire or fire a driver for a truck
+  void hireDriver(String truckId, bool hasDriver) {
+    final truckIndex = state.trucks.indexWhere((t) => t.id == truckId);
+    if (truckIndex == -1) {
+      state = state.addLogMessage('Truck not found');
+      return;
+    }
+
+    final truck = state.trucks[truckIndex];
+    final updatedTruck = truck.copyWith(hasDriver: hasDriver);
+    final updatedTrucks = [...state.trucks];
+    updatedTrucks[truckIndex] = updatedTruck;
+
+    state = state.copyWith(trucks: updatedTrucks);
+    state = state.addLogMessage(
+      hasDriver 
+        ? 'Hired driver for ${truck.name} (Auto-restock enabled)'
+        : 'Fired driver from ${truck.name} (Auto-restock disabled)',
+    );
+
+    // Sync to simulation engine
+    simulationEngine.updateTrucks(updatedTrucks);
+  }
+
   /// Get current machines list
   List<Machine> get machines => state.machines;
 
@@ -791,6 +825,7 @@ class GameController extends StateNotifier<GlobalGameState> {
       warehouseRoadX: null,
       warehouseRoadY: null,
       rushMultiplier: 1.0,
+      warehouse: const Warehouse(),
     );
     
     // Reset game state
@@ -818,25 +853,17 @@ class GameController extends StateNotifier<GlobalGameState> {
     // Reset rush multiplier in simulation engine
     simulationEngine.updateRushMultiplier(1.0);
     
-    // Reset tutorial flag for new game
-    _resetTutorialFlag();
+    // Reset tutorial flags for new game (in state)
+    state = state.copyWith(
+      hasSeenPedestrianTapTutorial: false,
+      hasSeenBuyTruckTutorial: false,
+      hasSeenTruckTutorial: false,
+      hasSeenGoStockTutorial: false,
+      hasSeenMarketTutorial: false,
+      hasSeenMoneyExtractionTutorial: false,
+    );
     
     state = state.addLogMessage('New game started');
-  }
-  
-  /// Reset tutorial flags (for new games)
-  Future<void> _resetTutorialFlag() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('has_seen_money_extraction_tutorial');
-      await prefs.remove('has_seen_market_tutorial');
-      await prefs.remove('has_seen_truck_tutorial');
-      await prefs.remove('has_seen_buy_truck_tutorial');
-      await prefs.remove('has_seen_go_stock_tutorial');
-      print('💰 Tutorial flags reset for new game');
-    } catch (e) {
-      print('⚠️ Could not reset tutorial flags: $e');
-    }
   }
 
   /// Load game state from saved data
@@ -858,6 +885,7 @@ class GameController extends StateNotifier<GlobalGameState> {
       warehouseRoadX: savedState.warehouseRoadX,
       warehouseRoadY: savedState.warehouseRoadY,
       rushMultiplier: savedState.rushMultiplier,
+      warehouse: savedState.warehouse,
     );
     
     // Restore game state

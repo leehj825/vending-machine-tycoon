@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../simulation/models/machine.dart';
 import '../../simulation/models/zone.dart';
 import '../../state/providers.dart';
@@ -59,21 +58,17 @@ class _MachineInteriorDialogState extends ConsumerState<MachineInteriorDialog> w
   }
   
   /// Check if this is the first time opening machine interior with money
-  Future<void> _checkFirstTimeWithMoney() async {
+  void _checkFirstTimeWithMoney() {
     // Only show tutorial if money is available
     if (!_hasCash) {
       print('💰 Tutorial check: No cash available, skipping tutorial');
       return;
     }
     
-    final prefs = await SharedPreferences.getInstance();
-    final hasSeenTutorial = prefs.getBool('has_seen_money_extraction_tutorial') ?? false;
+    final gameState = ref.read(gameStateProvider);
+    final hasSeenTutorial = gameState.hasSeenMoneyExtractionTutorial;
     
     print('💰 Tutorial check: hasCash=$_hasCash, hasSeenTutorial=$hasSeenTutorial');
-    
-    // For testing: Uncomment the line below to reset the tutorial flag
-    // await prefs.remove('has_seen_money_extraction_tutorial');
-    // final hasSeenTutorial = false; // Use this instead after resetting
     
     if (!hasSeenTutorial) {
       print('💰 Tutorial: Showing blinking circles for first time');
@@ -90,9 +85,9 @@ class _MachineInteriorDialogState extends ConsumerState<MachineInteriorDialog> w
   }
   
   /// Mark the tutorial as seen
-  Future<void> _markTutorialAsSeen() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('has_seen_money_extraction_tutorial', true);
+  void _markTutorialAsSeen() {
+    final controller = ref.read(gameControllerProvider.notifier);
+    controller.state = controller.state.copyWith(hasSeenMoneyExtractionTutorial: true);
     if (mounted) {
       setState(() {
         _showTutorial = false;
