@@ -110,16 +110,21 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> {
   }
   
   // Road tile position offsets (adjust to shift road tiles)
+  // Made density-independent by using relative sizing
   double _getRoadTileOffsetX(BuildContext context) {
-    // Adjust this value to shift road tiles horizontally
+    // Calculate offset relative to tile width for density independence
+    // Adjust the multiplier to shift road tiles horizontally
     // Positive = move right, Negative = move left
-    return 13; // No offset by default
+    final tileWidth = _getTileWidth(context);
+    return tileWidth * 0.135; // ~13px on 96px tile, scales proportionally
   }
   
   double _getRoadTileOffsetY(BuildContext context) {
-    // Adjust this value to shift road tiles vertically
+    // Calculate offset relative to tile height for density independence
+    // Adjust the multiplier to shift road tiles vertically
     // Positive = move down, Negative = move up
-    return 1.5; // No offset by default
+    final tileHeight = _getTileHeight(context);
+    return tileHeight * 0.0625; // ~1.5px on 24px tile, scales proportionally
   }
   
   double _getBuildingImageHeight(BuildContext context) {
