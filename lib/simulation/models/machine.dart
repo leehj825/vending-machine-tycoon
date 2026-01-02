@@ -21,6 +21,7 @@ abstract class InventoryItem with _$InventoryItem {
     required int quantity,
     required int dayAdded, // Game day when item was added
     @Default(0.0) double salesProgress, // Accumulator for customer interest (0.0 to 1.0+)
+    @Default(20) int allocation, // User-defined target stock allocation for this product
   }) = _InventoryItem;
 
   const InventoryItem._();
@@ -87,6 +88,21 @@ abstract class Machine with _$Machine {
   double get hoursEmpty {
     if (!isEmpty) return 0.0;
     return hoursSinceRestock;
+  }
+
+  /// Get maximum capacity based on allowed products for this zone type
+  /// Capacity = number of allowed products * 20 items per product
+  int get maxCapacity {
+    final allowedProducts = Zone.getAllowedProducts(zone.type);
+    return allowedProducts.length * 20;
+  }
+
+  /// Get total allocation across all inventory items
+  int get totalAllocation {
+    return inventory.values.fold<int>(
+      0,
+      (sum, item) => sum + item.allocation,
+    );
   }
 }
 

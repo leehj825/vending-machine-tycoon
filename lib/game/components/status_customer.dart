@@ -89,6 +89,11 @@ class StatusCustomer extends SpriteAnimationComponent with HasGameRef<FlameGame>
       case ZoneType.gym: return 2 + random.nextInt(2);
       case ZoneType.school: return 4 + random.nextInt(2);
       case ZoneType.office: return 6 + random.nextInt(2);
+      case ZoneType.subway:
+      case ZoneType.hospital:
+      case ZoneType.university:
+        // Use random zone-specific person (0-7) for these zones
+        return random.nextInt(8);
     }
   }
 

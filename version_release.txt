@@ -1,0 +1,36 @@
+VENDING EMPIRE - RELEASE NOTES
+================================
+
+Version 1.1.8
+-------------
+Release Date: [To be filled]
+## Bug Fixes
+- Various bug fixes and improvements
+
+## New Features
+- **User-Defined Stock Allocations**: Customizable allocation targets per product with [-] and [+] controls
+- **Smart Restocking**: Trucks respect user-defined allocation targets
+
+---
+
+Version 1.1.7
+-------------
+Release Date: [To be filled]
+## New Features
+- **New Building Types**: Added Hospital, Subway, and University buildings to the city map
+- **Hospital**: Steady 24/7 demand for coffee, sandwiches, and fresh salads
+- **Subway/Transit Station**: Rush hour spikes with high demand for coffee, snacks, and newspapers
+- **University**: Afternoon and late-night study demand for coffee, energy drinks, and tech gadgets
+---
+
+Version 1.1.0
+-------------
+Release Date: [To be filled]
+- Initial release
+- Core gameplay features implemented
+- Cross-platform support (Android, iOS, macOS, Windows, Linux, Web)
+
+---
+
+[Add previous versions and their release notes below]
+
