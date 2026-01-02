@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:state_notifier/state_notifier.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../state/providers.dart';
 import '../../simulation/models/machine.dart';
 import '../../simulation/models/truck.dart';
@@ -74,14 +73,13 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> with Ti
   }
   
   /// Check if this is the first time opening route planner with trucks
-  Future<void> _checkFirstTimeWithTrucks() async {
+  void _checkFirstTimeWithTrucks() {
     final trucks = ref.read(trucksProvider);
-    final prefs = await SharedPreferences.getInstance();
+    final gameState = ref.read(gameStateProvider);
     
     // Check for "buy truck" tutorial when no trucks exist
     if (trucks.isEmpty) {
-      final hasSeenBuyTruckTutorial = prefs.getBool('has_seen_buy_truck_tutorial') ?? false;
-      if (!hasSeenBuyTruckTutorial) {
+      if (!gameState.hasSeenBuyTruckTutorial) {
         print('🚛 Tutorial: Showing buy truck tutorial');
         if (mounted) {
           setState(() {
@@ -95,7 +93,7 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> with Ti
     }
     
     // Check for "select truck" tutorial when trucks exist
-    final hasSeenTutorial = prefs.getBool('has_seen_truck_tutorial') ?? false;
+    final hasSeenTutorial = gameState.hasSeenTruckTutorial;
     print('🚛 Tutorial check: trucks=${trucks.length}, hasSeenTutorial=$hasSeenTutorial');
     
     if (!hasSeenTutorial) {
@@ -117,6 +115,7 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> with Ti
   /// Check if we should show "go stock" tutorial
   void _checkGoStockTutorial() {
     final trucks = ref.read(trucksProvider);
+    final gameState = ref.read(gameStateProvider);
     final selectedTruckNotifier = ref.read(selectedTruckIdProvider);
     final selectedTruckId = selectedTruckNotifier.selectedId;
     
@@ -132,34 +131,29 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> with Ti
     final hasRoute = selectedTruck.route.isNotEmpty;
     final isIdle = selectedTruck.status == TruckStatus.idle;
     
-    if (hasCargo && hasRoute && isIdle) {
-      SharedPreferences.getInstance().then((prefs) async {
-        final hasSeenGoStockTutorial = prefs.getBool('has_seen_go_stock_tutorial') ?? false;
-        if (!hasSeenGoStockTutorial && mounted) {
-          setState(() {
-            _showTutorial = true;
-            _tutorialType = 'go_stock';
-          });
-          _flashController.repeat(reverse: true);
-        }
+    if (hasCargo && hasRoute && isIdle && !gameState.hasSeenGoStockTutorial && mounted) {
+      setState(() {
+        _showTutorial = true;
+        _tutorialType = 'go_stock';
       });
+      _flashController.repeat(reverse: true);
     }
   }
   
   /// Mark the tutorial as seen
-  Future<void> _markTutorialAsSeen([String? tutorialKey]) async {
-    final prefs = await SharedPreferences.getInstance();
-    final key = tutorialKey ?? _tutorialType ?? 'has_seen_truck_tutorial';
+  void _markTutorialAsSeen([String? tutorialKey]) {
+    final controller = ref.read(gameControllerProvider.notifier);
+    final key = tutorialKey ?? _tutorialType ?? 'select_truck';
     
     switch (key) {
       case 'buy_truck':
-        await prefs.setBool('has_seen_buy_truck_tutorial', true);
+        controller.state = controller.state.copyWith(hasSeenBuyTruckTutorial: true);
         break;
       case 'select_truck':
-        await prefs.setBool('has_seen_truck_tutorial', true);
+        controller.state = controller.state.copyWith(hasSeenTruckTutorial: true);
         break;
       case 'go_stock':
-        await prefs.setBool('has_seen_go_stock_tutorial', true);
+        controller.state = controller.state.copyWith(hasSeenGoStockTutorial: true);
         break;
     }
     
@@ -1100,6 +1094,15 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> with Ti
                           icon: Icons.add,
                           label: 'Add Stop',
                           color: Colors.blue,
+                        ),
+                        GameButton(
+                          onPressed: () {
+                            final controller = ref.read(gameControllerProvider.notifier);
+                            controller.hireDriver(selectedTruck.id, !selectedTruck.hasDriver);
+                          },
+                          icon: selectedTruck.hasDriver ? Icons.person_remove : Icons.person_add,
+                          label: selectedTruck.hasDriver ? 'Fire Driver' : 'Hire Driver (\$50/day)',
+                          color: selectedTruck.hasDriver ? Colors.red : Colors.purple,
                         ),
                         Stack(
                           children: [

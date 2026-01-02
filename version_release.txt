@@ -1,6 +1,29 @@
 VENDING EMPIRE - RELEASE NOTES
 ================================
 
+Version 1.1.9
+-------------
+Release Date: January 01, 2026
+## New Features
+- **Tap Pedestrians to Force Sales**: Tap any pedestrian on the city map to make them walk to the nearest vending machine and buy an item
+- **Pedestrian Tutorial**: Interactive tutorial with blinking green circle and message to guide players on tapping pedestrians
+- **A* Pathfinding for Pedestrians**: Pedestrians now use intelligent pathfinding through road tiles to reach machines, similar to trucks
+- **Truck Driver Auto-Restock**: Hire truck drivers ($50/day) to automatically restock machines when stock drops below 50% allocation
+- **Tutorial State Persistence**: All tutorial flags are now saved with game state, so tutorials won't reappear when loading saved games
+
+## Improvements
+- **Pedestrian Movement**: Fixed back-and-forth movement issue - pedestrians now avoid returning to previous tiles
+- **Pedestrian Disappearance**: Pedestrians now disappear naturally on road tiles next to buildings instead of going below them
+- **Unique Pedestrians**: Maximum 10 different pedestrians can appear at once, with no duplicates
+- **Better Tap Detection**: Improved pedestrian tap detection to ensure they're always clickable, even while moving
+
+## Bug Fixes
+- Fixed pedestrian getting stuck between two tiles
+- Fixed pedestrians not being tappable in some cases
+- Fixed tutorial appearing repeatedly after being dismissed
+- Fixed pedestrian disappearing below buildings
+
+---
 Version 1.1.8
 -------------
 Release Date: [To be filled]

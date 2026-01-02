@@ -6,6 +6,7 @@ import 'models/product.dart';
 import 'models/machine.dart';
 import 'models/truck.dart';
 import 'models/zone.dart';
+import '../state/providers.dart';
 
 /// Simulation constants
 /// Note: Most constants have been moved to AppConfig. This class is kept for backward compatibility.
@@ -83,6 +84,8 @@ class SimulationState {
   final double? warehouseRoadX; // Road tile X coordinate next to warehouse
   final double? warehouseRoadY; // Road tile Y coordinate next to warehouse
   final double rushMultiplier; // Sales multiplier during Rush Hour (default 1.0)
+  final Warehouse warehouse; // Warehouse inventory for auto-restock
+  final List<String> pendingMessages; // Messages to be displayed to user
 
   const SimulationState({
     required this.time,
@@ -94,6 +97,8 @@ class SimulationState {
     this.warehouseRoadX,
     this.warehouseRoadY,
     this.rushMultiplier = 1.0,
+    required this.warehouse,
+    this.pendingMessages = const [],
   });
 
   SimulationState copyWith({
@@ -106,6 +111,8 @@ class SimulationState {
     double? warehouseRoadX,
     double? warehouseRoadY,
     double? rushMultiplier,
+    Warehouse? warehouse,
+    List<String>? pendingMessages,
   }) {
     return SimulationState(
       time: time ?? this.time,
@@ -117,6 +124,8 @@ class SimulationState {
       warehouseRoadX: warehouseRoadX ?? this.warehouseRoadX,
       warehouseRoadY: warehouseRoadY ?? this.warehouseRoadY,
       rushMultiplier: rushMultiplier ?? this.rushMultiplier,
+      warehouse: warehouse ?? this.warehouse,
+      pendingMessages: pendingMessages ?? this.pendingMessages,
     );
   }
 }
@@ -140,6 +149,7 @@ class SimulationEngine extends StateNotifier<SimulationState> {
     double initialCash = 2000.0,
     int initialReputation = 100,
     double initialRushMultiplier = 1.0,
+    Warehouse? initialWarehouse,
   }) : super(
           SimulationState(
             time: const GameTime(day: 1, hour: 8, minute: 0, tick: 1000), // 8:00 AM = 8 hours * 125 ticks/hour = 1000 ticks
@@ -149,6 +159,8 @@ class SimulationEngine extends StateNotifier<SimulationState> {
             reputation: initialReputation,
             random: math.Random(),
             rushMultiplier: initialRushMultiplier,
+            warehouse: initialWarehouse ?? const Warehouse(),
+            pendingMessages: const [],
           ),
         );
 
@@ -227,6 +239,7 @@ class SimulationEngine extends StateNotifier<SimulationState> {
     double? warehouseRoadX,
     double? warehouseRoadY,
     double rushMultiplier = 1.0,
+    Warehouse? warehouse,
   }) {
     print('🔴 ENGINE: Restoring state - Day ${time.day} ${time.hour}:00');
     state = state.copyWith(
@@ -238,7 +251,22 @@ class SimulationEngine extends StateNotifier<SimulationState> {
       warehouseRoadX: warehouseRoadX,
       warehouseRoadY: warehouseRoadY,
       rushMultiplier: rushMultiplier,
+      warehouse: warehouse,
+      pendingMessages: const [],
     );
+    _streamController.add(state);
+  }
+
+  /// Get and clear pending messages
+  List<String> getAndClearPendingMessages() {
+    final messages = List<String>.from(state.pendingMessages);
+    state = state.copyWith(pendingMessages: const []);
+    return messages;
+  }
+
+  /// Update warehouse in the simulation
+  void updateWarehouse(Warehouse warehouse) {
+    state = state.copyWith(warehouse: warehouse);
     _streamController.add(state);
   }
 
@@ -356,6 +384,22 @@ class SimulationEngine extends StateNotifier<SimulationState> {
     }
 
     final nextTime = currentState.time.nextTick();
+    var pendingMessages = List<String>.from(currentState.pendingMessages);
+    var updatedCash = currentState.cash;
+    
+    // 0. Process Driver Salaries (once per day at midnight)
+    if (nextTime.day > currentState.time.day || (currentState.time.hour == 23 && nextTime.hour == 0)) {
+      // Day rolled over - deduct driver salaries
+      final trucksWithDrivers = currentState.trucks.where((t) => t.hasDriver).length;
+      if (trucksWithDrivers > 0) {
+        const double driverSalaryPerDay = 50.0;
+        final totalSalary = trucksWithDrivers * driverSalaryPerDay;
+        updatedCash = currentState.cash - totalSalary;
+        
+        // Add message about salary deduction
+        pendingMessages.add('💰 Paid \$${totalSalary.toStringAsFixed(2)} in driver salaries ($trucksWithDrivers driver${trucksWithDrivers > 1 ? 's' : ''})');
+      }
+    }
 
     // 1. Process Sales (with reputation bonus and rush multiplier)
     final salesResult = _processMachineSales(currentState.machines, nextTime, currentState.reputation);
@@ -368,8 +412,15 @@ class SimulationEngine extends StateNotifier<SimulationState> {
     // 2.5. Process Random Breakdowns (every tick, total 2% per day)
     updatedMachines = _processRandomBreakdowns(updatedMachines);
     
+    // 2.6. Process Auto-Restock (for trucks with drivers)
+    var autoRestockResult = _processAutoRestock(currentState.trucks, updatedMachines);
+    var updatedTrucks = autoRestockResult.trucks;
+    updatedMachines = autoRestockResult.machines;
+    var updatedWarehouse = autoRestockResult.warehouse;
+    pendingMessages.addAll(autoRestockResult.messages);
+    
     // 3. Process Trucks (Movement)
-    var updatedTrucks = _processTruckMovement(currentState.trucks, updatedMachines);
+    updatedTrucks = _processTruckMovement(updatedTrucks, updatedMachines);
     
     // 4. Process Restocking (Truck arrived at machine)
     final restockResult = _processTruckRestocking(updatedTrucks, updatedMachines);
@@ -380,7 +431,7 @@ class SimulationEngine extends StateNotifier<SimulationState> {
     final reputationPenalty = _calculateReputationPenalty(updatedMachines);
     final reputationGain = totalSalesThisTick * SimulationConstants.reputationGainPerSale;
     var updatedReputation = ((currentState.reputation - reputationPenalty + reputationGain).clamp(0, 1000)).round();
-    var updatedCash = currentState.cash;
+    // updatedCash may already be set by driver salary deduction (at day rollover)
     updatedCash = _processFuelCosts(updatedTrucks, currentState.trucks, updatedCash);
 
     // Update State
@@ -390,6 +441,8 @@ class SimulationEngine extends StateNotifier<SimulationState> {
       trucks: updatedTrucks,
       cash: updatedCash,
       reputation: updatedReputation,
+      warehouse: updatedWarehouse,
+      pendingMessages: pendingMessages,
     );
     state = newState;
     
@@ -566,6 +619,123 @@ class SimulationEngine extends StateNotifier<SimulationState> {
     }
     
     return totalPenalty;
+  }
+
+  /// Process auto-restock for trucks with drivers
+  /// Returns updated trucks, machines, warehouse, and messages
+  ({List<Truck> trucks, List<Machine> machines, Warehouse warehouse, List<String> messages}) _processAutoRestock(
+    List<Truck> trucks,
+    List<Machine> machines,
+  ) {
+    var updatedTrucks = List<Truck>.from(trucks);
+    var updatedMachines = List<Machine>.from(machines);
+    var updatedWarehouseInventory = Map<Product, int>.from(state.warehouse.inventory);
+    var messages = <String>[];
+
+    for (int i = 0; i < updatedTrucks.length; i++) {
+      final truck = updatedTrucks[i];
+      
+      // Check if truck has driver and is idle
+      if (!truck.hasDriver || truck.status != TruckStatus.idle) {
+        continue;
+      }
+
+      // Check machines in truck's route for low stock
+      Machine? targetMachine;
+      for (final machineId in truck.route) {
+        final machineIndex = updatedMachines.indexWhere((m) => m.id == machineId);
+        if (machineIndex == -1) continue;
+        
+        final machine = updatedMachines[machineIndex];
+        final totalInventory = machine.totalInventory;
+        final totalAllocation = machine.totalAllocation;
+        
+        // Check if machine has low stock (less than 50% of allocation)
+        // Use totalAllocation instead of maxCapacity to check against actual target stock
+        if (totalAllocation > 0 && totalInventory < (totalAllocation / 2)) {
+          targetMachine = machine;
+          break;
+        }
+      }
+
+      // If no low-stock machine found, skip this truck
+      if (targetMachine == null) {
+        continue;
+      }
+
+      // Check if truck already has items that the machine needs
+      final allowedProducts = _getAllowedProductsForZone(targetMachine.zone.type);
+      bool hasNeededItems = false; // Track if truck already has items needed
+
+      for (final product in allowedProducts) {
+        final existingItem = targetMachine.inventory[product];
+        final currentStock = existingItem?.quantity ?? 0;
+        final allocationTarget = existingItem?.allocation ?? 20;
+        final needed = allocationTarget - currentStock;
+
+        if (needed > 0) {
+          final truckStock = truck.inventory[product] ?? 0;
+          if (truckStock > 0) {
+            // Truck already has some of this product - we can dispatch
+            hasNeededItems = true;
+            break;
+          }
+        }
+      }
+
+      // Check if truck is empty
+      if (truck.inventory.isEmpty) {
+        // Truck is empty - show error message and skip
+        messages.add('🔴 ${truck.name} needs to be loaded before auto-restock!');
+        continue; // Skip to next truck
+      }
+
+      // If truck already has needed items, dispatch immediately
+      if (hasNeededItems) {
+        // Get machine's road access point
+        final machineX = targetMachine.zone.x;
+        final machineY = targetMachine.zone.y;
+        final roadPoint = _getNearestRoadPoint(machineX, machineY);
+
+        // Dispatch truck to target machine
+        final targetIndex = truck.route.indexOf(targetMachine.id);
+        final routeIndex = targetIndex >= 0 ? targetIndex : 0;
+        
+        updatedTrucks[i] = truck.copyWith(
+          status: TruckStatus.traveling,
+          path: [], // Clear path to force recalculation
+          targetX: roadPoint.x,
+          targetY: roadPoint.y,
+          currentRouteIndex: routeIndex,
+        );
+        continue; // Skip to next truck
+      }
+
+      // Truck has items but not the ones needed - still dispatch (driver will stock what's available)
+      // Get machine's road access point
+      final machineX = targetMachine.zone.x;
+      final machineY = targetMachine.zone.y;
+      final roadPoint = _getNearestRoadPoint(machineX, machineY);
+
+      // Dispatch truck to target machine
+      final targetIndex = truck.route.indexOf(targetMachine.id);
+      final routeIndex = targetIndex >= 0 ? targetIndex : 0;
+      
+      updatedTrucks[i] = truck.copyWith(
+        status: TruckStatus.traveling,
+        path: [], // Clear path to force recalculation
+        targetX: roadPoint.x,
+        targetY: roadPoint.y,
+        currentRouteIndex: routeIndex,
+      );
+    }
+
+    return (
+      trucks: updatedTrucks,
+      machines: updatedMachines,
+      warehouse: Warehouse(inventory: updatedWarehouseInventory),
+      messages: messages,
+    );
   }
 
   /// Process truck movement and route logic
@@ -875,6 +1045,59 @@ class SimulationEngine extends StateNotifier<SimulationState> {
   /// Manually trigger a tick (for testing or manual control)
   void manualTick() {
     _tick();
+  }
+
+  /// Force a sale at a machine (called when pedestrian is tapped)
+  /// Returns true if sale was successful, false if machine is empty
+  bool forceSale(String machineId) {
+    final machineIndex = state.machines.indexWhere((m) => m.id == machineId);
+    if (machineIndex == -1) {
+      return false; // Machine not found
+    }
+
+    final machine = state.machines[machineIndex];
+    
+    // Check if machine is empty
+    if (machine.isEmpty) {
+      return false;
+    }
+
+    // Find a random available product from inventory
+    final availableProducts = machine.inventory.entries
+        .where((entry) => entry.value.quantity > 0)
+        .toList();
+    
+    if (availableProducts.isEmpty) {
+      return false;
+    }
+
+    // Select random product
+    final selectedEntry = availableProducts[state.random.nextInt(availableProducts.length)];
+    final product = selectedEntry.key;
+    final item = selectedEntry.value;
+
+    // Decrement quantity
+    final updatedInventory = Map<Product, InventoryItem>.from(machine.inventory);
+    updatedInventory[product] = item.copyWith(quantity: item.quantity - 1);
+
+    // Increment cash and sales
+    final updatedCash = machine.currentCash + product.basePrice;
+    final updatedSales = machine.totalSales + 1;
+
+    // Update machine
+    final updatedMachine = machine.copyWith(
+      inventory: updatedInventory,
+      currentCash: updatedCash,
+      totalSales: updatedSales,
+    );
+
+    // Update state
+    final updatedMachines = List<Machine>.from(state.machines);
+    updatedMachines[machineIndex] = updatedMachine;
+    state = state.copyWith(machines: updatedMachines);
+    _streamController.add(state);
+
+    return true;
   }
 
   /// Process a single tick with provided machines and trucks, returning updated lists

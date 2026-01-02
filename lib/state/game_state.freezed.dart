@@ -29,7 +29,9 @@ mixin _$GlobalGameState {
  bool get isRushHour;// Whether Rush Hour is currently active
  double get rushMultiplier;// Sales multiplier during Rush Hour (default 1.0, 10.0 during rush)
  int? get marketingButtonGridX;// Marketing button grid X position (0-9)
- int? get marketingButtonGridY;
+ int? get marketingButtonGridY;// Marketing button grid Y position (0-9)
+// Tutorial flags - saved with game state
+ bool get hasSeenPedestrianTapTutorial; bool get hasSeenBuyTruckTutorial; bool get hasSeenTruckTutorial; bool get hasSeenGoStockTutorial; bool get hasSeenMarketTutorial; bool get hasSeenMoneyExtractionTutorial;
 /// Create a copy of GlobalGameState
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -40,16 +42,16 @@ $GlobalGameStateCopyWith<GlobalGameState> get copyWith => _$GlobalGameStateCopyW
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is GlobalGameState&&(identical(other.cash, cash) || other.cash == cash)&&(identical(other.reputation, reputation) || other.reputation == reputation)&&(identical(other.dayCount, dayCount) || other.dayCount == dayCount)&&(identical(other.hourOfDay, hourOfDay) || other.hourOfDay == hourOfDay)&&const DeepCollectionEquality().equals(other.logMessages, logMessages)&&const DeepCollectionEquality().equals(other.machines, machines)&&const DeepCollectionEquality().equals(other.trucks, trucks)&&(identical(other.warehouse, warehouse) || other.warehouse == warehouse)&&(identical(other.warehouseRoadX, warehouseRoadX) || other.warehouseRoadX == warehouseRoadX)&&(identical(other.warehouseRoadY, warehouseRoadY) || other.warehouseRoadY == warehouseRoadY)&&(identical(other.cityMapState, cityMapState) || other.cityMapState == cityMapState)&&const DeepCollectionEquality().equals(other.dailyRevenueHistory, dailyRevenueHistory)&&(identical(other.currentDayRevenue, currentDayRevenue) || other.currentDayRevenue == currentDayRevenue)&&const DeepCollectionEquality().equals(other.productSalesCount, productSalesCount)&&(identical(other.hypeLevel, hypeLevel) || other.hypeLevel == hypeLevel)&&(identical(other.isRushHour, isRushHour) || other.isRushHour == isRushHour)&&(identical(other.rushMultiplier, rushMultiplier) || other.rushMultiplier == rushMultiplier)&&(identical(other.marketingButtonGridX, marketingButtonGridX) || other.marketingButtonGridX == marketingButtonGridX)&&(identical(other.marketingButtonGridY, marketingButtonGridY) || other.marketingButtonGridY == marketingButtonGridY));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is GlobalGameState&&(identical(other.cash, cash) || other.cash == cash)&&(identical(other.reputation, reputation) || other.reputation == reputation)&&(identical(other.dayCount, dayCount) || other.dayCount == dayCount)&&(identical(other.hourOfDay, hourOfDay) || other.hourOfDay == hourOfDay)&&const DeepCollectionEquality().equals(other.logMessages, logMessages)&&const DeepCollectionEquality().equals(other.machines, machines)&&const DeepCollectionEquality().equals(other.trucks, trucks)&&(identical(other.warehouse, warehouse) || other.warehouse == warehouse)&&(identical(other.warehouseRoadX, warehouseRoadX) || other.warehouseRoadX == warehouseRoadX)&&(identical(other.warehouseRoadY, warehouseRoadY) || other.warehouseRoadY == warehouseRoadY)&&(identical(other.cityMapState, cityMapState) || other.cityMapState == cityMapState)&&const DeepCollectionEquality().equals(other.dailyRevenueHistory, dailyRevenueHistory)&&(identical(other.currentDayRevenue, currentDayRevenue) || other.currentDayRevenue == currentDayRevenue)&&const DeepCollectionEquality().equals(other.productSalesCount, productSalesCount)&&(identical(other.hypeLevel, hypeLevel) || other.hypeLevel == hypeLevel)&&(identical(other.isRushHour, isRushHour) || other.isRushHour == isRushHour)&&(identical(other.rushMultiplier, rushMultiplier) || other.rushMultiplier == rushMultiplier)&&(identical(other.marketingButtonGridX, marketingButtonGridX) || other.marketingButtonGridX == marketingButtonGridX)&&(identical(other.marketingButtonGridY, marketingButtonGridY) || other.marketingButtonGridY == marketingButtonGridY)&&(identical(other.hasSeenPedestrianTapTutorial, hasSeenPedestrianTapTutorial) || other.hasSeenPedestrianTapTutorial == hasSeenPedestrianTapTutorial)&&(identical(other.hasSeenBuyTruckTutorial, hasSeenBuyTruckTutorial) || other.hasSeenBuyTruckTutorial == hasSeenBuyTruckTutorial)&&(identical(other.hasSeenTruckTutorial, hasSeenTruckTutorial) || other.hasSeenTruckTutorial == hasSeenTruckTutorial)&&(identical(other.hasSeenGoStockTutorial, hasSeenGoStockTutorial) || other.hasSeenGoStockTutorial == hasSeenGoStockTutorial)&&(identical(other.hasSeenMarketTutorial, hasSeenMarketTutorial) || other.hasSeenMarketTutorial == hasSeenMarketTutorial)&&(identical(other.hasSeenMoneyExtractionTutorial, hasSeenMoneyExtractionTutorial) || other.hasSeenMoneyExtractionTutorial == hasSeenMoneyExtractionTutorial));
 }
 
 
 @override
-int get hashCode => Object.hashAll([runtimeType,cash,reputation,dayCount,hourOfDay,const DeepCollectionEquality().hash(logMessages),const DeepCollectionEquality().hash(machines),const DeepCollectionEquality().hash(trucks),warehouse,warehouseRoadX,warehouseRoadY,cityMapState,const DeepCollectionEquality().hash(dailyRevenueHistory),currentDayRevenue,const DeepCollectionEquality().hash(productSalesCount),hypeLevel,isRushHour,rushMultiplier,marketingButtonGridX,marketingButtonGridY]);
+int get hashCode => Object.hashAll([runtimeType,cash,reputation,dayCount,hourOfDay,const DeepCollectionEquality().hash(logMessages),const DeepCollectionEquality().hash(machines),const DeepCollectionEquality().hash(trucks),warehouse,warehouseRoadX,warehouseRoadY,cityMapState,const DeepCollectionEquality().hash(dailyRevenueHistory),currentDayRevenue,const DeepCollectionEquality().hash(productSalesCount),hypeLevel,isRushHour,rushMultiplier,marketingButtonGridX,marketingButtonGridY,hasSeenPedestrianTapTutorial,hasSeenBuyTruckTutorial,hasSeenTruckTutorial,hasSeenGoStockTutorial,hasSeenMarketTutorial,hasSeenMoneyExtractionTutorial]);
 
 @override
 String toString() {
-  return 'GlobalGameState(cash: $cash, reputation: $reputation, dayCount: $dayCount, hourOfDay: $hourOfDay, logMessages: $logMessages, machines: $machines, trucks: $trucks, warehouse: $warehouse, warehouseRoadX: $warehouseRoadX, warehouseRoadY: $warehouseRoadY, cityMapState: $cityMapState, dailyRevenueHistory: $dailyRevenueHistory, currentDayRevenue: $currentDayRevenue, productSalesCount: $productSalesCount, hypeLevel: $hypeLevel, isRushHour: $isRushHour, rushMultiplier: $rushMultiplier, marketingButtonGridX: $marketingButtonGridX, marketingButtonGridY: $marketingButtonGridY)';
+  return 'GlobalGameState(cash: $cash, reputation: $reputation, dayCount: $dayCount, hourOfDay: $hourOfDay, logMessages: $logMessages, machines: $machines, trucks: $trucks, warehouse: $warehouse, warehouseRoadX: $warehouseRoadX, warehouseRoadY: $warehouseRoadY, cityMapState: $cityMapState, dailyRevenueHistory: $dailyRevenueHistory, currentDayRevenue: $currentDayRevenue, productSalesCount: $productSalesCount, hypeLevel: $hypeLevel, isRushHour: $isRushHour, rushMultiplier: $rushMultiplier, marketingButtonGridX: $marketingButtonGridX, marketingButtonGridY: $marketingButtonGridY, hasSeenPedestrianTapTutorial: $hasSeenPedestrianTapTutorial, hasSeenBuyTruckTutorial: $hasSeenBuyTruckTutorial, hasSeenTruckTutorial: $hasSeenTruckTutorial, hasSeenGoStockTutorial: $hasSeenGoStockTutorial, hasSeenMarketTutorial: $hasSeenMarketTutorial, hasSeenMoneyExtractionTutorial: $hasSeenMoneyExtractionTutorial)';
 }
 
 
@@ -60,7 +62,7 @@ abstract mixin class $GlobalGameStateCopyWith<$Res>  {
   factory $GlobalGameStateCopyWith(GlobalGameState value, $Res Function(GlobalGameState) _then) = _$GlobalGameStateCopyWithImpl;
 @useResult
 $Res call({
- double cash, int reputation, int dayCount, int hourOfDay, List<String> logMessages, List<Machine> machines, List<Truck> trucks, Warehouse warehouse, double? warehouseRoadX, double? warehouseRoadY, CityMapState? cityMapState, List<double> dailyRevenueHistory, double currentDayRevenue, Map<Product, int> productSalesCount, double hypeLevel, bool isRushHour, double rushMultiplier, int? marketingButtonGridX, int? marketingButtonGridY
+ double cash, int reputation, int dayCount, int hourOfDay, List<String> logMessages, List<Machine> machines, List<Truck> trucks, Warehouse warehouse, double? warehouseRoadX, double? warehouseRoadY, CityMapState? cityMapState, List<double> dailyRevenueHistory, double currentDayRevenue, Map<Product, int> productSalesCount, double hypeLevel, bool isRushHour, double rushMultiplier, int? marketingButtonGridX, int? marketingButtonGridY, bool hasSeenPedestrianTapTutorial, bool hasSeenBuyTruckTutorial, bool hasSeenTruckTutorial, bool hasSeenGoStockTutorial, bool hasSeenMarketTutorial, bool hasSeenMoneyExtractionTutorial
 });
 
 
@@ -77,7 +79,7 @@ class _$GlobalGameStateCopyWithImpl<$Res>
 
 /// Create a copy of GlobalGameState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? cash = null,Object? reputation = null,Object? dayCount = null,Object? hourOfDay = null,Object? logMessages = null,Object? machines = null,Object? trucks = null,Object? warehouse = null,Object? warehouseRoadX = freezed,Object? warehouseRoadY = freezed,Object? cityMapState = freezed,Object? dailyRevenueHistory = null,Object? currentDayRevenue = null,Object? productSalesCount = null,Object? hypeLevel = null,Object? isRushHour = null,Object? rushMultiplier = null,Object? marketingButtonGridX = freezed,Object? marketingButtonGridY = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? cash = null,Object? reputation = null,Object? dayCount = null,Object? hourOfDay = null,Object? logMessages = null,Object? machines = null,Object? trucks = null,Object? warehouse = null,Object? warehouseRoadX = freezed,Object? warehouseRoadY = freezed,Object? cityMapState = freezed,Object? dailyRevenueHistory = null,Object? currentDayRevenue = null,Object? productSalesCount = null,Object? hypeLevel = null,Object? isRushHour = null,Object? rushMultiplier = null,Object? marketingButtonGridX = freezed,Object? marketingButtonGridY = freezed,Object? hasSeenPedestrianTapTutorial = null,Object? hasSeenBuyTruckTutorial = null,Object? hasSeenTruckTutorial = null,Object? hasSeenGoStockTutorial = null,Object? hasSeenMarketTutorial = null,Object? hasSeenMoneyExtractionTutorial = null,}) {
   return _then(_self.copyWith(
 cash: null == cash ? _self.cash : cash // ignore: cast_nullable_to_non_nullable
 as double,reputation: null == reputation ? _self.reputation : reputation // ignore: cast_nullable_to_non_nullable
@@ -98,7 +100,13 @@ as double,isRushHour: null == isRushHour ? _self.isRushHour : isRushHour // igno
 as bool,rushMultiplier: null == rushMultiplier ? _self.rushMultiplier : rushMultiplier // ignore: cast_nullable_to_non_nullable
 as double,marketingButtonGridX: freezed == marketingButtonGridX ? _self.marketingButtonGridX : marketingButtonGridX // ignore: cast_nullable_to_non_nullable
 as int?,marketingButtonGridY: freezed == marketingButtonGridY ? _self.marketingButtonGridY : marketingButtonGridY // ignore: cast_nullable_to_non_nullable
-as int?,
+as int?,hasSeenPedestrianTapTutorial: null == hasSeenPedestrianTapTutorial ? _self.hasSeenPedestrianTapTutorial : hasSeenPedestrianTapTutorial // ignore: cast_nullable_to_non_nullable
+as bool,hasSeenBuyTruckTutorial: null == hasSeenBuyTruckTutorial ? _self.hasSeenBuyTruckTutorial : hasSeenBuyTruckTutorial // ignore: cast_nullable_to_non_nullable
+as bool,hasSeenTruckTutorial: null == hasSeenTruckTutorial ? _self.hasSeenTruckTutorial : hasSeenTruckTutorial // ignore: cast_nullable_to_non_nullable
+as bool,hasSeenGoStockTutorial: null == hasSeenGoStockTutorial ? _self.hasSeenGoStockTutorial : hasSeenGoStockTutorial // ignore: cast_nullable_to_non_nullable
+as bool,hasSeenMarketTutorial: null == hasSeenMarketTutorial ? _self.hasSeenMarketTutorial : hasSeenMarketTutorial // ignore: cast_nullable_to_non_nullable
+as bool,hasSeenMoneyExtractionTutorial: null == hasSeenMoneyExtractionTutorial ? _self.hasSeenMoneyExtractionTutorial : hasSeenMoneyExtractionTutorial // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 /// Create a copy of GlobalGameState
@@ -192,10 +200,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( double cash,  int reputation,  int dayCount,  int hourOfDay,  List<String> logMessages,  List<Machine> machines,  List<Truck> trucks,  Warehouse warehouse,  double? warehouseRoadX,  double? warehouseRoadY,  CityMapState? cityMapState,  List<double> dailyRevenueHistory,  double currentDayRevenue,  Map<Product, int> productSalesCount,  double hypeLevel,  bool isRushHour,  double rushMultiplier,  int? marketingButtonGridX,  int? marketingButtonGridY)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( double cash,  int reputation,  int dayCount,  int hourOfDay,  List<String> logMessages,  List<Machine> machines,  List<Truck> trucks,  Warehouse warehouse,  double? warehouseRoadX,  double? warehouseRoadY,  CityMapState? cityMapState,  List<double> dailyRevenueHistory,  double currentDayRevenue,  Map<Product, int> productSalesCount,  double hypeLevel,  bool isRushHour,  double rushMultiplier,  int? marketingButtonGridX,  int? marketingButtonGridY,  bool hasSeenPedestrianTapTutorial,  bool hasSeenBuyTruckTutorial,  bool hasSeenTruckTutorial,  bool hasSeenGoStockTutorial,  bool hasSeenMarketTutorial,  bool hasSeenMoneyExtractionTutorial)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _GlobalGameState() when $default != null:
-return $default(_that.cash,_that.reputation,_that.dayCount,_that.hourOfDay,_that.logMessages,_that.machines,_that.trucks,_that.warehouse,_that.warehouseRoadX,_that.warehouseRoadY,_that.cityMapState,_that.dailyRevenueHistory,_that.currentDayRevenue,_that.productSalesCount,_that.hypeLevel,_that.isRushHour,_that.rushMultiplier,_that.marketingButtonGridX,_that.marketingButtonGridY);case _:
+return $default(_that.cash,_that.reputation,_that.dayCount,_that.hourOfDay,_that.logMessages,_that.machines,_that.trucks,_that.warehouse,_that.warehouseRoadX,_that.warehouseRoadY,_that.cityMapState,_that.dailyRevenueHistory,_that.currentDayRevenue,_that.productSalesCount,_that.hypeLevel,_that.isRushHour,_that.rushMultiplier,_that.marketingButtonGridX,_that.marketingButtonGridY,_that.hasSeenPedestrianTapTutorial,_that.hasSeenBuyTruckTutorial,_that.hasSeenTruckTutorial,_that.hasSeenGoStockTutorial,_that.hasSeenMarketTutorial,_that.hasSeenMoneyExtractionTutorial);case _:
   return orElse();
 
 }
@@ -213,10 +221,10 @@ return $default(_that.cash,_that.reputation,_that.dayCount,_that.hourOfDay,_that
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( double cash,  int reputation,  int dayCount,  int hourOfDay,  List<String> logMessages,  List<Machine> machines,  List<Truck> trucks,  Warehouse warehouse,  double? warehouseRoadX,  double? warehouseRoadY,  CityMapState? cityMapState,  List<double> dailyRevenueHistory,  double currentDayRevenue,  Map<Product, int> productSalesCount,  double hypeLevel,  bool isRushHour,  double rushMultiplier,  int? marketingButtonGridX,  int? marketingButtonGridY)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( double cash,  int reputation,  int dayCount,  int hourOfDay,  List<String> logMessages,  List<Machine> machines,  List<Truck> trucks,  Warehouse warehouse,  double? warehouseRoadX,  double? warehouseRoadY,  CityMapState? cityMapState,  List<double> dailyRevenueHistory,  double currentDayRevenue,  Map<Product, int> productSalesCount,  double hypeLevel,  bool isRushHour,  double rushMultiplier,  int? marketingButtonGridX,  int? marketingButtonGridY,  bool hasSeenPedestrianTapTutorial,  bool hasSeenBuyTruckTutorial,  bool hasSeenTruckTutorial,  bool hasSeenGoStockTutorial,  bool hasSeenMarketTutorial,  bool hasSeenMoneyExtractionTutorial)  $default,) {final _that = this;
 switch (_that) {
 case _GlobalGameState():
-return $default(_that.cash,_that.reputation,_that.dayCount,_that.hourOfDay,_that.logMessages,_that.machines,_that.trucks,_that.warehouse,_that.warehouseRoadX,_that.warehouseRoadY,_that.cityMapState,_that.dailyRevenueHistory,_that.currentDayRevenue,_that.productSalesCount,_that.hypeLevel,_that.isRushHour,_that.rushMultiplier,_that.marketingButtonGridX,_that.marketingButtonGridY);case _:
+return $default(_that.cash,_that.reputation,_that.dayCount,_that.hourOfDay,_that.logMessages,_that.machines,_that.trucks,_that.warehouse,_that.warehouseRoadX,_that.warehouseRoadY,_that.cityMapState,_that.dailyRevenueHistory,_that.currentDayRevenue,_that.productSalesCount,_that.hypeLevel,_that.isRushHour,_that.rushMultiplier,_that.marketingButtonGridX,_that.marketingButtonGridY,_that.hasSeenPedestrianTapTutorial,_that.hasSeenBuyTruckTutorial,_that.hasSeenTruckTutorial,_that.hasSeenGoStockTutorial,_that.hasSeenMarketTutorial,_that.hasSeenMoneyExtractionTutorial);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -233,10 +241,10 @@ return $default(_that.cash,_that.reputation,_that.dayCount,_that.hourOfDay,_that
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( double cash,  int reputation,  int dayCount,  int hourOfDay,  List<String> logMessages,  List<Machine> machines,  List<Truck> trucks,  Warehouse warehouse,  double? warehouseRoadX,  double? warehouseRoadY,  CityMapState? cityMapState,  List<double> dailyRevenueHistory,  double currentDayRevenue,  Map<Product, int> productSalesCount,  double hypeLevel,  bool isRushHour,  double rushMultiplier,  int? marketingButtonGridX,  int? marketingButtonGridY)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( double cash,  int reputation,  int dayCount,  int hourOfDay,  List<String> logMessages,  List<Machine> machines,  List<Truck> trucks,  Warehouse warehouse,  double? warehouseRoadX,  double? warehouseRoadY,  CityMapState? cityMapState,  List<double> dailyRevenueHistory,  double currentDayRevenue,  Map<Product, int> productSalesCount,  double hypeLevel,  bool isRushHour,  double rushMultiplier,  int? marketingButtonGridX,  int? marketingButtonGridY,  bool hasSeenPedestrianTapTutorial,  bool hasSeenBuyTruckTutorial,  bool hasSeenTruckTutorial,  bool hasSeenGoStockTutorial,  bool hasSeenMarketTutorial,  bool hasSeenMoneyExtractionTutorial)?  $default,) {final _that = this;
 switch (_that) {
 case _GlobalGameState() when $default != null:
-return $default(_that.cash,_that.reputation,_that.dayCount,_that.hourOfDay,_that.logMessages,_that.machines,_that.trucks,_that.warehouse,_that.warehouseRoadX,_that.warehouseRoadY,_that.cityMapState,_that.dailyRevenueHistory,_that.currentDayRevenue,_that.productSalesCount,_that.hypeLevel,_that.isRushHour,_that.rushMultiplier,_that.marketingButtonGridX,_that.marketingButtonGridY);case _:
+return $default(_that.cash,_that.reputation,_that.dayCount,_that.hourOfDay,_that.logMessages,_that.machines,_that.trucks,_that.warehouse,_that.warehouseRoadX,_that.warehouseRoadY,_that.cityMapState,_that.dailyRevenueHistory,_that.currentDayRevenue,_that.productSalesCount,_that.hypeLevel,_that.isRushHour,_that.rushMultiplier,_that.marketingButtonGridX,_that.marketingButtonGridY,_that.hasSeenPedestrianTapTutorial,_that.hasSeenBuyTruckTutorial,_that.hasSeenTruckTutorial,_that.hasSeenGoStockTutorial,_that.hasSeenMarketTutorial,_that.hasSeenMoneyExtractionTutorial);case _:
   return null;
 
 }
@@ -248,7 +256,7 @@ return $default(_that.cash,_that.reputation,_that.dayCount,_that.hourOfDay,_that
 
 
 class _GlobalGameState extends GlobalGameState {
-  const _GlobalGameState({this.cash = 2000.0, this.reputation = 100, this.dayCount = 1, this.hourOfDay = 8, final  List<String> logMessages = const [], final  List<Machine> machines = const [], final  List<Truck> trucks = const [], this.warehouse = const Warehouse(), this.warehouseRoadX = null, this.warehouseRoadY = null, this.cityMapState = null, final  List<double> dailyRevenueHistory = const [], this.currentDayRevenue = 0.0, final  Map<Product, int> productSalesCount = const {}, this.hypeLevel = 0.0, this.isRushHour = false, this.rushMultiplier = 1.0, this.marketingButtonGridX = null, this.marketingButtonGridY = null}): _logMessages = logMessages,_machines = machines,_trucks = trucks,_dailyRevenueHistory = dailyRevenueHistory,_productSalesCount = productSalesCount,super._();
+  const _GlobalGameState({this.cash = 2000.0, this.reputation = 100, this.dayCount = 1, this.hourOfDay = 8, final  List<String> logMessages = const [], final  List<Machine> machines = const [], final  List<Truck> trucks = const [], this.warehouse = const Warehouse(), this.warehouseRoadX = null, this.warehouseRoadY = null, this.cityMapState = null, final  List<double> dailyRevenueHistory = const [], this.currentDayRevenue = 0.0, final  Map<Product, int> productSalesCount = const {}, this.hypeLevel = 0.0, this.isRushHour = false, this.rushMultiplier = 1.0, this.marketingButtonGridX = null, this.marketingButtonGridY = null, this.hasSeenPedestrianTapTutorial = false, this.hasSeenBuyTruckTutorial = false, this.hasSeenTruckTutorial = false, this.hasSeenGoStockTutorial = false, this.hasSeenMarketTutorial = false, this.hasSeenMoneyExtractionTutorial = false}): _logMessages = logMessages,_machines = machines,_trucks = trucks,_dailyRevenueHistory = dailyRevenueHistory,_productSalesCount = productSalesCount,super._();
   
 
 @override@JsonKey() final  double cash;
@@ -319,6 +327,14 @@ class _GlobalGameState extends GlobalGameState {
 @override@JsonKey() final  int? marketingButtonGridX;
 // Marketing button grid X position (0-9)
 @override@JsonKey() final  int? marketingButtonGridY;
+// Marketing button grid Y position (0-9)
+// Tutorial flags - saved with game state
+@override@JsonKey() final  bool hasSeenPedestrianTapTutorial;
+@override@JsonKey() final  bool hasSeenBuyTruckTutorial;
+@override@JsonKey() final  bool hasSeenTruckTutorial;
+@override@JsonKey() final  bool hasSeenGoStockTutorial;
+@override@JsonKey() final  bool hasSeenMarketTutorial;
+@override@JsonKey() final  bool hasSeenMoneyExtractionTutorial;
 
 /// Create a copy of GlobalGameState
 /// with the given fields replaced by the non-null parameter values.
@@ -330,16 +346,16 @@ _$GlobalGameStateCopyWith<_GlobalGameState> get copyWith => __$GlobalGameStateCo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _GlobalGameState&&(identical(other.cash, cash) || other.cash == cash)&&(identical(other.reputation, reputation) || other.reputation == reputation)&&(identical(other.dayCount, dayCount) || other.dayCount == dayCount)&&(identical(other.hourOfDay, hourOfDay) || other.hourOfDay == hourOfDay)&&const DeepCollectionEquality().equals(other._logMessages, _logMessages)&&const DeepCollectionEquality().equals(other._machines, _machines)&&const DeepCollectionEquality().equals(other._trucks, _trucks)&&(identical(other.warehouse, warehouse) || other.warehouse == warehouse)&&(identical(other.warehouseRoadX, warehouseRoadX) || other.warehouseRoadX == warehouseRoadX)&&(identical(other.warehouseRoadY, warehouseRoadY) || other.warehouseRoadY == warehouseRoadY)&&(identical(other.cityMapState, cityMapState) || other.cityMapState == cityMapState)&&const DeepCollectionEquality().equals(other._dailyRevenueHistory, _dailyRevenueHistory)&&(identical(other.currentDayRevenue, currentDayRevenue) || other.currentDayRevenue == currentDayRevenue)&&const DeepCollectionEquality().equals(other._productSalesCount, _productSalesCount)&&(identical(other.hypeLevel, hypeLevel) || other.hypeLevel == hypeLevel)&&(identical(other.isRushHour, isRushHour) || other.isRushHour == isRushHour)&&(identical(other.rushMultiplier, rushMultiplier) || other.rushMultiplier == rushMultiplier)&&(identical(other.marketingButtonGridX, marketingButtonGridX) || other.marketingButtonGridX == marketingButtonGridX)&&(identical(other.marketingButtonGridY, marketingButtonGridY) || other.marketingButtonGridY == marketingButtonGridY));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _GlobalGameState&&(identical(other.cash, cash) || other.cash == cash)&&(identical(other.reputation, reputation) || other.reputation == reputation)&&(identical(other.dayCount, dayCount) || other.dayCount == dayCount)&&(identical(other.hourOfDay, hourOfDay) || other.hourOfDay == hourOfDay)&&const DeepCollectionEquality().equals(other._logMessages, _logMessages)&&const DeepCollectionEquality().equals(other._machines, _machines)&&const DeepCollectionEquality().equals(other._trucks, _trucks)&&(identical(other.warehouse, warehouse) || other.warehouse == warehouse)&&(identical(other.warehouseRoadX, warehouseRoadX) || other.warehouseRoadX == warehouseRoadX)&&(identical(other.warehouseRoadY, warehouseRoadY) || other.warehouseRoadY == warehouseRoadY)&&(identical(other.cityMapState, cityMapState) || other.cityMapState == cityMapState)&&const DeepCollectionEquality().equals(other._dailyRevenueHistory, _dailyRevenueHistory)&&(identical(other.currentDayRevenue, currentDayRevenue) || other.currentDayRevenue == currentDayRevenue)&&const DeepCollectionEquality().equals(other._productSalesCount, _productSalesCount)&&(identical(other.hypeLevel, hypeLevel) || other.hypeLevel == hypeLevel)&&(identical(other.isRushHour, isRushHour) || other.isRushHour == isRushHour)&&(identical(other.rushMultiplier, rushMultiplier) || other.rushMultiplier == rushMultiplier)&&(identical(other.marketingButtonGridX, marketingButtonGridX) || other.marketingButtonGridX == marketingButtonGridX)&&(identical(other.marketingButtonGridY, marketingButtonGridY) || other.marketingButtonGridY == marketingButtonGridY)&&(identical(other.hasSeenPedestrianTapTutorial, hasSeenPedestrianTapTutorial) || other.hasSeenPedestrianTapTutorial == hasSeenPedestrianTapTutorial)&&(identical(other.hasSeenBuyTruckTutorial, hasSeenBuyTruckTutorial) || other.hasSeenBuyTruckTutorial == hasSeenBuyTruckTutorial)&&(identical(other.hasSeenTruckTutorial, hasSeenTruckTutorial) || other.hasSeenTruckTutorial == hasSeenTruckTutorial)&&(identical(other.hasSeenGoStockTutorial, hasSeenGoStockTutorial) || other.hasSeenGoStockTutorial == hasSeenGoStockTutorial)&&(identical(other.hasSeenMarketTutorial, hasSeenMarketTutorial) || other.hasSeenMarketTutorial == hasSeenMarketTutorial)&&(identical(other.hasSeenMoneyExtractionTutorial, hasSeenMoneyExtractionTutorial) || other.hasSeenMoneyExtractionTutorial == hasSeenMoneyExtractionTutorial));
 }
 
 
 @override
-int get hashCode => Object.hashAll([runtimeType,cash,reputation,dayCount,hourOfDay,const DeepCollectionEquality().hash(_logMessages),const DeepCollectionEquality().hash(_machines),const DeepCollectionEquality().hash(_trucks),warehouse,warehouseRoadX,warehouseRoadY,cityMapState,const DeepCollectionEquality().hash(_dailyRevenueHistory),currentDayRevenue,const DeepCollectionEquality().hash(_productSalesCount),hypeLevel,isRushHour,rushMultiplier,marketingButtonGridX,marketingButtonGridY]);
+int get hashCode => Object.hashAll([runtimeType,cash,reputation,dayCount,hourOfDay,const DeepCollectionEquality().hash(_logMessages),const DeepCollectionEquality().hash(_machines),const DeepCollectionEquality().hash(_trucks),warehouse,warehouseRoadX,warehouseRoadY,cityMapState,const DeepCollectionEquality().hash(_dailyRevenueHistory),currentDayRevenue,const DeepCollectionEquality().hash(_productSalesCount),hypeLevel,isRushHour,rushMultiplier,marketingButtonGridX,marketingButtonGridY,hasSeenPedestrianTapTutorial,hasSeenBuyTruckTutorial,hasSeenTruckTutorial,hasSeenGoStockTutorial,hasSeenMarketTutorial,hasSeenMoneyExtractionTutorial]);
 
 @override
 String toString() {
-  return 'GlobalGameState(cash: $cash, reputation: $reputation, dayCount: $dayCount, hourOfDay: $hourOfDay, logMessages: $logMessages, machines: $machines, trucks: $trucks, warehouse: $warehouse, warehouseRoadX: $warehouseRoadX, warehouseRoadY: $warehouseRoadY, cityMapState: $cityMapState, dailyRevenueHistory: $dailyRevenueHistory, currentDayRevenue: $currentDayRevenue, productSalesCount: $productSalesCount, hypeLevel: $hypeLevel, isRushHour: $isRushHour, rushMultiplier: $rushMultiplier, marketingButtonGridX: $marketingButtonGridX, marketingButtonGridY: $marketingButtonGridY)';
+  return 'GlobalGameState(cash: $cash, reputation: $reputation, dayCount: $dayCount, hourOfDay: $hourOfDay, logMessages: $logMessages, machines: $machines, trucks: $trucks, warehouse: $warehouse, warehouseRoadX: $warehouseRoadX, warehouseRoadY: $warehouseRoadY, cityMapState: $cityMapState, dailyRevenueHistory: $dailyRevenueHistory, currentDayRevenue: $currentDayRevenue, productSalesCount: $productSalesCount, hypeLevel: $hypeLevel, isRushHour: $isRushHour, rushMultiplier: $rushMultiplier, marketingButtonGridX: $marketingButtonGridX, marketingButtonGridY: $marketingButtonGridY, hasSeenPedestrianTapTutorial: $hasSeenPedestrianTapTutorial, hasSeenBuyTruckTutorial: $hasSeenBuyTruckTutorial, hasSeenTruckTutorial: $hasSeenTruckTutorial, hasSeenGoStockTutorial: $hasSeenGoStockTutorial, hasSeenMarketTutorial: $hasSeenMarketTutorial, hasSeenMoneyExtractionTutorial: $hasSeenMoneyExtractionTutorial)';
 }
 
 
@@ -350,7 +366,7 @@ abstract mixin class _$GlobalGameStateCopyWith<$Res> implements $GlobalGameState
   factory _$GlobalGameStateCopyWith(_GlobalGameState value, $Res Function(_GlobalGameState) _then) = __$GlobalGameStateCopyWithImpl;
 @override @useResult
 $Res call({
- double cash, int reputation, int dayCount, int hourOfDay, List<String> logMessages, List<Machine> machines, List<Truck> trucks, Warehouse warehouse, double? warehouseRoadX, double? warehouseRoadY, CityMapState? cityMapState, List<double> dailyRevenueHistory, double currentDayRevenue, Map<Product, int> productSalesCount, double hypeLevel, bool isRushHour, double rushMultiplier, int? marketingButtonGridX, int? marketingButtonGridY
+ double cash, int reputation, int dayCount, int hourOfDay, List<String> logMessages, List<Machine> machines, List<Truck> trucks, Warehouse warehouse, double? warehouseRoadX, double? warehouseRoadY, CityMapState? cityMapState, List<double> dailyRevenueHistory, double currentDayRevenue, Map<Product, int> productSalesCount, double hypeLevel, bool isRushHour, double rushMultiplier, int? marketingButtonGridX, int? marketingButtonGridY, bool hasSeenPedestrianTapTutorial, bool hasSeenBuyTruckTutorial, bool hasSeenTruckTutorial, bool hasSeenGoStockTutorial, bool hasSeenMarketTutorial, bool hasSeenMoneyExtractionTutorial
 });
 
 
@@ -367,7 +383,7 @@ class __$GlobalGameStateCopyWithImpl<$Res>
 
 /// Create a copy of GlobalGameState
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? cash = null,Object? reputation = null,Object? dayCount = null,Object? hourOfDay = null,Object? logMessages = null,Object? machines = null,Object? trucks = null,Object? warehouse = null,Object? warehouseRoadX = freezed,Object? warehouseRoadY = freezed,Object? cityMapState = freezed,Object? dailyRevenueHistory = null,Object? currentDayRevenue = null,Object? productSalesCount = null,Object? hypeLevel = null,Object? isRushHour = null,Object? rushMultiplier = null,Object? marketingButtonGridX = freezed,Object? marketingButtonGridY = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? cash = null,Object? reputation = null,Object? dayCount = null,Object? hourOfDay = null,Object? logMessages = null,Object? machines = null,Object? trucks = null,Object? warehouse = null,Object? warehouseRoadX = freezed,Object? warehouseRoadY = freezed,Object? cityMapState = freezed,Object? dailyRevenueHistory = null,Object? currentDayRevenue = null,Object? productSalesCount = null,Object? hypeLevel = null,Object? isRushHour = null,Object? rushMultiplier = null,Object? marketingButtonGridX = freezed,Object? marketingButtonGridY = freezed,Object? hasSeenPedestrianTapTutorial = null,Object? hasSeenBuyTruckTutorial = null,Object? hasSeenTruckTutorial = null,Object? hasSeenGoStockTutorial = null,Object? hasSeenMarketTutorial = null,Object? hasSeenMoneyExtractionTutorial = null,}) {
   return _then(_GlobalGameState(
 cash: null == cash ? _self.cash : cash // ignore: cast_nullable_to_non_nullable
 as double,reputation: null == reputation ? _self.reputation : reputation // ignore: cast_nullable_to_non_nullable
@@ -388,7 +404,13 @@ as double,isRushHour: null == isRushHour ? _self.isRushHour : isRushHour // igno
 as bool,rushMultiplier: null == rushMultiplier ? _self.rushMultiplier : rushMultiplier // ignore: cast_nullable_to_non_nullable
 as double,marketingButtonGridX: freezed == marketingButtonGridX ? _self.marketingButtonGridX : marketingButtonGridX // ignore: cast_nullable_to_non_nullable
 as int?,marketingButtonGridY: freezed == marketingButtonGridY ? _self.marketingButtonGridY : marketingButtonGridY // ignore: cast_nullable_to_non_nullable
-as int?,
+as int?,hasSeenPedestrianTapTutorial: null == hasSeenPedestrianTapTutorial ? _self.hasSeenPedestrianTapTutorial : hasSeenPedestrianTapTutorial // ignore: cast_nullable_to_non_nullable
+as bool,hasSeenBuyTruckTutorial: null == hasSeenBuyTruckTutorial ? _self.hasSeenBuyTruckTutorial : hasSeenBuyTruckTutorial // ignore: cast_nullable_to_non_nullable
+as bool,hasSeenTruckTutorial: null == hasSeenTruckTutorial ? _self.hasSeenTruckTutorial : hasSeenTruckTutorial // ignore: cast_nullable_to_non_nullable
+as bool,hasSeenGoStockTutorial: null == hasSeenGoStockTutorial ? _self.hasSeenGoStockTutorial : hasSeenGoStockTutorial // ignore: cast_nullable_to_non_nullable
+as bool,hasSeenMarketTutorial: null == hasSeenMarketTutorial ? _self.hasSeenMarketTutorial : hasSeenMarketTutorial // ignore: cast_nullable_to_non_nullable
+as bool,hasSeenMoneyExtractionTutorial: null == hasSeenMoneyExtractionTutorial ? _self.hasSeenMoneyExtractionTutorial : hasSeenMoneyExtractionTutorial // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 
