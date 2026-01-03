@@ -1122,6 +1122,11 @@ class SimulationEngine extends StateNotifier<SimulationState> {
       // Check Arrival
       final distToDest = (targetX - truck.currentX).abs() + (targetY - truck.currentY).abs();
       if (distToDest < SimulationConstants.roadSnapThreshold) {
+         // If truck is becoming idle and has a pending route, apply it
+         final shouldApplyPendingRoute = !isRoutingToMachine && truck.pendingRoute.isNotEmpty;
+         final routeToUse = shouldApplyPendingRoute ? truck.pendingRoute : truck.route;
+         final routeIndexToUse = isRoutingToMachine ? truck.currentRouteIndex : routeToUse.length;
+         
          return truck.copyWith(
            status: isRoutingToMachine ? TruckStatus.restocking : TruckStatus.idle,
            currentX: targetX,
@@ -1130,7 +1135,9 @@ class SimulationEngine extends StateNotifier<SimulationState> {
            targetY: targetY,
            path: [],
            pathIndex: 0,
-           currentRouteIndex: isRoutingToMachine ? truck.currentRouteIndex : truck.route.length,
+           route: shouldApplyPendingRoute ? routeToUse : truck.route, // Apply pending route
+           pendingRoute: shouldApplyPendingRoute ? [] : truck.pendingRoute, // Clear pending route
+           currentRouteIndex: routeIndexToUse,
          );
       }
 

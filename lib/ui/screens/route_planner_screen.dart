@@ -313,7 +313,9 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> with Ti
       (t) => t.id == truckId,
       orElse: () => throw StateError('Truck with id $truckId not found'),
     );
-    final newRoute = [...truck.route, machineId];
+    // Use displayed route (pendingRoute if exists, otherwise route)
+    final displayedRoute = truck.pendingRoute.isNotEmpty ? truck.pendingRoute : truck.route;
+    final newRoute = [...displayedRoute, machineId];
     controller.updateRoute(truckId, newRoute);
     
     // Mark select truck tutorial as seen when machine is added to route
@@ -334,7 +336,9 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> with Ti
       (t) => t.id == truckId,
       orElse: () => throw StateError('Truck with id $truckId not found'),
     );
-    final newRoute = truck.route.where((id) => id != machineId).toList();
+    // Use displayed route (pendingRoute if exists, otherwise route)
+    final displayedRoute = truck.pendingRoute.isNotEmpty ? truck.pendingRoute : truck.route;
+    final newRoute = displayedRoute.where((id) => id != machineId).toList();
     controller.updateRoute(truckId, newRoute);
   }
 
@@ -349,7 +353,9 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> with Ti
       (t) => t.id == truckId,
       orElse: () => throw StateError('Truck with id $truckId not found'),
     );
-    final newRoute = List<String>.from(truck.route);
+    // Use displayed route (pendingRoute if exists, otherwise route)
+    final displayedRoute = truck.pendingRoute.isNotEmpty ? truck.pendingRoute : truck.route;
+    final newRoute = List<String>.from(displayedRoute);
     final item = newRoute.removeAt(oldIndex);
     newRoute.insert(newIndex, item);
     controller.updateRoute(truckId, newRoute);
