@@ -36,27 +36,27 @@ extension ProductExtension on Product {
     }
   }
 
-  /// Base price for each product
+  /// Base price for each product (increased for better revenue)
   double get basePrice {
     switch (this) {
       case Product.soda:
-        return 2.50;
+        return 3.00; // Increased from 2.50
       case Product.chips:
-        return 1.75;
+        return 2.25; // Increased from 1.75
       case Product.proteinBar:
-        return 3.00;
+        return 3.75; // Increased from 3.00
       case Product.coffee:
-        return 3.50;
+        return 4.50; // Increased from 3.50
       case Product.techGadget:
-        return 25.00;
+        return 30.00; // Increased from 25.00
       case Product.sandwich:
-        return 5.50;
+        return 6.50; // Increased from 5.50
       case Product.freshSalad:
-        return 6.00;
+        return 7.00; // Increased from 6.00
       case Product.newspaper:
-        return 2.00;
+        return 2.50; // Increased from 2.00
       case Product.energyDrink:
-        return 4.50;
+        return 5.50; // Increased from 4.50
     }
   }
 
@@ -64,23 +64,23 @@ extension ProductExtension on Product {
   double get baseDemand {
     switch (this) {
       case Product.soda:
-        return 0.40; // 40% per hour (+10 percentage points from 30%)
+        return 0.50; // 50% per hour (increased from 40% for faster progression)
       case Product.chips:
-        return 0.35; // 35% per hour (+10 percentage points from 25%)
+        return 0.45; // 45% per hour (increased from 35% for faster progression)
       case Product.proteinBar:
-        return 0.26; // 26% per hour (+10 percentage points from 16%)
+        return 0.35; // 35% per hour (increased from 26% for faster progression)
       case Product.coffee:
-        return 0.30; // 30% per hour (+10 percentage points from 20%)
+        return 0.40; // 40% per hour (increased from 30% for faster progression)
       case Product.techGadget:
-        return 0.14; // 14% per hour (+10 percentage points from 4%)
+        return 0.18; // 18% per hour (increased from 14% for faster progression)
       case Product.sandwich:
-        return 0.28; // 28% per hour (+10 percentage points from 18%)
+        return 0.38; // 38% per hour (increased from 28% for faster progression)
       case Product.freshSalad:
-        return 0.25; // 25% per hour
+        return 0.33; // 33% per hour (increased from 25% for faster progression)
       case Product.newspaper:
-        return 0.20; // 20% per hour
+        return 0.28; // 28% per hour (increased from 20% for faster progression)
       case Product.energyDrink:
-        return 0.32; // 32% per hour
+        return 0.42; // 42% per hour (increased from 32% for faster progression)
     }
   }
 

@@ -313,7 +313,9 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> with Ti
       (t) => t.id == truckId,
       orElse: () => throw StateError('Truck with id $truckId not found'),
     );
-    final newRoute = [...truck.route, machineId];
+    // Use displayed route (pendingRoute if exists, otherwise route)
+    final displayedRoute = truck.pendingRoute.isNotEmpty ? truck.pendingRoute : truck.route;
+    final newRoute = [...displayedRoute, machineId];
     controller.updateRoute(truckId, newRoute);
     
     // Mark select truck tutorial as seen when machine is added to route
@@ -334,7 +336,9 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> with Ti
       (t) => t.id == truckId,
       orElse: () => throw StateError('Truck with id $truckId not found'),
     );
-    final newRoute = truck.route.where((id) => id != machineId).toList();
+    // Use displayed route (pendingRoute if exists, otherwise route)
+    final displayedRoute = truck.pendingRoute.isNotEmpty ? truck.pendingRoute : truck.route;
+    final newRoute = displayedRoute.where((id) => id != machineId).toList();
     controller.updateRoute(truckId, newRoute);
   }
 
@@ -349,7 +353,9 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> with Ti
       (t) => t.id == truckId,
       orElse: () => throw StateError('Truck with id $truckId not found'),
     );
-    final newRoute = List<String>.from(truck.route);
+    // Use displayed route (pendingRoute if exists, otherwise route)
+    final displayedRoute = truck.pendingRoute.isNotEmpty ? truck.pendingRoute : truck.route;
+    final newRoute = List<String>.from(displayedRoute);
     final item = newRoute.removeAt(oldIndex);
     newRoute.insert(newIndex, item);
     controller.updateRoute(truckId, newRoute);
@@ -1095,14 +1101,49 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> with Ti
                           label: 'Add Stop',
                           color: Colors.blue,
                         ),
-                        GameButton(
-                          onPressed: () {
-                            final controller = ref.read(gameControllerProvider.notifier);
-                            controller.hireDriver(selectedTruck.id, !selectedTruck.hasDriver);
-                          },
-                          icon: selectedTruck.hasDriver ? Icons.person_remove : Icons.person_add,
-                          label: selectedTruck.hasDriver ? 'Fire Driver' : 'Hire Driver (\$50/day)',
-                          color: selectedTruck.hasDriver ? Colors.red : Colors.purple,
+                        // Driver status (read-only) - managed from HQ
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: ScreenUtils.relativeSize(context, AppConfig.spacingFactorMedium),
+                            vertical: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall),
+                          ),
+                          decoration: BoxDecoration(
+                            color: selectedTruck.hasDriver ? Colors.green.shade100 : Colors.grey.shade200,
+                            borderRadius: BorderRadius.circular(ScreenUtils.relativeSize(context, AppConfig.gameButtonBorderRadiusFactor)),
+                            border: Border.all(
+                              color: selectedTruck.hasDriver ? Colors.green.shade300 : Colors.grey.shade400,
+                              width: ScreenUtils.relativeSize(context, AppConfig.spacingFactorTiny) * 2,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                selectedTruck.hasDriver ? Icons.person : Icons.person_off,
+                                color: selectedTruck.hasDriver ? Colors.green.shade700 : Colors.grey.shade600,
+                                size: ScreenUtils.relativeSizeClamped(
+                                  context,
+                                  0.03,
+                                  min: ScreenUtils.getSmallerDimension(context) * 0.025,
+                                  max: ScreenUtils.getSmallerDimension(context) * 0.035,
+                                ),
+                              ),
+                              SizedBox(width: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall)),
+                              Text(
+                                selectedTruck.hasDriver ? 'Driver: Assigned' : 'Driver: None',
+                                style: TextStyle(
+                                  color: selectedTruck.hasDriver ? Colors.green.shade900 : Colors.grey.shade700,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: ScreenUtils.relativeFontSize(
+                                    context,
+                                    AppConfig.fontSizeFactorSmall,
+                                    min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
+                                    max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                         Stack(
                           children: [

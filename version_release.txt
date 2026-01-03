@@ -1,6 +1,66 @@
 VENDING EMPIRE - RELEASE NOTES
 ================================
 
+Version 1.1.12
+-------------
+Release Date: January 15, 2026
+## Bug Fixes
+- **Fixed Route Editing While Truck is Moving**: Fixed glitch where route order changes while truck is routing would cause UI issues and prevent further route modifications
+  - Route manipulation functions (add/remove/reorder) now operate on the displayed route (pendingRoute if truck is moving)
+  - Pending route changes are automatically applied when truck becomes idle
+  - Users can now freely modify route order while truck is on the road without glitches
+
+---
+
+Version 1.1.11
+-------------
+Release Date: January 15, 2026
+## Bug Fixes
+- **Fixed Spoilage Bug**: Fixed critical bug where newly stocked items (especially sandwiches) would immediately expire and cause machine cash to go negative
+  - When restocking, `dayAdded` is now always updated to current day to ensure fresh stock
+  - Prevents infinite restocking loop for spoilable items
+- **Fixed Machine Cash Validation**: Machine cash is now clamped to minimum 0.0 when loading saved games to prevent negative cash
+- **Fixed Truck Loading Logic**: Trucks now check each product individually (not just total inventory) to trigger restocking when any product is below 50% of allocation
+- **Fixed Truck Route Completion**: Trucks now visit all stops in route when any stop needs restocking, not just low stock ones
+- **Fixed Driver Persistence**: Truck driver assignments (`hasDriver`) are now properly saved and loaded with game state
+
+## Improvements
+- **Truck Loading Buffer**: Trucks now carry 20% more stock than needed to ensure last stop in route can be fully stocked
+- **Sales Rate Adjustments**: Increased sales rates by 20-35% for better game progression feel
+- **Product Price Increases**: Increased product prices by 15-20% for better revenue
+- **Machine Inventory Allocation**: Machine inventory allocations are now saved and loaded with game state
+
+---
+
+Version 1.1.10
+-------------
+Release Date: January 15, 2026
+## New Features
+- **HQ Staff Management System**: Centralized staff hiring and management in Headquarters
+  - **Truck Drivers**: Pool-based driver system with automatic assignment to trucks ($50/day)
+  - **Mechanics**: Auto-repair broken machines (1 repair per mechanic per hour, $50/day)
+  - **Purchasing Agents**: Auto-buy stock based on target inventory levels (50 items per agent per hour, $50/day)
+- **Smart Truck Loading**: Trucks now load items for all stops in their route when any stop is below 50% stock
+- **Game Over System**: Game ends when cash falls below -$1000 with dialog to restart or return to menu
+- **Hourly Operating Costs Display**: HQ dashboard now shows total hourly costs including staff salaries and estimated truck gas costs
+- **Purchasing Agent Target Inventory**: Configure target inventory levels for each product in the Market screen
+
+## Improvements
+- **Truck Route Optimization**: Trucks visit all stops in their route when dispatched, not just low stock ones
+- **Marketing Button Visibility**: Rush sell button now stays visible during map panning
+- **Business Overview**: Refactored HQ dashboard with improved business metrics display
+- **Save/Load System**: All staff management data (drivers, mechanics, agents, driver assignments) now persists across game saves
+- **Staff Salary Balance**: All staff salaries standardized to $50/day for better game balance
+
+## Bug Fixes
+- Fixed truck drivers not being saved with game state
+- Fixed trucks dispatching when all stops are above 50% stock
+- Fixed marketing button disappearing during map panning
+- Fixed truck loading logic to properly stock all machines in route
+- Fixed driver assignment persistence across save/load
+
+---
+
 Version 1.1.9
 -------------
 Release Date: January 01, 2026

@@ -4,7 +4,6 @@ import '../../state/providers.dart';
 import '../../state/selectors.dart';
 import '../../config.dart';
 import '../../simulation/models/machine.dart';
-import '../../simulation/models/product.dart';
 import '../utils/screen_utils.dart';
 
 /// CEO Dashboard - Main HQ screen displaying empire overview
@@ -28,12 +27,12 @@ class HQDashboard extends ConsumerWidget {
             
             SizedBox(height: ScreenUtils.relativeSize(context, AppConfig.spacingFactorLarge)),
             
-            // Section B: Sales Analytics
-            _buildSalesAnalyticsSection(context, ref, machines),
+            // Section C: Staff Management (Centralized)
+            _buildStaffManagementSection(context, ref),
             
             SizedBox(height: ScreenUtils.relativeSize(context, AppConfig.spacingFactorLarge)),
             
-            // Section C: Maintenance
+            // Section D: Maintenance
             _buildNeedsAttentionSection(context, machines),
           ],
         ),
@@ -81,7 +80,7 @@ class HQDashboard extends ConsumerWidget {
                 )),
                 SizedBox(width: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall)),
                 Text(
-                  'Business Health',
+                  'Business Overview',
                   style: TextStyle(
                     fontSize: ScreenUtils.relativeFontSize(
                       context,
@@ -126,10 +125,122 @@ class HQDashboard extends ConsumerWidget {
                 ),
               ],
             ),
+            SizedBox(height: ScreenUtils.relativeSize(context, AppConfig.spacingFactorMedium)),
+            // Top Performing Location
+            _buildTopPerformingLocationCard(context, machines),
           ],
         ),
       ),
     );
+  }
+
+  /// Build Top Performing Location card
+  Widget _buildTopPerformingLocationCard(BuildContext context, List<Machine> machines) {
+    // Find Top Performing Location: machine with highest currentCash
+    Machine? topPerformingMachine;
+    double maxCash = 0.0;
+    for (final machine in machines) {
+      if (machine.currentCash > maxCash) {
+        maxCash = machine.currentCash;
+        topPerformingMachine = machine;
+      }
+    }
+
+    if (topPerformingMachine != null) {
+      return Card(
+        color: Colors.teal.shade50,
+        elevation: ScreenUtils.relativeSize(context, AppConfig.cardElevationFactor * 0.5),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(ScreenUtils.relativeSize(context, 0.008)),
+        ),
+        child: ListTile(
+          leading: Container(
+            padding: EdgeInsets.all(ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall)),
+            decoration: BoxDecoration(
+              color: Colors.teal.shade200,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.place,
+              color: Colors.teal.shade900,
+              size: ScreenUtils.relativeSizeClamped(
+                context,
+                0.03,
+                min: ScreenUtils.getSmallerDimension(context) * 0.02,
+                max: ScreenUtils.getSmallerDimension(context) * 0.04,
+              ),
+            ),
+          ),
+          title: Text(
+            'Top Performing Location',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: ScreenUtils.relativeFontSize(
+                context,
+                AppConfig.fontSizeFactorMedium,
+                min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
+                max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+              ),
+            ),
+          ),
+          subtitle: Text(
+            '${topPerformingMachine.name}: \$${maxCash.toStringAsFixed(2)}',
+            style: TextStyle(
+              color: Colors.teal.shade900,
+              fontWeight: FontWeight.w600,
+              fontSize: ScreenUtils.relativeFontSize(
+                context,
+                AppConfig.fontSizeFactorNormal,
+                min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
+                max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+              ),
+            ),
+          ),
+        ),
+      );
+    } else {
+      return Card(
+        color: Colors.grey.shade100,
+        elevation: ScreenUtils.relativeSize(context, AppConfig.cardElevationFactor * 0.5),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(ScreenUtils.relativeSize(context, 0.008)),
+        ),
+        child: ListTile(
+          leading: Icon(
+            Icons.location_off,
+            color: Colors.grey,
+            size: ScreenUtils.relativeSizeClamped(
+              context,
+              0.03,
+              min: ScreenUtils.getSmallerDimension(context) * 0.02,
+              max: ScreenUtils.getSmallerDimension(context) * 0.04,
+            ),
+          ),
+          title: Text(
+            'Top Performing Location',
+            style: TextStyle(
+              fontSize: ScreenUtils.relativeFontSize(
+                context,
+                AppConfig.fontSizeFactorMedium,
+                min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
+                max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+              ),
+            ),
+          ),
+          subtitle: Text(
+            'No machines yet',
+            style: TextStyle(
+              fontSize: ScreenUtils.relativeFontSize(
+                context,
+                AppConfig.fontSizeFactorNormal,
+                min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
+                max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
   }
 
   /// Build a single stat card with vibrant colors
@@ -220,248 +331,6 @@ class HQDashboard extends ConsumerWidget {
     );
   }
 
-  /// Section B: Sales Analytics
-  Widget _buildSalesAnalyticsSection(
-    BuildContext context,
-    WidgetRef ref,
-    List<Machine> machines,
-  ) {
-    final gameState = ref.watch(gameStateProvider);
-    
-    // Find Best Selling Item: product with highest global soldCount
-    Product? bestSellingProduct;
-    int bestSellingCount = 0;
-    for (final entry in gameState.productSalesCount.entries) {
-      if (entry.value > bestSellingCount) {
-        bestSellingCount = entry.value;
-        bestSellingProduct = entry.key;
-      }
-    }
-    
-    // Find Top Performing Location: machine with highest currentCash
-    Machine? topPerformingMachine;
-    double maxCash = 0.0;
-    for (final machine in machines) {
-      if (machine.currentCash > maxCash) {
-        maxCash = machine.currentCash;
-        topPerformingMachine = machine;
-      }
-    }
-
-    return Card(
-      elevation: ScreenUtils.relativeSize(context, AppConfig.cardElevationFactor),
-      color: Colors.amber.shade50,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(ScreenUtils.relativeSize(context, 0.012)),
-      ),
-      child: Padding(
-        padding: ScreenUtils.relativePadding(context, AppConfig.spacingFactorMedium),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.analytics, color: Colors.amber.shade800, size: ScreenUtils.relativeSizeClamped(
-                  context,
-                  0.04,
-                  min: ScreenUtils.getSmallerDimension(context) * 0.03,
-                  max: ScreenUtils.getSmallerDimension(context) * 0.05,
-                )),
-                SizedBox(width: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall)),
-                Text(
-                  'Sales Analytics',
-                  style: TextStyle(
-                    fontSize: ScreenUtils.relativeFontSize(
-                      context,
-                      AppConfig.fontSizeFactorLarge,
-                      min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                      max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                    ),
-                    fontWeight: FontWeight.bold,
-                    color: Colors.amber.shade900,
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: ScreenUtils.relativeSize(context, AppConfig.spacingFactorMedium)),
-            if (bestSellingProduct != null)
-              Card(
-                color: Colors.orange.shade50,
-                child: ListTile(
-                  leading: Container(
-                    padding: EdgeInsets.all(ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall)),
-                    decoration: BoxDecoration(
-                      color: Colors.orange.shade200,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.emoji_events,
-                      color: Colors.orange.shade900,
-                      size: ScreenUtils.relativeSizeClamped(
-                        context,
-                        0.03,
-                        min: ScreenUtils.getSmallerDimension(context) * 0.02,
-                        max: ScreenUtils.getSmallerDimension(context) * 0.04,
-                      ),
-                    ),
-                  ),
-                  title: Text(
-                    'Best Selling Item',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: ScreenUtils.relativeFontSize(
-                        context,
-                        AppConfig.fontSizeFactorMedium,
-                        min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                        max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                      ),
-                    ),
-                  ),
-                  subtitle: Text(
-                    '${bestSellingProduct.name}: $bestSellingCount sold',
-                    style: TextStyle(
-                      color: Colors.orange.shade900,
-                      fontWeight: FontWeight.w600,
-                      fontSize: ScreenUtils.relativeFontSize(
-                        context,
-                        AppConfig.fontSizeFactorNormal,
-                        min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                        max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                      ),
-                    ),
-                  ),
-                ),
-              )
-            else
-              Card(
-                color: Colors.grey.shade100,
-                child: ListTile(
-                  leading: Icon(
-                    Icons.star_border,
-                    color: Colors.grey,
-                    size: ScreenUtils.relativeSizeClamped(
-                      context,
-                      0.03,
-                      min: ScreenUtils.getSmallerDimension(context) * 0.02,
-                      max: ScreenUtils.getSmallerDimension(context) * 0.04,
-                    ),
-                  ),
-                  title: Text(
-                    'Best Selling Item',
-                    style: TextStyle(
-                      fontSize: ScreenUtils.relativeFontSize(
-                        context,
-                        AppConfig.fontSizeFactorMedium,
-                        min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                        max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                      ),
-                    ),
-                  ),
-                  subtitle: Text(
-                    'No sales data yet',
-                    style: TextStyle(
-                      fontSize: ScreenUtils.relativeFontSize(
-                        context,
-                        AppConfig.fontSizeFactorNormal,
-                        min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                        max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            SizedBox(height: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall)),
-            if (topPerformingMachine != null)
-              Card(
-                color: Colors.teal.shade50,
-                child: ListTile(
-                  leading: Container(
-                    padding: EdgeInsets.all(ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall)),
-                    decoration: BoxDecoration(
-                      color: Colors.teal.shade200,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.place,
-                      color: Colors.teal.shade900,
-                      size: ScreenUtils.relativeSizeClamped(
-                        context,
-                        0.03,
-                        min: ScreenUtils.getSmallerDimension(context) * 0.02,
-                        max: ScreenUtils.getSmallerDimension(context) * 0.04,
-                      ),
-                    ),
-                  ),
-                  title: Text(
-                    'Top Performing Location',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: ScreenUtils.relativeFontSize(
-                        context,
-                        AppConfig.fontSizeFactorMedium,
-                        min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                        max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                      ),
-                    ),
-                  ),
-                  subtitle: Text(
-                    '${topPerformingMachine.name}: \$${maxCash.toStringAsFixed(2)}',
-                    style: TextStyle(
-                      color: Colors.teal.shade900,
-                      fontWeight: FontWeight.w600,
-                      fontSize: ScreenUtils.relativeFontSize(
-                        context,
-                        AppConfig.fontSizeFactorNormal,
-                        min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                        max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                      ),
-                    ),
-                  ),
-                ),
-              )
-            else
-              Card(
-                color: Colors.grey.shade100,
-                child: ListTile(
-                  leading: Icon(
-                    Icons.location_off,
-                    color: Colors.grey,
-                    size: ScreenUtils.relativeSizeClamped(
-                      context,
-                      0.03,
-                      min: ScreenUtils.getSmallerDimension(context) * 0.02,
-                      max: ScreenUtils.getSmallerDimension(context) * 0.04,
-                    ),
-                  ),
-                  title: Text(
-                    'Top Performing Location',
-                    style: TextStyle(
-                      fontSize: ScreenUtils.relativeFontSize(
-                        context,
-                        AppConfig.fontSizeFactorMedium,
-                        min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                        max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                      ),
-                    ),
-                  ),
-                  subtitle: Text(
-                    'No machines yet',
-                    style: TextStyle(
-                      fontSize: ScreenUtils.relativeFontSize(
-                        context,
-                        AppConfig.fontSizeFactorNormal,
-                        min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                        max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
 
   /// Section C: Maintenance
   Widget _buildNeedsAttentionSection(
@@ -653,6 +522,422 @@ class HQDashboard extends ConsumerWidget {
       totalCost += MachinePrices.getPrice(machine.zone.type);
     }
     return totalCost / machines.length;
+  }
+
+  /// Section C: Staff Management - Centralized HQ Control
+  Widget _buildStaffManagementSection(BuildContext context, WidgetRef ref) {
+    final gameState = ref.watch(gameStateProvider);
+    final trucks = ref.watch(trucksProvider);
+    final controller = ref.read(gameControllerProvider.notifier);
+    
+    // Calculate assigned drivers
+    final assignedDrivers = trucks.where((t) => t.hasDriver).length;
+    final totalDrivers = gameState.driverPoolCount + assignedDrivers;
+
+    return Card(
+      elevation: ScreenUtils.relativeSize(context, AppConfig.cardElevationFactor),
+      color: Colors.blue.shade50,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(ScreenUtils.relativeSize(context, 0.012)),
+      ),
+      child: Padding(
+        padding: ScreenUtils.relativePadding(context, AppConfig.spacingFactorMedium),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.people, color: Colors.blue.shade700, size: ScreenUtils.relativeSizeClamped(
+                  context,
+                  0.04,
+                  min: ScreenUtils.getSmallerDimension(context) * 0.03,
+                  max: ScreenUtils.getSmallerDimension(context) * 0.05,
+                )),
+                SizedBox(width: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall)),
+                Text(
+                  'Staff Management',
+                  style: TextStyle(
+                    fontSize: ScreenUtils.relativeFontSize(
+                      context,
+                      AppConfig.fontSizeFactorLarge,
+                      min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
+                      max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+                    ),
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blue.shade900,
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: ScreenUtils.relativeSize(context, AppConfig.spacingFactorMedium)),
+            
+            // Drivers Section
+            _buildStaffRow(
+              context,
+              'Truck Drivers',
+              '$totalDrivers Drivers',
+              '$assignedDrivers assigned, ${gameState.driverPoolCount} in pool',
+              '\$50/day',
+              totalDrivers, // Use total drivers (pool + assigned) for fire button enable/disable
+              onHire: () => controller.hireDriver(),
+              onFire: () => controller.fireDriver(),
+            ),
+            
+            SizedBox(height: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall)),
+            
+            // Mechanics Section
+            _buildStaffRow(
+              context,
+              'Mechanics',
+              '${gameState.mechanicCount} Mechanics',
+              'Auto-repairs 1 machine/hr',
+              '\$50/day',
+              gameState.mechanicCount,
+              onHire: () => controller.hireMechanic(),
+              onFire: () => controller.fireMechanic(),
+            ),
+            
+            SizedBox(height: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall)),
+            
+            // Purchasing Agents Section (hiring only, settings in Market)
+            _buildStaffRow(
+              context,
+              'Purchasing Agents',
+              '${gameState.purchasingAgentCount} Agents',
+              'Auto-buys 50 items/hr (configure in Market)',
+              '\$50/day',
+              gameState.purchasingAgentCount,
+              onHire: () => controller.hirePurchasingAgent(),
+              onFire: () => controller.firePurchasingAgent(),
+            ),
+            
+            SizedBox(height: ScreenUtils.relativeSize(context, AppConfig.spacingFactorMedium)),
+            
+            // Payout Summary Section
+            _buildPayoutSummarySection(context, ref),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Build a staff row with hire/fire buttons
+  Widget _buildStaffRow(
+    BuildContext context,
+    String title,
+    String count,
+    String subtitle,
+    String salary,
+    int currentCount,
+    {required VoidCallback onHire, required VoidCallback onFire}
+  ) {
+    return Card(
+      color: Colors.white,
+      elevation: ScreenUtils.relativeSize(context, AppConfig.cardElevationFactor * 0.5),
+      child: Padding(
+        padding: ScreenUtils.relativePadding(context, AppConfig.spacingFactorSmall),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        title,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: ScreenUtils.relativeFontSize(
+                            context,
+                            AppConfig.fontSizeFactorNormal,
+                            min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
+                            max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall)),
+                      Text(
+                        '—',
+                        style: TextStyle(
+                          fontSize: ScreenUtils.relativeFontSize(
+                            context,
+                            AppConfig.fontSizeFactorNormal,
+                            min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
+                            max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+                          ),
+                          color: Colors.grey.shade400,
+                        ),
+                      ),
+                      SizedBox(width: ScreenUtils.relativeSize(context, AppConfig.spacingFactorMedium)),
+                      Text(
+                        count,
+                        style: TextStyle(
+                          fontSize: ScreenUtils.relativeFontSize(
+                            context,
+                            AppConfig.fontSizeFactorNormal,
+                            min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
+                            max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+                          ),
+                          fontWeight: FontWeight.w600,
+                          color: Colors.blue.shade700,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: ScreenUtils.relativeFontSize(
+                        context,
+                        AppConfig.fontSizeFactorSmall,
+                        min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
+                        max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+                      ),
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                  Text(
+                    salary,
+                    style: TextStyle(
+                      fontSize: ScreenUtils.relativeFontSize(
+                        context,
+                        AppConfig.fontSizeFactorSmall,
+                        min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
+                        max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+                      ),
+                      color: Colors.green.shade700,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Row(
+              children: [
+                IconButton(
+                  icon: Icon(Icons.remove_circle, color: currentCount > 0 ? Colors.red : Colors.grey),
+                  onPressed: currentCount > 0 ? onFire : null,
+                  iconSize: ScreenUtils.relativeSizeClamped(
+                    context,
+                    0.04,
+                    min: ScreenUtils.getSmallerDimension(context) * 0.03,
+                    max: ScreenUtils.getSmallerDimension(context) * 0.05,
+                  ),
+                ),
+                IconButton(
+                  icon: Icon(Icons.add_circle, color: Colors.green),
+                  onPressed: onHire,
+                  iconSize: ScreenUtils.relativeSizeClamped(
+                    context,
+                    0.04,
+                    min: ScreenUtils.getSmallerDimension(context) * 0.03,
+                    max: ScreenUtils.getSmallerDimension(context) * 0.05,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Build payout summary section showing hourly costs
+  Widget _buildPayoutSummarySection(BuildContext context, WidgetRef ref) {
+    final gameState = ref.watch(gameStateProvider);
+    final trucks = ref.watch(trucksProvider);
+    
+    // Calculate staff salaries per hour
+    const double driverSalaryPerDay = 50.0;
+    const double mechanicSalaryPerDay = 50.0;
+    const double purchasingAgentSalaryPerDay = 50.0;
+    const int hoursPerDay = 24;
+    
+    final assignedDrivers = trucks.where((t) => t.hasDriver).length;
+    final totalDrivers = gameState.driverPoolCount + assignedDrivers;
+    final driverSalaryPerHour = (totalDrivers * driverSalaryPerDay) / hoursPerDay;
+    final mechanicSalaryPerHour = (gameState.mechanicCount * mechanicSalaryPerDay) / hoursPerDay;
+    final purchasingAgentSalaryPerHour = (gameState.purchasingAgentCount * purchasingAgentSalaryPerDay) / hoursPerDay;
+    final totalStaffSalaryPerHour = driverSalaryPerHour + mechanicSalaryPerHour + purchasingAgentSalaryPerHour;
+    
+    // Calculate gas costs per hour
+    // Gas cost per tick = movementSpeed * gasPrice (when truck moves)
+    // Per hour = per tick * ticksPerHour
+    // We estimate based on trucks with drivers (they're the ones moving)
+    const double movementSpeed = 0.15; // From AppConfig
+    const double gasPrice = 0.05; // From AppConfig
+    const int ticksPerHour = 125; // From AppConfig
+    final trucksWithDrivers = trucks.where((t) => t.hasDriver).length;
+    // Estimate: trucks move about 50% of the time when they have drivers
+    final estimatedGasCostPerHour = trucksWithDrivers * movementSpeed * gasPrice * ticksPerHour * 0.5;
+    
+    final totalCostPerHour = totalStaffSalaryPerHour + estimatedGasCostPerHour;
+    
+    return Card(
+      elevation: ScreenUtils.relativeSize(context, AppConfig.cardElevationFactor),
+      color: Colors.orange.shade50,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(ScreenUtils.relativeSize(context, 0.012)),
+      ),
+      child: Padding(
+        padding: ScreenUtils.relativePadding(context, AppConfig.spacingFactorMedium),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.account_balance_wallet, color: Colors.orange.shade700, size: ScreenUtils.relativeSizeClamped(
+                  context,
+                  0.04,
+                  min: ScreenUtils.getSmallerDimension(context) * 0.03,
+                  max: ScreenUtils.getSmallerDimension(context) * 0.05,
+                )),
+                SizedBox(width: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall)),
+                Text(
+                  'Hourly Operating Costs',
+                  style: TextStyle(
+                    fontSize: ScreenUtils.relativeFontSize(
+                      context,
+                      AppConfig.fontSizeFactorLarge,
+                      min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
+                      max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+                    ),
+                    fontWeight: FontWeight.bold,
+                    color: Colors.orange.shade900,
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: ScreenUtils.relativeSize(context, AppConfig.spacingFactorMedium)),
+            
+            // Staff Salaries
+            _buildCostRow(
+              context,
+              'Staff Salaries',
+              totalStaffSalaryPerHour,
+              [
+                if (totalDrivers > 0) 'Drivers: \$${(driverSalaryPerHour).toStringAsFixed(2)}/hr',
+                if (gameState.mechanicCount > 0) 'Mechanics: \$${(mechanicSalaryPerHour).toStringAsFixed(2)}/hr',
+                if (gameState.purchasingAgentCount > 0) 'Agents: \$${(purchasingAgentSalaryPerHour).toStringAsFixed(2)}/hr',
+              ],
+            ),
+            
+            SizedBox(height: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall)),
+            
+            // Gas Costs
+            _buildCostRow(
+              context,
+              'Truck Gas Costs',
+              estimatedGasCostPerHour,
+              [
+                if (trucksWithDrivers > 0) '${trucksWithDrivers} truck${trucksWithDrivers > 1 ? 's' : ''} with drivers',
+                if (trucksWithDrivers == 0) 'No trucks with drivers',
+              ],
+            ),
+            
+            SizedBox(height: ScreenUtils.relativeSize(context, AppConfig.spacingFactorMedium)),
+            
+            Divider(),
+            
+            SizedBox(height: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall)),
+            
+            // Total
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Total Cost/Hour',
+                  style: TextStyle(
+                    fontSize: ScreenUtils.relativeFontSize(
+                      context,
+                      AppConfig.fontSizeFactorMedium,
+                      min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
+                      max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+                    ),
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  '\$${totalCostPerHour.toStringAsFixed(2)}/hr',
+                  style: TextStyle(
+                    fontSize: ScreenUtils.relativeFontSize(
+                      context,
+                      AppConfig.fontSizeFactorMedium,
+                      min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
+                      max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+                    ),
+                    fontWeight: FontWeight.bold,
+                    color: Colors.red.shade700,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Build a cost row for the payout summary
+  Widget _buildCostRow(
+    BuildContext context,
+    String title,
+    double cost,
+    List<String> details,
+  ) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: ScreenUtils.relativeFontSize(
+                    context,
+                    AppConfig.fontSizeFactorNormal,
+                    min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
+                    max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+                  ),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              if (details.isNotEmpty) ...[
+                SizedBox(height: ScreenUtils.relativeSize(context, AppConfig.spacingFactorTiny)),
+                ...details.map((detail) => Text(
+                  detail,
+                  style: TextStyle(
+                    fontSize: ScreenUtils.relativeFontSize(
+                      context,
+                      AppConfig.fontSizeFactorSmall,
+                      min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
+                      max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+                    ),
+                    color: Colors.grey.shade600,
+                  ),
+                )),
+              ],
+            ],
+          ),
+        ),
+        Text(
+          '\$${cost.toStringAsFixed(2)}/hr',
+          style: TextStyle(
+            fontSize: ScreenUtils.relativeFontSize(
+              context,
+              AppConfig.fontSizeFactorNormal,
+              min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
+              max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+            ),
+            fontWeight: FontWeight.w600,
+            color: Colors.orange.shade700,
+          ),
+        ),
+      ],
+    );
   }
 }
 

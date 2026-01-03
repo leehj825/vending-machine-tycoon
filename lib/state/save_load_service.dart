@@ -236,6 +236,12 @@ class SaveLoadService {
       'hasSeenGoStockTutorial': state.hasSeenGoStockTutorial,
       'hasSeenMarketTutorial': state.hasSeenMarketTutorial,
       'hasSeenMoneyExtractionTutorial': state.hasSeenMoneyExtractionTutorial,
+      // Staff Management
+      'driverPoolCount': state.driverPoolCount,
+      'mechanicCount': state.mechanicCount,
+      'purchasingAgentCount': state.purchasingAgentCount,
+      'purchasingAgentTargetInventory': state.purchasingAgentTargetInventory.map((key, value) => MapEntry(key.name, value)),
+      'isGameOver': state.isGameOver,
     };
     return jsonEncode(map);
   }
@@ -305,6 +311,17 @@ class SaveLoadService {
         hasSeenGoStockTutorial: gameStateMap['hasSeenGoStockTutorial'] as bool? ?? false,
         hasSeenMarketTutorial: gameStateMap['hasSeenMarketTutorial'] as bool? ?? false,
         hasSeenMoneyExtractionTutorial: gameStateMap['hasSeenMoneyExtractionTutorial'] as bool? ?? false,
+        // Staff Management (default to 0 for backward compatibility with old saves)
+        driverPoolCount: gameStateMap['driverPoolCount'] as int? ?? 0,
+        mechanicCount: gameStateMap['mechanicCount'] as int? ?? 0,
+        purchasingAgentCount: gameStateMap['purchasingAgentCount'] as int? ?? 0,
+        purchasingAgentTargetInventory: gameStateMap['purchasingAgentTargetInventory'] != null
+            ? (gameStateMap['purchasingAgentTargetInventory'] as Map<String, dynamic>).map((key, value) {
+                final product = Product.values.firstWhere((p) => p.name == key, orElse: () => Product.values.first);
+                return MapEntry(product, value as int);
+              })
+            : {},
+        isGameOver: gameStateMap['isGameOver'] as bool? ?? false,
       );
     } catch (e) {
       print('Error deserializing game state: $e');
@@ -326,6 +343,7 @@ class SaveLoadService {
           'product': key.name,
           'quantity': value.quantity,
           'dayAdded': value.dayAdded,
+          'allocation': value.allocation, // Save allocation for each item
         },
       )),
       'currentCash': machine.currentCash,
@@ -352,12 +370,13 @@ class SaveLoadService {
             product: product,
             quantity: itemMap['quantity'] as int,
             dayAdded: itemMap['dayAdded'] as int,
+            allocation: (itemMap['allocation'] as int?) ?? 20, // Load allocation (default to 20 for backward compatibility)
           ),
         );
       }),
-      currentCash: (map['currentCash'] as num).toDouble(),
-      hoursSinceRestock: (map['hoursSinceRestock'] as num).toDouble(),
-      totalSales: map['totalSales'] as int,
+      currentCash: ((map['currentCash'] as num?)?.toDouble() ?? 0.0).clamp(0.0, double.infinity), // Ensure cash is never negative
+      hoursSinceRestock: ((map['hoursSinceRestock'] as num?)?.toDouble() ?? 0.0).clamp(0.0, double.infinity), // Ensure hours is never negative
+      totalSales: (map['totalSales'] as int?) ?? 0,
     );
   }
 
@@ -381,6 +400,7 @@ class SaveLoadService {
         key.name,
         value,
       )),
+      'hasDriver': truck.hasDriver, // Save driver assignment
     };
   }
 
@@ -411,6 +431,7 @@ class SaveLoadService {
         final product = Product.values.firstWhere((p) => p.name == key);
         return MapEntry(product, value as int);
       }),
+      hasDriver: map['hasDriver'] as bool? ?? false, // Load driver assignment (default to false for backward compatibility)
     );
   }
 

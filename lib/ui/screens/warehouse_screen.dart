@@ -297,6 +297,13 @@ class _WarehouseScreenState extends ConsumerState<WarehouseScreen> with TickerPr
           SliverToBoxAdapter(
             child: Divider(height: ScreenUtils.relativeSize(context, AppConfig.spacingFactorTiny)),
           ),
+          // Purchasing Agent Target Inventory Section
+          SliverToBoxAdapter(
+            child: _buildPurchasingAgentTargetSection(context, ref),
+          ),
+          SliverToBoxAdapter(
+            child: Divider(height: ScreenUtils.relativeSize(context, AppConfig.spacingFactorTiny)),
+          ),
           // Market Header
           SliverToBoxAdapter(
             child: Container(
@@ -477,6 +484,192 @@ class _WarehouseScreenState extends ConsumerState<WarehouseScreen> with TickerPr
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  /// Build purchasing agent target inventory section
+  Widget _buildPurchasingAgentTargetSection(BuildContext context, WidgetRef ref) {
+    final gameState = ref.watch(gameStateProvider);
+    final controller = ref.read(gameControllerProvider.notifier);
+    final agentCount = gameState.purchasingAgentCount;
+    final targetInventory = gameState.purchasingAgentTargetInventory;
+
+    if (agentCount == 0) {
+      return Container(
+        padding: ScreenUtils.relativePadding(context, AppConfig.spacingFactorMedium),
+        child: Card(
+          color: Colors.grey.shade100,
+          child: Padding(
+            padding: ScreenUtils.relativePadding(context, AppConfig.spacingFactorMedium),
+            child: Row(
+              children: [
+                Icon(Icons.info_outline, color: Colors.grey.shade600),
+                SizedBox(width: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall)),
+                Expanded(
+                  child: Text(
+                    'Hire Purchasing Agents in HQ to enable auto-buying',
+                    style: TextStyle(
+                      fontSize: ScreenUtils.relativeFontSize(
+                        context,
+                        AppConfig.fontSizeFactorSmall,
+                        min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
+                        max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+                      ),
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      padding: ScreenUtils.relativePadding(context, AppConfig.spacingFactorMedium),
+      child: Card(
+        elevation: ScreenUtils.relativeSize(context, AppConfig.cardElevationFactor),
+        color: Colors.purple.shade50,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(ScreenUtils.relativeSize(context, 0.012)),
+        ),
+        child: ExpansionTile(
+          initiallyExpanded: false,
+          tilePadding: ScreenUtils.relativePadding(context, AppConfig.spacingFactorMedium),
+          childrenPadding: EdgeInsets.only(
+            left: ScreenUtils.relativeSize(context, AppConfig.spacingFactorMedium),
+            right: ScreenUtils.relativeSize(context, AppConfig.spacingFactorMedium),
+            bottom: ScreenUtils.relativeSize(context, AppConfig.spacingFactorMedium),
+          ),
+          leading: Icon(Icons.shopping_cart, color: Colors.purple.shade700, size: ScreenUtils.relativeSizeClamped(
+            context,
+            0.04,
+            min: ScreenUtils.getSmallerDimension(context) * 0.03,
+            max: ScreenUtils.getSmallerDimension(context) * 0.05,
+          )),
+          title: Text(
+            'Purchasing Agent Settings',
+            style: TextStyle(
+              fontSize: ScreenUtils.relativeFontSize(
+                context,
+                AppConfig.fontSizeFactorLarge,
+                min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
+                max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+              ),
+              fontWeight: FontWeight.bold,
+              color: Colors.purple.shade900,
+            ),
+          ),
+          subtitle: Text(
+            '$agentCount Agent${agentCount > 1 ? 's' : ''} - Auto-buys when inventory < 50% of target',
+            style: TextStyle(
+              fontSize: ScreenUtils.relativeFontSize(
+                context,
+                AppConfig.fontSizeFactorSmall,
+                min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
+                max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+              ),
+              color: Colors.grey.shade600,
+            ),
+          ),
+          children: [
+            Text(
+              'Target Inventory Levels',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: ScreenUtils.relativeFontSize(
+                  context,
+                  AppConfig.fontSizeFactorNormal,
+                  min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
+                  max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+                ),
+              ),
+            ),
+            SizedBox(height: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall)),
+            ...Product.values.map((product) {
+              final currentTarget = targetInventory[product] ?? 0;
+              return Padding(
+                padding: EdgeInsets.only(bottom: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall)),
+                child: Card(
+                  color: Colors.white,
+                  elevation: ScreenUtils.relativeSize(context, AppConfig.cardElevationFactor * 0.5),
+                  child: Padding(
+                    padding: ScreenUtils.relativePadding(context, AppConfig.spacingFactorSmall),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            product.name,
+                            style: TextStyle(
+                              fontSize: ScreenUtils.relativeFontSize(
+                                context,
+                                AppConfig.fontSizeFactorNormal,
+                                min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
+                                max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+                              ),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        Row(
+                          children: [
+                            IconButton(
+                              icon: Icon(Icons.remove, size: ScreenUtils.relativeSizeClamped(
+                                context,
+                                0.025,
+                                min: ScreenUtils.getSmallerDimension(context) * 0.02,
+                                max: ScreenUtils.getSmallerDimension(context) * 0.03,
+                              )),
+                              onPressed: currentTarget > 0 
+                                ? () => controller.setPurchasingAgentTarget(product, currentTarget - 10)
+                                : null,
+                              padding: EdgeInsets.all(ScreenUtils.relativeSize(context, AppConfig.spacingFactorTiny)),
+                              constraints: BoxConstraints(),
+                            ),
+                            Container(
+                              width: ScreenUtils.relativeSizeClamped(
+                                context,
+                                0.1,
+                                min: ScreenUtils.getSmallerDimension(context) * 0.08,
+                                max: ScreenUtils.getSmallerDimension(context) * 0.12,
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                '$currentTarget',
+                                style: TextStyle(
+                                  fontSize: ScreenUtils.relativeFontSize(
+                                    context,
+                                    AppConfig.fontSizeFactorNormal,
+                                    min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
+                                    max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+                                  ),
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            IconButton(
+                              icon: Icon(Icons.add, size: ScreenUtils.relativeSizeClamped(
+                                context,
+                                0.025,
+                                min: ScreenUtils.getSmallerDimension(context) * 0.02,
+                                max: ScreenUtils.getSmallerDimension(context) * 0.03,
+                              )),
+                              onPressed: () => controller.setPurchasingAgentTarget(product, currentTarget + 10),
+                              padding: EdgeInsets.all(ScreenUtils.relativeSize(context, AppConfig.spacingFactorTiny)),
+                              constraints: BoxConstraints(),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ],
+        ),
       ),
     );
   }
