@@ -58,6 +58,10 @@ class _PedestrianState {
   bool flipHorizontal;
   int stepsWalked; // Track how many steps the pedestrian has taken
   bool isHeadingToShop; // Whether pedestrian is heading to a machine (forced by tap)
+  int stuckCounter; // Track how many frames the pedestrian hasn't moved (for stuck detection)
+  int? lastTileX; // Last tile X position (for stuck detection)
+  int? lastTileY; // Last tile Y position (for stuck detection)
+  int sameTileCounter; // How many frames the pedestrian has been in the same tile
   String? targetMachineId; // ID of machine to visit when isHeadingToShop is true
   int? jumpStartStep; // Step count when jump animation started (for jump effect)
   List<({int x, int y})> path; // Path waypoints through road tiles (A* pathfinding)
@@ -75,6 +79,10 @@ class _PedestrianState {
     this.flipHorizontal = false,
     this.stepsWalked = 0,
     this.isHeadingToShop = false,
+    this.stuckCounter = 0,
+    this.lastTileX,
+    this.lastTileY,
+    this.sameTileCounter = 0,
     this.targetMachineId,
     this.jumpStartStep,
     this.path = const [],
@@ -1290,10 +1298,23 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
     }
   }
 
+  bool _hasShownGameOver = false; // Track if we've already shown the game over dialog
+
   @override
   Widget build(BuildContext context) {
     // Watch machines provider to ensure rebuild when machines change
     ref.watch(machinesProvider);
+    
+    // Watch game state for game over condition
+    final gameState = ref.watch(gameStateProvider);
+    
+    // Show game over dialog when game over flag is set
+    if (gameState.isGameOver && !_hasShownGameOver) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _hasShownGameOver = true;
+        _showGameOverDialog(context);
+      });
+    }
     
     // Get tile dimensions for this context
     final tileWidth = _getTileWidth(context);
@@ -2028,6 +2049,144 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
     }
   }
 
+  /// Show game over dialog when player goes bankrupt
+  void _showGameOverDialog(BuildContext context) {
+    final gameState = ref.read(gameStateProvider);
+    final controller = ref.read(gameControllerProvider.notifier);
+    
+    showDialog(
+      context: context,
+      barrierDismissible: false, // Prevent dismissing by tapping outside
+      builder: (dialogContext) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.warning, color: Colors.red, size: ScreenUtils.relativeSizeClamped(
+              context,
+              0.06,
+              min: ScreenUtils.getSmallerDimension(context) * 0.04,
+              max: ScreenUtils.getSmallerDimension(context) * 0.08,
+            )),
+            SizedBox(width: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall)),
+            Expanded(
+              child: Text(
+                'Game Over',
+                style: TextStyle(
+                  fontSize: ScreenUtils.relativeFontSize(
+                    context,
+                    AppConfig.fontSizeFactorLarge,
+                    min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
+                    max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+                  ),
+                  fontWeight: FontWeight.bold,
+                  color: Colors.red.shade900,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Your business went bankrupt!',
+              style: TextStyle(
+                fontSize: ScreenUtils.relativeFontSize(
+                  context,
+                  AppConfig.fontSizeFactorNormal,
+                  min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
+                  max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+                ),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            SizedBox(height: ScreenUtils.relativeSize(context, AppConfig.spacingFactorMedium)),
+            Text(
+              'Final Cash: \$${gameState.cash.toStringAsFixed(2)}',
+              style: TextStyle(
+                fontSize: ScreenUtils.relativeFontSize(
+                  context,
+                  AppConfig.fontSizeFactorNormal,
+                  min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
+                  max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+                ),
+                color: Colors.red.shade700,
+              ),
+            ),
+            SizedBox(height: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall)),
+            Text(
+              'Day ${gameState.dayCount}',
+              style: TextStyle(
+                fontSize: ScreenUtils.relativeFontSize(
+                  context,
+                  AppConfig.fontSizeFactorSmall,
+                  min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
+                  max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+                ),
+                color: Colors.grey.shade600,
+              ),
+            ),
+            SizedBox(height: ScreenUtils.relativeSize(context, AppConfig.spacingFactorMedium)),
+            Text(
+              'Try to manage your expenses better next time!',
+              style: TextStyle(
+                fontSize: ScreenUtils.relativeFontSize(
+                  context,
+                  AppConfig.fontSizeFactorSmall,
+                  min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
+                  max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+                ),
+                color: Colors.grey.shade700,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(dialogContext).pop();
+              Navigator.of(context).pop(); // Go back to menu
+            },
+            child: Text(
+              'Back to Menu',
+              style: TextStyle(
+                fontSize: ScreenUtils.relativeFontSize(
+                  context,
+                  AppConfig.fontSizeFactorNormal,
+                  min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
+                  max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+                ),
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(dialogContext).pop();
+              // Reset game
+              controller.resetGame();
+              _hasShownGameOver = false;
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+            ),
+            child: Text(
+              'New Game',
+              style: TextStyle(
+                fontSize: ScreenUtils.relativeFontSize(
+                  context,
+                  AppConfig.fontSizeFactorNormal,
+                  min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
+                  max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showMachineView(BuildContext context, sim.Machine machine) {
     final machineId = machine.id;
     final imagePath = _getViewImagePath(machine.zone.type);
@@ -2179,10 +2338,15 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
   
   /// Spawn random number (1-10) of pedestrians, one of each personId (max 10 unique pedestrians)
   void _spawnPedestrians() {
-    // Find all road tiles that are next to buildings
+    // Find all road tiles that are next to buildings (or any road tiles as fallback)
     final validTiles = _findRoadTilesNextToBuildings();
     
-    if (validTiles.isEmpty) return;
+    if (validTiles.isEmpty) {
+      print('⚠️ PEDESTRIAN SPAWN: No valid road tiles found for spawning');
+      return;
+    }
+    
+    print('✅ PEDESTRIAN SPAWN: Found ${validTiles.length} valid road tiles');
     
     // Spawn random number of pedestrians (1-10, but limited by available unique personIds)
     final numToSpawn = math.min(_pedestrianRandom.nextInt(10) + 1, 10 - _pedestrians.length);
@@ -2228,6 +2392,9 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
         personId: personId,
         gridX: validTile.x.toDouble(),
         gridY: validTile.y.toDouble(),
+        lastTileX: validTile.x,
+        lastTileY: validTile.y,
+        sameTileCounter: 0,
       ));
       
       // Update count
@@ -2243,6 +2410,8 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
         availablePersonIds.remove(personId);
       }
     }
+    
+    print('✅ PEDESTRIAN SPAWN: Spawned $spawned pedestrians (total: ${_pedestrians.length})');
   }
   
   /// Spawn a single pedestrian at a random road tile next to a building
@@ -2278,6 +2447,9 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
       personId: personId,
       gridX: validTile.x.toDouble(),
       gridY: validTile.y.toDouble(),
+      lastTileX: validTile.x,
+      lastTileY: validTile.y,
+      sameTileCounter: 0,
     ));
     
     // Update count
@@ -2335,6 +2507,17 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
       }
     }
     
+    // If no road tiles next to buildings, use any road tiles as fallback
+    if (spawnTiles.isEmpty) {
+      for (int y = 0; y < _grid.length; y++) {
+        for (int x = 0; x < _grid[y].length; x++) {
+          if (_grid[y][x] == TileType.road) {
+            spawnTiles.add((x: x, y: y));
+          }
+        }
+      }
+    }
+    
     return spawnTiles;
   }
   
@@ -2376,24 +2559,40 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
       _checkAndShowTutorial();
     }
     
-    // Spawn new pedestrians if we have available personIds (max 10 unique pedestrians)
-    // Reduced spawn rate - less often appearing
-    if (_pedestrians.length < 10 && _pedestrianRandom.nextDouble() < 0.003) { // 0.3% chance per update (reduced from 1%)
-        _spawnSinglePedestrian();
-        // Check tutorial after spawning
-        final gameState = ref.read(gameStateProvider);
-        if (machines.isNotEmpty && _showPedestrianTutorial && _tutorialPedestrian == null && !gameState.hasSeenPedestrianTapTutorial) {
-          _checkAndShowTutorial();
-        }
-      }
-    
     // Track pedestrians to remove after forced sale
     final pedestriansToRemove = <_PedestrianState>[];
     
     for (final pedestrian in _pedestrians) {
       // Clamp position to stay within map bounds
+      final previousX = pedestrian.gridX;
+      final previousY = pedestrian.gridY;
       pedestrian.gridX = pedestrian.gridX.clamp(0.0, (gridSize - 1).toDouble());
       pedestrian.gridY = pedestrian.gridY.clamp(0.0, (gridSize - 1).toDouble());
+      
+      // Check if pedestrian is stuck in the same tile for too long
+      final currentTileX = pedestrian.gridX.floor();
+      final currentTileY = pedestrian.gridY.floor();
+      
+      if (pedestrian.lastTileX == currentTileX && pedestrian.lastTileY == currentTileY) {
+        // Still in the same tile, increment counter
+        pedestrian.sameTileCounter++;
+        
+        // If stuck in same tile for more than 150 frames (7.5 seconds at 50ms updates), remove them
+        if (pedestrian.sameTileCounter > 150 && !pedestrian.isHeadingToShop) {
+          pedestriansToRemove.add(pedestrian);
+          // Decrement personId count
+          final count = _personIdCounts[pedestrian.personId] ?? 0;
+          if (count > 0) {
+            _personIdCounts[pedestrian.personId] = count - 1;
+          }
+          continue; // Skip processing this pedestrian
+        }
+      } else {
+        // Moved to a different tile, reset counter and update last tile
+        pedestrian.lastTileX = currentTileX;
+        pedestrian.lastTileY = currentTileY;
+        pedestrian.sameTileCounter = 0;
+      }
       
       // Check if pedestrian is heading to shop (forced by tap)
       if (pedestrian.isHeadingToShop && pedestrian.targetMachineId != null) {
@@ -2456,11 +2655,12 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
         );
         
         // Filter out the previous position to avoid going back and forth
+        // But if it's the only option, allow it (prevents getting stuck)
         final availableTiles = adjacentTiles.where((tile) {
           if (pedestrian.previousGridX != null && pedestrian.previousGridY != null) {
             final prevX = pedestrian.previousGridX!.floor();
             final prevY = pedestrian.previousGridY!.floor();
-            // Don't go back to the previous tile
+            // Don't go back to the previous tile unless it's the only option
             return !(tile.x == prevX && tile.y == prevY);
           }
           return true;
@@ -2472,7 +2672,10 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
           pedestrian.targetGridX = target.x.toDouble();
           pedestrian.targetGridY = target.y.toDouble();
         } else if (adjacentTiles.isNotEmpty) {
-          // If all adjacent tiles are the previous one, pick any (shouldn't happen often)
+          // If all adjacent tiles are the previous one, clear previous position and allow going back
+          // This prevents getting stuck in a dead-end
+          pedestrian.previousGridX = null;
+          pedestrian.previousGridY = null;
           final random = math.Random();
           final target = adjacentTiles[random.nextInt(adjacentTiles.length)];
           pedestrian.targetGridX = target.x.toDouble();
@@ -2484,10 +2687,19 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
             pedestrian.gridY.floor(),
           );
           if (nearbyTile != null) {
+            // Clear previous position when using nearby tile to prevent getting stuck
+            pedestrian.previousGridX = null;
+            pedestrian.previousGridY = null;
             pedestrian.targetGridX = nearbyTile.x.toDouble();
             pedestrian.targetGridY = nearbyTile.y.toDouble();
-            }
+          } else {
+            // Last resort: clear target and previous to allow fresh start
+            pedestrian.targetGridX = null;
+            pedestrian.targetGridY = null;
+            pedestrian.previousGridX = null;
+            pedestrian.previousGridY = null;
           }
+        }
         }
       }
       
@@ -2604,48 +2816,142 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
           }
         } else {
           // Normal movement (no path or not heading to shop)
-        final targetX = pedestrian.targetGridX!.clamp(0.0, (gridSize - 1).toDouble());
-        final targetY = pedestrian.targetGridY!.clamp(0.0, (gridSize - 1).toDouble());
-        
-        final dx = targetX - pedestrian.gridX;
-        final dy = targetY - pedestrian.gridY;
-        final distance = math.sqrt(dx * dx + dy * dy);
-        
-        if (distance > arrivalThreshold) {
-          final normalizedDx = dx / distance;
-          final normalizedDy = dy / distance;
+          final targetX = pedestrian.targetGridX!.clamp(0.0, (gridSize - 1).toDouble());
+          final targetY = pedestrian.targetGridY!.clamp(0.0, (gridSize - 1).toDouble());
           
-            final speed = normalSpeed;
-            var newX = pedestrian.gridX + normalizedDx * speed;
-            var newY = pedestrian.gridY + normalizedDy * speed;
-            
-            // Only move on road tiles
-            final newGridX = newX.floor();
-            final newGridY = newY.floor();
-            
-            if (newGridY >= 0 && newGridY < _grid.length &&
-                newGridX >= 0 && newGridX < _grid[newGridY].length &&
-                _grid[newGridY][newGridX] == TileType.road) {
-              pedestrian.gridX = newX;
-              pedestrian.gridY = newY;
+          // Check if pedestrian is currently on a road tile
+          final currentGridX = pedestrian.gridX.floor();
+          final currentGridY = pedestrian.gridY.floor();
+          final isOnRoad = currentGridY >= 0 && currentGridY < _grid.length &&
+                          currentGridX >= 0 && currentGridX < _grid[currentGridY].length &&
+                          _grid[currentGridY][currentGridX] == TileType.road;
+          
+          // If not on a road tile, find a nearby road tile (but don't teleport aggressively)
+          if (!isOnRoad) {
+            // Only teleport if we've been off-road for a while (stuck counter > 100)
+            if (pedestrian.stuckCounter > 100) {
+              final nearbyTile = _findNearbyValidTileForPedestrian(currentGridX, currentGridY);
+              if (nearbyTile != null) {
+                pedestrian.gridX = nearbyTile.x.toDouble();
+                pedestrian.gridY = nearbyTile.y.toDouble();
+                pedestrian.targetGridX = null;
+                pedestrian.targetGridY = null;
+                pedestrian.previousGridX = null;
+                pedestrian.previousGridY = null;
+                pedestrian.stuckCounter = 0;
+              } else {
+                // Last resort: find any road tile
+                final anyRoadTile = _findAnyRoadTile();
+                if (anyRoadTile != null) {
+                  pedestrian.gridX = anyRoadTile.x.toDouble();
+                  pedestrian.gridY = anyRoadTile.y.toDouble();
+                  pedestrian.targetGridX = null;
+                  pedestrian.targetGridY = null;
+                  pedestrian.previousGridX = null;
+                  pedestrian.previousGridY = null;
+                  pedestrian.stuckCounter = 0;
+                }
+              }
             } else {
-              // If not a road tile, reset target to find a new one
+              // Increment stuck counter when off-road
+              pedestrian.stuckCounter++;
+            }
+          } else {
+            // Reset stuck counter when on road
+            if (pedestrian.stuckCounter > 0) {
+              pedestrian.stuckCounter = 0;
+            }
+          }
+          
+          // Only proceed with normal movement if on road
+          if (isOnRoad) {
+            // Pedestrian is on a road tile, proceed with normal movement
+            final dx = targetX - pedestrian.gridX;
+            final dy = targetY - pedestrian.gridY;
+            final distance = math.sqrt(dx * dx + dy * dy);
+            
+            if (distance > arrivalThreshold) {
+              final normalizedDx = dx / distance;
+              final normalizedDy = dy / distance;
+              
+              final speed = normalSpeed;
+              var newX = pedestrian.gridX + normalizedDx * speed;
+              var newY = pedestrian.gridY + normalizedDy * speed;
+              
+              // Only move on road tiles
+              final newGridX = newX.floor();
+              final newGridY = newY.floor();
+              
+              if (newGridY >= 0 && newGridY < _grid.length &&
+                  newGridX >= 0 && newGridX < _grid[newGridY].length &&
+                  _grid[newGridY][newGridX] == TileType.road) {
+                pedestrian.gridX = newX;
+                pedestrian.gridY = newY;
+              } else {
+                // If not a road tile, reset target to find a new one
+                pedestrian.targetGridX = null;
+                pedestrian.targetGridY = null;
+              }
+            } else {
+              // Arrived at target for normal wandering
+              pedestrian.gridX = targetX;
+              pedestrian.gridY = targetY;
               pedestrian.targetGridX = null;
               pedestrian.targetGridY = null;
             }
-          } else {
-            // Arrived at target for normal wandering
-            pedestrian.gridX = targetX;
-            pedestrian.gridY = targetY;
-            pedestrian.targetGridX = null;
-            pedestrian.targetGridY = null;
           }
         }
           
           // Clamp position after movement to stay within bounds
-          pedestrian.gridX = pedestrian.gridX.clamp(0.0, (gridSize - 1).toDouble());
-          pedestrian.gridY = pedestrian.gridY.clamp(0.0, (gridSize - 1).toDouble());
+          final finalX = pedestrian.gridX.clamp(0.0, (gridSize - 1).toDouble());
+          final finalY = pedestrian.gridY.clamp(0.0, (gridSize - 1).toDouble());
           
+          // Check if pedestrian actually moved (for stuck detection)
+          final movedDistance = math.sqrt(
+            (finalX - previousX) * (finalX - previousX) +
+            (finalY - previousY) * (finalY - previousY)
+          );
+          
+          // Only check stuck if pedestrian has a target and is trying to move
+          // Only increment stuck counter if pedestrian is on a road tile but not moving
+          if (pedestrian.targetGridX != null && pedestrian.targetGridY != null) {
+            final currentGridX = finalX.floor();
+            final currentGridY = finalY.floor();
+            final isOnRoad = currentGridY >= 0 && currentGridY < _grid.length &&
+                            currentGridX >= 0 && currentGridX < _grid[currentGridY].length &&
+                            _grid[currentGridY][currentGridX] == TileType.road;
+            
+            if (isOnRoad && movedDistance < 0.1) {
+              // Pedestrian is on road but hasn't moved much, increment stuck counter
+              pedestrian.stuckCounter++;
+            } else if (movedDistance >= 0.1) {
+              // Pedestrian moved significantly, reset stuck counter
+              pedestrian.stuckCounter = 0;
+            }
+            
+            // If stuck for more than 200 frames (10 seconds at 50ms updates), use recovery mechanism
+            // Only for normal wandering, not when heading to shop
+            if (pedestrian.stuckCounter > 200 && !pedestrian.isHeadingToShop && isOnRoad) {
+              // Find any nearby road tile and teleport there
+              final nearbyTile = _findNearbyValidTileForPedestrian(currentGridX, currentGridY);
+              if (nearbyTile != null && (nearbyTile.x != currentGridX || nearbyTile.y != currentGridY)) {
+                // Only teleport if the nearby tile is different from current position
+                pedestrian.gridX = nearbyTile.x.toDouble();
+                pedestrian.gridY = nearbyTile.y.toDouble();
+                pedestrian.targetGridX = null;
+                pedestrian.targetGridY = null;
+                pedestrian.previousGridX = null;
+                pedestrian.previousGridY = null;
+                pedestrian.stuckCounter = 0;
+              }
+            }
+          } else {
+            // No target, reset stuck counter
+            pedestrian.stuckCounter = 0;
+          }
+          
+          pedestrian.gridX = finalX;
+          pedestrian.gridY = finalY;
           pedestrian.stepsWalked++; // Increment step counter
         
         // Calculate movement direction for animation
@@ -2706,6 +3012,21 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
         _personIdCounts[pedestrian.personId] = count - 1;
       }
     }
+    
+    // Spawn new pedestrians after removal (if we have available personIds and slots)
+    // Increased spawn rate to ensure pedestrians appear, especially after force sales
+    if (_pedestrians.length < 10) {
+      // Higher spawn rate if we have fewer pedestrians (more aggressive spawning)
+      final spawnChance = _pedestrians.length < 3 ? 0.05 : 0.02; // 5% if < 3, 2% otherwise
+      if (_pedestrianRandom.nextDouble() < spawnChance) {
+        _spawnSinglePedestrian();
+        // Check tutorial after spawning
+        final gameState = ref.read(gameStateProvider);
+        if (machines.isNotEmpty && _showPedestrianTutorial && _tutorialPedestrian == null && !gameState.hasSeenPedestrianTapTutorial) {
+          _checkAndShowTutorial();
+        }
+      }
+    }
   }
   
   /// Check if a tile type is valid for pedestrians (only road tiles - sidewalks)
@@ -2756,6 +3077,27 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
     return null;
   }
   
+  /// Find any road tile on the map (last resort for stuck pedestrians)
+  ({int x, int y})? _findAnyRoadTile() {
+    // Search in a random order to avoid always teleporting to the same place
+    final random = math.Random();
+    final positions = <({int x, int y})>[];
+    
+    for (int y = 0; y < _grid.length; y++) {
+      for (int x = 0; x < _grid[y].length; x++) {
+        if (_isValidTileForPedestrian(_grid[y][x])) {
+          positions.add((x: x, y: y));
+        }
+      }
+    }
+    
+    if (positions.isEmpty) return null;
+    
+    // Return a random road tile
+    positions.shuffle(random);
+    return positions.first;
+  }
+  
   /// Build pedestrian widget with animation
   Widget _buildPedestrian(BuildContext context, _PedestrianState pedestrian, Offset centerOffset, double tileWidth, double tileHeight) {
     final pos = _gridToScreenDouble(context, pedestrian.gridX, pedestrian.gridY);
@@ -2797,44 +3139,52 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
       top: top,
       width: pedestrianSize,
       height: pedestrianSize,
-      child: GestureDetector(
-        onTap: () => _handlePedestrianTap(pedestrian),
-        behavior: HitTestBehavior.opaque,
-        // Ensure the entire area is tappable even when moving
-        child: Container(
-          color: Colors.transparent,
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Transform.translate(
-                offset: Offset(0, jumpOffset),
-                child: _AnimatedPedestrian(
-                  personId: pedestrian.personId,
-                  direction: pedestrian.direction,
-                  flipHorizontal: pedestrian.flipHorizontal,
-                ),
-              ),
-              // Tutorial: Blinking green circle for highlighted pedestrian
-              if (_showPedestrianTutorial && _tutorialPedestrian == pedestrian && _tutorialBlinkController != null)
-                Positioned.fill(
-                  child: IgnorePointer(
-                    child: AnimatedBuilder(
-                      animation: _tutorialBlinkController!,
-                      builder: (context, child) {
-                        return Container(
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: Colors.green.withOpacity(0.3 + (_tutorialBlinkController!.value * 0.7)),
-                              width: 3.0,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _handlePedestrianTap(pedestrian),
+          customBorder: CircleBorder(),
+          borderRadius: BorderRadius.circular(pedestrianSize / 2),
+          child: Container(
+            width: pedestrianSize,
+            height: pedestrianSize,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.transparent,
+            ),
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Transform.translate(
+                  offset: Offset(0, jumpOffset),
+                  child: _AnimatedPedestrian(
+                    personId: pedestrian.personId,
+                    direction: pedestrian.direction,
+                    flipHorizontal: pedestrian.flipHorizontal,
                   ),
                 ),
-            ],
+                // Tutorial: Blinking green circle for highlighted pedestrian
+                if (_showPedestrianTutorial && _tutorialPedestrian == pedestrian && _tutorialBlinkController != null)
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: AnimatedBuilder(
+                        animation: _tutorialBlinkController!,
+                        builder: (context, child) {
+                          return Container(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: Colors.green.withOpacity(0.3 + (_tutorialBlinkController!.value * 0.7)),
+                                width: 3.0,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
       ),

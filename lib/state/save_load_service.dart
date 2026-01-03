@@ -236,6 +236,12 @@ class SaveLoadService {
       'hasSeenGoStockTutorial': state.hasSeenGoStockTutorial,
       'hasSeenMarketTutorial': state.hasSeenMarketTutorial,
       'hasSeenMoneyExtractionTutorial': state.hasSeenMoneyExtractionTutorial,
+      // Staff Management
+      'driverPoolCount': state.driverPoolCount,
+      'mechanicCount': state.mechanicCount,
+      'purchasingAgentCount': state.purchasingAgentCount,
+      'purchasingAgentTargetInventory': state.purchasingAgentTargetInventory.map((key, value) => MapEntry(key.name, value)),
+      'isGameOver': state.isGameOver,
     };
     return jsonEncode(map);
   }
@@ -305,6 +311,17 @@ class SaveLoadService {
         hasSeenGoStockTutorial: gameStateMap['hasSeenGoStockTutorial'] as bool? ?? false,
         hasSeenMarketTutorial: gameStateMap['hasSeenMarketTutorial'] as bool? ?? false,
         hasSeenMoneyExtractionTutorial: gameStateMap['hasSeenMoneyExtractionTutorial'] as bool? ?? false,
+        // Staff Management (default to 0 for backward compatibility with old saves)
+        driverPoolCount: gameStateMap['driverPoolCount'] as int? ?? 0,
+        mechanicCount: gameStateMap['mechanicCount'] as int? ?? 0,
+        purchasingAgentCount: gameStateMap['purchasingAgentCount'] as int? ?? 0,
+        purchasingAgentTargetInventory: gameStateMap['purchasingAgentTargetInventory'] != null
+            ? (gameStateMap['purchasingAgentTargetInventory'] as Map<String, dynamic>).map((key, value) {
+                final product = Product.values.firstWhere((p) => p.name == key, orElse: () => Product.values.first);
+                return MapEntry(product, value as int);
+              })
+            : {},
+        isGameOver: gameStateMap['isGameOver'] as bool? ?? false,
       );
     } catch (e) {
       print('Error deserializing game state: $e');

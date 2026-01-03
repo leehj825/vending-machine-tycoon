@@ -37,6 +37,12 @@ abstract class GlobalGameState with _$GlobalGameState {
     @Default(false) bool hasSeenGoStockTutorial,
     @Default(false) bool hasSeenMarketTutorial,
     @Default(false) bool hasSeenMoneyExtractionTutorial,
+    // Staff Management - Centralized in HQ
+    @Default(0) int driverPoolCount, // Number of hired drivers (not assigned to trucks)
+    @Default(0) int mechanicCount, // Number of mechanics (auto-repair)
+    @Default(0) int purchasingAgentCount, // Number of purchasing agents (auto-buy stock)
+    @Default({}) Map<Product, int> purchasingAgentTargetInventory, // Target inventory levels for purchasing agent
+    @Default(false) bool isGameOver, // Game over flag (when cash is too negative)
   }) = _GlobalGameState;
 
   const GlobalGameState._();

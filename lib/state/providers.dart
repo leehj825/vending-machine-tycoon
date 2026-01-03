@@ -305,6 +305,9 @@ class GameController extends StateNotifier<GlobalGameState> {
         state = state.addLogMessage(message);
       }
 
+      // Check for game over condition: cash too negative (less than -$1000)
+      final isGameOver = simState.cash < -1000.0 && !state.isGameOver;
+      
       state = state.copyWith(
         machines: simState.machines,
         trucks: updatedTrucks,
@@ -316,8 +319,14 @@ class GameController extends StateNotifier<GlobalGameState> {
         currentDayRevenue: updatedCurrentDayRevenue,
         productSalesCount: updatedProductSales,
         warehouse: simState.warehouse, // Sync warehouse from engine (for auto-restock)
+        isGameOver: isGameOver || state.isGameOver, // Set game over flag if cash is too negative
         // Logs are managed locally by Controller, so we don't overwrite them
       );
+      
+      // Log game over message
+      if (isGameOver) {
+        state = state.addLogMessage('💀 GAME OVER: Your business went bankrupt!');
+      }
     });
   }
 
@@ -763,30 +772,153 @@ class GameController extends StateNotifier<GlobalGameState> {
     // Sync to simulation engine
     simulationEngine.updateTrucks(updatedTrucks);
     simulationEngine.updateCash(newCash);
+    
+    // Auto-assign drivers to new truck if available
+    _autoAssignDrivers();
   }
 
-  /// Hire or fire a driver for a truck
-  void hireDriver(String truckId, bool hasDriver) {
-    final truckIndex = state.trucks.indexWhere((t) => t.id == truckId);
-    if (truckIndex == -1) {
-      state = state.addLogMessage('Truck not found');
+  /// Hire a driver to the driver pool (HQ Staff Management)
+  void hireDriver() {
+    state = state.copyWith(driverPoolCount: state.driverPoolCount + 1);
+    state = state.addLogMessage('Hired a driver to the pool (Auto-assignment enabled)');
+    
+    // Auto-assign drivers to empty trucks
+    _autoAssignDrivers();
+  }
+
+  /// Fire a driver from the driver pool (HQ Staff Management)
+  void fireDriver() {
+    // Calculate total drivers (pool + assigned)
+    final assignedDrivers = state.trucks.where((t) => t.hasDriver).length;
+    final totalDrivers = state.driverPoolCount + assignedDrivers;
+    
+    if (totalDrivers <= 0) {
+      state = state.addLogMessage('No drivers to fire');
       return;
     }
 
-    final truck = state.trucks[truckIndex];
-    final updatedTruck = truck.copyWith(hasDriver: hasDriver);
-    final updatedTrucks = [...state.trucks];
-    updatedTrucks[truckIndex] = updatedTruck;
+    // Priority: Fire from pool first, only unassign from trucks if pool is empty
+    if (state.driverPoolCount > 0) {
+      // Fire from pool
+      final newDriverPoolCount = state.driverPoolCount - 1;
+      state = state.copyWith(driverPoolCount: newDriverPoolCount);
+      state = state.addLogMessage('Fired a driver from the pool');
+    } else {
+      // Pool is empty, unassign a driver from a truck
+      final trucksWithDrivers = state.trucks.where((t) => t.hasDriver).toList();
+      if (trucksWithDrivers.isNotEmpty) {
+        // Unassign driver from first truck with driver
+        final truckToUnassign = trucksWithDrivers.first;
+        final truckIndex = state.trucks.indexWhere((t) => t.id == truckToUnassign.id);
+        if (truckIndex != -1) {
+          final updatedTrucks = [...state.trucks];
+          updatedTrucks[truckIndex] = truckToUnassign.copyWith(hasDriver: false);
+          state = state.copyWith(trucks: updatedTrucks);
+          simulationEngine.updateTrucks(updatedTrucks);
+          state = state.addLogMessage('Fired a driver (unassigned from ${truckToUnassign.name})');
+        }
+      }
+    }
+  }
 
-    state = state.copyWith(trucks: updatedTrucks);
-    state = state.addLogMessage(
-      hasDriver 
-        ? 'Hired driver for ${truck.name} (Auto-restock enabled)'
-        : 'Fired driver from ${truck.name} (Auto-restock disabled)',
+  /// Auto-assign idle drivers to empty trucks
+  void _autoAssignDrivers() {
+    final idleDrivers = state.driverPoolCount;
+    final emptyTrucks = state.trucks.where((t) => !t.hasDriver).toList();
+    
+    if (idleDrivers <= 0 || emptyTrucks.isEmpty) {
+      return; // No drivers or trucks to assign
+    }
+
+    final updatedTrucks = [...state.trucks];
+    int driversAssigned = 0;
+    int driversRemaining = idleDrivers;
+
+    // Assign drivers to empty trucks
+    for (final truck in emptyTrucks) {
+      if (driversRemaining <= 0) break;
+      
+      final truckIndex = updatedTrucks.indexWhere((t) => t.id == truck.id);
+      if (truckIndex != -1) {
+        updatedTrucks[truckIndex] = truck.copyWith(hasDriver: true);
+        driversAssigned++;
+        driversRemaining--;
+      }
+    }
+
+    // Update driver pool count (reduce by number assigned)
+    state = state.copyWith(
+      trucks: updatedTrucks,
+      driverPoolCount: driversRemaining,
     );
+
+    if (driversAssigned > 0) {
+      state = state.addLogMessage('Auto-assigned $driversAssigned driver(s) to trucks');
+    }
 
     // Sync to simulation engine
     simulationEngine.updateTrucks(updatedTrucks);
+  }
+
+  /// Hire a mechanic (HQ Staff Management)
+  void hireMechanic() {
+    state = state.copyWith(mechanicCount: state.mechanicCount + 1);
+    state = state.addLogMessage('Hired a mechanic (Auto-repairs enabled)');
+    simulationEngine.updateStaffCounts(
+      mechanicCount: state.mechanicCount,
+      purchasingAgentTargetInventory: state.purchasingAgentTargetInventory,
+    );
+  }
+
+  /// Fire a mechanic (HQ Staff Management)
+  void fireMechanic() {
+    if (state.mechanicCount <= 0) {
+      state = state.addLogMessage('No mechanics to fire');
+      return;
+    }
+    state = state.copyWith(mechanicCount: state.mechanicCount - 1);
+    state = state.addLogMessage('Fired a mechanic');
+    simulationEngine.updateStaffCounts(
+      mechanicCount: state.mechanicCount,
+      purchasingAgentTargetInventory: state.purchasingAgentTargetInventory,
+    );
+  }
+
+  /// Hire a purchasing agent (HQ Staff Management)
+  void hirePurchasingAgent() {
+    state = state.copyWith(purchasingAgentCount: state.purchasingAgentCount + 1);
+    state = state.addLogMessage('Hired a purchasing agent (Auto-buy stock enabled)');
+    simulationEngine.updateStaffCounts(
+      purchasingAgentCount: state.purchasingAgentCount,
+      purchasingAgentTargetInventory: state.purchasingAgentTargetInventory,
+    );
+  }
+
+  /// Fire a purchasing agent (HQ Staff Management)
+  void firePurchasingAgent() {
+    if (state.purchasingAgentCount <= 0) {
+      state = state.addLogMessage('No purchasing agents to fire');
+      return;
+    }
+    state = state.copyWith(purchasingAgentCount: state.purchasingAgentCount - 1);
+    state = state.addLogMessage('Fired a purchasing agent');
+    simulationEngine.updateStaffCounts(
+      purchasingAgentCount: state.purchasingAgentCount,
+      purchasingAgentTargetInventory: state.purchasingAgentTargetInventory,
+    );
+  }
+
+  /// Set target inventory for a product (Purchasing Agent settings)
+  void setPurchasingAgentTarget(Product product, int target) {
+    final updatedTargets = Map<Product, int>.from(state.purchasingAgentTargetInventory);
+    updatedTargets[product] = target;
+    state = state.copyWith(purchasingAgentTargetInventory: updatedTargets);
+    state = state.addLogMessage('Set ${product.name} target inventory to $target');
+    
+    // Sync to simulation engine
+    simulationEngine.updateStaffCounts(
+      purchasingAgentTargetInventory: updatedTargets,
+    );
   }
 
   /// Get current machines list
@@ -826,6 +958,9 @@ class GameController extends StateNotifier<GlobalGameState> {
       warehouseRoadY: null,
       rushMultiplier: 1.0,
       warehouse: const Warehouse(),
+      mechanicCount: 0,
+      purchasingAgentCount: 0,
+      purchasingAgentTargetInventory: {},
     );
     
     // Reset game state
@@ -847,6 +982,7 @@ class GameController extends StateNotifier<GlobalGameState> {
       isRushHour: false,
       rushMultiplier: 1.0,
       marketingButtonGridX: null,
+      isGameOver: false,
       marketingButtonGridY: null,
     );
     
@@ -886,10 +1022,23 @@ class GameController extends StateNotifier<GlobalGameState> {
       warehouseRoadY: savedState.warehouseRoadY,
       rushMultiplier: savedState.rushMultiplier,
       warehouse: savedState.warehouse,
+      mechanicCount: savedState.mechanicCount,
+      purchasingAgentCount: savedState.purchasingAgentCount,
+      purchasingAgentTargetInventory: savedState.purchasingAgentTargetInventory,
     );
     
     // Restore game state
     state = savedState;
+    
+    // Sync staff counts to simulation engine (including driver pool)
+    simulationEngine.updateStaffCounts(
+      mechanicCount: state.mechanicCount,
+      purchasingAgentCount: state.purchasingAgentCount,
+      purchasingAgentTargetInventory: state.purchasingAgentTargetInventory,
+    );
+    
+    // Auto-assign drivers to trucks after loading (if there are idle drivers and empty trucks)
+    _autoAssignDrivers();
     
     // If marketing button position is not set and not in rush hour, spawn it
     if ((state.marketingButtonGridX == null || state.marketingButtonGridY == null) && !state.isRushHour) {
