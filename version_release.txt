@@ -1,6 +1,17 @@
 VENDING EMPIRE - RELEASE NOTES
 ================================
 
+Version 1.1.12
+-------------
+Release Date: January 15, 2026
+## Bug Fixes
+- **Fixed Route Editing While Truck is Moving**: Fixed glitch where route order changes while truck is routing would cause UI issues and prevent further route modifications
+  - Route manipulation functions (add/remove/reorder) now operate on the displayed route (pendingRoute if truck is moving)
+  - Pending route changes are automatically applied when truck becomes idle
+  - Users can now freely modify route order while truck is on the road without glitches
+
+---
+
 Version 1.1.11
 -------------
 Release Date: January 15, 2026
