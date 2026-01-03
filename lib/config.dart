@@ -583,6 +583,12 @@ class AppConfig {
   /// Real ID: Use for bundle release builds (Play Store)
   static const String admobBannerRealId = 'ca-app-pub-4400173019354346/5798507534';
   
+  /// Test ID: Use for APK builds (both debug and release)
+  static const String admobRewardedTestId = 'ca-app-pub-3940256099942544/5224354917';
+  
+  /// Real ID: Use for bundle release builds (Play Store)
+  static const String admobRewardedRealId = 'ca-app-pub-4400173019354346/8820412223';
+  
   /// Build type detection via --dart-define
   /// Set via: flutter build appbundle --release --dart-define=BUILD_TYPE=bundle
   /// If not set, defaults to using test ads (safe default for APKs)

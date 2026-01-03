@@ -128,6 +128,9 @@ class HQDashboard extends ConsumerWidget {
             SizedBox(height: ScreenUtils.relativeSize(context, AppConfig.spacingFactorMedium)),
             // Top Performing Location
             _buildTopPerformingLocationCard(context, machines),
+            SizedBox(height: ScreenUtils.relativeSize(context, AppConfig.spacingFactorMedium)),
+            // Get Funding Button
+            _buildGetFundingButton(context, ref),
           ],
         ),
       ),
@@ -241,6 +244,152 @@ class HQDashboard extends ConsumerWidget {
         ),
       );
     }
+  }
+
+  /// Build Get Funding button (Rewarded Ad)
+  Widget _buildGetFundingButton(BuildContext context, WidgetRef ref) {
+    final adManager = ref.watch(rewardedAdProvider);
+    final controller = ref.read(gameControllerProvider.notifier);
+
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.green.shade600, Colors.green.shade800],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(ScreenUtils.relativeSize(context, 0.008)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.green.shade300.withOpacity(0.3),
+            blurRadius: ScreenUtils.relativeSize(context, 0.01),
+            offset: Offset(0, ScreenUtils.relativeSize(context, 0.002)),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            if (adManager.isReady) {
+              adManager.showAd(
+                onReward: () {
+                  controller.addCash(1000);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Row(
+                        children: [
+                          Icon(Icons.check_circle, color: Colors.white),
+                          SizedBox(width: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall)),
+                          Text(
+                            'Received \$1,000 from investors!',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: ScreenUtils.relativeFontSize(
+                                context,
+                                AppConfig.fontSizeFactorNormal,
+                                min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
+                                max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      backgroundColor: Colors.green.shade700,
+                      duration: const Duration(seconds: 3),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                },
+              );
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Row(
+                    children: [
+                      Icon(Icons.search, color: Colors.white),
+                      SizedBox(width: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall)),
+                      Text(
+                        'Searching for investors...',
+                        style: TextStyle(
+                          fontSize: ScreenUtils.relativeFontSize(
+                            context,
+                            AppConfig.fontSizeFactorNormal,
+                            min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
+                            max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  backgroundColor: Colors.orange.shade700,
+                  duration: const Duration(seconds: 2),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+              adManager.loadAd();
+            }
+          },
+          borderRadius: BorderRadius.circular(ScreenUtils.relativeSize(context, 0.008)),
+          child: Padding(
+            padding: ScreenUtils.relativePadding(context, AppConfig.spacingFactorMedium),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.play_circle_filled,
+                  color: Colors.white,
+                  size: ScreenUtils.relativeSizeClamped(
+                    context,
+                    0.05,
+                    min: ScreenUtils.getSmallerDimension(context) * 0.04,
+                    max: ScreenUtils.getSmallerDimension(context) * 0.06,
+                  ),
+                ),
+                SizedBox(width: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall)),
+                Text(
+                  'Get Funding',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: ScreenUtils.relativeFontSize(
+                      context,
+                      AppConfig.fontSizeFactorLarge,
+                      min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
+                      max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+                    ),
+                  ),
+                ),
+                SizedBox(width: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall)),
+                Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall),
+                    vertical: ScreenUtils.relativeSize(context, AppConfig.spacingFactorTiny),
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(ScreenUtils.relativeSize(context, 0.01)),
+                  ),
+                  child: Text(
+                    '\$1,000',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: ScreenUtils.relativeFontSize(
+                        context,
+                        AppConfig.fontSizeFactorNormal,
+                        min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
+                        max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   /// Build a single stat card with vibrant colors
