@@ -591,7 +591,7 @@ class HQDashboard extends ConsumerWidget {
               'Mechanics',
               '${gameState.mechanicCount} Mechanics',
               'Auto-repairs 1 machine/hr',
-              '\$80/day',
+              '\$50/day',
               gameState.mechanicCount,
               onHire: () => controller.hireMechanic(),
               onFire: () => controller.fireMechanic(),
@@ -605,7 +605,7 @@ class HQDashboard extends ConsumerWidget {
               'Purchasing Agents',
               '${gameState.purchasingAgentCount} Agents',
               'Auto-buys 50 items/hr (configure in Market)',
-              '\$120/day',
+              '\$50/day',
               gameState.purchasingAgentCount,
               onHire: () => controller.hirePurchasingAgent(),
               onFire: () => controller.firePurchasingAgent(),
@@ -750,8 +750,8 @@ class HQDashboard extends ConsumerWidget {
     
     // Calculate staff salaries per hour
     const double driverSalaryPerDay = 50.0;
-    const double mechanicSalaryPerDay = 80.0;
-    const double purchasingAgentSalaryPerDay = 120.0;
+    const double mechanicSalaryPerDay = 50.0;
+    const double purchasingAgentSalaryPerDay = 50.0;
     const int hoursPerDay = 24;
     
     final assignedDrivers = trucks.where((t) => t.hasDriver).length;

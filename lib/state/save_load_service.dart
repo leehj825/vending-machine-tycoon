@@ -398,6 +398,7 @@ class SaveLoadService {
         key.name,
         value,
       )),
+      'hasDriver': truck.hasDriver, // Save driver assignment
     };
   }
 
@@ -428,6 +429,7 @@ class SaveLoadService {
         final product = Product.values.firstWhere((p) => p.name == key);
         return MapEntry(product, value as int);
       }),
+      hasDriver: map['hasDriver'] as bool? ?? false, // Load driver assignment (default to false for backward compatibility)
     );
   }
 

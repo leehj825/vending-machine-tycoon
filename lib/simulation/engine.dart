@@ -424,8 +424,8 @@ class SimulationEngine extends StateNotifier<SimulationState> {
       // Day rolled over - deduct all staff salaries
       final trucksWithDrivers = currentState.trucks.where((t) => t.hasDriver).length;
       const double driverSalaryPerDay = 50.0;
-      const double mechanicSalaryPerDay = 80.0;
-      const double purchasingAgentSalaryPerDay = 120.0;
+      const double mechanicSalaryPerDay = 50.0;
+      const double purchasingAgentSalaryPerDay = 50.0;
       
       final driverSalary = trucksWithDrivers * driverSalaryPerDay;
       final mechanicSalary = currentState.mechanicCount * mechanicSalaryPerDay;
@@ -778,10 +778,12 @@ class SimulationEngine extends StateNotifier<SimulationState> {
         continue;
       }
 
-      // Calculate demand for ALL machines in the route (not just the first one)
+      // Calculate demand for ALL machines in the route (visit all stops if any is below 50%)
       final routeMachines = <Machine>[];
       final routeDemand = <Product, int>{}; // Total demand across all machines in route
+      bool hasLowStockMachine = false; // Track if any machine is below 50% stock
       
+      // First pass: Check if any machine is below 50% stock
       for (final machineId in truck.route) {
         final machineIndex = updatedMachines.indexWhere((m) => m.id == machineId);
         if (machineIndex == -1) continue;
@@ -792,24 +794,39 @@ class SimulationEngine extends StateNotifier<SimulationState> {
         
         // Check if machine has low stock (less than 50% of allocation)
         if (totalAllocation > 0 && totalInventory < (totalAllocation / 2)) {
-          routeMachines.add(machine);
+          hasLowStockMachine = true;
+          break; // Found at least one low stock machine, that's enough
+        }
+      }
+      
+      // If no machines are below 50%, skip this truck
+      if (!hasLowStockMachine) {
+        continue;
+      }
+      
+      // Second pass: Add ALL machines in route and calculate demand for all of them
+      for (final machineId in truck.route) {
+        final machineIndex = updatedMachines.indexWhere((m) => m.id == machineId);
+        if (machineIndex == -1) continue;
+        
+        final machine = updatedMachines[machineIndex];
+        routeMachines.add(machine); // Add all machines in route
+        
+        // Calculate demand for this machine (any deficit from allocation target)
+        final allowedProducts = _getAllowedProductsForZone(machine.zone.type);
+        for (final product in allowedProducts) {
+          final existingItem = machine.inventory[product];
+          final currentStock = existingItem?.quantity ?? 0;
+          final allocationTarget = existingItem?.allocation ?? 20;
+          final deficit = allocationTarget - currentStock;
           
-          // Calculate demand for this machine
-          final allowedProducts = _getAllowedProductsForZone(machine.zone.type);
-          for (final product in allowedProducts) {
-            final existingItem = machine.inventory[product];
-            final currentStock = existingItem?.quantity ?? 0;
-            final allocationTarget = existingItem?.allocation ?? 20;
-            final deficit = allocationTarget - currentStock;
-            
-            if (deficit > 0) {
-              routeDemand[product] = (routeDemand[product] ?? 0) + deficit;
-            }
+          if (deficit > 0) {
+            routeDemand[product] = (routeDemand[product] ?? 0) + deficit;
           }
         }
       }
 
-      // If no machines need restocking, skip this truck
+      // If no machines in route or no demand, skip this truck
       if (routeMachines.isEmpty || routeDemand.isEmpty) {
         continue;
       }
@@ -907,13 +924,8 @@ class SimulationEngine extends StateNotifier<SimulationState> {
         print('🚚 TRUCK LOAD: Loaded $newlyLoaded into ${currentTruck.name} for ${routeMachines.length} machines in route (total: ${truckInventory.values.fold(0, (a, b) => a + b)}/${currentTruck.capacity})');
       }
       
-      // Check if truck has any items to stock
-      if (truckInventory.isEmpty) {
-        // Truck is empty - no warehouse stock available
-        continue; // Skip to next truck
-      }
-      
-      // Dispatch truck to first machine that needs restocking
+      // Dispatch truck to first machine in route (will visit all stops in order)
+      // Even if truck is empty, dispatch to complete the route
       final targetMachine = routeMachines.first;
       final machineX = targetMachine.zone.x;
       final machineY = targetMachine.zone.y;

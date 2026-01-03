@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'dart:async';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vector_math/vector_math_64.dart' hide Colors;
@@ -1434,6 +1435,8 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
                 ),
               ),
             ),
+            // Marketing button rendered outside InteractiveViewer to stay visible during panning
+            _buildMarketingButtonOverlay(context, centerOffset, tileWidth, tileHeight),
           ],
         );
       },
@@ -1662,7 +1665,10 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
       }
     }
 
-    // Add Marketing Button if position is set (show during rush hour too, but with fire icon)
+    // Marketing button will be rendered separately outside InteractiveViewer to stay visible during panning
+    // (moved to outer Stack in _buildMapView)
+    
+    // Add instruction message to buttons (only when not in rush hour)
     final gameState = ref.watch(gameStateProvider);
     
     // Reset message position when rush hour ends (transitions from true to false)
@@ -1672,46 +1678,35 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
     _previousRushHourState = gameState.isRushHour;
     
     if (gameState.marketingButtonGridX != null && 
-        gameState.marketingButtonGridY != null) {
+        gameState.marketingButtonGridY != null &&
+        !gameState.isRushHour) {
       final buttonGridX = gameState.marketingButtonGridX!;
       final buttonGridY = gameState.marketingButtonGridY!;
       final screenPos = _gridToScreen(context, buttonGridX, buttonGridY);
       final positionedX = screenPos.dx + centerOffset.dx;
       final positionedY = screenPos.dy + centerOffset.dy;
       
-      buttons.add(
-        MarketingButton(
-          gridX: buttonGridX,
-          gridY: buttonGridY,
-          screenPosition: Offset(positionedX, positionedY),
-          tileWidth: tileWidth,
-          tileHeight: tileHeight,
-        ),
-      );
+      // Calculate default position above the button
+      final defaultMessageOffsetX = positionedX - tileWidth * 0.5;
+      final defaultMessageOffsetY = positionedY - tileHeight * 1.0; // Lower above button
       
-      // Add instruction message above the button (only when not in rush hour)
-      if (!gameState.isRushHour) {
-        // Calculate default position above the button (rush button during rush hour, marketing button otherwise)
-        final defaultMessageOffsetX = positionedX - tileWidth * 0.5;
-        final defaultMessageOffsetY = positionedY - tileHeight * 1.0; // Lower above button
-        
-        // Use stored position if available, otherwise use default
-        final messageOffsetX = _messagePosition?.dx ?? defaultMessageOffsetX;
-        final messageOffsetY = _messagePosition?.dy ?? defaultMessageOffsetY;
-        
-        buttons.add(
-          Positioned(
-            left: messageOffsetX,
-            top: messageOffsetY,
-            child: GestureDetector(
-              onPanStart: (details) {
-                // Store the current position when drag starts and reset accumulated delta
-                _messageDragStartPosition = _messagePosition ?? Offset(defaultMessageOffsetX, defaultMessageOffsetY);
-                _messageDragAccumulatedDelta = Offset.zero;
-              },
-              onPanUpdate: (details) {
-                setState(() {
-                  // Accumulate delta and update position
+      // Use stored position if available, otherwise use default
+      final messageOffsetX = _messagePosition?.dx ?? defaultMessageOffsetX;
+      final messageOffsetY = _messagePosition?.dy ?? defaultMessageOffsetY;
+      
+      buttons.add(
+        Positioned(
+          left: messageOffsetX,
+          top: messageOffsetY,
+          child: GestureDetector(
+            onPanStart: (details) {
+              // Store the current position when drag starts and reset accumulated delta
+              _messageDragStartPosition = _messagePosition ?? Offset(defaultMessageOffsetX, defaultMessageOffsetY);
+              _messageDragAccumulatedDelta = Offset.zero;
+            },
+            onPanUpdate: (details) {
+              setState(() {
+                // Accumulate delta and update position
                   _messageDragAccumulatedDelta += details.delta;
                   if (_messageDragStartPosition != null) {
                     _messagePosition = Offset(
@@ -1787,9 +1782,41 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
           ),
         );
       }
-    }
 
     return {'tiles': tiles, 'buttons': buttons};
+  }
+
+  /// Build marketing button overlay that stays visible during panning
+  Widget _buildMarketingButtonOverlay(BuildContext context, Offset centerOffset, double tileWidth, double tileHeight) {
+    final gameState = ref.watch(gameStateProvider);
+    
+    if (gameState.marketingButtonGridX == null || gameState.marketingButtonGridY == null) {
+      return const SizedBox.shrink();
+    }
+    
+    final buttonGridX = gameState.marketingButtonGridX!;
+    final buttonGridY = gameState.marketingButtonGridY!;
+    
+    // Calculate base position in grid coordinates
+    final screenPos = _gridToScreen(context, buttonGridX, buttonGridY);
+    final baseX = screenPos.dx + centerOffset.dx;
+    final baseY = screenPos.dy + centerOffset.dy;
+    
+    // Apply transformation to get screen position
+    final matrix = _transformationController.value;
+    final transformedPoint = MatrixUtils.transformPoint(matrix, Offset(baseX, baseY));
+    
+    return Positioned(
+      left: transformedPoint.dx,
+      top: transformedPoint.dy,
+      child: MarketingButton(
+        gridX: buttonGridX,
+        gridY: buttonGridY,
+        screenPosition: transformedPoint,
+        tileWidth: tileWidth,
+        tileHeight: tileHeight,
+      ),
+    );
   }
 
   Widget _buildSingleTileWidget(
