@@ -1,6 +1,26 @@
 VENDING EMPIRE - RELEASE NOTES
 ================================
 
+Version 1.1.11
+-------------
+Release Date: January 15, 2026
+## Bug Fixes
+- **Fixed Spoilage Bug**: Fixed critical bug where newly stocked items (especially sandwiches) would immediately expire and cause machine cash to go negative
+  - When restocking, `dayAdded` is now always updated to current day to ensure fresh stock
+  - Prevents infinite restocking loop for spoilable items
+- **Fixed Machine Cash Validation**: Machine cash is now clamped to minimum 0.0 when loading saved games to prevent negative cash
+- **Fixed Truck Loading Logic**: Trucks now check each product individually (not just total inventory) to trigger restocking when any product is below 50% of allocation
+- **Fixed Truck Route Completion**: Trucks now visit all stops in route when any stop needs restocking, not just low stock ones
+- **Fixed Driver Persistence**: Truck driver assignments (`hasDriver`) are now properly saved and loaded with game state
+
+## Improvements
+- **Truck Loading Buffer**: Trucks now carry 20% more stock than needed to ensure last stop in route can be fully stocked
+- **Sales Rate Adjustments**: Increased sales rates by 20-35% for better game progression feel
+- **Product Price Increases**: Increased product prices by 15-20% for better revenue
+- **Machine Inventory Allocation**: Machine inventory allocations are now saved and loaded with game state
+
+---
+
 Version 1.1.10
 -------------
 Release Date: January 15, 2026
