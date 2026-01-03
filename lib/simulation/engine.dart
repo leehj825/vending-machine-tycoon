@@ -1449,10 +1449,13 @@ class SimulationEngine extends StateNotifier<SimulationState> {
               ? truckQuantity
               : neededToReachAllocation).toInt();
 
-          // Update machine inventory - THIS IS THE KEY FIX
+          // Update machine inventory
           if (existingItem != null) {
+            // Always update dayAdded to current day when restocking to ensure fresh items
+            // This prevents newly stocked items from immediately expiring (bug fix)
             machineInventory[product] = existingItem.copyWith(
               quantity: existingItem.quantity + transferAmount,
+              dayAdded: currentDay, // Reset to current day for fresh stock
             );
           } else {
             // New product - create with default allocation of 20
