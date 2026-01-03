@@ -778,33 +778,40 @@ class SimulationEngine extends StateNotifier<SimulationState> {
         continue;
       }
 
-      // Calculate demand for ALL machines in the route (visit all stops if any is below 50%)
+      // Simple logic: Check each product in each machine - if ANY product is below 50% of its allocation, trigger restock
       final routeMachines = <Machine>[];
       final routeDemand = <Product, int>{}; // Total demand across all machines in route
-      bool hasLowStockMachine = false; // Track if any machine is below 50% stock
+      bool hasLowStockItem = false; // Track if any product in any machine is below 50% of its allocation
       
-      // First pass: Check if any machine is below 50% stock
+      // First pass: Check if any product in any machine is below 50% of its allocation
       for (final machineId in truck.route) {
         final machineIndex = updatedMachines.indexWhere((m) => m.id == machineId);
         if (machineIndex == -1) continue;
         
         final machine = updatedMachines[machineIndex];
-        final totalInventory = machine.totalInventory;
-        final totalAllocation = machine.totalAllocation;
+        final allowedProducts = _getAllowedProductsForZone(machine.zone.type);
         
-        // Check if machine has low stock (less than 50% of allocation)
-        if (totalAllocation > 0 && totalInventory < (totalAllocation / 2)) {
-          hasLowStockMachine = true;
-          break; // Found at least one low stock machine, that's enough
+        for (final product in allowedProducts) {
+          final existingItem = machine.inventory[product];
+          final currentStock = existingItem?.quantity ?? 0;
+          final allocationTarget = existingItem?.allocation ?? 20;
+          
+          // Check if this specific product is below 50% of its allocation
+          if (allocationTarget > 0 && currentStock < (allocationTarget / 2)) {
+            hasLowStockItem = true;
+            break; // Found at least one low stock item, that's enough
+          }
         }
+        
+        if (hasLowStockItem) break; // Found low stock, no need to check more machines
       }
       
-      // If no machines are below 50%, skip this truck
-      if (!hasLowStockMachine) {
+      // If no products are below 50%, skip this truck
+      if (!hasLowStockItem) {
         continue;
       }
       
-      // Second pass: Add ALL machines in route and calculate demand for all of them
+      // Second pass: Add ALL machines in route and calculate demand for all products
       for (final machineId in truck.route) {
         final machineIndex = updatedMachines.indexWhere((m) => m.id == machineId);
         if (machineIndex == -1) continue;
@@ -812,7 +819,7 @@ class SimulationEngine extends StateNotifier<SimulationState> {
         final machine = updatedMachines[machineIndex];
         routeMachines.add(machine); // Add all machines in route
         
-        // Calculate demand for this machine (any deficit from allocation target)
+        // Calculate demand for each product (deficit from allocation target)
         final allowedProducts = _getAllowedProductsForZone(machine.zone.type);
         for (final product in allowedProducts) {
           final existingItem = machine.inventory[product];
@@ -830,29 +837,42 @@ class SimulationEngine extends StateNotifier<SimulationState> {
       if (routeMachines.isEmpty || routeDemand.isEmpty) {
         continue;
       }
+      
+      // Debug: Log route demand and warehouse stock
+      print('🚚 TRUCK ROUTE DEMAND: ${truck.name} route has ${routeMachines.length} machines');
+      print('   Route demand: ${routeDemand.entries.map((e) => '${e.key.name}: ${e.value}').join(', ')}');
+      print('   Warehouse stock: ${updatedWarehouseInventory.entries.where((e) => routeDemand.containsKey(e.key)).map((e) => '${e.key.name}: ${e.value}').join(', ')}');
 
-      // LOAD TRUCK WITH ITEMS FOR ALL MACHINES IN ROUTE
+      // LOAD TRUCK WITH ITEMS FOR ALL MACHINES IN ROUTE (with 20% buffer for last stop)
       final currentTruck = updatedTrucks[i];
       final existingTruckInventory = Map<Product, int>.from(currentTruck.inventory);
       final truckInventory = <Product, int>{};
       int totalLoaded = existingTruckInventory.values.fold<int>(0, (sum, qty) => sum + qty);
       
-      // Calculate total demand to determine proportional allocation
-      final totalDemand = routeDemand.values.fold<int>(0, (sum, demand) => sum + demand);
+      // Calculate total demand with 20% buffer (so last stop can be fully stocked)
+      final baseTotalDemand = routeDemand.values.fold<int>(0, (sum, demand) => sum + demand);
+      final totalDemandWithBuffer = (baseTotalDemand * 1.2).ceil(); // 20% more than needed
       
-      // Load items proportionally for all machines in route
+      // Calculate adjusted demand per product with 20% buffer
+      final adjustedRouteDemand = <Product, int>{};
       for (final entry in routeDemand.entries) {
+        final adjustedDemand = (entry.value * 1.2).ceil(); // 20% more per product
+        adjustedRouteDemand[entry.key] = adjustedDemand;
+      }
+      
+      // Load items proportionally for all machines in route (with buffer)
+      for (final entry in adjustedRouteDemand.entries) {
         if (totalLoaded >= currentTruck.capacity) break;
         
         final product = entry.key;
-        final totalDemandForProduct = entry.value;
+        final totalDemandForProduct = entry.value; // Already includes 20% buffer
         final warehouseStock = updatedWarehouseInventory[product] ?? 0;
         final alreadyOnTruck = existingTruckInventory[product] ?? 0;
         final stillNeeded = totalDemandForProduct - alreadyOnTruck;
         
         if (warehouseStock > 0 && stillNeeded > 0) {
-          // Calculate proportional allocation based on demand
-          final proportion = totalDemandForProduct / totalDemand;
+          // Calculate proportional allocation based on buffered demand
+          final proportion = totalDemandForProduct / totalDemandWithBuffer;
           final proportionalCapacity = (currentTruck.capacity * proportion).ceil();
           final remainingCapacity = currentTruck.capacity - totalLoaded;
           
@@ -876,17 +896,17 @@ class SimulationEngine extends StateNotifier<SimulationState> {
         }
       }
       
-      // If there's still capacity after proportional loading, fill remaining space
+      // If there's still capacity after proportional loading, fill remaining space (using buffered demand)
       if (totalLoaded < currentTruck.capacity) {
-        // Sort products by demand (highest first)
-        final sortedDemand = routeDemand.entries.toList()
+        // Sort products by buffered demand (highest first)
+        final sortedDemand = adjustedRouteDemand.entries.toList()
           ..sort((a, b) => b.value.compareTo(a.value));
         
         for (final entry in sortedDemand) {
           if (totalLoaded >= currentTruck.capacity) break;
           
           final product = entry.key;
-          final totalDemandForProduct = entry.value;
+          final totalDemandForProduct = entry.value; // Already includes 20% buffer
           final warehouseStock = updatedWarehouseInventory[product] ?? 0;
           final alreadyLoaded = truckInventory[product] ?? 0;
           final remainingDemand = totalDemandForProduct - alreadyLoaded;
@@ -922,6 +942,15 @@ class SimulationEngine extends StateNotifier<SimulationState> {
             .map((e) => '${e.key.name}: +${e.value - (existingTruckInventory[e.key] ?? 0)}')
             .join(', ');
         print('🚚 TRUCK LOAD: Loaded $newlyLoaded into ${currentTruck.name} for ${routeMachines.length} machines in route (total: ${truckInventory.values.fold(0, (a, b) => a + b)}/${currentTruck.capacity})');
+      } else if (routeDemand.isNotEmpty && truckInventory.isEmpty) {
+        // Debug: Why didn't we load anything?
+        final missingProducts = routeDemand.entries
+            .where((e) => (updatedWarehouseInventory[e.key] ?? 0) == 0)
+            .map((e) => e.key.name)
+            .toList();
+        if (missingProducts.isNotEmpty) {
+          print('⚠️ TRUCK LOAD: ${currentTruck.name} has demand but warehouse has no stock for: ${missingProducts.join(', ')}');
+        }
       }
       
       // Dispatch truck to first machine in route (will visit all stops in order)

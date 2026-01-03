@@ -343,6 +343,7 @@ class SaveLoadService {
           'product': key.name,
           'quantity': value.quantity,
           'dayAdded': value.dayAdded,
+          'allocation': value.allocation, // Save allocation for each item
         },
       )),
       'currentCash': machine.currentCash,
@@ -369,12 +370,13 @@ class SaveLoadService {
             product: product,
             quantity: itemMap['quantity'] as int,
             dayAdded: itemMap['dayAdded'] as int,
+            allocation: (itemMap['allocation'] as int?) ?? 20, // Load allocation (default to 20 for backward compatibility)
           ),
         );
       }),
-      currentCash: (map['currentCash'] as num).toDouble(),
-      hoursSinceRestock: (map['hoursSinceRestock'] as num).toDouble(),
-      totalSales: map['totalSales'] as int,
+      currentCash: ((map['currentCash'] as num?)?.toDouble() ?? 0.0).clamp(0.0, double.infinity), // Ensure cash is never negative
+      hoursSinceRestock: ((map['hoursSinceRestock'] as num?)?.toDouble() ?? 0.0).clamp(0.0, double.infinity), // Ensure hours is never negative
+      totalSales: (map['totalSales'] as int?) ?? 0,
     );
   }
 

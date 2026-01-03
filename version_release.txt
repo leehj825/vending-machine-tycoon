@@ -1,6 +1,35 @@
 VENDING EMPIRE - RELEASE NOTES
 ================================
 
+Version 1.1.10
+-------------
+Release Date: January 15, 2026
+## New Features
+- **HQ Staff Management System**: Centralized staff hiring and management in Headquarters
+  - **Truck Drivers**: Pool-based driver system with automatic assignment to trucks ($50/day)
+  - **Mechanics**: Auto-repair broken machines (1 repair per mechanic per hour, $50/day)
+  - **Purchasing Agents**: Auto-buy stock based on target inventory levels (50 items per agent per hour, $50/day)
+- **Smart Truck Loading**: Trucks now load items for all stops in their route when any stop is below 50% stock
+- **Game Over System**: Game ends when cash falls below -$1000 with dialog to restart or return to menu
+- **Hourly Operating Costs Display**: HQ dashboard now shows total hourly costs including staff salaries and estimated truck gas costs
+- **Purchasing Agent Target Inventory**: Configure target inventory levels for each product in the Market screen
+
+## Improvements
+- **Truck Route Optimization**: Trucks visit all stops in their route when dispatched, not just low stock ones
+- **Marketing Button Visibility**: Rush sell button now stays visible during map panning
+- **Business Overview**: Refactored HQ dashboard with improved business metrics display
+- **Save/Load System**: All staff management data (drivers, mechanics, agents, driver assignments) now persists across game saves
+- **Staff Salary Balance**: All staff salaries standardized to $50/day for better game balance
+
+## Bug Fixes
+- Fixed truck drivers not being saved with game state
+- Fixed trucks dispatching when all stops are above 50% stock
+- Fixed marketing button disappearing during map panning
+- Fixed truck loading logic to properly stock all machines in route
+- Fixed driver assignment persistence across save/load
+
+---
+
 Version 1.1.9
 -------------
 Release Date: January 01, 2026

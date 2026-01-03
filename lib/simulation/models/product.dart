@@ -36,27 +36,27 @@ extension ProductExtension on Product {
     }
   }
 
-  /// Base price for each product
+  /// Base price for each product (increased for better revenue)
   double get basePrice {
     switch (this) {
       case Product.soda:
-        return 2.50;
+        return 3.00; // Increased from 2.50
       case Product.chips:
-        return 1.75;
+        return 2.25; // Increased from 1.75
       case Product.proteinBar:
-        return 3.00;
+        return 3.75; // Increased from 3.00
       case Product.coffee:
-        return 3.50;
+        return 4.50; // Increased from 3.50
       case Product.techGadget:
-        return 25.00;
+        return 30.00; // Increased from 25.00
       case Product.sandwich:
-        return 5.50;
+        return 6.50; // Increased from 5.50
       case Product.freshSalad:
-        return 6.00;
+        return 7.00; // Increased from 6.00
       case Product.newspaper:
-        return 2.00;
+        return 2.50; // Increased from 2.00
       case Product.energyDrink:
-        return 4.50;
+        return 5.50; // Increased from 4.50
     }
   }
 
