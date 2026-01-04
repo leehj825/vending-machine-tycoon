@@ -292,6 +292,30 @@ class AppConfig {
   static const int warehouseMaxCapacity = 1000;
   
   // ============================================================================
+  // MACHINE UPGRADES
+  // ============================================================================
+
+  /// Upgrade costs and max levels
+
+  /// Capacity Upgrade
+  static const double upgradeCapacityCost = 500.0;
+  static const int upgradeCapacityBonus = 25; // Slots added per level
+  static const int upgradeCapacityMaxLevel = 2;
+
+  /// Cooling System Upgrade
+  static const double upgradeCoolingCost = 800.0;
+  static const int upgradeCoolingMaxLevel = 1;
+
+  /// Security System Upgrade
+  static const double upgradeSecurityCost = 400.0;
+  static const int upgradeSecurityMaxLevel = 1;
+
+  /// Ad Display Upgrade
+  static const double upgradeAdDisplayCost = 1000.0;
+  static const double upgradeAdDisplayIncome = 10.0; // Daily passive income
+  static const int upgradeAdDisplayMaxLevel = 1;
+
+  // ============================================================================
   // MACHINE STATUS POPUP CONSTANTS
   // ============================================================================
   
