@@ -1,6 +1,27 @@
 VENDING EMPIRE - RELEASE NOTES
 ================================
 
+Version 1.1.13
+-------------
+Release Date: January 15, 2026
+## New Features
+- **Rewarded Video Ads - Get Funding**: Watch ads to earn $1,000 cash
+  - New "Get Funding" button in HQ Dashboard Business Overview section
+  - Watch a rewarded video ad to receive $1,000 from investors
+  - Automatically uses test ads for APK builds and real ads for bundle builds
+  - Button automatically disabled on macOS (rewarded ads not supported on desktop)
+  - Ad automatically reloads after viewing for continuous funding opportunities
+
+## Improvements
+- **Ad Integration**: Rewarded ads follow the same build-type detection as banner ads
+  - Test ads for development/testing (APK builds)
+  - Real ads for production releases (bundle builds with BUILD_TYPE=bundle)
+
+## Bug Fixes
+- Fixed "Get Funding" button attempting to work on macOS - now properly disabled with informative message
+
+---
+
 Version 1.1.12
 -------------
 Release Date: January 15, 2026

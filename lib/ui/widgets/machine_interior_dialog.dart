@@ -141,26 +141,6 @@ class _MachineInteriorDialogState extends ConsumerState<MachineInteriorDialog> w
   /// Falls back to generic images if zone-specific images don't exist
   String _getInteriorImagePath(ZoneType zoneType, bool hasCash) {
     final cashSuffix = hasCash ? '_with_money' : '_without_money';
-    
-    // TODO: When zone-specific interior images are added, uncomment and use this:
-    // String zoneSpecificPath;
-    // switch (zoneType) {
-    //   case ZoneType.office:
-    //     zoneSpecificPath = 'assets/images/machine_interior_office$cashSuffix.png';
-    //     break;
-    //   case ZoneType.gym:
-    //     zoneSpecificPath = 'assets/images/machine_interior_gym$cashSuffix.png';
-    //     break;
-    //   case ZoneType.school:
-    //     zoneSpecificPath = 'assets/images/machine_interior_school$cashSuffix.png';
-    //     break;
-    //   case ZoneType.shop:
-    //     zoneSpecificPath = 'assets/images/machine_interior_shop$cashSuffix.png';
-    //     break;
-    // }
-    // return zoneSpecificPath;
-    
-    // For now, use generic images until zone-specific ones are added
     return 'assets/images/machine$cashSuffix.png';
   }
 

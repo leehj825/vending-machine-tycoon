@@ -11,6 +11,7 @@ import '../simulation/models/product.dart';
 import '../simulation/models/zone.dart';
 import '../simulation/models/machine.dart';
 import '../simulation/models/truck.dart';
+import '../services/rewarded_ad_manager.dart';
 import 'game_state.dart';
 import 'city_map_state.dart';
 
@@ -221,26 +222,19 @@ class GameController extends StateNotifier<GlobalGameState> {
     print('🟡 CONTROLLER: Setting up simulation listener...');
     
     _simSubscription = simulationEngine.stream.listen((SimulationState simState) {
-      // Check if controller is still alive
       if (!mounted) return;
       
-      // This print confirms data is flowing from Engine -> UI - only once per second
       final now = DateTime.now();
       if (_lastDebugPrint == null || now.difference(_lastDebugPrint!).inSeconds >= 1) {
         print('🟡 CONTROLLER SYNC: Received update. Cash: \$${simState.cash.toStringAsFixed(2)}, Machines: ${simState.machines.length}');
         _lastDebugPrint = now;
       }
       
-      // Apply pending routes for trucks that just became idle
       var updatedTrucks = simState.trucks.map((simTruck) {
-        // Find corresponding truck in our state (to get pending route)
         final localTruck = state.trucks.firstWhere(
           (t) => t.id == simTruck.id,
           orElse: () => simTruck,
         );
-        
-        // Preserve pending route from local state (whether moving or idle)
-        // This ensures the UI can display pending route stops immediately
         if (localTruck.pendingRoute.isNotEmpty) {
           return simTruck.copyWith(pendingRoute: localTruck.pendingRoute);
         }
@@ -248,16 +242,13 @@ class GameController extends StateNotifier<GlobalGameState> {
         return simTruck;
       }).toList();
       
-      // Track revenue changes and detect day rollover
       final previousHour = state.hourOfDay;
       final previousDay = state.dayCount;
       final previousTotalCash = state.cash + state.machines.fold<double>(0.0, (sum, m) => sum + m.currentCash);
       
-      // Calculate current total cash (player cash + all machine cash)
       final currentTotalCash = simState.cash + simState.machines.fold<double>(0.0, (sum, m) => sum + m.currentCash);
       final revenueThisTick = (currentTotalCash - previousTotalCash).clamp(0.0, double.infinity);
       
-      // Track product sales by comparing machine totalSales
       final updatedProductSales = Map<Product, int>.from(state.productSalesCount);
       for (final machine in simState.machines) {
         final oldMachine = state.machines.firstWhere(
@@ -265,9 +256,6 @@ class GameController extends StateNotifier<GlobalGameState> {
           orElse: () => machine,
         );
         final salesIncrease = machine.totalSales - oldMachine.totalSales;
-        
-        // Estimate product sales based on inventory changes (simplified approach)
-        // For a more accurate approach, we'd need to track per-product sales in the engine
         if (salesIncrease > 0) {
           // Distribute sales increase across products in inventory (rough estimate)
           final totalInventory = machine.inventory.values.fold<int>(0, (sum, item) => sum + item.quantity);
@@ -1133,6 +1121,14 @@ class GameController extends StateNotifier<GlobalGameState> {
     simulationEngine.updateCash(newCash);
   }
 
+  /// Add cash to player (e.g., from rewarded ads)
+  void addCash(double amount) {
+    final newCash = state.cash + amount;
+    state = state.copyWith(cash: newCash);
+    simulationEngine.updateCash(newCash);
+    state = state.addLogMessage('Received \$${amount.toStringAsFixed(0)} from investors');
+  }
+
   /// Retrieve cash from a machine
   void retrieveCash(String machineId) {
     // Find the machine
@@ -1309,4 +1305,9 @@ final warehouseProvider = Provider<Warehouse>((ref) {
 
 /// Provider for selected machine ID on the map
 final selectedMachineIdProvider = StateProvider<String?>((ref) => null);
+
+/// Provider for rewarded ad manager
+final rewardedAdProvider = Provider<RewardedAdManager>((ref) {
+  return RewardedAdManager();
+});
 

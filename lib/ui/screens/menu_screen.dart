@@ -337,7 +337,6 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                               Expanded(
                                 child: GestureDetector(
                                   onTap: () {
-                                    // TODO: Implement credits screen
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(
                                         content: Text('Credits feature coming soon!'),
