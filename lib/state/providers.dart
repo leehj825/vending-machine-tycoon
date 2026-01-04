@@ -11,6 +11,7 @@ import '../simulation/models/product.dart';
 import '../simulation/models/zone.dart';
 import '../simulation/models/machine.dart';
 import '../simulation/models/truck.dart';
+import '../simulation/models/research.dart';
 import '../services/rewarded_ad_manager.dart';
 import 'game_state.dart';
 import 'city_map_state.dart';
@@ -1015,6 +1016,9 @@ class GameController extends StateNotifier<GlobalGameState> {
       purchasingAgentTargetInventory: savedState.purchasingAgentTargetInventory,
     );
     
+    // Restore research state
+    simulationEngine.updateUnlockedResearch(savedState.unlockedResearch);
+
     // Restore game state
     state = savedState;
     
@@ -1232,6 +1236,31 @@ class GameController extends StateNotifier<GlobalGameState> {
     // Sync rush multiplier to simulation engine
     simulationEngine.updateRushMultiplier(10.0);
     state = state.addLogMessage('Rush Hour activated! Sales speed increased!');
+  }
+
+  /// Unlock a research item
+  void unlockResearch(ResearchType type, double cost) {
+    if (state.unlockedResearch.contains(type)) return;
+
+    // Deduct cash
+    final newCash = state.cash - cost;
+
+    // Add to unlocked set
+    final newUnlocked = Set<ResearchType>.from(state.unlockedResearch)..add(type);
+
+    // Update state
+    state = state.copyWith(
+      cash: newCash,
+      unlockedResearch: newUnlocked,
+    );
+
+    // Sync cash to engine
+    simulationEngine.updateCash(newCash);
+    simulationEngine.updateUnlockedResearch(newUnlocked);
+
+    // Log
+    final researchName = ResearchData.getByType(type).name;
+    state = state.addLogMessage('Unlocked $researchName!');
   }
 
   /// End Rush Hour - resets multiplier to 1.0 and spawns marketing button at random location

@@ -6,6 +6,7 @@ import 'models/product.dart';
 import 'models/machine.dart';
 import 'models/truck.dart';
 import 'models/zone.dart';
+import 'models/research.dart';
 import '../state/providers.dart';
 
 /// Simulation constants
@@ -89,6 +90,7 @@ class SimulationState {
   final int mechanicCount; // Number of mechanics hired
   final int purchasingAgentCount; // Number of purchasing agents hired
   final Map<Product, int> purchasingAgentTargetInventory; // Target inventory levels for purchasing agent
+  final Set<ResearchType> unlockedResearch; // Unlocked research items
 
   const SimulationState({
     required this.time,
@@ -105,6 +107,7 @@ class SimulationState {
     this.mechanicCount = 0,
     this.purchasingAgentCount = 0,
     this.purchasingAgentTargetInventory = const {},
+    this.unlockedResearch = const {},
   });
 
   SimulationState copyWith({
@@ -122,6 +125,7 @@ class SimulationState {
     int? mechanicCount,
     int? purchasingAgentCount,
     Map<Product, int>? purchasingAgentTargetInventory,
+    Set<ResearchType>? unlockedResearch,
   }) {
     return SimulationState(
       time: time ?? this.time,
@@ -138,6 +142,7 @@ class SimulationState {
       mechanicCount: mechanicCount ?? this.mechanicCount,
       purchasingAgentCount: purchasingAgentCount ?? this.purchasingAgentCount,
       purchasingAgentTargetInventory: purchasingAgentTargetInventory ?? this.purchasingAgentTargetInventory,
+      unlockedResearch: unlockedResearch ?? this.unlockedResearch,
     );
   }
 }
@@ -201,6 +206,12 @@ class SimulationEngine extends StateNotifier<SimulationState> {
   void updateCash(double amount) {
     print('🔴 ENGINE: Updating cash to \$${amount.toStringAsFixed(2)}');
     state = state.copyWith(cash: amount);
+    _streamController.add(state);
+  }
+
+  /// Update unlocked research
+  void updateUnlockedResearch(Set<ResearchType> unlocked) {
+    state = state.copyWith(unlockedResearch: unlocked);
     _streamController.add(state);
   }
 
@@ -505,6 +516,9 @@ class SimulationEngine extends StateNotifier<SimulationState> {
     final reputationMultiplier = _calculateReputationMultiplier(currentReputation);
     final rushMultiplier = state.rushMultiplier; // Get rush multiplier from state
     
+    // Check for Premium Branding research
+    final hasPremiumBranding = state.unlockedResearch.contains(ResearchType.premiumBranding);
+
     final updatedMachines = machines.map((machine) {
       if (machine.isUnderMaintenance) {
         return machine.copyWith(
@@ -548,7 +562,13 @@ class SimulationEngine extends StateNotifier<SimulationState> {
             salesProgress: remainingProgress,
           );
 
-          updatedCash += product.basePrice;
+          // Apply Premium Branding price increase (10%)
+          double price = product.basePrice;
+          if (hasPremiumBranding) {
+            price *= 1.10;
+          }
+
+          updatedCash += price;
           salesCount++;
           totalSales++;
         } else {
@@ -574,10 +594,27 @@ class SimulationEngine extends StateNotifier<SimulationState> {
       var updatedInventory = Map<Product, InventoryItem>.from(machine.inventory);
       var disposalCost = 0.0;
 
+      // Check for Efficient Cooling research
+      final hasEfficientCooling = state.unlockedResearch.contains(ResearchType.efficientCooling);
+
       // Check each inventory item for expiration
       for (final entry in updatedInventory.entries) {
         final item = entry.value;
-        if (item.isExpired(time.day)) {
+
+        // Custom expiration check that accounts for research
+        bool isExpired = false;
+        if (item.product.canSpoil) {
+          int spoilageDays = item.product.spoilageDays;
+
+          // Efficient Cooling: Doubles the spoilage days (effectively 50% decay rate)
+          if (hasEfficientCooling) {
+            spoilageDays *= 2;
+          }
+
+          isExpired = (time.day - item.dayAdded) >= spoilageDays;
+        }
+
+        if (isExpired) {
           // Item expired - set quantity to 0 (preserve allocation) and charge disposal
           disposalCost += SimulationConstants.disposalCostPerExpiredItem * item.quantity;
           updatedInventory[entry.key] = item.copyWith(quantity: 0);
@@ -955,7 +992,12 @@ class SimulationEngine extends StateNotifier<SimulationState> {
     List<Truck> trucks,
     List<Machine> machines,
   ) {
-    const double movementSpeed = AppConfig.movementSpeed;
+    double movementSpeed = AppConfig.movementSpeed;
+
+    // Apply Turbo Trucks research (25% speed boost)
+    if (state.unlockedResearch.contains(ResearchType.turboTrucks)) {
+      movementSpeed *= 1.25;
+    }
     
     List<({double x, double y})> findPath(
       double startX, double startY,

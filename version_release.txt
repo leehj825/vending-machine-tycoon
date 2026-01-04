@@ -1,6 +1,17 @@
 VENDING EMPIRE - RELEASE NOTES
 ================================
 
+Version 1.1.15
+-------------
+Release Date: January 17, 2026
+## New Features
+- **Research Lab**: New Tech Tree system in HQ to purchase permanent upgrades
+  - **Turbo Logistics**: Trucks move 25% faster ($2,000)
+  - **Premium Branding**: Increase product prices by 10% without losing customers ($5,000)
+  - **Efficient Cooling**: Reduces spoilage rate by 50% ($3,000)
+
+---
+
 Version 1.1.14
 -------------
 Release Date: January 16, 2026

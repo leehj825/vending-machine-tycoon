@@ -7,6 +7,7 @@ import '../../state/selectors.dart';
 import '../../config.dart';
 import '../../simulation/models/machine.dart';
 import '../utils/screen_utils.dart';
+import 'research_screen.dart';
 
 /// CEO Dashboard - Main HQ screen displaying empire overview
 class HQDashboard extends ConsumerWidget {
@@ -36,6 +37,67 @@ class HQDashboard extends ConsumerWidget {
             
             // Section D: Maintenance
             _buildNeedsAttentionSection(context, machines),
+
+            SizedBox(height: ScreenUtils.relativeSize(context, AppConfig.spacingFactorLarge)),
+
+            // Research Lab Button
+            _buildResearchLabButton(context),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildResearchLabButton(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => const ResearchScreen(),
+            ),
+          );
+        },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.indigo.shade800,
+          foregroundColor: Colors.white,
+          padding: EdgeInsets.symmetric(
+            vertical: ScreenUtils.relativeSize(context, 0.02),
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(
+              ScreenUtils.relativeSize(context, 0.012),
+            ),
+          ),
+          elevation: ScreenUtils.relativeSize(context, AppConfig.cardElevationFactor),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.science,
+              size: ScreenUtils.relativeSizeClamped(
+                context,
+                0.04,
+                min: ScreenUtils.getSmallerDimension(context) * 0.03,
+                max: ScreenUtils.getSmallerDimension(context) * 0.05,
+              ),
+            ),
+            SizedBox(width: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall)),
+            Text(
+              'RESEARCH LAB',
+              style: TextStyle(
+                fontSize: ScreenUtils.relativeFontSize(
+                  context,
+                  AppConfig.fontSizeFactorLarge,
+                  min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
+                  max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+                ),
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.2,
+              ),
+            ),
           ],
         ),
       ),
