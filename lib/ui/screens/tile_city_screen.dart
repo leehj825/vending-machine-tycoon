@@ -13,6 +13,7 @@ import '../../simulation/models/zone.dart';
 import '../../simulation/models/truck.dart' as sim;
 import '../../simulation/models/machine.dart' as sim;
 import '../../simulation/models/product.dart';
+import '../../simulation/models/weather.dart';
 import '../../config.dart';
 import '../theme/zone_ui.dart';
 import '../utils/screen_utils.dart';
@@ -138,16 +139,19 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
     // Calculate offset relative to tile width for density independence
     // Adjust the multiplier to shift road tiles horizontally
     // Positive = move right, Negative = move left
-    final tileWidth = _getTileWidth(context);
-    return tileWidth * 0.135; // ~13px on 96px tile, scales proportionally
+    // Use the road tile width so the offset scales with road sprite size.
+    final tileWidth = _getRoadTileWidth(context);
+    return tileWidth * AppConfig.roadHorizontalOffsetFactor; // configurable offset
   }
   
   double _getRoadTileOffsetY(BuildContext context) {
     // Calculate offset relative to tile height for density independence
     // Adjust the multiplier to shift road tiles vertically
     // Positive = move down, Negative = move up
-    final tileHeight = _getTileHeight(context);
-    return tileHeight * 0.0625; // ~1.5px on 24px tile, scales proportionally
+    // Use the road tile height (not the regular tile height) so the
+    // offset scales correctly with the road sprite size.
+    final tileHeight = _getRoadTileHeight(context);
+    return tileHeight * AppConfig.roadVerticalOffsetFactor; // configurable offset
   }
   
   double _getBuildingImageHeight(BuildContext context) {
@@ -177,9 +181,27 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
   static const double subwayVerticalOffset = AppConfig.subwayVerticalOffset;
   static const double hospitalVerticalOffset = AppConfig.hospitalVerticalOffset;
   static const double universityVerticalOffset = AppConfig.universityVerticalOffset;
+  static const double gasStationVerticalOffset = AppConfig.gasStationVerticalOffset;
+  static const double houseVerticalOffset = AppConfig.houseVerticalOffset;
+  static const double parkVerticalOffset = AppConfig.parkVerticalOffset;
+  static const double buildingVerticalOffset = AppConfig.buildingVerticalOffset;
+  // Horizontal offsets (relative size multipliers)
+  static const double buildingHorizontalOffset = AppConfig.buildingHorizontalOffset;
+  static const double schoolHorizontalOffset = AppConfig.schoolHorizontalOffset;
+  static const double gasStationHorizontalOffset = AppConfig.gasStationHorizontalOffset;
+  static const double parkHorizontalOffset = AppConfig.parkHorizontalOffset;
+  static const double houseHorizontalOffset = AppConfig.houseHorizontalOffset;
+  static const double warehouseHorizontalOffset = AppConfig.warehouseHorizontalOffset;
+  static const double subwayHorizontalOffset = AppConfig.subwayHorizontalOffset;
+  static const double universityHorizontalOffset = AppConfig.universityHorizontalOffset;
+  static const double hospitalHorizontalOffset = AppConfig.hospitalHorizontalOffset;
   
   double _getWarehouseVerticalOffset(BuildContext context) {
     return ScreenUtils.relativeSize(context, 0.007);
+  }
+
+  double _getWarehouseHorizontalOffset(BuildContext context) {
+    return ScreenUtils.relativeSize(context, warehouseHorizontalOffset);
   }
 
   double _getSpecialBuildingVerticalOffset(BuildContext context, TileType tileType) {
@@ -191,10 +213,40 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
         return ScreenUtils.relativeSize(context, subwayVerticalOffset);
       case TileType.hospital:
         return ScreenUtils.relativeSize(context, hospitalVerticalOffset);
+      case TileType.gasStation:
+        return ScreenUtils.relativeSize(context, gasStationVerticalOffset);
+      case TileType.park:
+        return ScreenUtils.relativeSize(context, parkVerticalOffset);
+      case TileType.house:
+        return ScreenUtils.relativeSize(context, houseVerticalOffset);
       case TileType.university:
         return ScreenUtils.relativeSize(context, universityVerticalOffset);
       default:
-    return 0.0;
+        return ScreenUtils.relativeSize(context, buildingVerticalOffset);
+    }
+  }
+
+  double _getSpecialBuildingHorizontalOffset(BuildContext context, TileType tileType) {
+    // Each building type has its own horizontal offset
+    switch (tileType) {
+      case TileType.school:
+        return ScreenUtils.relativeSize(context, schoolHorizontalOffset);
+      case TileType.subway:
+        return ScreenUtils.relativeSize(context, subwayHorizontalOffset);
+      case TileType.hospital:
+        return ScreenUtils.relativeSize(context, hospitalHorizontalOffset);
+      case TileType.university:
+        return ScreenUtils.relativeSize(context, universityHorizontalOffset);
+      case TileType.gasStation:
+        return ScreenUtils.relativeSize(context, gasStationHorizontalOffset);
+      case TileType.park:
+        return ScreenUtils.relativeSize(context, parkHorizontalOffset);
+      case TileType.house:
+        return ScreenUtils.relativeSize(context, houseHorizontalOffset);
+      case TileType.warehouse:
+        return ScreenUtils.relativeSize(context, warehouseHorizontalOffset);
+      default:
+        return ScreenUtils.relativeSize(context, buildingHorizontalOffset);
     }
   }
   
@@ -1407,6 +1459,10 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
         
         final components = _buildMapComponents(context, centerOffset, tileWidth, tileHeight, buildingImageHeight);
         
+        // Night overlay (darken the map)
+        final isNight = gameState.hourOfDay < 6 || gameState.hourOfDay >= 20;
+        final weather = gameState.weather;
+
         return Stack(
           children: [
             InteractiveViewer(
@@ -1425,7 +1481,36 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
                 child: Stack(
                   clipBehavior: Clip.none,
                   children: [
-                    ...components['tiles']!,
+                    // Render tiles. During night we brighten the tile layer slightly
+                    // so building details/light dots remain visible while the overall
+                    // city gets a dark overlay applied below.
+                    if (isNight)
+                      Positioned.fill(
+                        child: ColorFiltered(
+                          colorFilter: const ColorFilter.matrix(<double>[
+                            1.15, 0, 0, 0, 0, // R
+                            0, 1.15, 0, 0, 0, // G
+                            0, 0, 1.15, 0, 0, // B
+                            0, 0, 0, 1, 0,    // A
+                          ]),
+                          child: Stack(
+                            clipBehavior: Clip.none,
+                            children: List<Widget>.from(components['tiles']!),
+                          ),
+                        ),
+                      )
+                    else ...components['tiles']!,
+
+                    // Night overlay on top of tiles but below buttons/UI
+                    if (isNight)
+                      Positioned.fill(
+                        child: IgnorePointer(
+                          child: Container(
+                            color: const Color(0xFF051020).withOpacity(0.5),
+                          ),
+                        ),
+                      ),
+
                     // Buttons on top (hidden during panning)
                     if (!_isPanning) ...components['buttons']!,
                     // Tutorial message overlay
@@ -1435,6 +1520,20 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
                 ),
               ),
             ),
+
+            // Rain overlay (full screen, ignores transformation)
+            if (weather == WeatherType.rainy || weather == WeatherType.stormy)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: CustomPaint(
+                    painter: RainPainter(
+                      intensity: weather == WeatherType.stormy ? 1.0 : 0.5,
+                      time: DateTime.now().millisecondsSinceEpoch.toDouble(),
+                    ),
+                  ),
+                ),
+              ),
+
             // Marketing button rendered outside InteractiveViewer to stay visible during panning
             _buildMarketingButtonOverlay(context, centerOffset, tileWidth, tileHeight),
           ],
@@ -1830,7 +1929,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
       final w = tileWidth * scale;
       final h = buildingImageHeight * scale;
       return Positioned(
-        left: posX + (tileWidth - w) / 2,
+        left: posX + (tileWidth - w) / 2 + _getWarehouseHorizontalOffset(context),
         top: posY - (h - tileHeight) - warehouseOffset,
         width: w, height: h,
         child: _buildGroundTile(tileType, roadDir, x, y, context: context),
@@ -1857,7 +1956,8 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
     final verticalOffset = _getSpecialBuildingVerticalOffset(context, tileType);
     
     // Calculate building bounds for debug overlay
-    final buildingLeft = posX + (tileWidth - w) / 2;
+    final horizontalOffset = _getSpecialBuildingHorizontalOffset(context, tileType);
+    final buildingLeft = posX + (tileWidth - w) / 2 + horizontalOffset;
     final buildingTop = posY - (h - tileHeight*0.95) - verticalOffset;
     
     // Calculate reduced clickable area: half width (centered) and 35% height (middle-upper, between previous bottom and current top)
@@ -1867,6 +1967,10 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
     // Position at middle-upper area: around 25% from top (between bottom 35% and top 0%)
     final clickableTop = buildingTop + h * 0.25; // Middle-upper portion
     
+    // Night lights
+    final gameState = ref.watch(gameStateProvider);
+    final isNight = gameState.hourOfDay < 6 || gameState.hourOfDay >= 20;
+
     return Stack(
       clipBehavior: Clip.none,
       children: [
@@ -1875,7 +1979,13 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
           left: buildingLeft,
           top: buildingTop,
           width: w, height: h,
-          child: _buildBuildingTile(tileType, orientation),
+          child: Stack(
+            children: [
+              _buildBuildingTile(tileType, orientation),
+              if (isNight)
+                _buildBuildingLights(w, h, x * 100 + y), // Pass seed for consistent random lights
+            ],
+          ),
         ),
         // Reduced clickable area (half width centered, half height bottom)
         Positioned(
@@ -1890,6 +2000,40 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildBuildingLights(double width, double height, int seed) {
+    // Deterministic random based on seed
+    final random = math.Random(seed);
+    final numLights = 2 + random.nextInt(3); // 2-4 lights
+
+    return Stack(
+      children: List.generate(numLights, (index) {
+        final lightSize = width * 0.05;
+        final left = width * (0.2 + random.nextDouble() * 0.6);
+        final top = height * (0.3 + random.nextDouble() * 0.4);
+
+        return Positioned(
+          left: left,
+          top: top,
+          child: Container(
+            width: lightSize,
+            height: lightSize,
+            decoration: BoxDecoration(
+              color: Colors.amber.withOpacity(0.8),
+              shape: BoxShape.rectangle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.amber.withOpacity(0.6),
+                  blurRadius: lightSize * 2,
+                  spreadRadius: lightSize,
+                ),
+              ],
+            ),
+          ),
+        );
+      }),
     );
   }
 
@@ -5488,5 +5632,43 @@ class _PersonMachineSpritePainter extends CustomPainter {
   @override
   bool shouldRepaint(_PersonMachineSpritePainter oldDelegate) {
     return oldDelegate.imageInfo != imageInfo || oldDelegate.srcRect != srcRect;
+  }
+}
+class RainPainter extends CustomPainter {
+  final double intensity;
+  final double time;
+
+  RainPainter({required this.intensity, required this.time});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withOpacity(0.3)
+      ..strokeWidth = 1.0
+      ..strokeCap = StrokeCap.round;
+
+    final random = math.Random(12345); // Consistent seed for distribution
+    final numDrops = (100 * intensity).toInt();
+
+    for (int i = 0; i < numDrops; i++) {
+      final x = random.nextDouble() * size.width;
+      final yStart = random.nextDouble() * size.height;
+      final speed = 100.0 + random.nextDouble() * 50.0;
+
+      // Animate y position based on time
+      final yOffset = (time * speed / 1000.0) % size.height;
+      final y = (yStart + yOffset) % size.height;
+
+      canvas.drawLine(
+        Offset(x, y),
+        Offset(x - 5, y + 15), // Diagonal rain
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(RainPainter oldDelegate) {
+    return oldDelegate.time != time || oldDelegate.intensity != intensity;
   }
 }

@@ -1,6 +1,18 @@
 VENDING EMPIRE - RELEASE NOTES
 ================================
 
+Version 1.1.15
+-------------
+Release Date: January 18, 2026
+## New Features
+- **Dynamic Weather & Day/Night Cycle**: Immersive visual system with changing weather and day/night transitions
+  - **Day/Night Cycle**: City darkens at night (8 PM - 6 AM) with building windows lighting up
+  - **Dynamic Weather**: Random weather changes between sunny, cloudy, rainy, and stormy conditions
+  - **Visual Effects**: Rain particle system and procedural lighting effects
+  - **Weather Changes**: 5% chance of weather changing every in-game hour
+
+---
+
 Version 1.1.14
 -------------
 Release Date: January 16, 2026

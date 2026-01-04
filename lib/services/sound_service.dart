@@ -14,8 +14,16 @@ class SoundService {
   
   SoundService._internal() {
     _settingsLoadCompleter = Completer<void>();
-    _initAudioContext();
-    _loadVolumeSettings();
+    _init(); // Call unified init
+  }
+
+  // New unified initialization sequence
+  Future<void> _init() async {
+    // 1. FIRST: Configure Audio Context and WAIT for it to finish
+    await _initAudioContext();
+
+    // 2. THEN: Load settings and complete the completer
+    await _loadVolumeSettings();
   }
   
   /// Load volume settings from SharedPreferences
@@ -111,7 +119,7 @@ class SoundService {
           isSpeakerphoneOn: true,
           stayAwake: false,
           contentType: AndroidContentType.sonification,
-          usageType: AndroidUsageType.game,
+          usageType: AndroidUsageType.media, // CHANGED: 'media' is less aggressive than 'game'
           audioFocus: AndroidAudioFocus.none, // Key setting: Don't request focus to avoid stopping other apps
         ),
         iOS: AudioContextIOS(
@@ -592,6 +600,9 @@ class SoundService {
   Future<void> playSoundEffect(String assetPath, {double volumeMultiplier = 1.0}) async {
     if (!_isSoundEnabled) return;
     
+    // ADD THIS: Wait for context to be ready before playing
+    await _ensureSettingsLoaded();
+
     try {
       // Apply non-linear volume curve to the multiplier for more responsive adjustment
       final curvedMultiplier = _applyVolumeCurve(_soundVolumeMultiplier);
@@ -622,6 +633,9 @@ class SoundService {
   Future<void> playTruckSound() async {
     if (!_isSoundEnabled) return;
     
+    // ADD THIS: Wait for context to be ready
+    await _ensureSettingsLoaded();
+
     try {
       // Apply non-linear volume curve to the multiplier for more responsive adjustment
       final curvedMultiplier = _applyVolumeCurve(_soundVolumeMultiplier);
