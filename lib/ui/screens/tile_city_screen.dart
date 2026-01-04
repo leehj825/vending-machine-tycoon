@@ -139,16 +139,19 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
     // Calculate offset relative to tile width for density independence
     // Adjust the multiplier to shift road tiles horizontally
     // Positive = move right, Negative = move left
-    final tileWidth = _getTileWidth(context);
-    return tileWidth * 0.135; // ~13px on 96px tile, scales proportionally
+    // Use the road tile width so the offset scales with road sprite size.
+    final tileWidth = _getRoadTileWidth(context);
+    return tileWidth * AppConfig.roadHorizontalOffsetFactor; // configurable offset
   }
   
   double _getRoadTileOffsetY(BuildContext context) {
     // Calculate offset relative to tile height for density independence
     // Adjust the multiplier to shift road tiles vertically
     // Positive = move down, Negative = move up
-    final tileHeight = _getTileHeight(context);
-    return tileHeight * 0.0625; // ~1.5px on 24px tile, scales proportionally
+    // Use the road tile height (not the regular tile height) so the
+    // offset scales correctly with the road sprite size.
+    final tileHeight = _getRoadTileHeight(context);
+    return tileHeight * AppConfig.roadVerticalOffsetFactor; // configurable offset
   }
   
   double _getBuildingImageHeight(BuildContext context) {
@@ -178,9 +181,27 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
   static const double subwayVerticalOffset = AppConfig.subwayVerticalOffset;
   static const double hospitalVerticalOffset = AppConfig.hospitalVerticalOffset;
   static const double universityVerticalOffset = AppConfig.universityVerticalOffset;
+  static const double gasStationVerticalOffset = AppConfig.gasStationVerticalOffset;
+  static const double houseVerticalOffset = AppConfig.houseVerticalOffset;
+  static const double parkVerticalOffset = AppConfig.parkVerticalOffset;
+  static const double buildingVerticalOffset = AppConfig.buildingVerticalOffset;
+  // Horizontal offsets (relative size multipliers)
+  static const double buildingHorizontalOffset = AppConfig.buildingHorizontalOffset;
+  static const double schoolHorizontalOffset = AppConfig.schoolHorizontalOffset;
+  static const double gasStationHorizontalOffset = AppConfig.gasStationHorizontalOffset;
+  static const double parkHorizontalOffset = AppConfig.parkHorizontalOffset;
+  static const double houseHorizontalOffset = AppConfig.houseHorizontalOffset;
+  static const double warehouseHorizontalOffset = AppConfig.warehouseHorizontalOffset;
+  static const double subwayHorizontalOffset = AppConfig.subwayHorizontalOffset;
+  static const double universityHorizontalOffset = AppConfig.universityHorizontalOffset;
+  static const double hospitalHorizontalOffset = AppConfig.hospitalHorizontalOffset;
   
   double _getWarehouseVerticalOffset(BuildContext context) {
     return ScreenUtils.relativeSize(context, 0.007);
+  }
+
+  double _getWarehouseHorizontalOffset(BuildContext context) {
+    return ScreenUtils.relativeSize(context, warehouseHorizontalOffset);
   }
 
   double _getSpecialBuildingVerticalOffset(BuildContext context, TileType tileType) {
@@ -192,10 +213,40 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
         return ScreenUtils.relativeSize(context, subwayVerticalOffset);
       case TileType.hospital:
         return ScreenUtils.relativeSize(context, hospitalVerticalOffset);
+      case TileType.gasStation:
+        return ScreenUtils.relativeSize(context, gasStationVerticalOffset);
+      case TileType.park:
+        return ScreenUtils.relativeSize(context, parkVerticalOffset);
+      case TileType.house:
+        return ScreenUtils.relativeSize(context, houseVerticalOffset);
       case TileType.university:
         return ScreenUtils.relativeSize(context, universityVerticalOffset);
       default:
-    return 0.0;
+        return ScreenUtils.relativeSize(context, buildingVerticalOffset);
+    }
+  }
+
+  double _getSpecialBuildingHorizontalOffset(BuildContext context, TileType tileType) {
+    // Each building type has its own horizontal offset
+    switch (tileType) {
+      case TileType.school:
+        return ScreenUtils.relativeSize(context, schoolHorizontalOffset);
+      case TileType.subway:
+        return ScreenUtils.relativeSize(context, subwayHorizontalOffset);
+      case TileType.hospital:
+        return ScreenUtils.relativeSize(context, hospitalHorizontalOffset);
+      case TileType.university:
+        return ScreenUtils.relativeSize(context, universityHorizontalOffset);
+      case TileType.gasStation:
+        return ScreenUtils.relativeSize(context, gasStationHorizontalOffset);
+      case TileType.park:
+        return ScreenUtils.relativeSize(context, parkHorizontalOffset);
+      case TileType.house:
+        return ScreenUtils.relativeSize(context, houseHorizontalOffset);
+      case TileType.warehouse:
+        return ScreenUtils.relativeSize(context, warehouseHorizontalOffset);
+      default:
+        return ScreenUtils.relativeSize(context, buildingHorizontalOffset);
     }
   }
   
@@ -1430,7 +1481,25 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
                 child: Stack(
                   clipBehavior: Clip.none,
                   children: [
-                    ...components['tiles']!,
+                    // Render tiles. During night we brighten the tile layer slightly
+                    // so building details/light dots remain visible while the overall
+                    // city gets a dark overlay applied below.
+                    if (isNight)
+                      Positioned.fill(
+                        child: ColorFiltered(
+                          colorFilter: const ColorFilter.matrix(<double>[
+                            1.15, 0, 0, 0, 0, // R
+                            0, 1.15, 0, 0, 0, // G
+                            0, 0, 1.15, 0, 0, // B
+                            0, 0, 0, 1, 0,    // A
+                          ]),
+                          child: Stack(
+                            clipBehavior: Clip.none,
+                            children: List<Widget>.from(components['tiles']!),
+                          ),
+                        ),
+                      )
+                    else ...components['tiles']!,
 
                     // Night overlay on top of tiles but below buttons/UI
                     if (isNight)
@@ -1860,7 +1929,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
       final w = tileWidth * scale;
       final h = buildingImageHeight * scale;
       return Positioned(
-        left: posX + (tileWidth - w) / 2,
+        left: posX + (tileWidth - w) / 2 + _getWarehouseHorizontalOffset(context),
         top: posY - (h - tileHeight) - warehouseOffset,
         width: w, height: h,
         child: _buildGroundTile(tileType, roadDir, x, y, context: context),
@@ -1887,7 +1956,8 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
     final verticalOffset = _getSpecialBuildingVerticalOffset(context, tileType);
     
     // Calculate building bounds for debug overlay
-    final buildingLeft = posX + (tileWidth - w) / 2;
+    final horizontalOffset = _getSpecialBuildingHorizontalOffset(context, tileType);
+    final buildingLeft = posX + (tileWidth - w) / 2 + horizontalOffset;
     final buildingTop = posY - (h - tileHeight*0.95) - verticalOffset;
     
     // Calculate reduced clickable area: half width (centered) and 35% height (middle-upper, between previous bottom and current top)

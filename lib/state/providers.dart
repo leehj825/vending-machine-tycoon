@@ -938,7 +938,7 @@ class GameController extends StateNotifier<GlobalGameState> {
     
     // Reset simulation engine
     simulationEngine.restoreState(
-      time: const GameTime(day: 1, hour: 8, minute: 0, tick: 80),
+      time: const GameTime(day: 1, hour: 8, minute: 0, tick: 1000),
       machines: [],
       trucks: [],
       cash: 2000.0,

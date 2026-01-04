@@ -537,10 +537,16 @@ class AppConfig {
   /// Tile spacing factors
   static const double tileSpacingFactor = 0.80;
   static const double horizontalSpacingFactor = 0.70;
+  /// Road vertical offset factor (multiplied by tile height)
+  /// Positive = move down, Negative = move up
+  static const double roadVerticalOffsetFactor = 0.055; // ~0.055 of tile height
+  /// Road horizontal offset factor (multiplied by road tile width)
+  /// Positive = move right, Negative = move left
+  static const double roadHorizontalOffsetFactor = 0.225; // ~13.5% of road tile width
   
   /// Building scales
-  static const double buildingScale = 0.78;
-  static const double schoolScale = 0.78; // School tile scale (same as other small buildings)
+  static const double buildingScale = 0.73;
+  static const double schoolScale = 0.73; // School tile scale (same as other small buildings)
   static const double gasStationScale = 0.73;
   static const double parkScale = 0.70;
   static const double houseScale = 0.70;
@@ -550,10 +556,26 @@ class AppConfig {
   static const double hospitalScale = 0.72; // Hospital tile scale
   
   /// Building vertical offsets (relative size multipliers)
-  static const double schoolVerticalOffset = -0.001; // School vertical offset (adjust this value to change position)
-  static const double subwayVerticalOffset = 0.005; // Subway vertical offset
-  static const double hospitalVerticalOffset = 0.007; // Hospital vertical offset
-  static const double universityVerticalOffset = 0.005; // University vertical offset
+  /// Generic building vertical offset applied when a specific one isn't provided
+  static const double buildingVerticalOffset = -0.005;
+  static const double schoolVerticalOffset = -0.01; // School vertical offset (adjust this value to change position)
+  static const double subwayVerticalOffset = -0.035; // Subway vertical offset
+  static const double hospitalVerticalOffset = -0.035; // Hospital vertical offset
+  static const double universityVerticalOffset = -0.035; // University vertical offset
+  // New per-tile vertical offsets
+  static const double gasStationVerticalOffset = -0.04; // Gas station vertical offset
+  static const double houseVerticalOffset = -0.04; // House vertical offset
+  static const double parkVerticalOffset = -0.038; // Park vertical offset
+  // Horizontal offsets (relative size multipliers). Positive = move right, Negative = move left
+  static const double buildingHorizontalOffset = 0.000; // Generic building horizontal offset
+  static const double schoolHorizontalOffset = 0.00;
+  static const double gasStationHorizontalOffset = 0.0;
+  static const double parkHorizontalOffset = 0.0;
+  static const double houseHorizontalOffset = 0.0;
+  static const double warehouseHorizontalOffset = 0.0;
+  static const double subwayHorizontalOffset = 0.0;
+  static const double universityHorizontalOffset = 0.0;
+  static const double hospitalHorizontalOffset = 0.0;
   
   /// Building block sizes
   static const int minBlockSize = 4; // Increased to prevent road clustering
