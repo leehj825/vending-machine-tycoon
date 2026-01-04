@@ -1,6 +1,28 @@
 VENDING EMPIRE - RELEASE NOTES
 ================================
 
+Version 1.1.14
+-------------
+Release Date: January 16, 2026
+## New Features
+- **Research Lab**: New Tech Tree system in HQ to purchase permanent upgrades
+  - **Turbo Logistics**: Trucks move 25% faster ($2,000)
+  - **Premium Branding**: Increase product prices by 10% without losing customers ($5,000)
+  - **Efficient Cooling**: Reduces spoilage rate by 50% ($3,000)
+- **Machine Upgrade System**: Players can now spend cash to improve specific vending machines
+  - **Capacity Upgrade**: Increases machine storage capacity by 25 slots per level ($500)
+  - **Cooling System**: Reduces spoilage rate for perishable items ($800)
+  - **Security System**: Reduces reputation penalties when machines are empty ($400)
+  - **Ad Display**: Generates passive income ($10/day) ($1,000)
+  - New "Upgrade" button in machine interior view
+
+## Bug Fixes
+- **Background Audio Fix**: Fixed issue where game sounds (effects, music) would stop background audio from other apps (e.g., YouTube, Spotify) on Android and iOS
+  - Android: Audio focus is no longer requested, allowing background apps to continue playing
+  - iOS: Audio session is configured to mix with other apps
+
+---
+
 Version 1.1.13
 -------------
 Release Date: January 15, 2026
@@ -18,7 +40,7 @@ Release Date: January 15, 2026
   - Real ads for production releases (bundle builds with BUILD_TYPE=bundle)
 
 ## Bug Fixes
-- Fixed "Get Funding" button attempting to work on macOS - now properly disabled with informative message
+- **Get Funding on macOS**: "Get Funding" button is now enabled on macOS. Since rewarded ads are not supported on desktop, clicking it instantly grants the reward.
 
 ---
 
@@ -137,4 +159,3 @@ Release Date: [To be filled]
 ---
 
 [Add previous versions and their release notes below]
-

@@ -7,6 +7,7 @@ import '../../state/selectors.dart';
 import '../../config.dart';
 import '../../simulation/models/machine.dart';
 import '../utils/screen_utils.dart';
+import 'research_screen.dart';
 
 /// CEO Dashboard - Main HQ screen displaying empire overview
 class HQDashboard extends ConsumerWidget {
@@ -36,6 +37,67 @@ class HQDashboard extends ConsumerWidget {
             
             // Section D: Maintenance
             _buildNeedsAttentionSection(context, machines),
+
+            SizedBox(height: ScreenUtils.relativeSize(context, AppConfig.spacingFactorLarge)),
+
+            // Research Lab Button
+            _buildResearchLabButton(context),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildResearchLabButton(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => const ResearchScreen(),
+            ),
+          );
+        },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.indigo.shade800,
+          foregroundColor: Colors.white,
+          padding: EdgeInsets.symmetric(
+            vertical: ScreenUtils.relativeSize(context, 0.02),
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(
+              ScreenUtils.relativeSize(context, 0.012),
+            ),
+          ),
+          elevation: ScreenUtils.relativeSize(context, AppConfig.cardElevationFactor),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.science,
+              size: ScreenUtils.relativeSizeClamped(
+                context,
+                0.04,
+                min: ScreenUtils.getSmallerDimension(context) * 0.03,
+                max: ScreenUtils.getSmallerDimension(context) * 0.05,
+              ),
+            ),
+            SizedBox(width: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall)),
+            Text(
+              'RESEARCH LAB',
+              style: TextStyle(
+                fontSize: ScreenUtils.relativeFontSize(
+                  context,
+                  AppConfig.fontSizeFactorLarge,
+                  min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
+                  max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+                ),
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.2,
+              ),
+            ),
           ],
         ),
       ),
@@ -253,65 +315,60 @@ class HQDashboard extends ConsumerWidget {
     final adManager = ref.watch(rewardedAdProvider);
     final controller = ref.read(gameControllerProvider.notifier);
     
-    // Disable for macOS (rewarded ads not supported)
+    // Check for macOS (rewarded ads not supported, provide instant reward)
     final isMacOS = !kIsWeb && Platform.isMacOS;
-    final isDisabled = isMacOS;
 
     return Container(
       decoration: BoxDecoration(
-        gradient: isDisabled
-            ? LinearGradient(
-                colors: [Colors.grey.shade400, Colors.grey.shade600],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              )
-            : LinearGradient(
-                colors: [Colors.green.shade600, Colors.green.shade800],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+        gradient: LinearGradient(
+          colors: [Colors.green.shade600, Colors.green.shade800],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
         borderRadius: BorderRadius.circular(ScreenUtils.relativeSize(context, 0.008)),
-        boxShadow: isDisabled
-            ? []
-            : [
-                BoxShadow(
-                  color: Colors.green.shade300.withOpacity(0.3),
-                  blurRadius: ScreenUtils.relativeSize(context, 0.01),
-                  offset: Offset(0, ScreenUtils.relativeSize(context, 0.002)),
-                ),
-              ],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.green.shade300.withOpacity(0.3),
+            blurRadius: ScreenUtils.relativeSize(context, 0.01),
+            offset: Offset(0, ScreenUtils.relativeSize(context, 0.002)),
+          ),
+        ],
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: isDisabled
-              ? () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Row(
-                        children: [
-                          Icon(Icons.info_outline, color: Colors.white),
-                          SizedBox(width: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall)),
-                          Text(
-                            'Rewarded ads are not available on macOS',
-                            style: TextStyle(
-                              fontSize: ScreenUtils.relativeFontSize(
-                                context,
-                                AppConfig.fontSizeFactorNormal,
-                                min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                                max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                              ),
-                            ),
+          onTap: () {
+            // On macOS, grant reward immediately since ads aren't supported
+            if (isMacOS) {
+              controller.addCash(1000);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Row(
+                    children: [
+                      Icon(Icons.check_circle, color: Colors.white),
+                      SizedBox(width: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall)),
+                      Text(
+                        'Received \$1,000 from investors!',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: ScreenUtils.relativeFontSize(
+                            context,
+                            AppConfig.fontSizeFactorNormal,
+                            min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
+                            max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
                           ),
-                        ],
+                        ),
                       ),
-                      backgroundColor: Colors.grey.shade700,
-                      duration: const Duration(seconds: 2),
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
-                }
-              : () {
+                    ],
+                  ),
+                  backgroundColor: Colors.green.shade700,
+                  duration: const Duration(seconds: 3),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+              return;
+            }
+
             if (adManager.isReady) {
               adManager.showAd(
                 onReward: () {
@@ -378,8 +435,8 @@ class HQDashboard extends ConsumerWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(
-                  isDisabled ? Icons.block : Icons.play_circle_filled,
-                  color: Colors.white.withOpacity(isDisabled ? 0.6 : 1.0),
+                  Icons.play_circle_filled,
+                  color: Colors.white,
                   size: ScreenUtils.relativeSizeClamped(
                     context,
                     0.05,
@@ -391,7 +448,7 @@ class HQDashboard extends ConsumerWidget {
                 Text(
                   'Get Funding',
                   style: TextStyle(
-                    color: Colors.white.withOpacity(isDisabled ? 0.6 : 1.0),
+                    color: Colors.white,
                     fontWeight: FontWeight.bold,
                     fontSize: ScreenUtils.relativeFontSize(
                       context,
@@ -408,13 +465,13 @@ class HQDashboard extends ConsumerWidget {
                     vertical: ScreenUtils.relativeSize(context, AppConfig.spacingFactorTiny),
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(isDisabled ? 0.2 : 0.3),
+                    color: Colors.white.withOpacity(0.3),
                     borderRadius: BorderRadius.circular(ScreenUtils.relativeSize(context, 0.01)),
                   ),
                   child: Text(
                     '\$1,000',
                     style: TextStyle(
-                      color: Colors.white.withOpacity(isDisabled ? 0.6 : 1.0),
+                      color: Colors.white,
                       fontWeight: FontWeight.bold,
                       fontSize: ScreenUtils.relativeFontSize(
                         context,

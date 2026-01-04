@@ -7,6 +7,7 @@ import '../../config.dart';
 import '../../services/sound_service.dart';
 import '../utils/screen_utils.dart';
 import '../theme/zone_ui.dart';
+import 'machine_upgrade_dialog.dart';
 
 /// Dialog that shows the interior of a vending machine with interactive cash collection zones
 class MachineInteriorDialog extends ConsumerStatefulWidget {
@@ -142,6 +143,15 @@ class _MachineInteriorDialogState extends ConsumerState<MachineInteriorDialog> w
   String _getInteriorImagePath(ZoneType zoneType, bool hasCash) {
     final cashSuffix = hasCash ? '_with_money' : '_without_money';
     return 'assets/images/machine$cashSuffix.png';
+  }
+
+  /// Open the machine upgrade dialog
+  void _openUpgrades() {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) => MachineUpgradeDialog(machine: _currentMachine),
+    );
   }
 
   /// Collect cash from the machine
@@ -467,6 +477,24 @@ class _MachineInteriorDialogState extends ConsumerState<MachineInteriorDialog> w
                                 ),
                               ),
                           ],
+                        ),
+                      ),
+                    ),
+                    // Upgrade button (top-left)
+                    Positioned(
+                      top: padding,
+                      left: padding,
+                      child: IconButton(
+                        icon: Icon(
+                          Icons.arrow_circle_up,
+                          color: Colors.white,
+                          size: dialogWidth * AppConfig.machineInteriorDialogCloseButtonSizeFactor,
+                        ),
+                        onPressed: _openUpgrades,
+                        tooltip: 'Upgrades',
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.blue.withValues(alpha: 0.7),
+                          padding: EdgeInsets.all(padding * AppConfig.machineInteriorDialogCloseButtonPaddingFactor),
                         ),
                       ),
                     ),
