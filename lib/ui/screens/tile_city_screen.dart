@@ -1407,6 +1407,10 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
         
         final components = _buildMapComponents(context, centerOffset, tileWidth, tileHeight, buildingImageHeight);
         
+        // Night overlay (darken the map)
+        final isNight = controller.simulationEngine.state.isNight;
+        final weather = controller.simulationEngine.state.weather;
+
         return Stack(
           children: [
             InteractiveViewer(
@@ -1426,6 +1430,17 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
                   clipBehavior: Clip.none,
                   children: [
                     ...components['tiles']!,
+
+                    // Night overlay on top of tiles but below buttons/UI
+                    if (isNight)
+                      Positioned.fill(
+                        child: IgnorePointer(
+                          child: Container(
+                            color: const Color(0xFF051020).withOpacity(0.5),
+                          ),
+                        ),
+                      ),
+
                     // Buttons on top (hidden during panning)
                     if (!_isPanning) ...components['buttons']!,
                     // Tutorial message overlay
@@ -1435,6 +1450,20 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
                 ),
               ),
             ),
+
+            // Rain overlay (full screen, ignores transformation)
+            if (weather == WeatherType.rainy || weather == WeatherType.stormy)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: CustomPaint(
+                    painter: RainPainter(
+                      intensity: weather == WeatherType.stormy ? 1.0 : 0.5,
+                      time: DateTime.now().millisecondsSinceEpoch.toDouble(),
+                    ),
+                  ),
+                ),
+              ),
+
             // Marketing button rendered outside InteractiveViewer to stay visible during panning
             _buildMarketingButtonOverlay(context, centerOffset, tileWidth, tileHeight),
           ],
@@ -1867,6 +1896,10 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
     // Position at middle-upper area: around 25% from top (between bottom 35% and top 0%)
     final clickableTop = buildingTop + h * 0.25; // Middle-upper portion
     
+    // Night lights
+    final controller = ref.read(gameControllerProvider.notifier);
+    final isNight = controller.simulationEngine.state.isNight;
+
     return Stack(
       clipBehavior: Clip.none,
       children: [
@@ -1875,7 +1908,13 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
           left: buildingLeft,
           top: buildingTop,
           width: w, height: h,
-          child: _buildBuildingTile(tileType, orientation),
+          child: Stack(
+            children: [
+              _buildBuildingTile(tileType, orientation),
+              if (isNight)
+                _buildBuildingLights(w, h, x * 100 + y), // Pass seed for consistent random lights
+            ],
+          ),
         ),
         // Reduced clickable area (half width centered, half height bottom)
         Positioned(
@@ -1890,6 +1929,40 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildBuildingLights(double width, double height, int seed) {
+    // Deterministic random based on seed
+    final random = math.Random(seed);
+    final numLights = 2 + random.nextInt(3); // 2-4 lights
+
+    return Stack(
+      children: List.generate(numLights, (index) {
+        final lightSize = width * 0.05;
+        final left = width * (0.2 + random.nextDouble() * 0.6);
+        final top = height * (0.3 + random.nextDouble() * 0.4);
+
+        return Positioned(
+          left: left,
+          top: top,
+          child: Container(
+            width: lightSize,
+            height: lightSize,
+            decoration: BoxDecoration(
+              color: Colors.amber.withOpacity(0.8),
+              shape: BoxShape.rectangle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.amber.withOpacity(0.6),
+                  blurRadius: lightSize * 2,
+                  spreadRadius: lightSize,
+                ),
+              ],
+            ),
+          ),
+        );
+      }),
     );
   }
 
@@ -5488,5 +5561,43 @@ class _PersonMachineSpritePainter extends CustomPainter {
   @override
   bool shouldRepaint(_PersonMachineSpritePainter oldDelegate) {
     return oldDelegate.imageInfo != imageInfo || oldDelegate.srcRect != srcRect;
+  }
+}
+class RainPainter extends CustomPainter {
+  final double intensity;
+  final double time;
+
+  RainPainter({required this.intensity, required this.time});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withOpacity(0.3)
+      ..strokeWidth = 1.0
+      ..strokeCap = StrokeCap.round;
+
+    final random = math.Random(12345); // Consistent seed for distribution
+    final numDrops = (100 * intensity).toInt();
+
+    for (int i = 0; i < numDrops; i++) {
+      final x = random.nextDouble() * size.width;
+      final yStart = random.nextDouble() * size.height;
+      final speed = 100.0 + random.nextDouble() * 50.0;
+
+      // Animate y position based on time
+      final yOffset = (time * speed / 1000.0) % size.height;
+      final y = (yStart + yOffset) % size.height;
+
+      canvas.drawLine(
+        Offset(x, y),
+        Offset(x - 5, y + 15), // Diagonal rain
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(RainPainter oldDelegate) {
+    return oldDelegate.time != time || oldDelegate.intensity != intensity;
   }
 }

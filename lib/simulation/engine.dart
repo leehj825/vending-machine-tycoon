@@ -7,6 +7,7 @@ import 'models/machine.dart';
 import 'models/truck.dart';
 import 'models/zone.dart';
 import 'models/research.dart';
+import 'models/weather.dart';
 import '../state/providers.dart';
 
 /// Simulation constants
@@ -91,6 +92,10 @@ class SimulationState {
   final int purchasingAgentCount; // Number of purchasing agents hired
   final Map<Product, int> purchasingAgentTargetInventory; // Target inventory levels for purchasing agent
   final Set<ResearchType> unlockedResearch; // Unlocked research items
+  final WeatherType weather; // Current weather
+
+  // Helper to check if it's night time (8 PM to 6 AM)
+  bool get isNight => time.hour < 6 || time.hour >= 20;
 
   const SimulationState({
     required this.time,
@@ -108,6 +113,7 @@ class SimulationState {
     this.purchasingAgentCount = 0,
     this.purchasingAgentTargetInventory = const {},
     this.unlockedResearch = const {},
+    this.weather = WeatherType.sunny,
   });
 
   SimulationState copyWith({
@@ -126,6 +132,7 @@ class SimulationState {
     int? purchasingAgentCount,
     Map<Product, int>? purchasingAgentTargetInventory,
     Set<ResearchType>? unlockedResearch,
+    WeatherType? weather,
   }) {
     return SimulationState(
       time: time ?? this.time,
@@ -143,6 +150,7 @@ class SimulationState {
       purchasingAgentCount: purchasingAgentCount ?? this.purchasingAgentCount,
       purchasingAgentTargetInventory: purchasingAgentTargetInventory ?? this.purchasingAgentTargetInventory,
       unlockedResearch: unlockedResearch ?? this.unlockedResearch,
+      weather: weather ?? this.weather,
     );
   }
 }
@@ -266,6 +274,7 @@ class SimulationEngine extends StateNotifier<SimulationState> {
     int mechanicCount = 0,
     int purchasingAgentCount = 0,
     Map<Product, int> purchasingAgentTargetInventory = const {},
+    WeatherType weather = WeatherType.sunny,
   }) {
     print('🔴 ENGINE: Restoring state - Day ${time.day} ${time.hour}:00');
     state = state.copyWith(
@@ -282,6 +291,7 @@ class SimulationEngine extends StateNotifier<SimulationState> {
       mechanicCount: mechanicCount,
       purchasingAgentCount: purchasingAgentCount,
       purchasingAgentTargetInventory: purchasingAgentTargetInventory,
+      weather: weather,
     );
     _streamController.add(state);
   }
@@ -428,6 +438,16 @@ class SimulationEngine extends StateNotifier<SimulationState> {
     final nextTime = currentState.time.nextTick();
     var pendingMessages = List<String>.from(currentState.pendingMessages);
     var updatedCash = currentState.cash;
+    var updatedWeather = currentState.weather;
+
+    // Random weather change (5% chance per hour)
+    if (nextTime.minute == 0 && nextTime.hour != currentState.time.hour) {
+      if (state.random.nextDouble() < 0.05) {
+        final weatherTypes = WeatherType.values;
+        updatedWeather = weatherTypes[state.random.nextInt(weatherTypes.length)];
+        pendingMessages.add('Weather changed to ${updatedWeather.name}');
+      }
+    }
     
     if (nextTime.day > currentState.time.day || (currentState.time.hour == 23 && nextTime.hour == 0)) {
       final trucksWithDrivers = currentState.trucks.where((t) => t.hasDriver).length;
@@ -491,6 +511,7 @@ class SimulationEngine extends StateNotifier<SimulationState> {
       reputation: updatedReputation,
       warehouse: updatedWarehouse,
       pendingMessages: pendingMessages,
+      weather: updatedWeather,
     );
     state = newState;
     
