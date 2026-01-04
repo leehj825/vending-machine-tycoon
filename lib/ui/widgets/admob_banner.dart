@@ -84,15 +84,22 @@ class _AdMobBannerState extends State<AdMobBanner> {
           debugPrint('Banner ad loaded successfully');
         },
         onAdFailedToLoad: (ad, error) {
-          // Dispose the ad if it fails to load
-          ad.dispose();
-          if (mounted) {
-            setState(() {
-              _isAdLoaded = false;
-              _hasError = true;
-            });
-          }
           debugPrint('Banner ad failed to load: ${error.code} - ${error.message}');
+
+          // Fix: Only hide the banner if we haven't loaded one yet (initial load failure).
+          // If _isAdLoaded is true, it means a refresh failed, but the old ad is still there.
+          if (!_isAdLoaded) {
+            ad.dispose();
+            if (mounted) {
+              setState(() {
+                _hasError = true;
+              });
+            }
+          } else {
+            // It was a refresh failure. Do NOT dispose.
+            // The SDK will try again automatically or keep the old ad visible.
+            debugPrint('Refresh failed, keeping existing ad visible.');
+          }
         },
         onAdOpened: (_) {
           debugPrint('Banner ad opened');

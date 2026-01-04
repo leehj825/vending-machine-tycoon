@@ -56,6 +56,12 @@ abstract class Machine with _$Machine {
     @Default(0) int totalSales,
     /// Whether the machine is currently under maintenance (e.g., open for cash collection)
     @Default(false) bool isUnderMaintenance,
+
+    // Upgrade levels
+    @Default(0) int levelCapacity,
+    @Default(0) int levelCooling,
+    @Default(0) int levelSecurity,
+    @Default(0) int levelAds,
   }) = _Machine;
 
   const Machine._();
@@ -91,10 +97,10 @@ abstract class Machine with _$Machine {
   }
 
   /// Get maximum capacity based on allowed products for this zone type
-  /// Capacity = number of allowed products * 20 items per product
+  /// Capacity = (number of allowed products * 20 items per product) + (levelCapacity * 25)
   int get maxCapacity {
     final allowedProducts = Zone.getAllowedProducts(zone.type);
-    return allowedProducts.length * 20;
+    return (allowedProducts.length * 20) + (levelCapacity * 25);
   }
 
   /// Get total allocation across all inventory items
