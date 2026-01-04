@@ -3,6 +3,7 @@ import '../simulation/models/machine.dart';
 import '../simulation/models/truck.dart';
 import '../simulation/models/product.dart';
 import '../simulation/models/research.dart';
+import '../simulation/models/weather.dart';
 import 'providers.dart';
 import 'city_map_state.dart';
 
@@ -45,6 +46,7 @@ abstract class GlobalGameState with _$GlobalGameState {
     @Default({}) Map<Product, int> purchasingAgentTargetInventory, // Target inventory levels for purchasing agent
     @Default(false) bool isGameOver, // Game over flag (when cash is too negative)
     @Default({}) Set<ResearchType> unlockedResearch, // Unlocked research items
+    @Default(WeatherType.sunny) WeatherType weather, // Current weather
   }) = _GlobalGameState;
 
   const GlobalGameState._();

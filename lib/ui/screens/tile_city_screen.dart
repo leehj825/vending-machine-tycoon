@@ -13,6 +13,7 @@ import '../../simulation/models/zone.dart';
 import '../../simulation/models/truck.dart' as sim;
 import '../../simulation/models/machine.dart' as sim;
 import '../../simulation/models/product.dart';
+import '../../simulation/models/weather.dart';
 import '../../config.dart';
 import '../theme/zone_ui.dart';
 import '../utils/screen_utils.dart';
@@ -1408,8 +1409,8 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
         final components = _buildMapComponents(context, centerOffset, tileWidth, tileHeight, buildingImageHeight);
         
         // Night overlay (darken the map)
-        final isNight = controller.simulationEngine.state.isNight;
-        final weather = controller.simulationEngine.state.weather;
+        final isNight = gameState.hourOfDay < 6 || gameState.hourOfDay >= 20;
+        final weather = gameState.weather;
 
         return Stack(
           children: [
@@ -1897,8 +1898,8 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
     final clickableTop = buildingTop + h * 0.25; // Middle-upper portion
     
     // Night lights
-    final controller = ref.read(gameControllerProvider.notifier);
-    final isNight = controller.simulationEngine.state.isNight;
+    final gameState = ref.watch(gameStateProvider);
+    final isNight = gameState.hourOfDay < 6 || gameState.hourOfDay >= 20;
 
     return Stack(
       clipBehavior: Clip.none,
