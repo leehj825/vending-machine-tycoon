@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'game_state.dart';
 import 'providers.dart';
 import 'city_map_state.dart';
+import '../services/cloud_save_service.dart';
 import '../simulation/models/machine.dart';
 import '../simulation/models/truck.dart';
 import '../simulation/models/product.dart';
@@ -18,15 +19,15 @@ class SaveSlot {
   Map<String, dynamic> toJson() {
     return {
       'name': name,
-      'gameState': gameState != null ? SaveLoadService._serializeGameState(gameState!) : null,
+      'gameState': gameState != null ? SaveLoadService.serializeGameState(gameState!) : null,
     };
   }
 
   factory SaveSlot.fromJson(Map<String, dynamic> json) {
     return SaveSlot(
       name: json['name'] as String,
-      gameState: json['gameState'] != null
-          ? SaveLoadService._deserializeGameState(json['gameState'] as String)
+        gameState: json['gameState'] != null
+          ? SaveLoadService.deserializeGameState(json['gameState'] as String)
           : null,
     );
   }
@@ -50,7 +51,7 @@ class SaveLoadService {
         if (oldJson != null && oldJson.isNotEmpty) {
           try {
             // Try to deserialize the old save
-            final oldState = _deserializeGameState(oldJson);
+            final oldState = deserializeGameState(oldJson);
             
             // Get current slots (without calling migration again to avoid recursion)
             final prefs2 = await SharedPreferences.getInstance();
@@ -145,7 +146,16 @@ class SaveLoadService {
       await _migrateOldSave();
       final slots = await _getSlots();
       slots[slotIndex] = SaveSlot(name: trimmedName, gameState: gameState);
-      return await _saveSlots(slots);
+      final result = await _saveSlots(slots);
+
+      // Fire-and-forget: try to sync to cloud if possible
+      Future.microtask(() {
+        CloudSaveService.saveToCloud(gameState).catchError((e) {
+          print('Cloud save failed (non-fatal): $e');
+        });
+      });
+
+      return result;
     } catch (e) {
       print('Error saving game: $e');
       return false;
@@ -207,8 +217,8 @@ class SaveLoadService {
     return await deleteGame(0);
   }
 
-  /// Serialize game state to JSON (internal method)
-  static String _serializeGameState(GlobalGameState state) {
+  /// Serialize game state to JSON
+  static String serializeGameState(GlobalGameState state) {
     final map = {
       'cash': state.cash,
       'reputation': state.reputation,
@@ -246,9 +256,9 @@ class SaveLoadService {
     return jsonEncode(map);
   }
 
-  /// Deserialize JSON to game state (internal method)
+  /// Deserialize JSON to game state.
   /// Handles both old and new save formats for backward compatibility
-  static GlobalGameState _deserializeGameState(String json) {
+  static GlobalGameState deserializeGameState(String json) {
     try {
       final map = jsonDecode(json) as Map<String, dynamic>;
       

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "290652142552",
+    "project_id": "vending-machine-tycoon",
+    "storage_bucket": "vending-machine-tycoon.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:290652142552:android:bbda446556aa701bae10ad",
+        "android_client_info": {
+          "package_name": "com.vendingmachiinetycoon.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDkma15X31tpPA_mvRCF8P5sBWSZhU9BHs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

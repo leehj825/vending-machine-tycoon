@@ -1,4 +1,5 @@
-platform :osx, '10.15'
+# Minimum macOS deployment target for some plugins (games_services requires >= 11.0)
+platform :osx, '11.0'
 
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
@@ -38,5 +39,28 @@ end
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_macos_build_settings(target)
+
+    # Ensure all Pod targets use a minimum macOS deployment target compatible
+    # with plugins that require macOS 11.0+ (e.g., games_services).
+    target.build_configurations.each do |config|
+      config.build_settings['MACOSX_DEPLOYMENT_TARGET'] = '11.0'
+
+      # Deduplicate OTHER_LDFLAGS to avoid duplicate linker flags such as
+      # repeated -l"c++" entries which cause linker warnings/failures.
+      other_ldflags = config.build_settings['OTHER_LDFLAGS']
+      if other_ldflags.is_a?(Array)
+        config.build_settings['OTHER_LDFLAGS'] = other_ldflags.uniq
+      end
+    end
+  end
+
+  # Also enforce project-level build configurations in case some Pod specs
+  # set deprecated deployment targets at the project scope.
+  installer.pods_project.build_configurations.each do |config|
+    config.build_settings['MACOSX_DEPLOYMENT_TARGET'] = '11.0'
+    other_ldflags = config.build_settings['OTHER_LDFLAGS']
+    if other_ldflags.is_a?(Array)
+      config.build_settings['OTHER_LDFLAGS'] = other_ldflags.uniq
+    end
   end
 end

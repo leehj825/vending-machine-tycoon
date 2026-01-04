@@ -9,6 +9,8 @@ import 'models/zone.dart';
 import 'models/research.dart';
 import 'models/weather.dart';
 import '../state/providers.dart';
+import '../services/achievement_service.dart';
+import '../state/game_state.dart';
 
 /// Simulation constants
 /// Note: Most constants have been moved to AppConfig. This class is kept for backward compatibility.
@@ -517,6 +519,28 @@ class SimulationEngine extends StateNotifier<SimulationState> {
     
     // Notify listeners of state change via stream
     _streamController.add(newState);
+
+    // Periodically check achievements (once per in-game day)
+    try {
+      final globalLike = GlobalGameState(
+        cash: newState.cash,
+        reputation: newState.reputation,
+        dayCount: newState.time.day,
+        hourOfDay: newState.time.hour,
+        logMessages: newState.pendingMessages,
+        machines: newState.machines,
+        trucks: newState.trucks,
+        warehouse: newState.warehouse,
+        warehouseRoadX: newState.warehouseRoadX,
+        warehouseRoadY: newState.warehouseRoadY,
+        weather: newState.weather,
+        currentDayRevenue: 0.0,
+      );
+      AchievementService.checkAchievements(globalLike);
+    } catch (e) {
+      // Non-fatal
+      print('Achievement check failed: $e');
+    }
   }
 
   /// Calculate reputation multiplier for sales bonus
