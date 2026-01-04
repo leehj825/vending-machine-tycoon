@@ -104,13 +104,26 @@ class SoundService {
   /// Initialize audio context to allow mixing with other sounds
   Future<void> _initAudioContext() async {
     try {
-      // This config allows background music to mix with sound effects
-      // and prevents the OS from stopping music when a new sound plays
-      await AudioPlayer.global.setAudioContext(
-        AudioContextConfig(
-          focus: AudioContextConfigFocus.mixWithOthers,
-        ).build(),
+      // Configure audio context to allow mixing with other apps (like YouTube)
+      // This prevents the game from stopping background music when sounds play
+      final audioContext = AudioContext(
+        android: const AudioContextAndroid(
+          isSpeakerphoneOn: true,
+          stayAwake: false,
+          contentType: AndroidContentType.sonification,
+          usageType: AndroidUsageType.game,
+          audioFocus: AndroidAudioFocus.none, // Key setting: Don't request focus to avoid stopping other apps
+        ),
+        iOS: AudioContextIOS(
+          category: AVAudioSessionCategory.ambient,
+          options: const {
+            AVAudioSessionOptions.mixWithOthers,
+          },
+        ),
       );
+
+      await AudioPlayer.global.setAudioContext(audioContext);
+      print('✅ Audio context configured to mix with other apps');
     } catch (e) {
       print('⚠️ Error configuring audio context: $e');
       // Continue even if audio context setup fails
