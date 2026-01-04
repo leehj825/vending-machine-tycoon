@@ -88,9 +88,12 @@ class SoundService {
     }
   }
 
-  final AudioPlayer _backgroundMusicPlayer = AudioPlayer();
-  final AudioPlayer _soundEffectPlayer = AudioPlayer();
-  final AudioPlayer _truckSoundPlayer = AudioPlayer(); // Separate player for truck sound to enable fade out
+  // Instantiate players after configuring global audio context so they inherit
+  // the configured mixing/audio-focus behavior. Using `late final` ensures
+  // they're created once during initialization.
+  late final AudioPlayer _backgroundMusicPlayer;
+  late final AudioPlayer _soundEffectPlayer;
+  late final AudioPlayer _truckSoundPlayer; // Separate player for truck sound to enable fade out
   
   bool _isMusicEnabled = true;
   bool _isSoundEnabled = true;
@@ -131,7 +134,13 @@ class SoundService {
       );
 
       await AudioPlayer.global.setAudioContext(audioContext);
-      print('✅ Audio context configured to mix with other apps');
+      // Instantiate players after the global context is set so they use
+      // the intended AudioContext (mixing with other apps / no focus).
+      _backgroundMusicPlayer = AudioPlayer();
+      _soundEffectPlayer = AudioPlayer();
+      _truckSoundPlayer = AudioPlayer();
+
+      print('✅ Audio context configured to mix with other apps and players created');
     } catch (e) {
       print('⚠️ Error configuring audio context: $e');
       // Continue even if audio context setup fails
