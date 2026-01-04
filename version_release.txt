@@ -40,7 +40,7 @@ Release Date: January 15, 2026
   - Real ads for production releases (bundle builds with BUILD_TYPE=bundle)
 
 ## Bug Fixes
-- Fixed "Get Funding" button attempting to work on macOS - now properly disabled with informative message
+- **Get Funding on macOS**: "Get Funding" button is now enabled on macOS. Since rewarded ads are not supported on desktop, clicking it instantly grants the reward.
 
 ---
 
