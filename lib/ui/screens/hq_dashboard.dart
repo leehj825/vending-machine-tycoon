@@ -1,4 +1,5 @@
-import 'dart:io' show Platform;
+import 'dart:async';
+import 'dart:io' show Platform, InternetAddress;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -193,8 +194,13 @@ class HQDashboard extends ConsumerWidget {
             // Top Performing Location
             _buildTopPerformingLocationCard(context, machines),
             SizedBox(height: ScreenUtils.relativeSize(context, AppConfig.spacingFactorMedium)),
-            // Get Funding Button
-            _buildGetFundingButton(context, ref),
+            // Get Funding Button (wrapped in connectivity check)
+            ConnectivityAwareBuilder(
+              builder: (context, isConnected) {
+                if (!isConnected) return const SizedBox.shrink();
+                return _buildGetFundingButton(context, ref);
+              },
+            ),
           ],
         ),
       ),
@@ -320,15 +326,16 @@ class HQDashboard extends ConsumerWidget {
 
     return Container(
       decoration: BoxDecoration(
+        // Changed to Gold/Amber for visual distinction
         gradient: LinearGradient(
-          colors: [Colors.green.shade600, Colors.green.shade800],
+          colors: [Colors.amber.shade700, Colors.amber.shade900],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(ScreenUtils.relativeSize(context, 0.008)),
         boxShadow: [
           BoxShadow(
-            color: Colors.green.shade300.withOpacity(0.3),
+            color: Colors.amber.shade300.withOpacity(0.3),
             blurRadius: ScreenUtils.relativeSize(context, 0.01),
             offset: Offset(0, ScreenUtils.relativeSize(context, 0.002)),
           ),
@@ -434,8 +441,9 @@ class HQDashboard extends ConsumerWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                // Prominent video camera/clapperboard icon
                 Icon(
-                  Icons.play_circle_filled,
+                  Icons.videocam, // Changed icon
                   color: Colors.white,
                   size: ScreenUtils.relativeSizeClamped(
                     context,
@@ -446,7 +454,7 @@ class HQDashboard extends ConsumerWidget {
                 ),
                 SizedBox(width: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall)),
                 Text(
-                  'Get Funding',
+                  'Watch Ad for Funding', // Changed text
                   style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
@@ -1188,3 +1196,58 @@ class HQDashboard extends ConsumerWidget {
   }
 }
 
+/// A builder that checks for internet connectivity
+class ConnectivityAwareBuilder extends StatefulWidget {
+  final Widget Function(BuildContext context, bool isConnected) builder;
+
+  const ConnectivityAwareBuilder({super.key, required this.builder});
+
+  @override
+  State<ConnectivityAwareBuilder> createState() => _ConnectivityAwareBuilderState();
+}
+
+class _ConnectivityAwareBuilderState extends State<ConnectivityAwareBuilder> {
+  bool _isConnected = true;
+  Timer? _connectivityTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkConnectivity();
+    // Check connectivity periodically
+    _connectivityTimer = Timer.periodic(const Duration(seconds: 5), (_) => _checkConnectivity());
+  }
+
+  @override
+  void dispose() {
+    _connectivityTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _checkConnectivity() async {
+    if (kIsWeb) {
+      // On web, reliable connectivity check is different, default to true for now
+      if (mounted && !_isConnected) {
+        setState(() => _isConnected = true);
+      }
+      return;
+    }
+
+    try {
+      final result = await InternetAddress.lookup('google.com');
+      final isConnected = result.isNotEmpty && result[0].rawAddress.isNotEmpty;
+      if (mounted && _isConnected != isConnected) {
+        setState(() => _isConnected = isConnected);
+      }
+    } catch (_) {
+      if (mounted && _isConnected) {
+        setState(() => _isConnected = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return widget.builder(context, _isConnected);
+  }
+}
