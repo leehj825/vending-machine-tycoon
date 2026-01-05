@@ -1,6 +1,15 @@
 VENDING EMPIRE - RELEASE NOTES
 ================================
 
+Version 1.1.16
+-------------
+Release Date: January 26, 2026
+## Improvements
+- **UI Compliance**: Updated "Get Funding" button to "Watch Ad for Funding" with a distinct gold color and video icon to comply with Families Ad Format Requirements.
+- **Connectivity Check**: "Watch Ad for Funding" button is now hidden when the device is offline.
+
+---
+
 Version 1.1.15
 -------------
 Release Date: January 18, 2026
