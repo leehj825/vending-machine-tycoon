@@ -1,9 +1,9 @@
 VENDING EMPIRE - RELEASE NOTES
 ================================
 
-Version 1.1.16
+Version 1.1.17
 -------------
-Release Date: January 26, 2026
+Release Date: January 5, 2026
 ## Improvements
 - **UI Compliance**: Updated "Get Funding" button to "Watch Ad for Funding" with a distinct gold color and video icon to comply with Families Ad Format Requirements.
 - **Connectivity Check**: "Watch Ad for Funding" button is now hidden when the device is offline.
@@ -12,7 +12,7 @@ Release Date: January 26, 2026
 
 Version 1.1.15
 -------------
-Release Date: January 18, 2026
+Release Date: January 4, 2026
 ## New Features
 - **Dynamic Weather & Day/Night Cycle**: Immersive visual system with changing weather and day/night transitions
   - **Day/Night Cycle**: City darkens at night (8 PM - 6 AM) with building windows lighting up
@@ -24,7 +24,7 @@ Release Date: January 18, 2026
 
 Version 1.1.14
 -------------
-Release Date: January 16, 2026
+Release Date: January 2, 2026
 ## New Features
 - **Research Lab**: New Tech Tree system in HQ to purchase permanent upgrades
   - **Turbo Logistics**: Trucks move 25% faster ($2,000)
@@ -46,7 +46,7 @@ Release Date: January 16, 2026
 
 Version 1.1.13
 -------------
-Release Date: January 15, 2026
+Release Date: January 1, 2026
 ## New Features
 - **Rewarded Video Ads - Get Funding**: Watch ads to earn $1,000 cash
   - New "Get Funding" button in HQ Dashboard Business Overview section
@@ -67,8 +67,7 @@ Release Date: January 15, 2026
 
 Version 1.1.12
 -------------
-Release Date: January 15, 2026
-## Bug Fixes
+Release Date: 
 - **Fixed Route Editing While Truck is Moving**: Fixed glitch where route order changes while truck is routing would cause UI issues and prevent further route modifications
   - Route manipulation functions (add/remove/reorder) now operate on the displayed route (pendingRoute if truck is moving)
   - Pending route changes are automatically applied when truck becomes idle
@@ -78,7 +77,7 @@ Release Date: January 15, 2026
 
 Version 1.1.11
 -------------
-Release Date: January 15, 2026
+Release Date:
 ## Bug Fixes
 - **Fixed Spoilage Bug**: Fixed critical bug where newly stocked items (especially sandwiches) would immediately expire and cause machine cash to go negative
   - When restocking, `dayAdded` is now always updated to current day to ensure fresh stock
@@ -98,7 +97,7 @@ Release Date: January 15, 2026
 
 Version 1.1.10
 -------------
-Release Date: January 15, 2026
+Release Date:
 ## New Features
 - **HQ Staff Management System**: Centralized staff hiring and management in Headquarters
   - **Truck Drivers**: Pool-based driver system with automatic assignment to trucks ($50/day)
