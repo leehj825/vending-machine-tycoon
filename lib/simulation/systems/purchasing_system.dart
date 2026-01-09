@@ -1,6 +1,7 @@
 import '../engine.dart';
 import '../models/product.dart';
 import '../../state/game_log_entry.dart';
+import '../../state/providers.dart'; // Import Warehouse
 import 'simulation_system.dart';
 import 'dart:math' as math;
 

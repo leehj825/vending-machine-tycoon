@@ -16,6 +16,7 @@ import 'systems/inventory_system.dart';
 import 'systems/logistics_system.dart';
 import 'systems/maintenance_system.dart';
 import 'systems/purchasing_system.dart';
+import 'systems/reputation_system.dart';
 
 /// Simulation constants
 class SimulationConstants {
@@ -185,6 +186,8 @@ class SimulationEngine extends StateNotifier<SimulationState> {
       _logisticsSystem = LogisticsSystem(),
       _systems = [
         SalesSystem(),
+        MaintenanceSystem(),
+        PurchasingSystem(),
         InventorySystem(),
         // LogisticsSystem injected here, but also kept as field for direct access (setMapLayout)
       ],
@@ -203,8 +206,7 @@ class SimulationEngine extends StateNotifier<SimulationState> {
         ) {
     // Add remaining systems that need initialization or were created above
     _systems.add(_logisticsSystem);
-    _systems.add(MaintenanceSystem());
-    _systems.add(PurchasingSystem());
+    _systems.add(ReputationSystem());
   }
 
   /// Stream of simulation state changes

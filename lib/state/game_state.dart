@@ -53,6 +53,16 @@ abstract class GlobalGameState with _$GlobalGameState {
 
   const GlobalGameState._();
 
+  /// Legacy getter for UI compatibility
+  List<String> get logMessages {
+    return logHistory.map((e) {
+      final hour12 = e.timestamp.hour == 0 ? 12 : (e.timestamp.hour > 12 ? e.timestamp.hour - 12 : e.timestamp.hour);
+      final amPm = e.timestamp.hour < 12 ? 'AM' : 'PM';
+      final timestamp = 'Day ${e.timestamp.day}, $hour12:00 $amPm';
+      return '[$timestamp] ${e.formattedMessage}';
+    }).toList();
+  }
+
   /// Add a log message (keeps last 100 messages)
   /// This is deprecated; prefer using structured logging via addLogEntry
   GlobalGameState addLogMessage(String message) {

@@ -1,11 +1,11 @@
 import '../engine.dart';
-import '../models/truck.dart';
 import '../models/machine.dart';
 import '../models/product.dart';
+import '../models/truck.dart';
 import '../models/research.dart';
 import '../models/zone.dart';
-import '../../config.dart';
 import '../../state/game_log_entry.dart';
+import '../../state/providers.dart'; // Import Warehouse
 import 'simulation_system.dart';
 import 'dart:math' as math;
 

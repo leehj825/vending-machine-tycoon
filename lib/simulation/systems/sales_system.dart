@@ -85,9 +85,9 @@ class SalesSystem implements SimulationSystem {
       );
     }).toList();
 
-    final reputationPenalty = _calculateReputationPenalty(updatedMachines);
+    // Only apply reputation GAIN here. Penalty is handled by ReputationSystem.
     final reputationGain = totalSales * SimulationConstants.reputationGainPerSale;
-    var updatedReputation = ((state.reputation - reputationPenalty + reputationGain).clamp(0, 1000)).round();
+    var updatedReputation = ((state.reputation + reputationGain).clamp(0, 1000)).round();
 
     return state.copyWith(
       machines: updatedMachines,
@@ -99,18 +99,5 @@ class SalesSystem implements SimulationSystem {
   double _calculateReputationMultiplier(int reputation) {
     final bonus = (reputation / 100).floor() * AppConfig.reputationBonusPer100;
     return (1.0 + bonus.clamp(0.0, AppConfig.maxReputationBonus));
-  }
-
-  /// Calculate reputation penalty based on empty machines
-  int _calculateReputationPenalty(List<Machine> machines) {
-    int totalPenalty = 0;
-
-    for (final machine in machines) {
-      if (machine.isEmpty && machine.hoursEmpty >= SimulationConstants.emptyMachinePenaltyHours) {
-        totalPenalty += 1;
-      }
-    }
-
-    return totalPenalty;
   }
 }
