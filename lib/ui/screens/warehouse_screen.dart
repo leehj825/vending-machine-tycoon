@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../simulation/models/product.dart';
 import '../../simulation/models/truck.dart';
+import '../../simulation/models/warehouse.dart';
 import '../../state/providers.dart';
 import '../../config.dart';
 import '../widgets/market_product_card.dart';
@@ -447,13 +448,13 @@ class _WarehouseScreenState extends ConsumerState<WarehouseScreen> with TickerPr
                           animation: _flashAnimation,
                           builder: (context, child) {
                             final flashAlpha = _flashAnimation.value;
-                            final screenWidth = MediaQuery.of(context).size.width;
+                            final gameDimension = ScreenUtils.getGameDimension(context);
                             final cardHeight = ScreenUtils.relativeSize(context, 0.15);
                             
                             return Center(
                               child: IgnorePointer(
                                 child: Container(
-                                  width: screenWidth * 0.9,
+                                  width: gameDimension * 0.9,
                                   height: cardHeight * 1.2,
                                   decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(

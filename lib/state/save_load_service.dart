@@ -1,12 +1,15 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'game_state.dart';
+import 'game_log_entry.dart';
 import 'providers.dart';
 import 'city_map_state.dart';
+import '../simulation/engine.dart'; // For GameTime
 import '../simulation/models/machine.dart';
 import '../simulation/models/truck.dart';
 import '../simulation/models/product.dart';
 import '../simulation/models/zone.dart';
+import '../simulation/models/warehouse.dart';
 
 /// Save slot data structure
 class SaveSlot {
@@ -214,7 +217,18 @@ class SaveLoadService {
       'reputation': state.reputation,
       'dayCount': state.dayCount,
       'hourOfDay': state.hourOfDay,
-      'logMessages': state.logMessages,
+      // 'logMessages' is deprecated, we should save logHistory now?
+      // But for backward compatibility with older loads, we might want to still save logMessages?
+      // However, deserialization handles both.
+      // Let's save logHistory as structured data if possible, or convert to simple list if we want to save space.
+      // But requirement was "structured logging".
+      // Let's assume we want to persist the structure.
+      'logHistory': state.logHistory.map((e) => {
+        'type': e.type.name,
+        'timestamp': e.timestamp.tick, // Save tick for easier restoration
+        'data': e.data,
+        'message': e.message,
+      }).toList(),
       'machines': state.machines.map((m) => _serializeMachine(m)).toList(),
       'trucks': state.trucks.map((t) => _serializeTruck(t)).toList(),
       'warehouse': _serializeWarehouse(state.warehouse),
@@ -268,9 +282,26 @@ class SaveLoadService {
         reputation: gameStateMap['reputation'] as int? ?? 100,
         dayCount: gameStateMap['dayCount'] as int? ?? 1,
         hourOfDay: gameStateMap['hourOfDay'] as int? ?? 8,
-        logMessages: gameStateMap['logMessages'] != null
-            ? List<String>.from(gameStateMap['logMessages'] as List)
-            : [],
+        logHistory: gameStateMap['logHistory'] != null
+            ? (gameStateMap['logHistory'] as List).map((e) {
+                final map = e as Map<String, dynamic>;
+                return GameLogEntry(
+                  type: LogType.values.firstWhere((t) => t.name == map['type'], orElse: () => LogType.generic),
+                  timestamp: GameTime.fromTicks(map['timestamp'] as int),
+                  data: Map<String, dynamic>.from(map['data'] as Map),
+                  message: map['message'] as String? ?? '',
+                );
+              }).toList()
+            : (gameStateMap['logMessages'] != null
+                ? (gameStateMap['logMessages'] as List).map((msg) {
+                    // Convert legacy strings
+                    return GameLogEntry(
+                      type: LogType.generic,
+                      timestamp: GameTime(day: gameStateMap['dayCount'] as int? ?? 1, hour: gameStateMap['hourOfDay'] as int? ?? 8, minute: 0, tick: 0),
+                      message: msg as String,
+                    );
+                  }).toList()
+                : []),
         machines: gameStateMap['machines'] != null
             ? (gameStateMap['machines'] as List)
                 .map((m) => _deserializeMachine(m as Map<String, dynamic>))

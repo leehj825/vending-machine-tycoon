@@ -12,11 +12,11 @@ import '../simulation/models/zone.dart';
 import '../simulation/models/machine.dart';
 import '../simulation/models/truck.dart';
 import '../simulation/models/research.dart';
+import '../simulation/models/warehouse.dart';
 import '../services/rewarded_ad_manager.dart';
 import 'game_state.dart';
+import 'game_log_entry.dart';
 import 'city_map_state.dart';
-
-part 'providers.freezed.dart';
 
 const _uuid = Uuid();
 
@@ -36,16 +36,6 @@ class MachinePrices {
   static double getPrice(ZoneType zoneType) {
     return basePrice * (zoneMultipliers[zoneType] ?? 1.0);
   }
-}
-
-/// Warehouse inventory (global stock available for restocking)
-@freezed
-abstract class Warehouse with _$Warehouse {
-  const factory Warehouse({
-    @Default({}) Map<Product, int> inventory,
-  }) = _Warehouse;
-
-  const Warehouse._();
 }
 
 /// Game Controller - Manages the overall game state and simulation
@@ -291,7 +281,7 @@ class GameController extends StateNotifier<GlobalGameState> {
       // Process pending messages from engine (e.g., auto-restock errors)
       final pendingMessages = simulationEngine.getAndClearPendingMessages();
       for (final message in pendingMessages) {
-        state = state.addLogMessage(message);
+        state = state.addLogEntry(message);
       }
 
       // Check for game over condition: cash too negative (less than -$1000)
@@ -963,7 +953,7 @@ class GameController extends StateNotifier<GlobalGameState> {
       warehouse: Warehouse(),
       warehouseRoadX: null,
       warehouseRoadY: null,
-      logMessages: [],
+      logHistory: [],
       dailyRevenueHistory: [],
       currentDayRevenue: 0.0,
       productSalesCount: {},

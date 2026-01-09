@@ -220,9 +220,9 @@ class _MachineInteriorDialogState extends ConsumerState<MachineInteriorDialog> w
       });
     }
 
-    final screenWidth = MediaQuery.of(context).size.width;
+    final gameDimension = ScreenUtils.getGameDimension(context);
     final screenHeight = MediaQuery.of(context).size.height;
-    final dialogMaxWidth = screenWidth * AppConfig.machineInteriorDialogWidthFactor;
+    final dialogMaxWidth = gameDimension * AppConfig.machineInteriorDialogWidthFactor;
     final dialogMaxHeight = screenHeight * AppConfig.machineInteriorDialogHeightFactor;
 
     // Determine which image to show based on zone type and cash status
