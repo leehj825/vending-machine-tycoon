@@ -103,10 +103,11 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
   static const int gridSize = 15; // Using AppConfig.cityGridSize value
   
   // Tile dimensions will be calculated relative to screen size
+  // Using ScreenUtils.relativeSizeClamped which now respects orientation
   double _getTileWidth(BuildContext context) {
     return ScreenUtils.relativeSizeClamped(
       context,
-      0.15, // 15% of smaller dimension
+      0.15, // 15% of game dimension
       min: 48.0,
       max: 96.0,
     );
@@ -115,7 +116,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
   double _getTileHeight(BuildContext context) {
     return ScreenUtils.relativeSizeClamped(
       context,
-      0.075, // 7.5% of smaller dimension (half of width for isometric)
+      0.075, // 7.5% of game dimension (half of width for isometric)
       min: 24.0,
       max: 48.0,
     );
@@ -157,7 +158,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
   double _getBuildingImageHeight(BuildContext context) {
     return ScreenUtils.relativeSizeClamped(
       context,
-      0.18, // 18% of smaller dimension
+      0.18, // 18% of game dimension
       min: 50.0,
       max: 100.0,
     );
@@ -1741,8 +1742,8 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
           
           final buttonSize = ScreenUtils.relativeSizeClamped(
             context, 0.03,
-            min: ScreenUtils.getSmallerDimension(context) * 0.03,
-            max: ScreenUtils.getSmallerDimension(context) * 0.03,
+            min: ScreenUtils.getGameDimension(context) * 0.03,
+            max: ScreenUtils.getGameDimension(context) * 0.03,
           );
           
           final buttonTop = posY;
@@ -1860,8 +1861,8 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
                           fontSize: ScreenUtils.relativeFontSize(
                             context,
                             0.018, // Smaller font
-                            min: ScreenUtils.getSmallerDimension(context) * 0.014,
-                            max: ScreenUtils.getSmallerDimension(context) * 0.025,
+                            min: ScreenUtils.getGameDimension(context) * 0.014,
+                            max: ScreenUtils.getGameDimension(context) * 0.025,
                           ),
                           fontWeight: FontWeight.bold,
                           shadows: [
@@ -2234,8 +2235,8 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
             Icon(Icons.warning, color: Colors.red, size: ScreenUtils.relativeSizeClamped(
               context,
               0.06,
-              min: ScreenUtils.getSmallerDimension(context) * 0.04,
-              max: ScreenUtils.getSmallerDimension(context) * 0.08,
+              min: ScreenUtils.getGameDimension(context) * 0.04,
+              max: ScreenUtils.getGameDimension(context) * 0.08,
             )),
             SizedBox(width: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall)),
             Expanded(
@@ -2245,8 +2246,8 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
                   fontSize: ScreenUtils.relativeFontSize(
                     context,
                     AppConfig.fontSizeFactorLarge,
-                    min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                    max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+                    min: ScreenUtils.getGameDimension(context) * AppConfig.fontSizeMinMultiplier,
+                    max: ScreenUtils.getGameDimension(context) * AppConfig.fontSizeMaxMultiplier,
                   ),
                   fontWeight: FontWeight.bold,
                   color: Colors.red.shade900,
@@ -2265,8 +2266,8 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
                 fontSize: ScreenUtils.relativeFontSize(
                   context,
                   AppConfig.fontSizeFactorNormal,
-                  min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                  max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+                  min: ScreenUtils.getGameDimension(context) * AppConfig.fontSizeMinMultiplier,
+                  max: ScreenUtils.getGameDimension(context) * AppConfig.fontSizeMaxMultiplier,
                 ),
                 fontWeight: FontWeight.w600,
               ),
@@ -2278,8 +2279,8 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
                 fontSize: ScreenUtils.relativeFontSize(
                   context,
                   AppConfig.fontSizeFactorNormal,
-                  min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                  max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+                  min: ScreenUtils.getGameDimension(context) * AppConfig.fontSizeMinMultiplier,
+                  max: ScreenUtils.getGameDimension(context) * AppConfig.fontSizeMaxMultiplier,
                 ),
                 color: Colors.red.shade700,
               ),
@@ -2291,8 +2292,8 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
                 fontSize: ScreenUtils.relativeFontSize(
                   context,
                   AppConfig.fontSizeFactorSmall,
-                  min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                  max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+                  min: ScreenUtils.getGameDimension(context) * AppConfig.fontSizeMinMultiplier,
+                  max: ScreenUtils.getGameDimension(context) * AppConfig.fontSizeMaxMultiplier,
                 ),
                 color: Colors.grey.shade600,
               ),
@@ -2304,8 +2305,8 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
                 fontSize: ScreenUtils.relativeFontSize(
                   context,
                   AppConfig.fontSizeFactorSmall,
-                  min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                  max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+                  min: ScreenUtils.getGameDimension(context) * AppConfig.fontSizeMinMultiplier,
+                  max: ScreenUtils.getGameDimension(context) * AppConfig.fontSizeMaxMultiplier,
                 ),
                 color: Colors.grey.shade700,
               ),
@@ -2324,8 +2325,8 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
                 fontSize: ScreenUtils.relativeFontSize(
                   context,
                   AppConfig.fontSizeFactorNormal,
-                  min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                  max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+                  min: ScreenUtils.getGameDimension(context) * AppConfig.fontSizeMinMultiplier,
+                  max: ScreenUtils.getGameDimension(context) * AppConfig.fontSizeMaxMultiplier,
                 ),
               ),
             ),
@@ -2347,8 +2348,8 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
                 fontSize: ScreenUtils.relativeFontSize(
                   context,
                   AppConfig.fontSizeFactorNormal,
-                  min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                  max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+                  min: ScreenUtils.getGameDimension(context) * AppConfig.fontSizeMinMultiplier,
+                  max: ScreenUtils.getGameDimension(context) * AppConfig.fontSizeMaxMultiplier,
                 ),
               ),
             ),
@@ -2472,8 +2473,8 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
               fontSize: ScreenUtils.relativeFontSize(
                 context,
                 AppConfig.fontSizeFactorNormal,
-                min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+                min: ScreenUtils.getGameDimension(context) * AppConfig.fontSizeMinMultiplier,
+                max: ScreenUtils.getGameDimension(context) * AppConfig.fontSizeMaxMultiplier,
               ),
               color: Colors.white,
             ),
@@ -3419,8 +3420,8 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
                     fontSize: ScreenUtils.relativeFontSize(
                       context,
                       0.018,
-                      min: ScreenUtils.getSmallerDimension(context) * 0.014,
-                      max: ScreenUtils.getSmallerDimension(context) * 0.025,
+                        min: ScreenUtils.getGameDimension(context) * 0.014,
+                        max: ScreenUtils.getGameDimension(context) * 0.025,
                     ),
                     fontWeight: FontWeight.bold,
                     shadows: [
@@ -3797,8 +3798,8 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
             fontSize: ScreenUtils.relativeFontSize(
               context,
               AppConfig.fontSizeFactorTiny,
-              min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-              max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+              min: ScreenUtils.getGameDimension(context) * AppConfig.fontSizeMinMultiplier,
+              max: ScreenUtils.getGameDimension(context) * AppConfig.fontSizeMaxMultiplier,
             ),
           ),
           ),
@@ -3834,8 +3835,8 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
               fontSize: ScreenUtils.relativeFontSize(
                 context,
                 AppConfig.fontSizeFactorTiny,
-                min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+                min: ScreenUtils.getGameDimension(context) * AppConfig.fontSizeMinMultiplier,
+                max: ScreenUtils.getGameDimension(context) * AppConfig.fontSizeMaxMultiplier,
               ),
             ),
             ),

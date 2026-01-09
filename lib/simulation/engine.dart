@@ -8,6 +8,7 @@ import 'models/truck.dart';
 import 'models/zone.dart';
 import 'models/research.dart';
 import 'models/weather.dart';
+import 'models/warehouse.dart';
 import '../state/providers.dart';
 import '../state/game_log_entry.dart';
 import 'systems/simulation_system.dart';

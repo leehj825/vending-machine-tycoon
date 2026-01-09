@@ -9,6 +9,7 @@ import '../simulation/models/machine.dart';
 import '../simulation/models/truck.dart';
 import '../simulation/models/product.dart';
 import '../simulation/models/zone.dart';
+import '../simulation/models/warehouse.dart';
 
 /// Save slot data structure
 class SaveSlot {

@@ -249,7 +249,8 @@ class _BuyStockDialogState extends ConsumerState<_BuyStockDialog> {
     // Calculate dialog dimensions (compact, similar to bottom sheet)
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
-    final dialogMaxWidth = screenWidth * AppConfig.buyDialogWidthFactor;
+    final gameDimension = ScreenUtils.getGameDimension(context);
+    final dialogMaxWidth = gameDimension * AppConfig.buyDialogWidthFactor;
     
     final imagePath = _getProductImagePath(widget.product);
 
@@ -261,8 +262,8 @@ class _BuyStockDialogState extends ConsumerState<_BuyStockDialog> {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final dialogWidth = dialogMaxWidth.clamp(
-            screenWidth * AppConfig.buyDialogWidthMinFactor,
-            screenWidth * AppConfig.buyDialogWidthMaxFactor,
+            gameDimension * AppConfig.buyDialogWidthMinFactor,
+            gameDimension * AppConfig.buyDialogWidthMaxFactor,
           );
           final dialogHeight = (screenHeight * AppConfig.buyDialogHeightFactor).clamp(
             screenHeight * AppConfig.buyDialogHeightMinFactor,

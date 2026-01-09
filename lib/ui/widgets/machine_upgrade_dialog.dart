@@ -126,8 +126,8 @@ class _MachineUpgradeDialogState extends ConsumerState<MachineUpgradeDialog> {
         _currentMachine = latestMachine;
     }
 
-    final screenWidth = MediaQuery.of(context).size.width;
-    final dialogWidth = screenWidth * 0.9;
+    final gameDimension = ScreenUtils.getGameDimension(context);
+    final dialogWidth = gameDimension * 0.9;
     final padding = dialogWidth * 0.04;
 
     return Dialog(

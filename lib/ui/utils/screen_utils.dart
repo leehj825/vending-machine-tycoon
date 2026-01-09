@@ -7,11 +7,18 @@ class ScreenUtils {
     final size = MediaQuery.of(context).size;
     return size.width < size.height ? size.width : size.height;
   }
+
+  /// Get the relevant game dimension based on orientation
+  /// Portrait: width
+  /// Landscape: height
+  static double getGameDimension(BuildContext context) {
+    return getSmallerDimension(context);
+  }
   
   /// Get a relative size based on the smaller screen dimension
   /// [factor] is a multiplier (e.g., 0.1 means 10% of smaller dimension)
   static double relativeSize(BuildContext context, double factor) {
-    return getSmallerDimension(context) * factor;
+    return getGameDimension(context) * factor;
   }
   
   /// Get a relative size with min and max constraints
@@ -57,4 +64,3 @@ class ScreenUtils {
     return relativeSizeClamped(context, factor, min: min, max: max);
   }
 }
-

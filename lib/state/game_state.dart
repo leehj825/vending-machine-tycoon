@@ -4,6 +4,7 @@ import '../simulation/models/truck.dart';
 import '../simulation/models/product.dart';
 import '../simulation/models/research.dart';
 import '../simulation/models/weather.dart';
+import '../simulation/models/warehouse.dart';
 import '../simulation/engine.dart'; // For GameTime
 import 'game_log_entry.dart';
 import 'providers.dart';

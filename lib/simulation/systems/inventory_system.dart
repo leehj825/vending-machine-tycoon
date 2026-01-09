@@ -4,8 +4,9 @@ import '../models/product.dart';
 import '../models/truck.dart';
 import '../models/research.dart';
 import '../models/zone.dart';
+import '../models/warehouse.dart';
 import '../../state/game_log_entry.dart';
-import '../../state/providers.dart'; // Import Warehouse
+import '../../state/providers.dart';
 import 'simulation_system.dart';
 import 'dart:math' as math;
 

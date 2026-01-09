@@ -340,40 +340,32 @@ class _CustomBottomNavigationBar extends ConsumerWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.start,
           children: [
-            Expanded(
-              child: _buildTabItem(
-                context,
-                index: 0,
-                pressAsset: 'assets/images/hq_tab_press.png',
-                unpressAsset: 'assets/images/hq_tab_unpress.png',
-              ),
+            _buildTabItem(
+              context,
+              index: 0,
+              pressAsset: 'assets/images/hq_tab_press.png',
+              unpressAsset: 'assets/images/hq_tab_unpress.png',
             ),
-            Expanded(
-              child: _buildTabItem(
-                context,
-                index: 1,
-                pressAsset: 'assets/images/city_tab_press.png',
-                unpressAsset: 'assets/images/city_tab_unpress.png',
-              ),
+            _buildTabItem(
+              context,
+              index: 1,
+              pressAsset: 'assets/images/city_tab_press.png',
+              unpressAsset: 'assets/images/city_tab_unpress.png',
             ),
-            Expanded(
-              child: _buildTabItem(
-                context,
-                index: 2,
-                pressAsset: 'assets/images/fleet_tab_press.png',
-                unpressAsset: 'assets/images/fleet_tab_unpress.png',
-              ),
+            _buildTabItem(
+              context,
+              index: 2,
+              pressAsset: 'assets/images/fleet_tab_press.png',
+              unpressAsset: 'assets/images/fleet_tab_unpress.png',
             ),
-            Expanded(
-              child: _buildTabItem(
-                context,
-                index: 3,
-                pressAsset: 'assets/images/market_tab_press.png',
-                unpressAsset: 'assets/images/market_tab_unpress.png',
-              ),
+            _buildTabItem(
+              context,
+              index: 3,
+              pressAsset: 'assets/images/market_tab_press.png',
+              unpressAsset: 'assets/images/market_tab_unpress.png',
             ),
             // Save and Exit buttons on the right - no margin
-            _buildActionButtons(context, ref),
+            Expanded(child: _buildActionButtons(context, ref)),
           ],
         ),
       ),
@@ -394,10 +386,14 @@ class _CustomBottomNavigationBar extends ConsumerWidget {
       AppConfig.tabButtonHeightFactor,
     );
     
+    // Explicit width: 20% of screen width
+    final tabButtonWidth = MediaQuery.of(context).size.width * 0.20;
+
     return GestureDetector(
       onTap: () => onTap(index),
       behavior: HitTestBehavior.opaque,
       child: Container(
+        width: tabButtonWidth,
         height: tabButtonHeight, // Responsive height
         color: Colors.transparent, // Ensures the empty space is tappable
         child: Center(

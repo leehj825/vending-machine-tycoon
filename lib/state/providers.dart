@@ -12,12 +12,11 @@ import '../simulation/models/zone.dart';
 import '../simulation/models/machine.dart';
 import '../simulation/models/truck.dart';
 import '../simulation/models/research.dart';
+import '../simulation/models/warehouse.dart';
 import '../services/rewarded_ad_manager.dart';
 import 'game_state.dart';
 import 'game_log_entry.dart';
 import 'city_map_state.dart';
-
-part 'providers.freezed.dart';
 
 const _uuid = Uuid();
 
@@ -37,16 +36,6 @@ class MachinePrices {
   static double getPrice(ZoneType zoneType) {
     return basePrice * (zoneMultipliers[zoneType] ?? 1.0);
   }
-}
-
-/// Warehouse inventory (global stock available for restocking)
-@freezed
-abstract class Warehouse with _$Warehouse {
-  const factory Warehouse({
-    @Default({}) Map<Product, int> inventory,
-  }) = _Warehouse;
-
-  const Warehouse._();
 }
 
 /// Game Controller - Manages the overall game state and simulation

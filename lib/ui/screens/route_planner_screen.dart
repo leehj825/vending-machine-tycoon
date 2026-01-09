@@ -923,10 +923,21 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> with Ti
             if (selectedTruck.inventory.isNotEmpty)
               Builder(
                 builder: (context) {
-                  final screenWidth = MediaQuery.of(context).size.width;
+                  final gameDimension = ScreenUtils.getGameDimension(context);
                   final padding = ScreenUtils.relativeSize(context, AppConfig.spacingFactorLarge);
-                  final maxItemWidth = screenWidth * AppConfig.truckCargoMaxItemWidthFactor;
+                  final maxItemWidth = gameDimension * AppConfig.truckCargoMaxItemWidthFactor;
+
+                  // Keep container full width relative to screen width if needed, or game dimension?
+                  // Truck cargo usually is full width of the view.
+                  // But we want "game entity size" to be relative to game dimension.
+                  // This container displays cargo items.
+                  // If we use gameDimension for maxItemWidth, items scale correctly.
+                  // Container width should probably fill available space (screen width minus padding).
+                  // But if in landscape, screenWidth is huge.
+                  // The prompt says "everything in the game (except few things...)"
+                  // Let's stick to scaling CONTENTS by game dimension, but container layout by screen width/constraints.
                   
+                  final screenWidth = MediaQuery.of(context).size.width;
                   final containerWidth = screenWidth - (padding * 2);
                   
                   return SliverToBoxAdapter(
