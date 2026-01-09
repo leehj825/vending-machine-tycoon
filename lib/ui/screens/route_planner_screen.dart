@@ -5,6 +5,7 @@ import '../../state/providers.dart';
 import '../../simulation/models/machine.dart';
 import '../../simulation/models/truck.dart';
 import '../../simulation/models/product.dart';
+import '../../simulation/models/warehouse.dart';
 import '../../config.dart';
 import '../../services/sound_service.dart';
 import '../widgets/machine_route_card.dart';
