@@ -15,7 +15,7 @@ enum LogType {
 }
 
 @freezed
-class GameLogEntry with _$GameLogEntry {
+abstract class GameLogEntry with _$GameLogEntry {
   const factory GameLogEntry({
     required LogType type,
     required GameTime timestamp,

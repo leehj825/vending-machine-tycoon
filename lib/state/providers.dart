@@ -964,7 +964,7 @@ class GameController extends StateNotifier<GlobalGameState> {
       warehouse: Warehouse(),
       warehouseRoadX: null,
       warehouseRoadY: null,
-      logMessages: [],
+      logHistory: [],
       dailyRevenueHistory: [],
       currentDayRevenue: 0.0,
       productSalesCount: {},
