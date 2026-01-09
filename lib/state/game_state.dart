@@ -4,6 +4,8 @@ import '../simulation/models/truck.dart';
 import '../simulation/models/product.dart';
 import '../simulation/models/research.dart';
 import '../simulation/models/weather.dart';
+import '../simulation/engine.dart'; // For GameTime
+import 'game_log_entry.dart';
 import 'providers.dart';
 import 'city_map_state.dart';
 
@@ -17,7 +19,7 @@ abstract class GlobalGameState with _$GlobalGameState {
     @Default(100) int reputation, // Starting reputation: 100
     @Default(1) int dayCount, // Current day number
     @Default(8) int hourOfDay, // Current hour (0-23), starts at 8 AM
-    @Default([]) List<String> logMessages, // Game event log
+    @Default([]) List<GameLogEntry> logHistory, // Structured game event log
     @Default([]) List<Machine> machines,
     @Default([]) List<Truck> trucks,
     @Default(Warehouse()) Warehouse warehouse,
@@ -52,16 +54,26 @@ abstract class GlobalGameState with _$GlobalGameState {
   const GlobalGameState._();
 
   /// Add a log message (keeps last 100 messages)
+  /// This is deprecated; prefer using structured logging via addLogEntry
   GlobalGameState addLogMessage(String message) {
-    final timestamp = 'Day $dayCount, ${_formatHour(hourOfDay)}';
-    final newEntry = '[$timestamp] $message';
-    
+    // Convert legacy string messages to generic entries
+    final timestamp = GameTime(day: dayCount, hour: hourOfDay, minute: 0, tick: 0);
+    final entry = GameLogEntry(
+      type: LogType.generic,
+      timestamp: timestamp,
+      message: message,
+    );
+    return addLogEntry(entry);
+  }
+
+  /// Add a structured log entry (keeps last 100 messages)
+  GlobalGameState addLogEntry(GameLogEntry entry) {
     // Take the last 99 items, then add the new one to avoid unnecessary copying
-    final limitedHistory = logMessages.length >= 100 
-        ? logMessages.sublist(logMessages.length - 99) 
-        : logMessages;
+    final limitedHistory = logHistory.length >= 100
+        ? logHistory.sublist(logHistory.length - 99)
+        : logHistory;
         
-    return copyWith(logMessages: [...limitedHistory, newEntry]);
+    return copyWith(logHistory: [...limitedHistory, entry]);
   }
 
   /// Format hour for display

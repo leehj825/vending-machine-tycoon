@@ -14,6 +14,7 @@ import '../simulation/models/truck.dart';
 import '../simulation/models/research.dart';
 import '../services/rewarded_ad_manager.dart';
 import 'game_state.dart';
+import 'game_log_entry.dart';
 import 'city_map_state.dart';
 
 part 'providers.freezed.dart';
@@ -291,7 +292,7 @@ class GameController extends StateNotifier<GlobalGameState> {
       // Process pending messages from engine (e.g., auto-restock errors)
       final pendingMessages = simulationEngine.getAndClearPendingMessages();
       for (final message in pendingMessages) {
-        state = state.addLogMessage(message);
+        state = state.addLogEntry(message);
       }
 
       // Check for game over condition: cash too negative (less than -$1000)
