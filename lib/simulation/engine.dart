@@ -217,6 +217,16 @@ class SimulationEngine extends StateNotifier<SimulationState> {
     _streamController.add(state);
   }
 
+  /// Apply a one-off bonus, e.g. a completed contract reward
+  void applyBonus({double cash = 0.0, int reputation = 0}) {
+    if (cash == 0.0 && reputation == 0) return;
+    state = state.copyWith(
+      cash: state.cash + cash,
+      reputation: (state.reputation + reputation).clamp(0, 1000).toInt(),
+    );
+    _streamController.add(state);
+  }
+
   /// Update unlocked research
   void updateUnlockedResearch(Set<ResearchType> unlocked) {
     state = state.copyWith(unlockedResearch: unlocked);

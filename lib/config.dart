@@ -290,6 +290,44 @@ class AppConfig {
   
   /// Warehouse capacity
   static const int warehouseMaxCapacity = 1000;
+
+  // ============================================================================
+  // DAILY CONTRACTS
+  // ============================================================================
+
+  /// Number of contracts offered each morning
+  static const int contractsPerDay = 3;
+
+  /// Cost of swapping a single contract for a new one
+  static const double contractRerollCost = 250.0;
+
+  /// Reputation granted by every completed contract
+  static const int contractRewardReputation = 15;
+
+  /// Floor used when scaling contract targets (day 1 has no revenue history)
+  static const double contractMinDailyRevenueEstimate = 400.0;
+
+  /// Revenue a single machine is assumed to bring in per day when scaling targets
+  static const double contractRevenuePerMachineEstimate = 250.0;
+
+  /// Share of the estimated daily revenue a revenue contract asks for
+  static const double contractRevenueShare = 0.6;
+
+  /// Share of the estimated daily revenue a single product deal asks for
+  static const double contractProductRevenueShare = 0.25;
+
+  /// Share of the estimated daily revenue a volume deal asks for
+  static const double contractUnitsRevenueShare = 0.4;
+
+  /// Reward paid as a fraction of the revenue target
+  static const double contractRewardRate = 0.25;
+
+  /// Reward paid as a fraction of the goods value for unit based contracts
+  static const double contractProductRewardRate = 0.3;
+
+  /// Smallest unit goals, so contracts never ask for a trivial amount
+  static const int contractMinProductUnits = 5;
+  static const int contractMinTotalUnits = 15;
   
   // ============================================================================
   // MACHINE UPGRADES

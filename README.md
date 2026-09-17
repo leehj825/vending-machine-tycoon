@@ -30,6 +30,7 @@ Vending Machine Tycoon is an idle/management game where players:
 - **Route Optimization**: Plan efficient delivery routes with distance calculations
 - **Reputation System**: Gain reputation from sales, lose it from empty machines
 - **Rush Hour Events**: Special events that multiply sales rates
+- **Daily Contracts**: Three client deals posted every game morning, with cash and reputation rewards
 
 ### Game Mechanics
 
@@ -53,6 +54,16 @@ Vending Machine Tycoon is an idle/management game where players:
 - **Loss**: -5 reputation per hour per empty machine (after 4-hour grace period)
 - **Bonus**: +5% sales rate per 100 reputation (max +50% at 1000 reputation)
 - Starting reputation: 100
+
+#### Daily Contracts
+- Three contracts are offered each game morning and expire when the next day's set is posted
+- Goal types:
+  - **Supply Deal**: sell N units of a specific product today
+  - **Revenue Target**: earn $N from sales today
+  - **Volume Deal**: sell N items across all machines today
+- Targets scale with the average revenue of the last 3 days and the number of machines
+- Rewards are paid automatically on completion: cash plus +15 reputation
+- An unfinished contract can be swapped once for $250
 
 #### Machine Management
 - Machines can hold up to 50 items total
@@ -290,7 +301,7 @@ The game tracks:
 
 ---
 
-**Version**: 1.1.0+2  
-**Last Updated**: 2024
+**Version**: 1.1.18+18  
+**Last Updated**: 2026
 
 Enjoy building your vending machine empire! 🏢💰

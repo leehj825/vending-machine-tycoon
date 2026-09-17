@@ -3,11 +3,13 @@ import 'dart:io' show Platform, InternetAddress;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../state/game_state.dart';
 import '../../state/providers.dart';
 import '../../state/selectors.dart';
 import '../../config.dart';
 import '../../simulation/models/machine.dart';
 import '../utils/screen_utils.dart';
+import 'contracts_screen.dart';
 import 'research_screen.dart';
 
 /// CEO Dashboard - Main HQ screen displaying empire overview
@@ -41,8 +43,96 @@ class HQDashboard extends ConsumerWidget {
 
             SizedBox(height: ScreenUtils.relativeSize(context, AppConfig.spacingFactorLarge)),
 
+            // Daily Contracts Button
+            _buildContractsButton(context, gameState),
+
+            SizedBox(height: ScreenUtils.relativeSize(context, AppConfig.spacingFactorLarge)),
+
             // Research Lab Button
             _buildResearchLabButton(context),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Entry point for the Daily Contracts screen, with today's progress
+  Widget _buildContractsButton(BuildContext context, GlobalGameState gameState) {
+    final contracts = gameState.dailyContracts;
+    final completed = contracts.where((c) => c.isPaid).length;
+    final allDone = contracts.isNotEmpty && completed == contracts.length;
+
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => const ContractsScreen(),
+            ),
+          );
+        },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: allDone ? Colors.green.shade700 : Colors.teal.shade800,
+          foregroundColor: Colors.white,
+          padding: EdgeInsets.symmetric(
+            vertical: ScreenUtils.relativeSize(context, 0.02),
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(
+              ScreenUtils.relativeSize(context, 0.012),
+            ),
+          ),
+          elevation: ScreenUtils.relativeSize(context, AppConfig.cardElevationFactor),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.assignment,
+              size: ScreenUtils.relativeSizeClamped(
+                context,
+                0.04,
+                min: ScreenUtils.getSmallerDimension(context) * 0.03,
+                max: ScreenUtils.getSmallerDimension(context) * 0.05,
+              ),
+            ),
+            SizedBox(width: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall)),
+            Text(
+              'DAILY CONTRACTS',
+              style: TextStyle(
+                fontSize: ScreenUtils.relativeFontSize(
+                  context,
+                  AppConfig.fontSizeFactorLarge,
+                  min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
+                  max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+                ),
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.2,
+              ),
+            ),
+            if (contracts.isNotEmpty) ...[
+              SizedBox(width: ScreenUtils.relativeSize(context, AppConfig.spacingFactorMedium)),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '$completed/${contracts.length}',
+                  style: TextStyle(
+                    fontSize: ScreenUtils.relativeFontSize(
+                      context,
+                      AppConfig.fontSizeFactorNormal,
+                      min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
+                      max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
+                    ),
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),

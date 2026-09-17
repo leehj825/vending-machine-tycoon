@@ -5,7 +5,10 @@ import 'providers.dart';
 import 'city_map_state.dart';
 import '../simulation/models/machine.dart';
 import '../simulation/models/truck.dart';
+import '../simulation/models/contract.dart';
 import '../simulation/models/product.dart';
+import '../simulation/models/research.dart';
+import '../simulation/models/weather.dart';
 import '../simulation/models/zone.dart';
 
 /// Save slot data structure
@@ -242,6 +245,11 @@ class SaveLoadService {
       'purchasingAgentCount': state.purchasingAgentCount,
       'purchasingAgentTargetInventory': state.purchasingAgentTargetInventory.map((key, value) => MapEntry(key.name, value)),
       'isGameOver': state.isGameOver,
+      // Research, weather and daily contracts
+      'unlockedResearch': state.unlockedResearch.map((r) => r.name).toList(),
+      'weather': state.weather.name,
+      'dailyContracts': state.dailyContracts.map((c) => c.toJson()).toList(),
+      'contractsCompleted': state.contractsCompleted,
     };
     return jsonEncode(map);
   }
@@ -322,6 +330,27 @@ class SaveLoadService {
               })
             : {},
         isGameOver: gameStateMap['isGameOver'] as bool? ?? false,
+        // Research (older saves have none, so researched perks default to empty)
+        unlockedResearch: gameStateMap['unlockedResearch'] != null
+            ? (gameStateMap['unlockedResearch'] as List)
+                .map((r) => ResearchType.values.firstWhere(
+                      (type) => type.name == r,
+                      orElse: () => ResearchType.turboTrucks,
+                    ))
+                .toSet()
+            : <ResearchType>{},
+        weather: gameStateMap['weather'] != null
+            ? WeatherType.values.firstWhere(
+                (w) => w.name == gameStateMap['weather'],
+                orElse: () => WeatherType.sunny,
+              )
+            : WeatherType.sunny,
+        dailyContracts: gameStateMap['dailyContracts'] != null
+            ? (gameStateMap['dailyContracts'] as List)
+                .map((c) => DailyContract.fromJson(c as Map<String, dynamic>))
+                .toList()
+            : <DailyContract>[],
+        contractsCompleted: gameStateMap['contractsCompleted'] as int? ?? 0,
       );
     } catch (e) {
       print('Error deserializing game state: $e');

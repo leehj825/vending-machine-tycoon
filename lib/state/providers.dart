@@ -11,6 +11,7 @@ import '../simulation/models/product.dart';
 import '../simulation/models/zone.dart';
 import '../simulation/models/machine.dart';
 import '../simulation/models/truck.dart';
+import '../simulation/models/contract.dart';
 import '../simulation/models/research.dart';
 import '../services/rewarded_ad_manager.dart';
 import 'game_state.dart';
@@ -55,6 +56,14 @@ class GameController extends StateNotifier<GlobalGameState> {
 
   bool _isSimulationRunning = false;
   Timer? _marketingButtonSpawnTimer;
+
+  /// Randomness source for daily contract generation
+  final math.Random _contractRandom = math.Random();
+
+  /// Contract rewards already paid into the engine but not yet seen by the
+  /// revenue tracker. Subtracted from the next tick so reward money is never
+  /// counted as sales revenue (which would let contracts complete themselves).
+  double _unaccountedBonusCash = 0.0;
   
   // Debug output throttling - only print once per second
   DateTime? _lastDebugPrint;
@@ -248,9 +257,18 @@ class GameController extends StateNotifier<GlobalGameState> {
       final previousTotalCash = state.cash + state.machines.fold<double>(0.0, (sum, m) => sum + m.currentCash);
       
       final currentTotalCash = simState.cash + simState.machines.fold<double>(0.0, (sum, m) => sum + m.currentCash);
-      final revenueThisTick = (currentTotalCash - previousTotalCash).clamp(0.0, double.infinity);
+      var revenueThisTick = (currentTotalCash - previousTotalCash).clamp(0.0, double.infinity);
+
+      // Contract payouts arrive as a cash jump, not as sales - discount them
+      if (_unaccountedBonusCash > 0 && revenueThisTick > 0) {
+        final discounted = math.min(_unaccountedBonusCash, revenueThisTick);
+        revenueThisTick -= discounted;
+        _unaccountedBonusCash -= discounted;
+      }
       
       final updatedProductSales = Map<Product, int>.from(state.productSalesCount);
+      final productSalesThisTick = <Product, int>{};
+      var unitsSoldThisTick = 0;
       for (final machine in simState.machines) {
         final oldMachine = state.machines.firstWhere(
           (m) => m.id == machine.id,
@@ -258,6 +276,7 @@ class GameController extends StateNotifier<GlobalGameState> {
         );
         final salesIncrease = machine.totalSales - oldMachine.totalSales;
         if (salesIncrease > 0) {
+          unitsSoldThisTick += salesIncrease;
           // Distribute sales increase across products in inventory (rough estimate)
           final totalInventory = machine.inventory.values.fold<int>(0, (sum, item) => sum + item.quantity);
           if (totalInventory > 0) {
@@ -266,6 +285,7 @@ class GameController extends StateNotifier<GlobalGameState> {
               final quantity = entry.value.quantity;
               final estimatedSales = ((salesIncrease * quantity) / totalInventory).round();
               updatedProductSales[product] = (updatedProductSales[product] ?? 0) + estimatedSales;
+              productSalesThisTick[product] = (productSalesThisTick[product] ?? 0) + estimatedSales;
             }
           }
         }
@@ -275,7 +295,10 @@ class GameController extends StateNotifier<GlobalGameState> {
       var updatedDailyRevenueHistory = List<double>.from(state.dailyRevenueHistory);
       var updatedCurrentDayRevenue = state.currentDayRevenue + revenueThisTick;
       
-      if (simState.time.day > previousDay || (previousHour == 23 && simState.time.hour == 0)) {
+      final dayRolledOver =
+          simState.time.day > previousDay || (previousHour == 23 && simState.time.hour == 0);
+
+      if (dayRolledOver) {
         // Day rolled over - save previous day's revenue
         if (previousDay > 0) {
           updatedDailyRevenueHistory.add(updatedCurrentDayRevenue);
@@ -294,29 +317,220 @@ class GameController extends StateNotifier<GlobalGameState> {
         state = state.addLogMessage(message);
       }
 
+      // Daily contracts: issue a fresh set every morning, otherwise advance
+      // today's goals with the sales that just happened
+      final contractResult = _processContracts(
+        day: simState.time.day,
+        machines: simState.machines,
+        warehouse: simState.warehouse,
+        dailyRevenueHistory: updatedDailyRevenueHistory,
+        reissue: dayRolledOver,
+        revenueThisTick: revenueThisTick,
+        productSalesThisTick: productSalesThisTick,
+        unitsSoldThisTick: unitsSoldThisTick,
+      );
+
+      // Contract rewards are paid on top of whatever the engine reports
+      var updatedCash = simState.cash;
+      var updatedReputation = simState.reputation;
+      if (contractResult.rewardCash > 0 || contractResult.rewardReputation > 0) {
+        updatedCash += contractResult.rewardCash;
+        updatedReputation =
+            (updatedReputation + contractResult.rewardReputation).clamp(0, 1000).toInt();
+        _unaccountedBonusCash += contractResult.rewardCash;
+        simulationEngine.applyBonus(
+          cash: contractResult.rewardCash,
+          reputation: contractResult.rewardReputation,
+        );
+      }
+
       // Check for game over condition: cash too negative (less than -$1000)
-      final isGameOver = simState.cash < -1000.0 && !state.isGameOver;
+      final isGameOver = updatedCash < -1000.0 && !state.isGameOver;
       
       state = state.copyWith(
         machines: simState.machines,
         trucks: updatedTrucks,
-        cash: simState.cash,
-        reputation: simState.reputation,
+        cash: updatedCash,
+        reputation: updatedReputation,
         dayCount: simState.time.day,
         hourOfDay: simState.time.hour,
         dailyRevenueHistory: updatedDailyRevenueHistory,
         currentDayRevenue: updatedCurrentDayRevenue,
         productSalesCount: updatedProductSales,
         warehouse: simState.warehouse, // Sync warehouse from engine (for auto-restock)
+        weather: simState.weather, // Sync weather so rain/storm visuals can react
+        dailyContracts: contractResult.contracts,
+        contractsCompleted: state.contractsCompleted + contractResult.completedCount,
         isGameOver: isGameOver || state.isGameOver, // Set game over flag if cash is too negative
         // Logs are managed locally by Controller, so we don't overwrite them
       );
+
+      // Log contract events (new day offers and completed deals)
+      for (final message in contractResult.messages) {
+        state = state.addLogMessage(message);
+      }
       
       // Log game over message
       if (isGameOver) {
         state = state.addLogMessage('💀 GAME OVER: Your business went bankrupt!');
       }
     });
+  }
+
+  /// Issue, advance and pay out daily contracts.
+  ///
+  /// Returns the contract list to store plus any rewards earned this tick, so
+  /// the caller can fold them into a single state update.
+  ({
+    List<DailyContract> contracts,
+    double rewardCash,
+    int rewardReputation,
+    int completedCount,
+    List<String> messages,
+  }) _processContracts({
+    required int day,
+    required List<Machine> machines,
+    required Warehouse warehouse,
+    required List<double> dailyRevenueHistory,
+    required bool reissue,
+    required double revenueThisTick,
+    required Map<Product, int> productSalesThisTick,
+    required int unitsSoldThisTick,
+  }) {
+    final messages = <String>[];
+    final existing = state.dailyContracts;
+    final needsNewSet =
+        reissue || existing.isEmpty || existing.first.dayIssued != day;
+
+    if (needsNewSet) {
+      final unfinished = existing.where((c) => !c.isPaid).length;
+      final contracts = ContractGenerator.generateForDay(
+        day: day,
+        random: _contractRandom,
+        recentDailyRevenue: _averageDailyRevenue(dailyRevenueHistory),
+        machineCount: machines.length,
+        stockedProducts: _stockedProducts(machines, warehouse),
+      );
+      messages.add(unfinished > 0
+          ? '📋 ${contracts.length} new contracts posted ($unfinished expired unfinished)'
+          : '📋 ${contracts.length} new contracts posted');
+      return (
+        contracts: contracts,
+        rewardCash: 0.0,
+        rewardReputation: 0,
+        completedCount: 0,
+        messages: messages,
+      );
+    }
+
+    // Nothing sold this tick, so no contract can have moved
+    if (revenueThisTick <= 0 && unitsSoldThisTick <= 0) {
+      return (
+        contracts: existing,
+        rewardCash: 0.0,
+        rewardReputation: 0,
+        completedCount: 0,
+        messages: messages,
+      );
+    }
+
+    var rewardCash = 0.0;
+    var rewardReputation = 0;
+    var completedCount = 0;
+    final updated = <DailyContract>[];
+
+    for (final contract in existing) {
+      if (contract.isPaid) {
+        updated.add(contract);
+        continue;
+      }
+
+      final delta = switch (contract.goal) {
+        ContractGoal.earnRevenue => revenueThisTick,
+        ContractGoal.sellProduct =>
+          (productSalesThisTick[contract.product] ?? 0).toDouble(),
+        ContractGoal.sellUnits => unitsSoldThisTick.toDouble(),
+      };
+
+      if (delta <= 0) {
+        updated.add(contract);
+        continue;
+      }
+
+      var advanced = contract.copyWith(progress: contract.progress + delta);
+      if (advanced.isComplete) {
+        advanced = advanced.copyWith(isPaid: true);
+        rewardCash += advanced.rewardCash;
+        rewardReputation += advanced.rewardReputation;
+        completedCount++;
+        messages.add(
+          '✅ Contract complete: ${advanced.description} (+\$${advanced.rewardCash.toStringAsFixed(0)}, +${advanced.rewardReputation} rep)',
+        );
+      }
+      updated.add(advanced);
+    }
+
+    return (
+      contracts: updated,
+      rewardCash: rewardCash,
+      rewardReputation: rewardReputation,
+      completedCount: completedCount,
+      messages: messages,
+    );
+  }
+
+  /// Swap a single unfinished contract for a new one for a fee
+  void rerollContract(String contractId) {
+    final index = state.dailyContracts.indexWhere((c) => c.id == contractId);
+    if (index == -1) return;
+
+    final contract = state.dailyContracts[index];
+    if (contract.isPaid || contract.wasRerolled) return;
+    if (state.cash < AppConfig.contractRerollCost) {
+      state = state.addLogMessage('Not enough cash to swap a contract');
+      return;
+    }
+
+    final replacement = ContractGenerator.generateReplacement(
+      previous: contract,
+      day: state.dayCount,
+      random: _contractRandom,
+      recentDailyRevenue: _averageDailyRevenue(state.dailyRevenueHistory),
+      machineCount: state.machines.length,
+      stockedProducts: _stockedProducts(state.machines, state.warehouse),
+    );
+
+    final contracts = List<DailyContract>.from(state.dailyContracts);
+    contracts[index] = replacement;
+
+    final newCash = state.cash - AppConfig.contractRerollCost;
+    state = state.copyWith(cash: newCash, dailyContracts: contracts);
+    simulationEngine.updateCash(newCash);
+    state = state.addLogMessage(
+      '🔄 Swapped a contract for \$${AppConfig.contractRerollCost.toStringAsFixed(0)}',
+    );
+  }
+
+  /// Average revenue of the last few days, used to scale contract targets
+  double _averageDailyRevenue(List<double> history) {
+    if (history.isEmpty) return 0.0;
+    final recent =
+        history.length > 3 ? history.sublist(history.length - 3) : history;
+    return recent.reduce((a, b) => a + b) / recent.length;
+  }
+
+  /// Products the player currently has on hand, in machines or the warehouse
+  List<Product> _stockedProducts(List<Machine> machines, Warehouse warehouse) {
+    final products = <Product>{};
+    for (final machine in machines) {
+      for (final entry in machine.inventory.entries) {
+        if (entry.value.quantity > 0) products.add(entry.key);
+      }
+    }
+    for (final entry in warehouse.inventory.entries) {
+      if (entry.value > 0) products.add(entry.key);
+    }
+    return products.toList();
   }
 
   /// Check if simulation is running
@@ -951,6 +1165,8 @@ class GameController extends StateNotifier<GlobalGameState> {
       purchasingAgentCount: 0,
       purchasingAgentTargetInventory: {},
     );
+
+    _unaccountedBonusCash = 0.0;
     
     // Reset game state
     state = const GlobalGameState(
@@ -1014,7 +1230,11 @@ class GameController extends StateNotifier<GlobalGameState> {
       mechanicCount: savedState.mechanicCount,
       purchasingAgentCount: savedState.purchasingAgentCount,
       purchasingAgentTargetInventory: savedState.purchasingAgentTargetInventory,
+      weather: savedState.weather,
     );
+
+    // Contract rewards from the previous session are already banked
+    _unaccountedBonusCash = 0.0;
     
     // Restore research state
     simulationEngine.updateUnlockedResearch(savedState.unlockedResearch);

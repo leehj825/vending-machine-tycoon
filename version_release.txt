@@ -1,6 +1,26 @@
 VENDING EMPIRE - RELEASE NOTES
 ================================
 
+Version 1.1.18
+-------------
+Release Date: September 17, 2026
+## New Features
+- **Daily Contracts**: Three time-limited client deals are posted every game morning
+  - **Supply Deal**: Sell a set number of units of one product before the day ends
+  - **Revenue Target**: Hit a daily sales revenue goal
+  - **Volume Deal**: Sell a set number of items across the whole empire
+  - Targets scale with recent revenue and machine count, so they stay reachable early and meaningful later
+  - Rewards (cash + 15 reputation) are paid automatically the moment a goal is met
+  - Unfinished contracts expire when the next day's set is posted
+  - Any unfinished contract can be swapped for a different one for $250 (once per contract)
+  - New "DAILY CONTRACTS" screen in HQ showing live progress, rewards and lifetime completions
+
+## Bug Fixes
+- **Research Persistence**: Unlocked research is now saved and restored - previously, perks bought in the Research Lab were lost when a game was loaded
+- **Weather Visuals**: The current weather is now synced from the simulation to the city view, so rain and storm effects actually appear (and weather is saved with the game)
+
+---
+
 Version 1.1.17
 -------------
 Release Date: January 5, 2026
