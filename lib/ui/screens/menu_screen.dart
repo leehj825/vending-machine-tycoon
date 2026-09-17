@@ -220,12 +220,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                                       'START GAME',
                                       style: TextStyle(
                                         color: Colors.white,
-                                        fontSize: ScreenUtils.relativeFontSize(
-                                          context,
-                                          0.01,
-                                          min: smallerDim * 0.01,
-                                          max: smallerDim * 0.015,
-                                        ),
+                                        fontSize: ScreenUtils.relativeFontSize(context, 0.01),
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
@@ -268,12 +263,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                                                   'LOAD GAME',
                                                   style: TextStyle(
                                                     color: Colors.white,
-                                                    fontSize: ScreenUtils.relativeFontSize(
-                                                      context,
-                                                      0.007,
-                                                      min: smallerDim * 0.007,
-                                                      max: smallerDim * 0.01,
-                                                    ),
+                                                    fontSize: ScreenUtils.relativeFontSize(context, 0.007),
                                                     fontWeight: FontWeight.bold,
                                                   ),
                                                 ),
@@ -313,12 +303,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                                             'OPTIONS',
                                             style: TextStyle(
                                               color: Colors.white,
-                                              fontSize: ScreenUtils.relativeFontSize(
-                                                context,
-                                                0.007,
-                                                min: smallerDim * 0.007,
-                                                max: smallerDim * 0.01,
-                                              ),
+                                              fontSize: ScreenUtils.relativeFontSize(context, 0.007),
                                               fontWeight: FontWeight.bold,
                                             ),
                                           ),
@@ -356,12 +341,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                                             'CREDITS',
                                             style: TextStyle(
                                               color: Colors.white,
-                                              fontSize: ScreenUtils.relativeFontSize(
-                                                context,
-                                                0.007,
-                                                min: smallerDim * 0.007,
-                                                max: smallerDim * 0.01,
-                                              ),
+                                              fontSize: ScreenUtils.relativeFontSize(context, 0.007),
                                               fontWeight: FontWeight.bold,
                                             ),
                                           ),

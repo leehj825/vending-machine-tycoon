@@ -232,34 +232,33 @@ class AppConfig {
   static const double routePlannerSmallButtonBorderWidthFactor = spacingFactorTiny * 1.5; // 0.0015 - Border width
   
   /// Bottom navigation bar sizes
-  static const double bottomNavBarHeightFactor = 0.20; // Height as factor of smaller screen dimension
+  /// All factors below are relative to ScreenUtils.referenceShortSide (400dp),
+  /// so a factor of 0.155 means ~62dp on the reference screen.
+  static const double bottomNavBarHeightFactor = 0.155; // ~62dp tall bar
   
   /// Tab button sizes (HQ, City, Fleet, Market buttons) - Removed min/max duplicates
-  static const double tabButtonHeightFactor = 0.20; // Height as factor of smaller screen dimension
+  static const double tabButtonHeightFactor = 0.135; // ~54dp, sits inside the bar
   
   /// Tab button icon size (for fallback icons) - Removed min/max duplicates
-  static const double tabButtonIconSizeFactor = 0.20; // Icon size as factor of smaller screen dimension
+  static const double tabButtonIconSizeFactor = 0.075; // ~30dp fallback icon
   
   /// Save/Exit button sizes - Removed min/max duplicates
-  static const double saveExitButtonHeightFactor = 0.10; // Height as factor of smaller screen dimension
-  static const double saveExitButtonWidthFactor = 0.10; // Width as factor of screen width
+  static const double saveExitButtonHeightFactor = 0.105; // ~42dp
+  static const double saveExitButtonWidthFactor = 0.105; // ~42dp (was a factor of raw screen width, which doubled these in landscape)
   
   /// Top status bar boxes (cash, reputation, time)
-  static const double statusCardWidthFactor = 0.90; // Width as factor of smaller dimension (increased from 0.75)
-  static const double statusCardWidthMinFactor = 0.30; // Minimum width as factor of smaller dimension (increased from 0.25)
-  static const double statusCardWidthMaxFactor = 0.30; // Maximum width as factor of smaller dimension (increased from 0.25)
-  static const double statusCardHeightRatio = 0.75; // Height ratio relative to card width (decreased to maintain same height)
-  
-  /// Status card icon settings - Removed min/max duplicates
-  static const double statusCardIconSizeFactor = 0.50; // Icon size factor relative to card width
-  static const double statusCardIconTopPositionFactor = 0.1; // Icon top position as factor of card height (relative to card height)
+  /// Card size is driven by height; the width follows the frame artwork's own
+  /// aspect ratio (status_icon.png is 138x156). Picking an unrelated width made
+  /// BoxFit.contain shrink the frame inside the card box, so the icon and value
+  /// no longer lined up with the frame they were drawn on.
+  static const double statusCardHeightFactor = 0.17; // ~68dp tall
+  static const double statusCardAspectRatio = 138.0 / 156.0; // width / height of the frame art
   
   /// Status card text settings
-  static const double statusCardTextSizeFactor = 0.025; // Text font size factor (relative to smaller screen dimension)
-  static const double statusCardTextBottomPositionFactor = 0.05; // Text bottom position as factor of card height (relative to card height)
+  static const double statusCardTextSizeFactor = 0.028; // Text font size factor (~11dp)
   
   /// Status card padding and spacing - Removed min/max duplicates
-  static const double statusCardPaddingFactor = 0.01; // Internal padding factor relative to card width
+  static const double statusCardPaddingFactor = 0.06; // Internal padding factor relative to card width
   static const double statusBarContainerPaddingFactor = spacingFactorTiny; // 0.001 - Container padding around status bar (reuse)
   
   /// Card dimension factors (relative to smaller screen dimension)

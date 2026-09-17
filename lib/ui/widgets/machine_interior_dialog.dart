@@ -455,12 +455,7 @@ class _MachineInteriorDialogState extends ConsumerState<MachineInteriorDialog> w
                                           'Tap the green circles to collect cash!',
                                           style: TextStyle(
                                             color: Colors.white,
-                                            fontSize: ScreenUtils.relativeFontSize(
-                                              context,
-                                              AppConfig.fontSizeFactorSmall,
-                                              min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                                              max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                                            ),
+                                            fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorSmall),
                                             fontWeight: FontWeight.bold,
                                             shadows: [
                                               Shadow(
@@ -541,12 +536,7 @@ class _MachineInteriorDialogState extends ConsumerState<MachineInteriorDialog> w
                                 Text(
                                   'Cash Available',
                                   style: TextStyle(
-                                    fontSize: ScreenUtils.relativeFontSize(
-                                      context,
-                                      AppConfig.fontSizeFactorSmall,
-                                      min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                                      max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                                    ),
+                                    fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorSmall),
                                     color: Colors.grey[600],
                                   ),
                                 ),
@@ -554,12 +544,7 @@ class _MachineInteriorDialogState extends ConsumerState<MachineInteriorDialog> w
                                 Text(
                                   '\$${_currentMachine.currentCash.toStringAsFixed(2)}',
                                   style: TextStyle(
-                                    fontSize: ScreenUtils.relativeFontSize(
-                                      context,
-                                      AppConfig.fontSizeFactorLarge,
-                                      min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                                      max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                                    ),
+                                    fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorLarge),
                                     fontWeight: FontWeight.bold,
                                     color: _hasCash ? Colors.green.shade700 : Colors.grey[600],
                                   ),
@@ -572,12 +557,7 @@ class _MachineInteriorDialogState extends ConsumerState<MachineInteriorDialog> w
                             Text(
                               'Tap on the bill validator or coin bin to collect cash',
                               style: TextStyle(
-                                fontSize: ScreenUtils.relativeFontSize(
-                                  context,
-                                  AppConfig.fontSizeFactorSmall,
-                                  min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                                  max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                                ),
+                                fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorSmall),
                                 color: Colors.grey[600],
                               ),
                               textAlign: TextAlign.center,
@@ -586,12 +566,7 @@ class _MachineInteriorDialogState extends ConsumerState<MachineInteriorDialog> w
                             Text(
                               'No cash available',
                               style: TextStyle(
-                                fontSize: ScreenUtils.relativeFontSize(
-                                  context,
-                                  AppConfig.fontSizeFactorSmall,
-                                  min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                                  max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                                ),
+                                fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorSmall),
                                 color: Colors.grey[600],
                               ),
                               textAlign: TextAlign.center,

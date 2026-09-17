@@ -4,6 +4,17 @@ VENDING EMPIRE - RELEASE NOTES
 Version 1.1.18
 -------------
 Release Date: September 17, 2026
+## Bug Fixes (UI sizing & audio)
+- **Consistent UI Scale**: Icons, buttons and fonts are now sized from a fixed reference screen with a bounded scale factor
+  - Sizes no longer grow without limit on tablets and wide windows (a tablet used to draw everything ~1.9x phone size)
+  - A device now gets the same UI size in portrait and landscape
+  - Removed 282 size "limits" that were themselves proportional to the screen, so they never actually limited anything
+  - Save/Exit buttons took their width from raw screen width while their height came from the smaller dimension, so they ballooned in landscape
+- **Better Icon & Button Sizes**: Bottom nav bar 80dp -> 62dp, tab buttons 80dp -> 54dp, status cards are smaller and no longer overlap their own text
+  - Status cards are sized from their frame artwork's aspect ratio, so the frame fills the card instead of being shrunk inside it
+- **Debug Build Audio**: Music and sound effects were completely silent in debug builds
+  - An invalid iOS audio option tripped a Dart assert (active only in debug builds) on every platform, which left the audio players uninitialized
+
 ## New Features
 - **Daily Contracts**: Three time-limited client deals are posted every game morning
   - **Supply Deal**: Sell a set number of units of one product before the day ends

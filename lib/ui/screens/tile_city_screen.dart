@@ -1739,11 +1739,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
           final posX = screenPos.dx + centerOffset.dx;
           final posY = screenPos.dy + centerOffset.dy;
           
-          final buttonSize = ScreenUtils.relativeSizeClamped(
-            context, 0.03,
-            min: ScreenUtils.getSmallerDimension(context) * 0.03,
-            max: ScreenUtils.getSmallerDimension(context) * 0.03,
-          );
+          final buttonSize = ScreenUtils.relativeSizeClamped(context, 0.03);
           
           final buttonTop = posY;
           final buttonLeft = posX + (tileWidth / 2) - (buttonSize / 2);
@@ -1857,12 +1853,8 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
                         'Keep pressing to rush selling!',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: ScreenUtils.relativeFontSize(
-                            context,
-                            0.018, // Smaller font
-                            min: ScreenUtils.getSmallerDimension(context) * 0.014,
-                            max: ScreenUtils.getSmallerDimension(context) * 0.025,
-                          ),
+                          fontSize: ScreenUtils.relativeFontSize(context, 0.018, // Smaller font
+                            min: ScreenUtils.getSmallerDimension(context) * 0.014),
                           fontWeight: FontWeight.bold,
                           shadows: [
                             Shadow(
@@ -2231,23 +2223,13 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
       builder: (dialogContext) => AlertDialog(
         title: Row(
           children: [
-            Icon(Icons.warning, color: Colors.red, size: ScreenUtils.relativeSizeClamped(
-              context,
-              0.06,
-              min: ScreenUtils.getSmallerDimension(context) * 0.04,
-              max: ScreenUtils.getSmallerDimension(context) * 0.08,
-            )),
+            Icon(Icons.warning, color: Colors.red, size: ScreenUtils.relativeSizeClamped(context, 0.06)),
             SizedBox(width: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall)),
             Expanded(
               child: Text(
                 'Game Over',
                 style: TextStyle(
-                  fontSize: ScreenUtils.relativeFontSize(
-                    context,
-                    AppConfig.fontSizeFactorLarge,
-                    min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                    max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                  ),
+                  fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorLarge),
                   fontWeight: FontWeight.bold,
                   color: Colors.red.shade900,
                 ),
@@ -2262,12 +2244,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
             Text(
               'Your business went bankrupt!',
               style: TextStyle(
-                fontSize: ScreenUtils.relativeFontSize(
-                  context,
-                  AppConfig.fontSizeFactorNormal,
-                  min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                  max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                ),
+                fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -2275,12 +2252,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
             Text(
               'Final Cash: \$${gameState.cash.toStringAsFixed(2)}',
               style: TextStyle(
-                fontSize: ScreenUtils.relativeFontSize(
-                  context,
-                  AppConfig.fontSizeFactorNormal,
-                  min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                  max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                ),
+                fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
                 color: Colors.red.shade700,
               ),
             ),
@@ -2288,12 +2260,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
             Text(
               'Day ${gameState.dayCount}',
               style: TextStyle(
-                fontSize: ScreenUtils.relativeFontSize(
-                  context,
-                  AppConfig.fontSizeFactorSmall,
-                  min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                  max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                ),
+                fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorSmall),
                 color: Colors.grey.shade600,
               ),
             ),
@@ -2301,12 +2268,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
             Text(
               'Try to manage your expenses better next time!',
               style: TextStyle(
-                fontSize: ScreenUtils.relativeFontSize(
-                  context,
-                  AppConfig.fontSizeFactorSmall,
-                  min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                  max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                ),
+                fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorSmall),
                 color: Colors.grey.shade700,
               ),
             ),
@@ -2321,12 +2283,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
             child: Text(
               'Back to Menu',
               style: TextStyle(
-                fontSize: ScreenUtils.relativeFontSize(
-                  context,
-                  AppConfig.fontSizeFactorNormal,
-                  min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                  max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                ),
+                fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
               ),
             ),
           ),
@@ -2344,12 +2301,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
             child: Text(
               'New Game',
               style: TextStyle(
-                fontSize: ScreenUtils.relativeFontSize(
-                  context,
-                  AppConfig.fontSizeFactorNormal,
-                  min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                  max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                ),
+                fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
               ),
             ),
           ),
@@ -2469,12 +2421,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
           child: Text(
             'T',
             style: TextStyle(
-              fontSize: ScreenUtils.relativeFontSize(
-                context,
-                AppConfig.fontSizeFactorNormal,
-                min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-              ),
+              fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
               color: Colors.white,
             ),
           ),
@@ -3416,12 +3363,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
                   'Tap pedestrians to make them buy items!',
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: ScreenUtils.relativeFontSize(
-                      context,
-                      0.018,
-                      min: ScreenUtils.getSmallerDimension(context) * 0.014,
-                      max: ScreenUtils.getSmallerDimension(context) * 0.025,
-                    ),
+                    fontSize: ScreenUtils.relativeFontSize(context, 0.018),
                     fontWeight: FontWeight.bold,
                     shadows: [
                       Shadow(
@@ -3794,12 +3736,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
           child: Text(
             _getTileLabel(tileType),
             style: TextStyle(
-            fontSize: ScreenUtils.relativeFontSize(
-              context,
-              AppConfig.fontSizeFactorTiny,
-              min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-              max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-            ),
+            fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorTiny),
           ),
           ),
         );
@@ -3831,12 +3768,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
             child: Text(
               _getTileLabel(tileType),
               style: TextStyle(
-              fontSize: ScreenUtils.relativeFontSize(
-                context,
-                AppConfig.fontSizeFactorTiny,
-                min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-              ),
+              fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorTiny),
             ),
             ),
           ),

@@ -70,9 +70,17 @@ class SoundService {
   }
   
   /// Wait for volume settings to be loaded (used before playing music)
+  ///
+  /// Bounded by a timeout: if storage is slow or never answers, music starts at
+  /// the default volume rather than never starting at all.
   Future<void> _ensureSettingsLoaded() async {
     if (_settingsLoadCompleter != null && !_settingsLoadCompleter!.isCompleted) {
-      await _settingsLoadCompleter!.future;
+      try {
+        await _settingsLoadCompleter!.future
+            .timeout(const Duration(seconds: 3));
+      } on TimeoutException {
+        print('⚠️ Volume settings not loaded in time, using defaults');
+      }
     }
   }
   
@@ -88,12 +96,14 @@ class SoundService {
     }
   }
 
-  // Instantiate players after configuring global audio context so they inherit
-  // the configured mixing/audio-focus behavior. Using `late final` ensures
-  // they're created once during initialization.
-  late final AudioPlayer _backgroundMusicPlayer;
-  late final AudioPlayer _soundEffectPlayer;
-  late final AudioPlayer _truckSoundPlayer; // Separate player for truck sound to enable fade out
+  // Players are created eagerly. They used to be created inside
+  // _initAudioContext(), which meant a failing setAudioContext() call left them
+  // uninitialized and every later playback threw LateInitializationError -
+  // silently killing all audio. Players pick up the global audio context when
+  // it is applied, so creating them first is safe.
+  final AudioPlayer _backgroundMusicPlayer = AudioPlayer();
+  final AudioPlayer _soundEffectPlayer = AudioPlayer();
+  final AudioPlayer _truckSoundPlayer = AudioPlayer(); // Separate player for truck sound to enable fade out
   
   bool _isMusicEnabled = true;
   bool _isSoundEnabled = true;
@@ -119,31 +129,37 @@ class SoundService {
       // This prevents the game from stopping background music when sounds play
       final audioContext = AudioContext(
         android: const AudioContextAndroid(
-          isSpeakerphoneOn: true,
+          // Must stay false: true makes the plugin call
+          // AudioManager.setSpeakerphoneOn(), which needs the
+          // MODIFY_AUDIO_SETTINGS permission and throws without it, failing the
+          // whole setAudioContext call. It also forces call-style routing.
+          isSpeakerphoneOn: false,
           stayAwake: false,
-          contentType: AndroidContentType.sonification,
+          // Music must be tagged as music, otherwise Android treats it as a
+          // notification-style sound and plays it on the ringer stream - so it
+          // is inaudible whenever the phone is on silent or vibrate.
+          contentType: AndroidContentType.music,
           usageType: AndroidUsageType.media, // CHANGED: 'media' is less aggressive than 'game'
           audioFocus: AndroidAudioFocus.none, // Key setting: Don't request focus to avoid stopping other apps
         ),
         iOS: AudioContextIOS(
+          // `ambient` already mixes with other apps, and audioplayers asserts
+          // that `mixWithOthers` is only passed with playback/playAndRecord/
+          // multiRoute. That assert is plain Dart, so it fires on EVERY
+          // platform in debug builds (and is stripped in release) - passing the
+          // option here is what killed all audio in debug APKs.
           category: AVAudioSessionCategory.ambient,
-          options: const {
-            AVAudioSessionOptions.mixWithOthers,
-          },
+          options: const {},
         ),
       );
 
       await AudioPlayer.global.setAudioContext(audioContext);
-      // Instantiate players after the global context is set so they use
-      // the intended AudioContext (mixing with other apps / no focus).
-      _backgroundMusicPlayer = AudioPlayer();
-      _soundEffectPlayer = AudioPlayer();
-      _truckSoundPlayer = AudioPlayer();
 
-      print('✅ Audio context configured to mix with other apps and players created');
+      print('✅ Audio context configured to mix with other apps');
     } catch (e) {
-      print('⚠️ Error configuring audio context: $e');
-      // Continue even if audio context setup fails
+      // Audio still works on the platform defaults, so never let this stop
+      // playback - the players already exist at this point.
+      print('⚠️ Error configuring audio context (continuing with defaults): $e');
     }
   }
 

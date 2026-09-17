@@ -90,23 +90,13 @@ class HQDashboard extends ConsumerWidget {
           children: [
             Icon(
               Icons.assignment,
-              size: ScreenUtils.relativeSizeClamped(
-                context,
-                0.04,
-                min: ScreenUtils.getSmallerDimension(context) * 0.03,
-                max: ScreenUtils.getSmallerDimension(context) * 0.05,
-              ),
+              size: ScreenUtils.relativeSizeClamped(context, 0.04),
             ),
             SizedBox(width: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall)),
             Text(
               'DAILY CONTRACTS',
               style: TextStyle(
-                fontSize: ScreenUtils.relativeFontSize(
-                  context,
-                  AppConfig.fontSizeFactorLarge,
-                  min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                  max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                ),
+                fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorLarge),
                 fontWeight: FontWeight.bold,
                 letterSpacing: 1.2,
               ),
@@ -122,12 +112,7 @@ class HQDashboard extends ConsumerWidget {
                 child: Text(
                   '$completed/${contracts.length}',
                   style: TextStyle(
-                    fontSize: ScreenUtils.relativeFontSize(
-                      context,
-                      AppConfig.fontSizeFactorNormal,
-                      min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                      max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                    ),
+                    fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -168,23 +153,13 @@ class HQDashboard extends ConsumerWidget {
           children: [
             Icon(
               Icons.science,
-              size: ScreenUtils.relativeSizeClamped(
-                context,
-                0.04,
-                min: ScreenUtils.getSmallerDimension(context) * 0.03,
-                max: ScreenUtils.getSmallerDimension(context) * 0.05,
-              ),
+              size: ScreenUtils.relativeSizeClamped(context, 0.04),
             ),
             SizedBox(width: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall)),
             Text(
               'RESEARCH LAB',
               style: TextStyle(
-                fontSize: ScreenUtils.relativeFontSize(
-                  context,
-                  AppConfig.fontSizeFactorLarge,
-                  min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                  max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                ),
+                fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorLarge),
                 fontWeight: FontWeight.bold,
                 letterSpacing: 1.2,
               ),
@@ -227,22 +202,12 @@ class HQDashboard extends ConsumerWidget {
           children: [
             Row(
               children: [
-                Icon(Icons.dashboard, color: Colors.blue.shade700, size: ScreenUtils.relativeSizeClamped(
-                  context,
-                  0.04,
-                  min: ScreenUtils.getSmallerDimension(context) * 0.03,
-                  max: ScreenUtils.getSmallerDimension(context) * 0.05,
-                )),
+                Icon(Icons.dashboard, color: Colors.blue.shade700, size: ScreenUtils.relativeSizeClamped(context, 0.04)),
                 SizedBox(width: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall)),
                 Text(
                   'Business Overview',
                   style: TextStyle(
-                    fontSize: ScreenUtils.relativeFontSize(
-                      context,
-                      AppConfig.fontSizeFactorLarge,
-                      min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                      max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                    ),
+                    fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorLarge),
                     fontWeight: FontWeight.bold,
                     color: Colors.blue.shade900,
                   ),
@@ -326,24 +291,14 @@ class HQDashboard extends ConsumerWidget {
             child: Icon(
               Icons.place,
               color: Colors.teal.shade900,
-              size: ScreenUtils.relativeSizeClamped(
-                context,
-                0.03,
-                min: ScreenUtils.getSmallerDimension(context) * 0.02,
-                max: ScreenUtils.getSmallerDimension(context) * 0.04,
-              ),
+              size: ScreenUtils.relativeSizeClamped(context, 0.03),
             ),
           ),
           title: Text(
             'Top Performing Location',
             style: TextStyle(
               fontWeight: FontWeight.bold,
-              fontSize: ScreenUtils.relativeFontSize(
-                context,
-                AppConfig.fontSizeFactorMedium,
-                min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-              ),
+              fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorMedium),
             ),
           ),
           subtitle: Text(
@@ -351,12 +306,7 @@ class HQDashboard extends ConsumerWidget {
             style: TextStyle(
               color: Colors.teal.shade900,
               fontWeight: FontWeight.w600,
-              fontSize: ScreenUtils.relativeFontSize(
-                context,
-                AppConfig.fontSizeFactorNormal,
-                min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-              ),
+              fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
             ),
           ),
         ),
@@ -372,33 +322,18 @@ class HQDashboard extends ConsumerWidget {
           leading: Icon(
             Icons.location_off,
             color: Colors.grey,
-            size: ScreenUtils.relativeSizeClamped(
-              context,
-              0.03,
-              min: ScreenUtils.getSmallerDimension(context) * 0.02,
-              max: ScreenUtils.getSmallerDimension(context) * 0.04,
-            ),
+            size: ScreenUtils.relativeSizeClamped(context, 0.03),
           ),
           title: Text(
             'Top Performing Location',
             style: TextStyle(
-              fontSize: ScreenUtils.relativeFontSize(
-                context,
-                AppConfig.fontSizeFactorMedium,
-                min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-              ),
+              fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorMedium),
             ),
           ),
           subtitle: Text(
             'No machines yet',
             style: TextStyle(
-              fontSize: ScreenUtils.relativeFontSize(
-                context,
-                AppConfig.fontSizeFactorNormal,
-                min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-              ),
+              fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
             ),
           ),
         ),
@@ -448,12 +383,7 @@ class HQDashboard extends ConsumerWidget {
                         'Received \$1,000 from investors!',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: ScreenUtils.relativeFontSize(
-                            context,
-                            AppConfig.fontSizeFactorNormal,
-                            min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                            max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                          ),
+                          fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
                         ),
                       ),
                     ],
@@ -480,12 +410,7 @@ class HQDashboard extends ConsumerWidget {
                             'Received \$1,000 from investors!',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              fontSize: ScreenUtils.relativeFontSize(
-                                context,
-                                AppConfig.fontSizeFactorNormal,
-                                min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                                max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                              ),
+                              fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
                             ),
                           ),
                         ],
@@ -507,12 +432,7 @@ class HQDashboard extends ConsumerWidget {
                       Text(
                         'Searching for investors...',
                         style: TextStyle(
-                          fontSize: ScreenUtils.relativeFontSize(
-                            context,
-                            AppConfig.fontSizeFactorNormal,
-                            min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                            max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                          ),
+                          fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
                         ),
                       ),
                     ],
@@ -535,12 +455,7 @@ class HQDashboard extends ConsumerWidget {
                 Icon(
                   Icons.videocam, // Changed icon
                   color: Colors.white,
-                  size: ScreenUtils.relativeSizeClamped(
-                    context,
-                    0.05,
-                    min: ScreenUtils.getSmallerDimension(context) * 0.04,
-                    max: ScreenUtils.getSmallerDimension(context) * 0.06,
-                  ),
+                  size: ScreenUtils.relativeSizeClamped(context, 0.05),
                 ),
                 SizedBox(width: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall)),
                 Text(
@@ -548,12 +463,7 @@ class HQDashboard extends ConsumerWidget {
                   style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
-                    fontSize: ScreenUtils.relativeFontSize(
-                      context,
-                      AppConfig.fontSizeFactorLarge,
-                      min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                      max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                    ),
+                    fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorLarge),
                   ),
                 ),
                 SizedBox(width: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall)),
@@ -571,12 +481,7 @@ class HQDashboard extends ConsumerWidget {
                     style: TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
-                      fontSize: ScreenUtils.relativeFontSize(
-                        context,
-                        AppConfig.fontSizeFactorNormal,
-                        min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                        max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                      ),
+                      fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
                     ),
                   ),
                 ),
@@ -632,12 +537,7 @@ class HQDashboard extends ConsumerWidget {
               ),
               child: Icon(
                 icon,
-                size: ScreenUtils.relativeSizeClamped(
-                  context,
-                  0.045,
-                  min: ScreenUtils.getSmallerDimension(context) * 0.035,
-                  max: ScreenUtils.getSmallerDimension(context) * 0.055,
-                ),
+                size: ScreenUtils.relativeSizeClamped(context, 0.045),
                 color: iconColor,
               ),
             ),
@@ -645,12 +545,7 @@ class HQDashboard extends ConsumerWidget {
             Text(
               value,
               style: TextStyle(
-                fontSize: ScreenUtils.relativeFontSize(
-                  context,
-                  AppConfig.fontSizeFactorMedium,
-                  min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                  max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                ),
+                fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorMedium),
                 fontWeight: FontWeight.bold,
                 color: valueColor,
               ),
@@ -660,12 +555,7 @@ class HQDashboard extends ConsumerWidget {
             Text(
               label,
               style: TextStyle(
-                fontSize: ScreenUtils.relativeFontSize(
-                  context,
-                  AppConfig.fontSizeFactorSmall,
-                  min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                  max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                ),
+                fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorSmall),
                 color: Colors.grey.shade700,
               ),
               textAlign: TextAlign.center,
@@ -703,23 +593,13 @@ class HQDashboard extends ConsumerWidget {
                 Icon(
                   needsAttention.isEmpty ? Icons.check_circle : Icons.warning_amber_rounded,
                   color: needsAttention.isEmpty ? Colors.green.shade700 : Colors.red.shade700,
-                  size: ScreenUtils.relativeSizeClamped(
-                    context,
-                    0.04,
-                    min: ScreenUtils.getSmallerDimension(context) * 0.03,
-                    max: ScreenUtils.getSmallerDimension(context) * 0.05,
-                  ),
+                  size: ScreenUtils.relativeSizeClamped(context, 0.04),
                 ),
                 SizedBox(width: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall)),
                 Text(
                   'Maintenance',
                   style: TextStyle(
-                    fontSize: ScreenUtils.relativeFontSize(
-                      context,
-                      AppConfig.fontSizeFactorLarge,
-                      min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                      max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                    ),
+                    fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorLarge),
                     fontWeight: FontWeight.bold,
                     color: needsAttention.isEmpty ? Colors.green.shade900 : Colors.red.shade900,
                   ),
@@ -744,12 +624,7 @@ class HQDashboard extends ConsumerWidget {
                     child: Icon(
                       Icons.check_circle,
                       color: Colors.green.shade900,
-                      size: ScreenUtils.relativeSizeClamped(
-                        context,
-                        0.03,
-                        min: ScreenUtils.getSmallerDimension(context) * 0.02,
-                        max: ScreenUtils.getSmallerDimension(context) * 0.04,
-                      ),
+                      size: ScreenUtils.relativeSizeClamped(context, 0.03),
                     ),
                   ),
                   title: Text(
@@ -757,24 +632,14 @@ class HQDashboard extends ConsumerWidget {
                     style: TextStyle(
                       color: Colors.green.shade900,
                       fontWeight: FontWeight.bold,
-                      fontSize: ScreenUtils.relativeFontSize(
-                        context,
-                        AppConfig.fontSizeFactorNormal,
-                        min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                        max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                      ),
+                      fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
                     ),
                   ),
                   subtitle: Text(
                     'All machines are working and stock levels are adequate',
                     style: TextStyle(
                       color: Colors.green.shade700,
-                      fontSize: ScreenUtils.relativeFontSize(
-                        context,
-                        AppConfig.fontSizeFactorSmall,
-                        min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                        max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                      ),
+                      fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorSmall),
                     ),
                   ),
                 ),
@@ -815,24 +680,14 @@ class HQDashboard extends ConsumerWidget {
                       child: Icon(
                         icon,
                         color: color,
-                        size: ScreenUtils.relativeSizeClamped(
-                          context,
-                          0.025,
-                          min: ScreenUtils.getSmallerDimension(context) * 0.02,
-                          max: ScreenUtils.getSmallerDimension(context) * 0.03,
-                        ),
+                        size: ScreenUtils.relativeSizeClamped(context, 0.025),
                       ),
                     ),
                     title: Text(
                       machine.name,
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: ScreenUtils.relativeFontSize(
-                          context,
-                          AppConfig.fontSizeFactorNormal,
-                          min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                          max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                        ),
+                        fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
                       ),
                     ),
                     subtitle: Text(
@@ -840,12 +695,7 @@ class HQDashboard extends ConsumerWidget {
                       style: TextStyle(
                         color: color,
                         fontWeight: FontWeight.w600,
-                        fontSize: ScreenUtils.relativeFontSize(
-                          context,
-                          AppConfig.fontSizeFactorSmall,
-                          min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                          max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                        ),
+                        fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorSmall),
                       ),
                     ),
                   ),
@@ -892,22 +742,12 @@ class HQDashboard extends ConsumerWidget {
           children: [
             Row(
               children: [
-                Icon(Icons.people, color: Colors.blue.shade700, size: ScreenUtils.relativeSizeClamped(
-                  context,
-                  0.04,
-                  min: ScreenUtils.getSmallerDimension(context) * 0.03,
-                  max: ScreenUtils.getSmallerDimension(context) * 0.05,
-                )),
+                Icon(Icons.people, color: Colors.blue.shade700, size: ScreenUtils.relativeSizeClamped(context, 0.04)),
                 SizedBox(width: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall)),
                 Text(
                   'Staff Management',
                   style: TextStyle(
-                    fontSize: ScreenUtils.relativeFontSize(
-                      context,
-                      AppConfig.fontSizeFactorLarge,
-                      min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                      max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                    ),
+                    fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorLarge),
                     fontWeight: FontWeight.bold,
                     color: Colors.blue.shade900,
                   ),
@@ -993,24 +833,14 @@ class HQDashboard extends ConsumerWidget {
                         title,
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: ScreenUtils.relativeFontSize(
-                            context,
-                            AppConfig.fontSizeFactorNormal,
-                            min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                            max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                          ),
+                          fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
                         ),
                       ),
                       SizedBox(width: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall)),
                       Text(
                         '—',
                         style: TextStyle(
-                          fontSize: ScreenUtils.relativeFontSize(
-                            context,
-                            AppConfig.fontSizeFactorNormal,
-                            min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                            max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                          ),
+                          fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
                           color: Colors.grey.shade400,
                         ),
                       ),
@@ -1018,12 +848,7 @@ class HQDashboard extends ConsumerWidget {
                       Text(
                         count,
                         style: TextStyle(
-                          fontSize: ScreenUtils.relativeFontSize(
-                            context,
-                            AppConfig.fontSizeFactorNormal,
-                            min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                            max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                          ),
+                          fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
                           fontWeight: FontWeight.w600,
                           color: Colors.blue.shade700,
                         ),
@@ -1033,24 +858,14 @@ class HQDashboard extends ConsumerWidget {
                   Text(
                     subtitle,
                     style: TextStyle(
-                      fontSize: ScreenUtils.relativeFontSize(
-                        context,
-                        AppConfig.fontSizeFactorSmall,
-                        min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                        max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                      ),
+                      fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorSmall),
                       color: Colors.grey.shade600,
                     ),
                   ),
                   Text(
                     salary,
                     style: TextStyle(
-                      fontSize: ScreenUtils.relativeFontSize(
-                        context,
-                        AppConfig.fontSizeFactorSmall,
-                        min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                        max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                      ),
+                      fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorSmall),
                       color: Colors.green.shade700,
                       fontWeight: FontWeight.w600,
                     ),
@@ -1063,22 +878,12 @@ class HQDashboard extends ConsumerWidget {
                 IconButton(
                   icon: Icon(Icons.remove_circle, color: currentCount > 0 ? Colors.red : Colors.grey),
                   onPressed: currentCount > 0 ? onFire : null,
-                  iconSize: ScreenUtils.relativeSizeClamped(
-                    context,
-                    0.04,
-                    min: ScreenUtils.getSmallerDimension(context) * 0.03,
-                    max: ScreenUtils.getSmallerDimension(context) * 0.05,
-                  ),
+                  iconSize: ScreenUtils.relativeSizeClamped(context, 0.04),
                 ),
                 IconButton(
                   icon: Icon(Icons.add_circle, color: Colors.green),
                   onPressed: onHire,
-                  iconSize: ScreenUtils.relativeSizeClamped(
-                    context,
-                    0.04,
-                    min: ScreenUtils.getSmallerDimension(context) * 0.03,
-                    max: ScreenUtils.getSmallerDimension(context) * 0.05,
-                  ),
+                  iconSize: ScreenUtils.relativeSizeClamped(context, 0.04),
                 ),
               ],
             ),
@@ -1132,22 +937,12 @@ class HQDashboard extends ConsumerWidget {
           children: [
             Row(
               children: [
-                Icon(Icons.account_balance_wallet, color: Colors.orange.shade700, size: ScreenUtils.relativeSizeClamped(
-                  context,
-                  0.04,
-                  min: ScreenUtils.getSmallerDimension(context) * 0.03,
-                  max: ScreenUtils.getSmallerDimension(context) * 0.05,
-                )),
+                Icon(Icons.account_balance_wallet, color: Colors.orange.shade700, size: ScreenUtils.relativeSizeClamped(context, 0.04)),
                 SizedBox(width: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall)),
                 Text(
                   'Hourly Operating Costs',
                   style: TextStyle(
-                    fontSize: ScreenUtils.relativeFontSize(
-                      context,
-                      AppConfig.fontSizeFactorLarge,
-                      min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                      max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                    ),
+                    fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorLarge),
                     fontWeight: FontWeight.bold,
                     color: Colors.orange.shade900,
                   ),
@@ -1194,24 +989,14 @@ class HQDashboard extends ConsumerWidget {
                 Text(
                   'Total Cost/Hour',
                   style: TextStyle(
-                    fontSize: ScreenUtils.relativeFontSize(
-                      context,
-                      AppConfig.fontSizeFactorMedium,
-                      min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                      max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                    ),
+                    fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorMedium),
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 Text(
                   '\$${totalCostPerHour.toStringAsFixed(2)}/hr',
                   style: TextStyle(
-                    fontSize: ScreenUtils.relativeFontSize(
-                      context,
-                      AppConfig.fontSizeFactorMedium,
-                      min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                      max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                    ),
+                    fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorMedium),
                     fontWeight: FontWeight.bold,
                     color: Colors.red.shade700,
                   ),
@@ -1241,12 +1026,7 @@ class HQDashboard extends ConsumerWidget {
               Text(
                 title,
                 style: TextStyle(
-                  fontSize: ScreenUtils.relativeFontSize(
-                    context,
-                    AppConfig.fontSizeFactorNormal,
-                    min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                    max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                  ),
+                  fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -1255,12 +1035,7 @@ class HQDashboard extends ConsumerWidget {
                 ...details.map((detail) => Text(
                   detail,
                   style: TextStyle(
-                    fontSize: ScreenUtils.relativeFontSize(
-                      context,
-                      AppConfig.fontSizeFactorSmall,
-                      min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                      max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                    ),
+                    fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorSmall),
                     color: Colors.grey.shade600,
                   ),
                 )),
@@ -1271,12 +1046,7 @@ class HQDashboard extends ConsumerWidget {
         Text(
           '\$${cost.toStringAsFixed(2)}/hr',
           style: TextStyle(
-            fontSize: ScreenUtils.relativeFontSize(
-              context,
-              AppConfig.fontSizeFactorNormal,
-              min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-              max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-            ),
+            fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
             fontWeight: FontWeight.w600,
             color: Colors.orange.shade700,
           ),

@@ -4,7 +4,6 @@ import '../../simulation/models/research.dart';
 import '../../state/providers.dart';
 import '../../services/sound_service.dart';
 import '../utils/screen_utils.dart';
-import '../../config.dart';
 
 class ResearchScreen extends ConsumerWidget {
   const ResearchScreen({super.key});

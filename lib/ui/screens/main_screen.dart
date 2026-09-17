@@ -100,16 +100,8 @@ class _MainScreenState extends ConsumerState<MainScreen> {
 
 /// Calculate the required height for the status bar
 double _calculateStatusBarHeight(BuildContext context) {
-  final smallerDim = ScreenUtils.getSmallerDimension(context);
-  
   // Calculate card dimensions (same logic as in _StatusBar)
-  final cardWidth = ScreenUtils.relativeSizeClamped(
-    context,
-    AppConfig.statusCardWidthFactor,
-    min: smallerDim * AppConfig.statusCardWidthMinFactor,
-    max: smallerDim * AppConfig.statusCardWidthMaxFactor,
-  );
-  final cardHeight = (cardWidth * AppConfig.statusCardHeightRatio);
+  final cardHeight = ScreenUtils.relativeSize(context, AppConfig.statusCardHeightFactor);
   
   // Container padding
   final containerPadding = ScreenUtils.relativeSize(context, AppConfig.statusBarContainerPaddingFactor);
@@ -134,36 +126,16 @@ class _StatusBar extends ConsumerWidget {
     final amPm = hourOfDay < 12 ? 'AM' : 'PM';
     final timeString = 'Day $dayCount, $hour12$amPm';
     
-    final smallerDim = ScreenUtils.getSmallerDimension(context);
+    // Card height drives the size; width follows the frame artwork's aspect
+    final cardHeight = ScreenUtils.relativeSize(context, AppConfig.statusCardHeightFactor);
+    final cardWidth = cardHeight * AppConfig.statusCardAspectRatio;
     
-    // Calculate card width using config constants
-    final cardWidth = ScreenUtils.relativeSizeClamped(
-      context,
-      AppConfig.statusCardWidthFactor,
-      min: smallerDim * AppConfig.statusCardWidthMinFactor,
-      max: smallerDim * AppConfig.statusCardWidthMaxFactor,
-    );
-    final cardHeight = (cardWidth * AppConfig.statusCardHeightRatio);
-    
-    // Calculate icon size using config constants
-    final iconSize = ScreenUtils.relativeSize(
-      context,
-      (cardWidth / smallerDim * AppConfig.statusCardIconSizeFactor),
-    );
-    
+    // Padding is a fraction of the card itself, so it stays in proportion
+    // with it on every screen
     // Font size for value - use status card specific size
-    final valueFontSize = ScreenUtils.relativeFontSize(
-      context,
-      AppConfig.statusCardTextSizeFactor,
-      min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-      max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-    );
+    final valueFontSize = ScreenUtils.relativeFontSize(context, AppConfig.statusCardTextSizeFactor);
     
-    // Calculate padding using config constants
-    final padding = ScreenUtils.relativeSize(
-      context,
-      (cardWidth / smallerDim * AppConfig.statusCardPaddingFactor),
-    );
+    final padding = cardWidth * AppConfig.statusCardPaddingFactor;
     
     final containerPadding = ScreenUtils.relativeSize(context, AppConfig.statusBarContainerPaddingFactor);
     
@@ -175,6 +147,7 @@ class _StatusBar extends ConsumerWidget {
       color: Theme.of(context).colorScheme.surface,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
+        spacing: containerPadding * 4,
         children: [
           _StatusCard(
             iconAsset: 'assets/images/cash_icon.png',
@@ -182,7 +155,6 @@ class _StatusBar extends ConsumerWidget {
             valueColor: Colors.green,
             cardWidth: cardWidth,
             cardHeight: cardHeight,
-            iconSize: iconSize,
             valueFontSize: valueFontSize,
             padding: padding,
           ),
@@ -192,7 +164,6 @@ class _StatusBar extends ConsumerWidget {
             valueColor: Colors.amber,
             cardWidth: cardWidth,
             cardHeight: cardHeight,
-            iconSize: iconSize,
             valueFontSize: valueFontSize,
             padding: padding,
           ),
@@ -202,7 +173,6 @@ class _StatusBar extends ConsumerWidget {
             valueColor: Colors.blue,
             cardWidth: cardWidth,
             cardHeight: cardHeight,
-            iconSize: iconSize,
             valueFontSize: valueFontSize,
             padding: padding,
           ),
@@ -219,7 +189,6 @@ class _StatusCard extends StatelessWidget {
   final Color valueColor;
   final double cardWidth;
   final double cardHeight;
-  final double iconSize;
   final double valueFontSize;
   final double padding;
 
@@ -229,7 +198,6 @@ class _StatusCard extends StatelessWidget {
     required this.valueColor,
     required this.cardWidth,
     required this.cardHeight,
-    required this.iconSize,
     required this.valueFontSize,
     required this.padding,
   });
@@ -258,49 +226,43 @@ class _StatusCard extends StatelessWidget {
               );
             },
           ),
-          // Content overlay - icons at center top, values at center bottom
+          // Content overlay - icon above, value below.
+          // Laid out in a Column rather than absolutely positioned so the icon
+          // and the value can never overlap, whatever the card size works out
+          // to on a given screen.
           Positioned.fill(
-            child: Stack(
-              children: [
-                // Icon positioned at center upper part
-                Positioned(
-                  left: (cardWidth - iconSize) / 2,
-                  top: cardHeight * AppConfig.statusCardIconTopPositionFactor,
-                  child: Image.asset(
-                    iconAsset,
-                    width: iconSize,
-                    height: iconSize,
-                    fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) {
-                      return SizedBox(
-                        width: iconSize,
-                        height: iconSize,
-                      );
-                    },
-                  ),
-                ),
-                // Value positioned at center bottom
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: cardHeight * AppConfig.statusCardTextBottomPositionFactor,
-                  child: Center(
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        value,
-                        style: TextStyle(
-                          fontSize: valueFontSize,
-                          fontWeight: FontWeight.bold,
-                          color: valueColor,
-                        ),
-                        maxLines: 1,
-                        textAlign: TextAlign.center,
-                      ),
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: padding,
+                vertical: cardHeight * 0.08,
+              ),
+              child: Column(
+                children: [
+                  // The icon takes whatever height is left after the value
+                  Expanded(
+                    child: Image.asset(
+                      iconAsset,
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) =>
+                          const SizedBox.shrink(),
                     ),
                   ),
-                ),
-              ],
+                  SizedBox(height: cardHeight * 0.04),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      value,
+                      style: TextStyle(
+                        fontSize: valueFontSize,
+                        fontWeight: FontWeight.bold,
+                        color: valueColor,
+                      ),
+                      maxLines: 1,
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -424,17 +386,18 @@ class _CustomBottomNavigationBar extends ConsumerWidget {
   Widget _buildActionButtons(BuildContext context, WidgetRef ref) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final screenWidth = MediaQuery.of(context).size.width;
-        
         // Calculate button height
         final buttonHeight = ScreenUtils.relativeSizeClamped(
           context,
           AppConfig.saveExitButtonHeightFactor,
-          min: ScreenUtils.relativeSize(context, AppConfig.buttonHeightFactor), // Minimum for comfortable touch target
+          min: AppConfig.buttonHeightFactor * ScreenUtils.referenceShortSide, // Minimum for comfortable touch target
         );
         
-        // Adjust button width for side-by-side layout
-        final sideBySideButtonWidth = screenWidth * AppConfig.saveExitButtonWidthFactor;
+        // Width comes from the same reference scale as the height. Deriving it
+        // from the raw screen width made these buttons balloon in landscape and
+        // on wide windows, where width is the long side.
+        final sideBySideButtonWidth =
+            ScreenUtils.relativeSize(context, AppConfig.saveExitButtonWidthFactor);
         
         return Row(
           mainAxisSize: MainAxisSize.min, // Keep compact on the right side
