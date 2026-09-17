@@ -10,7 +10,9 @@ Release Date: September 17, 2026
   - A device now gets the same UI size in portrait and landscape
   - Removed 282 size "limits" that were themselves proportional to the screen, so they never actually limited anything
   - Save/Exit buttons took their width from raw screen width while their height came from the smaller dimension, so they ballooned in landscape
-- **Better Icon & Button Sizes**: Bottom nav bar 80dp -> 62dp, tab buttons 80dp -> 54dp, status cards are smaller and no longer overlap their own text
+- **Better Icon & Button Sizes**: Status cards are smaller and no longer overlap their own text; bottom bar buttons are sized from the bar they sit in
+  - Tablets and wide screens get noticeably larger bottom buttons (a 621x800dp screen went from 62dp to 89dp bars)
+  - Top and bottom bars never take more than ~15% of the screen height, so landscape keeps its usable area
   - Status cards are sized from their frame artwork's aspect ratio, so the frame fills the card instead of being shrunk inside it
 - **Debug Build Audio**: Music and sound effects were completely silent in debug builds
   - An invalid iOS audio option tripped a Dart assert (active only in debug builds) on every platform, which left the audio players uninitialized

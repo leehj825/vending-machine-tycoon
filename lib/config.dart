@@ -234,17 +234,26 @@ class AppConfig {
   /// Bottom navigation bar sizes
   /// All factors below are relative to ScreenUtils.referenceShortSide (400dp),
   /// so a factor of 0.155 means ~62dp on the reference screen.
-  static const double bottomNavBarHeightFactor = 0.155; // ~62dp tall bar
+  static const double bottomNavBarHeightFactor = 0.165; // ~66dp tall bar
   
-  /// Tab button sizes (HQ, City, Fleet, Market buttons) - Removed min/max duplicates
-  static const double tabButtonHeightFactor = 0.135; // ~54dp, sits inside the bar
+  /// Bars never take more than this fraction of the screen height, so a
+  /// landscape phone or a short window keeps its usable area
+  static const double bottomNavBarMaxHeightFraction = 0.16;
+  static const double statusBarMaxHeightFraction = 0.14;
+  
+  /// Tab buttons are sized from the bar they sit in, so the two can't disagree
+  static const double tabButtonHeightRatio = 0.86; // Share of the bar's height
+  
+  /// Widest a single tab button may get, so the row stays a group of buttons
+  /// instead of icons scattered across a wide screen
+  static const double tabButtonMaxWidthFactor = 0.26; // ~104dp on the reference screen
   
   /// Tab button icon size (for fallback icons) - Removed min/max duplicates
   static const double tabButtonIconSizeFactor = 0.075; // ~30dp fallback icon
   
   /// Save/Exit button sizes - Removed min/max duplicates
-  static const double saveExitButtonHeightFactor = 0.105; // ~42dp
-  static const double saveExitButtonWidthFactor = 0.105; // ~42dp (was a factor of raw screen width, which doubled these in landscape)
+  /// Save/Exit buttons are sized from the bar height too
+  static const double saveExitButtonHeightRatio = 0.68; // Share of the bar's height
   
   /// Top status bar boxes (cash, reputation, time)
   /// Card size is driven by height; the width follows the frame artwork's own

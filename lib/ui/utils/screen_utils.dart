@@ -16,15 +16,10 @@ class ScreenUtils {
   /// Short side of the screen the UI proportions were designed against.
   static const double referenceShortSide = 400.0;
 
-  /// Long side of that same reference screen. Taking the smaller of the two
-  /// ratios means a short, wide window (landscape phone, resized desktop
-  /// window) shrinks the UI so it still fits instead of overflowing.
-  static const double referenceLongSide = 800.0;
-
   /// Bounds for [uiScale]. Small phones never shrink below [minScale] so touch
   /// targets stay usable; tablets and desktops never grow past [maxScale].
   static const double minScale = 0.85;
-  static const double maxScale = 1.25;
+  static const double maxScale = 1.35;
 
   /// Get the smaller dimension (width or height) of the screen
   static double getSmallerDimension(BuildContext context) {
@@ -34,19 +29,31 @@ class ScreenUtils {
 
   /// Bounded UI scale factor. 1.0 on the reference screen.
   ///
-  /// Depends only on the screen's dimensions, not on which one happens to be
-  /// the width, so a device gives the same scale in portrait and landscape.
+  /// Driven by the short side only, which is the same number in portrait and
+  /// landscape, so a device gets the same size controls either way.
+  ///
+  /// This deliberately ignores the long side. Folding in a long-side ratio to
+  /// protect short windows pinned the scale to 1.0 on any screen with a
+  /// tablet-ish aspect (e.g. 621x800dp got phone-sized buttons despite being
+  /// half again as wide as a phone). Bars that genuinely need to be bounded by
+  /// the available height use [barHeight] instead.
   static double uiScale(BuildContext context) {
-    final size = MediaQuery.sizeOf(context);
-    final shortSide = math.min(size.width, size.height);
-    final longSide = math.max(size.width, size.height);
-    if (shortSide <= 0 || longSide <= 0) return 1.0;
+    final shortSide = getSmallerDimension(context);
+    if (shortSide <= 0) return 1.0;
+    return (shortSide / referenceShortSide).clamp(minScale, maxScale);
+  }
 
-    final scale = math.min(
-      shortSide / referenceShortSide,
-      longSide / referenceLongSide,
-    );
-    return scale.clamp(minScale, maxScale);
+  /// Height for a top or bottom bar: scales with the UI, but never takes more
+  /// than [maxFraction] of the screen height, so landscape phones and short
+  /// windows keep their usable area without shrinking the whole UI.
+  static double barHeight(
+    BuildContext context,
+    double factor,
+    double maxFraction,
+  ) {
+    final scaled = relativeSize(context, factor);
+    final cap = MediaQuery.sizeOf(context).height * maxFraction;
+    return math.min(scaled, cap);
   }
 
   /// Get a relative size based on the reference screen and [uiScale]

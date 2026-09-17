@@ -101,7 +101,11 @@ class _MainScreenState extends ConsumerState<MainScreen> {
 /// Calculate the required height for the status bar
 double _calculateStatusBarHeight(BuildContext context) {
   // Calculate card dimensions (same logic as in _StatusBar)
-  final cardHeight = ScreenUtils.relativeSize(context, AppConfig.statusCardHeightFactor);
+  final cardHeight = ScreenUtils.barHeight(
+    context,
+    AppConfig.statusCardHeightFactor,
+    AppConfig.statusBarMaxHeightFraction,
+  );
   
   // Container padding
   final containerPadding = ScreenUtils.relativeSize(context, AppConfig.statusBarContainerPaddingFactor);
@@ -127,7 +131,11 @@ class _StatusBar extends ConsumerWidget {
     final timeString = 'Day $dayCount, $hour12$amPm';
     
     // Card height drives the size; width follows the frame artwork's aspect
-    final cardHeight = ScreenUtils.relativeSize(context, AppConfig.statusCardHeightFactor);
+    final cardHeight = ScreenUtils.barHeight(
+      context,
+      AppConfig.statusCardHeightFactor,
+      AppConfig.statusBarMaxHeightFraction,
+    );
     final cardWidth = cardHeight * AppConfig.statusCardAspectRatio;
     
     // Padding is a fraction of the card itself, so it stays in proportion
@@ -283,7 +291,11 @@ class _CustomBottomNavigationBar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final barHeight = ScreenUtils.relativeSize(context, AppConfig.bottomNavBarHeightFactor);
+    final barHeight = ScreenUtils.barHeight(
+      context,
+      AppConfig.bottomNavBarHeightFactor,
+      AppConfig.bottomNavBarMaxHeightFraction,
+    );
     
     return Container(
       height: barHeight,
@@ -305,6 +317,7 @@ class _CustomBottomNavigationBar extends ConsumerWidget {
             Expanded(
               child: _buildTabItem(
                 context,
+                barHeight: barHeight,
                 index: 0,
                 pressAsset: 'assets/images/hq_tab_press.png',
                 unpressAsset: 'assets/images/hq_tab_unpress.png',
@@ -313,6 +326,7 @@ class _CustomBottomNavigationBar extends ConsumerWidget {
             Expanded(
               child: _buildTabItem(
                 context,
+                barHeight: barHeight,
                 index: 1,
                 pressAsset: 'assets/images/city_tab_press.png',
                 unpressAsset: 'assets/images/city_tab_unpress.png',
@@ -321,6 +335,7 @@ class _CustomBottomNavigationBar extends ConsumerWidget {
             Expanded(
               child: _buildTabItem(
                 context,
+                barHeight: barHeight,
                 index: 2,
                 pressAsset: 'assets/images/fleet_tab_press.png',
                 unpressAsset: 'assets/images/fleet_tab_unpress.png',
@@ -329,13 +344,14 @@ class _CustomBottomNavigationBar extends ConsumerWidget {
             Expanded(
               child: _buildTabItem(
                 context,
+                barHeight: barHeight,
                 index: 3,
                 pressAsset: 'assets/images/market_tab_press.png',
                 unpressAsset: 'assets/images/market_tab_unpress.png',
               ),
             ),
             // Save and Exit buttons on the right - no margin
-            _buildActionButtons(context, ref),
+            _buildActionButtons(context, ref, barHeight),
           ],
         ),
       ),
@@ -344,23 +360,26 @@ class _CustomBottomNavigationBar extends ConsumerWidget {
 
   Widget _buildTabItem(
     BuildContext context, {
+    required double barHeight,
     required int index,
     required String pressAsset,
     required String unpressAsset,
   }) {
     final isSelected = currentIndex == index;
     
-    // Calculate responsive tab button height
-    final tabButtonHeight = ScreenUtils.relativeSize(
-      context,
-      AppConfig.tabButtonHeightFactor,
-    );
+    // Tab height follows the bar it sits in, so the button can never be sized
+    // out of step with its container
+    final tabButtonHeight = barHeight * AppConfig.tabButtonHeightRatio;
+    // Cap the width so a wide screen groups the buttons instead of spreading
+    // them into isolated icons
+    final tabMaxWidth = ScreenUtils.relativeSize(context, AppConfig.tabButtonMaxWidthFactor);
     
     return GestureDetector(
       onTap: () => onTap(index),
       behavior: HitTestBehavior.opaque,
       child: Container(
         height: tabButtonHeight, // Responsive height
+        constraints: BoxConstraints(maxWidth: tabMaxWidth),
         color: Colors.transparent, // Ensures the empty space is tappable
         child: Center(
           child: Image.asset(
@@ -383,21 +402,15 @@ class _CustomBottomNavigationBar extends ConsumerWidget {
     );
   }
 
-  Widget _buildActionButtons(BuildContext context, WidgetRef ref) {
+  Widget _buildActionButtons(BuildContext context, WidgetRef ref, double barHeight) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Calculate button height
-        final buttonHeight = ScreenUtils.relativeSizeClamped(
-          context,
-          AppConfig.saveExitButtonHeightFactor,
-          min: AppConfig.buttonHeightFactor * ScreenUtils.referenceShortSide, // Minimum for comfortable touch target
-        );
-        
-        // Width comes from the same reference scale as the height. Deriving it
-        // from the raw screen width made these buttons balloon in landscape and
-        // on wide windows, where width is the long side.
-        final sideBySideButtonWidth =
-            ScreenUtils.relativeSize(context, AppConfig.saveExitButtonWidthFactor);
+        // Sized from the bar, like the tabs, so everything in the row stays in
+        // proportion. Width used to come from the raw screen width while the
+        // height came from the smaller dimension, which made these balloon in
+        // landscape and on wide windows.
+        final buttonHeight = barHeight * AppConfig.saveExitButtonHeightRatio;
+        final sideBySideButtonWidth = buttonHeight;
         
         return Row(
           mainAxisSize: MainAxisSize.min, // Keep compact on the right side
