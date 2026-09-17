@@ -544,18 +544,25 @@ class SoundService {
           }
         }
         
-        // Check if music is actually playing before stopping
+        // Check if music is actually playing before pausing.
+        //
+        // The flag is latched, never cleared here: Android fires more than one
+        // background lifecycle event in a row (hidden, then paused). The first
+        // call pauses the player, and a second call that overwrote this flag
+        // with "not playing" left resume with nothing to restart - which is
+        // exactly why music stayed silent after switching back to the game.
+        bool isPlaying;
         try {
           final playerState = await _backgroundMusicPlayer.state;
-          _wasPlayingBeforePause = (playerState == PlayerState.playing);
+          isPlaying = (playerState == PlayerState.playing);
         } catch (e) {
-          // If we can't check state, assume it's not playing to avoid errors
+          // If we can't check state, leave any existing flag alone
           print('⚠️ Could not check player state: $e');
-          _wasPlayingBeforePause = false;
           return;
         }
         
-        if (_wasPlayingBeforePause) {
+        if (isPlaying) {
+          _wasPlayingBeforePause = true;
           print('⏸️ Pausing background music (app going to background): $_currentMusicPath');
           // Stop fade timer
           _fadeTimer?.cancel();
@@ -570,15 +577,15 @@ class SoundService {
             print('⚠️ Error pausing player (may already be stopped): $e');
           }
         } else {
-          print('ℹ️ Music not playing, nothing to stop');
-          _wasPlayingBeforePause = false;
+          // Already paused by an earlier lifecycle event - keep the flag so
+          // resume still knows the music should come back
+          print('ℹ️ Music already paused (wasPlaying: $_wasPlayingBeforePause)');
         }
       } else {
         _wasPlayingBeforePause = false;
       }
     } catch (e) {
-      print('Error stopping background music: $e');
-      _wasPlayingBeforePause = false;
+      print('Error pausing background music: $e');
     }
   }
 
@@ -595,22 +602,38 @@ class SoundService {
       if (_currentMusicPath != null && _wasPlayingBeforePause) {
         final path = _currentMusicPath!;
         print('🔄 Resuming background music (app returning to foreground): $path');
+        _wasPlayingBeforePause = false; // Reset flag up front
+
+        // Restore the volume: the app may have been backgrounded mid fade-out,
+        // which would otherwise bring the track back silent
+        final baseVolume =
+            path.contains('game_background') ? _gameBackgroundVolume : _musicVolume;
+        final volume =
+            (baseVolume * _applyVolumeCurve(_musicVolumeMultiplier)).clamp(0.0, 1.0);
+        _targetVolume = volume;
+
         var resumed = false;
         try {
           await _backgroundMusicPlayer.resume();
-          resumed = (await _backgroundMusicPlayer.state) == PlayerState.playing;
+          await _backgroundMusicPlayer.setVolume(volume);
+          resumed = await _isReallyPlaying();
         } catch (e) {
           print('⚠️ Could not resume, will restart the track: $e');
         }
 
         if (resumed) {
           // Fade monitoring was cancelled on pause, so start watching again
-          _startFadeMonitoring(path, _targetVolume ?? _gameBackgroundVolume);
+          _startFadeMonitoring(path, volume);
         } else {
-          // Some platforms drop the prepared source while backgrounded
+          // The platform dropped the prepared source while backgrounded.
+          // Clear the current path first: playBackgroundMusic() would otherwise
+          // trust the player's own state - which reports "playing" straight
+          // after a resume() that never actually produced sound - and return
+          // early without restarting anything.
+          print('⚠️ Resume did not take, restarting the track');
+          _currentMusicPath = null;
           await playBackgroundMusic(path);
         }
-        _wasPlayingBeforePause = false; // Reset flag after resuming
       } else {
         if (_currentMusicPath == null) {
           print('ℹ️ No music track to restart');
@@ -621,6 +644,23 @@ class SoundService {
     } catch (e) {
       print('Error restarting background music: $e');
       _wasPlayingBeforePause = false;
+    }
+  }
+
+  /// Whether the player is genuinely producing audio.
+  ///
+  /// [AudioPlayer.state] is updated optimistically as soon as resume() is
+  /// called, so it says "playing" even when the native player did nothing.
+  /// Watching the playback position actually move is the reliable check.
+  Future<bool> _isReallyPlaying() async {
+    try {
+      final first = await _backgroundMusicPlayer.getCurrentPosition();
+      await Future.delayed(const Duration(milliseconds: 350));
+      final second = await _backgroundMusicPlayer.getCurrentPosition();
+      if (first == null || second == null) return false;
+      return second > first;
+    } catch (e) {
+      return false;
     }
   }
 

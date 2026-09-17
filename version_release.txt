@@ -13,7 +13,9 @@ Release Date: September 17, 2026
 - **Bigger Navigation Buttons**: The four bottom tabs are ~1.65x larger in both dimensions
   - Save/Exit moved into the empty space in the top status bar, freeing the whole bottom row for the tabs
   - The bar is sized from the width its tabs actually get, instead of a height factor that left them smaller than the space available
-- **Background Music Behaviour**: Game music now reliably pauses when the app goes to the background and resumes where it left off
+- **Background Music Behaviour**: Game music now reliably pauses when the app goes to the background and resumes when you come back
+  - Android fires two background events in a row (hidden, then paused); the second one used to overwrite the "was playing" flag, so nothing resumed on return
+  - Resume verifies the track is really playing again and restarts it if the system dropped it while backgrounded
   - A 3 second "protection window" used to swallow pause requests, leaving music playing after switching apps
   - Music no longer pauses when something merely overlaps the game (notification shade, floating video window)
   - Other apps (Spotify, YouTube) keep playing while the game runs, as before
