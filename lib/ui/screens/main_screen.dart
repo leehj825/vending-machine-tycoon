@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dashboard_screen.dart';
@@ -153,7 +155,21 @@ class _StatusBar extends ConsumerWidget {
         vertical: containerPadding,
       ),
       color: Theme.of(context).colorScheme.surface,
-      child: Row(
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // Save/Exit sit in the space the status cards leave free on the right
+          Positioned(
+            right: 0,
+            top: 0,
+            bottom: 0,
+            child: Center(
+              child: _SaveExitButtons(
+                size: cardHeight * AppConfig.saveExitButtonSizeRatio,
+              ),
+            ),
+          ),
+          Row(
         mainAxisAlignment: MainAxisAlignment.center,
         spacing: containerPadding * 4,
         children: [
@@ -183,6 +199,8 @@ class _StatusBar extends ConsumerWidget {
             cardHeight: cardHeight,
             valueFontSize: valueFontSize,
             padding: padding,
+          ),
+            ],
           ),
         ],
       ),
@@ -291,96 +309,99 @@ class _CustomBottomNavigationBar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final barHeight = ScreenUtils.barHeight(
-      context,
-      AppConfig.bottomNavBarHeightFactor,
-      AppConfig.bottomNavBarMaxHeightFraction,
-    );
-    
-    return Container(
-      height: barHeight,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: ScreenUtils.relativeSize(context, 0.0017),
-            offset: Offset(0, -ScreenUtils.relativeSize(context, 0.00085)),
+    // The four tab buttons share the full width of the row, so size them from
+    // the width each one actually gets and let the bar be as tall as those
+    // buttons need. Driving the bar from a height factor alone left the buttons
+    // far smaller than the space available to them.
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final tabSlotWidth =
+            (constraints.maxWidth - AppConfig.tabButtonCount * _tabGap(context)) /
+                AppConfig.tabButtonCount;
+        // Tab artwork is wider than it is tall, so width decides the height
+        final tabHeightForWidth = tabSlotWidth / AppConfig.tabButtonAspectRatio;
+        final maxBarHeight = ScreenUtils.barHeight(
+          context,
+          AppConfig.bottomNavBarHeightFactor,
+          AppConfig.bottomNavBarMaxHeightFraction,
+        );
+        final tabHeight = math.min(
+          tabHeightForWidth,
+          maxBarHeight * AppConfig.tabButtonHeightRatio,
+        );
+        final barHeight = tabHeight / AppConfig.tabButtonHeightRatio;
+
+        return Container(
+          height: barHeight,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.1),
+                blurRadius: ScreenUtils.relativeSize(context, 0.0017),
+                offset: Offset(0, -ScreenUtils.relativeSize(context, 0.00085)),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: SafeArea(
-        top: false,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.start,
-          children: [
-            Expanded(
-              child: _buildTabItem(
-                context,
-                barHeight: barHeight,
-                index: 0,
-                pressAsset: 'assets/images/hq_tab_press.png',
-                unpressAsset: 'assets/images/hq_tab_unpress.png',
-              ),
+          child: SafeArea(
+            top: false,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _buildTabItem(
+                  context,
+                  tabHeight: tabHeight,
+                  index: 0,
+                  pressAsset: 'assets/images/hq_tab_press.png',
+                  unpressAsset: 'assets/images/hq_tab_unpress.png',
+                ),
+                _buildTabItem(
+                  context,
+                  tabHeight: tabHeight,
+                  index: 1,
+                  pressAsset: 'assets/images/city_tab_press.png',
+                  unpressAsset: 'assets/images/city_tab_unpress.png',
+                ),
+                _buildTabItem(
+                  context,
+                  tabHeight: tabHeight,
+                  index: 2,
+                  pressAsset: 'assets/images/fleet_tab_press.png',
+                  unpressAsset: 'assets/images/fleet_tab_unpress.png',
+                ),
+                _buildTabItem(
+                  context,
+                  tabHeight: tabHeight,
+                  index: 3,
+                  pressAsset: 'assets/images/market_tab_press.png',
+                  unpressAsset: 'assets/images/market_tab_unpress.png',
+                ),
+              ],
             ),
-            Expanded(
-              child: _buildTabItem(
-                context,
-                barHeight: barHeight,
-                index: 1,
-                pressAsset: 'assets/images/city_tab_press.png',
-                unpressAsset: 'assets/images/city_tab_unpress.png',
-              ),
-            ),
-            Expanded(
-              child: _buildTabItem(
-                context,
-                barHeight: barHeight,
-                index: 2,
-                pressAsset: 'assets/images/fleet_tab_press.png',
-                unpressAsset: 'assets/images/fleet_tab_unpress.png',
-              ),
-            ),
-            Expanded(
-              child: _buildTabItem(
-                context,
-                barHeight: barHeight,
-                index: 3,
-                pressAsset: 'assets/images/market_tab_press.png',
-                unpressAsset: 'assets/images/market_tab_unpress.png',
-              ),
-            ),
-            // Save and Exit buttons on the right - no margin
-            _buildActionButtons(context, ref, barHeight),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
+  double _tabGap(BuildContext context) =>
+      ScreenUtils.relativeSize(context, AppConfig.paddingSmallFactor);
+
   Widget _buildTabItem(
     BuildContext context, {
-    required double barHeight,
+    required double tabHeight,
     required int index,
     required String pressAsset,
     required String unpressAsset,
   }) {
     final isSelected = currentIndex == index;
     
-    // Tab height follows the bar it sits in, so the button can never be sized
-    // out of step with its container
-    final tabButtonHeight = barHeight * AppConfig.tabButtonHeightRatio;
-    // Cap the width so a wide screen groups the buttons instead of spreading
-    // them into isolated icons
-    final tabMaxWidth = ScreenUtils.relativeSize(context, AppConfig.tabButtonMaxWidthFactor);
-    
     return GestureDetector(
       onTap: () => onTap(index),
       behavior: HitTestBehavior.opaque,
-      child: Container(
-        height: tabButtonHeight, // Responsive height
-        constraints: BoxConstraints(maxWidth: tabMaxWidth),
-        color: Colors.transparent, // Ensures the empty space is tappable
+      child: SizedBox(
+        height: tabHeight,
+        width: tabHeight * AppConfig.tabButtonAspectRatio,
         child: Center(
           child: Image.asset(
             isSelected ? pressAsset : unpressAsset,
@@ -402,15 +423,36 @@ class _CustomBottomNavigationBar extends ConsumerWidget {
     );
   }
 
-  Widget _buildActionButtons(BuildContext context, WidgetRef ref, double barHeight) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        // Sized from the bar, like the tabs, so everything in the row stays in
-        // proportion. Width used to come from the raw screen width while the
-        // height came from the smaller dimension, which made these balloon in
-        // landscape and on wide windows.
-        final buttonHeight = barHeight * AppConfig.saveExitButtonHeightRatio;
-        final sideBySideButtonWidth = buttonHeight;
+  IconData _getIconForIndex(int index) {
+    switch (index) {
+      case 0:
+        return Icons.dashboard_rounded;
+      case 1:
+        return Icons.map_rounded;
+      case 2:
+        return Icons.local_shipping_rounded;
+      case 3:
+        return Icons.store_rounded;
+      default:
+        return Icons.circle;
+    }
+  }
+}
+
+/// Save and Exit buttons.
+///
+/// These live in the status bar rather than the bottom navigation row: they are
+/// utility actions, not navigation, and taking them out of that row gives the
+/// four tab buttons the whole width to grow into.
+class _SaveExitButtons extends ConsumerWidget {
+  final double size;
+
+  const _SaveExitButtons({required this.size});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+        final buttonHeight = size;
+        final sideBySideButtonWidth = size;
         
         return Row(
           mainAxisSize: MainAxisSize.min, // Keep compact on the right side
@@ -477,8 +519,6 @@ class _CustomBottomNavigationBar extends ConsumerWidget {
             ),
           ],
         );
-      },
-    );
   }
 
   Future<void> _saveGame(BuildContext context, WidgetRef ref) async {
@@ -557,20 +597,6 @@ class _CustomBottomNavigationBar extends ConsumerWidget {
     );
   }
 
-  IconData _getIconForIndex(int index) {
-    switch (index) {
-      case 0:
-        return Icons.dashboard_rounded;
-      case 1:
-        return Icons.map_rounded;
-      case 2:
-        return Icons.local_shipping_rounded;
-      case 3:
-        return Icons.store_rounded;
-      default:
-        return Icons.circle;
-    }
-  }
 }
 
 /// Dialog for selecting save slot and entering name

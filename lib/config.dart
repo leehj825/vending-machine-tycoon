@@ -234,26 +234,28 @@ class AppConfig {
   /// Bottom navigation bar sizes
   /// All factors below are relative to ScreenUtils.referenceShortSide (400dp),
   /// so a factor of 0.155 means ~62dp on the reference screen.
-  static const double bottomNavBarHeightFactor = 0.165; // ~66dp tall bar
+  static const double bottomNavBarHeightFactor = 0.34; // Upper bound; the bar is sized from the width its tabs get
   
   /// Bars never take more than this fraction of the screen height, so a
   /// landscape phone or a short window keeps its usable area
-  static const double bottomNavBarMaxHeightFraction = 0.16;
+  static const double bottomNavBarMaxHeightFraction = 0.20;
   static const double statusBarMaxHeightFraction = 0.14;
   
-  /// Tab buttons are sized from the bar they sit in, so the two can't disagree
-  static const double tabButtonHeightRatio = 0.86; // Share of the bar's height
+  /// Number of navigation tabs sharing the bottom bar's width
+  static const int tabButtonCount = 4;
   
-  /// Widest a single tab button may get, so the row stays a group of buttons
-  /// instead of icons scattered across a wide screen
-  static const double tabButtonMaxWidthFactor = 0.26; // ~104dp on the reference screen
+  /// Aspect ratio (width / height) of the tab button artwork (204x174)
+  static const double tabButtonAspectRatio = 204.0 / 174.0;
+  
+  /// Share of the bar's height a tab button takes, leaving a little breathing room
+  static const double tabButtonHeightRatio = 0.92;
   
   /// Tab button icon size (for fallback icons) - Removed min/max duplicates
   static const double tabButtonIconSizeFactor = 0.075; // ~30dp fallback icon
   
   /// Save/Exit button sizes - Removed min/max duplicates
-  /// Save/Exit buttons are sized from the bar height too
-  static const double saveExitButtonHeightRatio = 0.68; // Share of the bar's height
+  /// Save/Exit buttons sit in the status bar; sized as a share of a status card
+  static const double saveExitButtonSizeRatio = 0.72; // Share of the status card height
   
   /// Top status bar boxes (cash, reputation, time)
   /// Card size is driven by height; the width follows the frame artwork's own

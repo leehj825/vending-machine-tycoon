@@ -523,14 +523,20 @@ class SoundService {
     }
   }
 
-  /// Stop background music (e.g., when app goes to background)
-  Future<void> pauseBackgroundMusic() async {
+  /// Pause background music (e.g., when the app goes to the background)
+  ///
+  /// Set [isAppBackgrounding] when this comes from a real lifecycle change. The
+  /// just-started protection window below exists to survive screen navigation,
+  /// but the app genuinely leaving the foreground must always win - otherwise
+  /// backgrounding the game within a few seconds of music starting left it
+  /// playing on unseen.
+  Future<void> pauseBackgroundMusic({bool isAppBackgrounding = false}) async {
     try {
       if (_currentMusicPath != null) {
         // Prevent pausing music that was just started (within last 3000ms)
         // This prevents race conditions when navigating between screens triggers lifecycle events
         // Use longer window for menu music since navigation can take time
-        if (_lastMusicStartTime != null) {
+        if (!isAppBackgrounding && _lastMusicStartTime != null) {
           final timeSinceStart = DateTime.now().difference(_lastMusicStartTime!);
           if (timeSinceStart.inMilliseconds < 3000) {
             print('⚠️ Ignoring pause request - music was just started ${timeSinceStart.inMilliseconds}ms ago (protection window: 3000ms)');
@@ -550,14 +556,15 @@ class SoundService {
         }
         
         if (_wasPlayingBeforePause) {
-          print('⏸️ Stopping background music (app going to background): $_currentMusicPath');
+          print('⏸️ Pausing background music (app going to background): $_currentMusicPath');
           // Stop fade timer
           _fadeTimer?.cancel();
           _fadeTimer = null;
           _isFading = false;
-          // Stop the music (don't clear _currentMusicPath so we know what to restart)
+          // Pause rather than stop, so returning to the game picks the track up
+          // where it left off (_currentMusicPath is kept either way)
           try {
-            await _backgroundMusicPlayer.stop();
+            await _backgroundMusicPlayer.pause();
           } catch (e) {
             // Ignore errors if player is already stopped or disposed
             print('⚠️ Error pausing player (may already be stopped): $e');
@@ -575,7 +582,7 @@ class SoundService {
     }
   }
 
-  /// Restart background music from beginning (e.g., when app returns to foreground)
+  /// Resume background music (e.g., when app returns to foreground)
   Future<void> resumeBackgroundMusic() async {
     if (!_isMusicEnabled) {
       print('🔇 Music is disabled, not restarting');
@@ -584,12 +591,26 @@ class SoundService {
     }
     
     try {
-      // Only restart if we have a track and it was playing before pause
+      // Only resume if we have a track and it was playing before pause
       if (_currentMusicPath != null && _wasPlayingBeforePause) {
-        print('🔄 Restarting background music from beginning (app returning to foreground): $_currentMusicPath');
-        // Restart from beginning instead of resuming
-        await playBackgroundMusic(_currentMusicPath!);
-        _wasPlayingBeforePause = false; // Reset flag after restart
+        final path = _currentMusicPath!;
+        print('🔄 Resuming background music (app returning to foreground): $path');
+        var resumed = false;
+        try {
+          await _backgroundMusicPlayer.resume();
+          resumed = (await _backgroundMusicPlayer.state) == PlayerState.playing;
+        } catch (e) {
+          print('⚠️ Could not resume, will restart the track: $e');
+        }
+
+        if (resumed) {
+          // Fade monitoring was cancelled on pause, so start watching again
+          _startFadeMonitoring(path, _targetVolume ?? _gameBackgroundVolume);
+        } else {
+          // Some platforms drop the prepared source while backgrounded
+          await playBackgroundMusic(path);
+        }
+        _wasPlayingBeforePause = false; // Reset flag after resuming
       } else {
         if (_currentMusicPath == null) {
           print('ℹ️ No music track to restart');
