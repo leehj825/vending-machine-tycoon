@@ -355,6 +355,41 @@ class AppConfig {
   /// fully kill demand; underpricing can't create unbounded volume.
   static const double priceDemandFactorMin = 0.15;
   static const double priceDemandFactorMax = 1.6;
+
+  // ============================================================================
+  // SECURITY: THEFT & VANDALISM
+  // ============================================================================
+
+  /// Baseline chance an eligible machine is targeted during any given game
+  /// hour, before zone risk, time of day, cash-on-hand, or Security upgrade
+  /// are factored in.
+  static const double securityEventBaseHourlyChance = 0.003; // ~0.3%/hr baseline
+
+  /// Night hours see a multiplied risk. Night is [22:00, 5:00).
+  static const int securityEventNightStartHour = 22;
+  static const int securityEventNightEndHour = 5;
+  static const double securityEventNightMultiplier = 3.0;
+
+  /// Cash sitting uncollected in a machine raises its risk: +X% relative risk
+  /// per $100 stored, capped so it can never push risk past double.
+  static const double securityEventCashRiskPer100 = 0.05;
+  static const double securityEventCashRiskCap = 1.0;
+
+  /// How much the Security machine upgrade cuts the event chance by.
+  static const double securityUpgradeRiskReduction = 0.65;
+
+  /// How much the Security upgrade reduces the per-empty-machine reputation
+  /// penalty (its advertised effect in the upgrade dialog).
+  static const double securityUpgradeReputationPenaltyReduction = 0.5;
+
+  /// Of the machines targeted while holding cash, the share that are robbed
+  /// rather than vandalized (a machine with no cash is always vandalized -
+  /// there's nothing to steal).
+  static const double theftVsVandalismShareWithCash = 0.65;
+
+  /// Range of the machine's stored cash a successful theft takes.
+  static const double theftCashShareMin = 0.5;
+  static const double theftCashShareMax = 1.0;
   
   // ============================================================================
   // MACHINE UPGRADES

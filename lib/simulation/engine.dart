@@ -9,6 +9,7 @@ import 'models/zone.dart';
 import 'models/research.dart';
 import 'models/weather.dart';
 import 'models/pricing.dart';
+import 'models/security.dart';
 import '../state/providers.dart';
 
 /// Simulation constants
@@ -487,6 +488,12 @@ class SimulationEngine extends StateNotifier<SimulationState> {
     if (nextTime.minute == 0 && currentState.time.minute != 0) {
       updatedMachines = _processMechanics(updatedMachines);
     }
+
+    if (nextTime.minute == 0 && currentState.time.minute != 0) {
+      final securityResult = _processSecurityEvents(updatedMachines, nextTime.hour);
+      updatedMachines = securityResult.machines;
+      pendingMessages.addAll(securityResult.messages);
+    }
     var updatedWarehouse = currentState.warehouse;
     
     if (nextTime.minute == 0 && currentState.time.minute != 0) {
@@ -734,6 +741,66 @@ class SimulationEngine extends StateNotifier<SimulationState> {
     return updatedMachines;
   }
 
+  /// Step down a machine's condition by one level (never below broken).
+  MachineCondition _degradeCondition(MachineCondition condition) {
+    final nextIndex = (condition.index + 1).clamp(0, MachineCondition.values.length - 1);
+    return MachineCondition.values[nextIndex];
+  }
+
+  /// Roll theft and vandalism for every eligible machine, once per game hour.
+  ///
+  /// A targeted machine either loses a share of its uncollected cash (theft)
+  /// or drops a condition level (vandalism) - a machine with nothing in the
+  /// till is always vandalized instead, since there is nothing to steal. The
+  /// Security upgrade cuts the odds of either sharply. This is the only
+  /// consequence for leaving cash sitting uncollected in a machine: the
+  /// player's own wallet is never touched, only what has not been picked up.
+  ({List<Machine> machines, List<String> messages}) _processSecurityEvents(
+    List<Machine> machines,
+    int hour,
+  ) {
+    final messages = <String>[];
+
+    final updatedMachines = machines.map((machine) {
+      // Nothing to target on a machine that is already out of commission -
+      // it would just be vandalized into the state it's already in.
+      if (machine.isBroken || machine.isUnderMaintenance) return machine;
+
+      final chance = SecurityMath.eventChance(
+        hour: hour,
+        currentCash: machine.currentCash,
+        hasSecurityUpgrade: machine.levelSecurity > 0,
+        crimeRiskMultiplier: machine.zone.type.crimeRiskMultiplier,
+      );
+
+      if (state.random.nextDouble() >= chance) return machine;
+
+      final eventType = SecurityMath.resolveEventType(
+        currentCash: machine.currentCash,
+        roll: state.random.nextDouble(),
+      );
+
+      if (eventType == SecurityEventType.theft) {
+        final stolen = SecurityMath.theftAmount(
+          currentCash: machine.currentCash,
+          roll: state.random.nextDouble(),
+        );
+        messages.add(
+          '🚨 ${machine.name} was robbed! Lost \$${stolen.toStringAsFixed(2)} in uncollected cash',
+        );
+        return machine.copyWith(currentCash: machine.currentCash - stolen);
+      } else {
+        final newCondition = _degradeCondition(machine.condition);
+        messages.add(
+          '🔨 ${machine.name} was vandalized! Condition dropped to ${newCondition.name}',
+        );
+        return machine.copyWith(condition: newCondition);
+      }
+    }).toList();
+
+    return (machines: updatedMachines, messages: messages);
+  }
+
   /// Process purchasing agents - auto-buy stock if warehouse inventory < 50% of target
   /// Returns updated cash, warehouse, and messages
   ({double cash, Warehouse warehouse, List<String> messages}) _processPurchasingAgents(double currentCash) {
@@ -792,15 +859,21 @@ class SimulationEngine extends StateNotifier<SimulationState> {
   }
 
   /// Calculate reputation penalty based on empty machines
-  /// Decreases by 1 reputation per second (per tick) for each empty machine
-  int _calculateReputationPenalty(List<Machine> machines) {
-    int totalPenalty = 0;
+  /// Decreases by 1 reputation per second (per tick) for each empty machine,
+  /// halved for a machine with the Security upgrade (its advertised effect -
+  /// previously unimplemented, so buying it did nothing toward this claim).
+  double _calculateReputationPenalty(List<Machine> machines) {
+    double totalPenalty = 0;
     
     for (final machine in machines) {
       if (machine.isEmpty && machine.hoursEmpty >= SimulationConstants.emptyMachinePenaltyHours) {
         // Apply -1 reputation per second (per tick) for each empty machine
         // This is much slower than the previous per-hour calculation
-        totalPenalty += 1;
+        var penalty = 1.0;
+        if (machine.levelSecurity > 0) {
+          penalty *= (1.0 - AppConfig.securityUpgradeReputationPenaltyReduction);
+        }
+        totalPenalty += penalty;
       }
     }
     

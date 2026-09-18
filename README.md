@@ -32,6 +32,7 @@ Vending Machine Tycoon is an idle/management game where players:
 - **Rush Hour Events**: Special events that multiply sales rates
 - **Daily Contracts**: Three client deals posted every game morning, with cash and reputation rewards
 - **Per-Machine Pricing**: Set each product's retail price independently per machine to trade margin for volume
+- **Theft & Vandalism**: Machines risk being robbed or vandalized, especially at night and in high-crime zones - collect cash promptly or invest in Security
 
 ### Game Mechanics
 
@@ -73,6 +74,13 @@ Vending Machine Tycoon is an idle/management game where players:
 - Targets scale with the average revenue of the last 3 days and the number of machines
 - Rewards are paid automatically on completion: cash plus +15 reputation
 - An unfinished contract can be swapped once for $250
+
+#### Theft & Vandalism
+- Every game hour, each machine has a small chance of being targeted: robbed (loses a share of its uncollected cash) or vandalized (condition drops one level)
+- A machine with nothing in the till is always vandalized rather than robbed - there's nothing to steal
+- Risk rises at night (10 PM - 5 AM), with how much cash is sitting uncollected, and with the zone's own crime rate - Subway and School are the riskiest zones, Hospital and Office the safest
+- Only cash left sitting in the machine is ever at risk; cash already collected into your wallet is untouched
+- The Security System upgrade cuts the odds of either event sharply, and also halves the reputation penalty for an empty machine
 
 #### Machine Management
 - Machines can hold up to 50 items total
@@ -310,7 +318,7 @@ The game tracks:
 
 ---
 
-**Version**: 1.1.19+19  
+**Version**: 1.1.20+20  
 **Last Updated**: 2026
 
 Enjoy building your vending machine empire! 🏢💰

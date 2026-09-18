@@ -1,6 +1,20 @@
 VENDING EMPIRE - RELEASE NOTES
 ================================
 
+Version 1.1.20
+-------------
+Release Date: September 19, 2026
+## New Features
+- **Theft & Vandalism**: Machines now carry real risk, not just idle upkeep
+  - Every game hour, an eligible machine has a small chance of being targeted: robbed (loses a share of its uncollected cash) or vandalized (condition drops a level)
+  - A machine with no cash on hand is always vandalized instead of robbed - there's nothing to steal
+  - Risk rises at night (10 PM - 5 AM), with how much cash is sitting uncollected, and with the zone's own crime rate - Subway and School are the riskiest zones, Hospital and Office the safest (the same two zones that are also the most price-tolerant, so a "good" zone is good on both axes)
+  - Only cash left sitting uncollected in the machine is ever at risk; cash already banked into your wallet is untouched
+  - The Security System upgrade now actually does something: it cuts theft/vandalism odds by 65%, and also halves the reputation penalty for an empty machine - the latter was already advertised in its description but had never been implemented, so buying Security did nothing at all until now
+
+## Bug Fixes
+- **Security Upgrade Did Nothing**: The Security System upgrade was purchasable but had zero effect on the simulation - its advertised "reduces empty machine penalties" was dead code. Now implemented, alongside the new theft/vandalism protection.
+
 Version 1.1.19
 -------------
 Release Date: September 18, 2026
