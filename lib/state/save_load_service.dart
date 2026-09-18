@@ -373,11 +373,18 @@ class SaveLoadService {
           'quantity': value.quantity,
           'dayAdded': value.dayAdded,
           'allocation': value.allocation, // Save allocation for each item
+          'priceMultiplier': value.priceMultiplier, // Save player-set price for each item
         },
       )),
       'currentCash': machine.currentCash,
       'hoursSinceRestock': machine.hoursSinceRestock,
       'totalSales': machine.totalSales,
+      // Upgrade levels - previously missing here, so upgrades bought with
+      // real cash were silently lost on every save/load
+      'levelCapacity': machine.levelCapacity,
+      'levelCooling': machine.levelCooling,
+      'levelSecurity': machine.levelSecurity,
+      'levelAds': machine.levelAds,
     };
   }
 
@@ -400,12 +407,20 @@ class SaveLoadService {
             quantity: itemMap['quantity'] as int,
             dayAdded: itemMap['dayAdded'] as int,
             allocation: (itemMap['allocation'] as int?) ?? 20, // Load allocation (default to 20 for backward compatibility)
+            priceMultiplier: (itemMap['priceMultiplier'] as num?)?.toDouble() ?? 1.0, // Default to list price for old saves
           ),
         );
       }),
       currentCash: ((map['currentCash'] as num?)?.toDouble() ?? 0.0).clamp(0.0, double.infinity), // Ensure cash is never negative
       hoursSinceRestock: ((map['hoursSinceRestock'] as num?)?.toDouble() ?? 0.0).clamp(0.0, double.infinity), // Ensure hours is never negative
       totalSales: (map['totalSales'] as int?) ?? 0,
+      // Upgrade levels default to 0 for saves made before this fix - those
+      // upgrades were already lost by the bug this restores, nothing to
+      // recover for them specifically
+      levelCapacity: (map['levelCapacity'] as int?) ?? 0,
+      levelCooling: (map['levelCooling'] as int?) ?? 0,
+      levelSecurity: (map['levelSecurity'] as int?) ?? 0,
+      levelAds: (map['levelAds'] as int?) ?? 0,
     );
   }
 

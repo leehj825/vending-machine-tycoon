@@ -1,4 +1,5 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
+import '../../config.dart';
 import 'product.dart';
 import 'zone.dart';
 
@@ -22,6 +23,9 @@ abstract class InventoryItem with _$InventoryItem {
     required int dayAdded, // Game day when item was added
     @Default(0.0) double salesProgress, // Accumulator for customer interest (0.0 to 1.0+)
     @Default(20) int allocation, // User-defined target stock allocation for this product
+    /// Player-set retail price, as a multiplier of Product.basePrice.
+    /// 1.0 = list price. See PricingMath for how this affects demand.
+    @Default(AppConfig.machinePriceMultiplierDefault) double priceMultiplier,
   }) = _InventoryItem;
 
   const InventoryItem._();

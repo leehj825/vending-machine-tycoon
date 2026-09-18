@@ -1,6 +1,21 @@
 VENDING EMPIRE - RELEASE NOTES
 ================================
 
+Version 1.1.19
+-------------
+Release Date: September 18, 2026
+## New Features
+- **Per-Machine Pricing**: Every product in every machine now has its own price, set as a multiplier of list price (50%-200%)
+  - Raise the price for more margin per sale at the cost of fewer sales; lower it for more volume at thinner margin
+  - How much a price change affects demand depends on the zone: captive audiences (Hospital, Office, Subway) barely notice a markup, price-sensitive ones (School) punish it hard
+  - Every zone type has its own revenue-maximizing price - finding it is the core pricing puzzle
+  - New price control in the machine status dialog shows the effective price and a live "Demand %" indicator before you commit to a change
+  - Premium Branding research still adds its flat +10% independently, unaffected by the multiplier
+  - Saved with the game; old saves default every item to list price (100%), unchanged from prior behavior
+
+## Bug Fixes
+- **Machine Upgrades Lost on Save/Load**: Capacity, Cooling, Security and Ad Display upgrade levels were never written to save files, so upgrades bought with real cash were silently lost every time a game was saved and reloaded. Now persisted.
+
 Version 1.1.18
 -------------
 Release Date: September 17, 2026

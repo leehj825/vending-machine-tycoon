@@ -8,6 +8,7 @@ import 'models/truck.dart';
 import 'models/zone.dart';
 import 'models/research.dart';
 import 'models/weather.dart';
+import 'models/pricing.dart';
 import '../state/providers.dart';
 
 /// Simulation constants
@@ -577,8 +578,15 @@ class SimulationEngine extends StateNotifier<SimulationState> {
         final baseDemand = product.baseDemand;
         final zoneMultiplier = machine.zone.getDemandMultiplier(time.hour);
         final trafficMultiplier = machine.zone.trafficMultiplier;
+
+        // Player-set price shifts demand: a markup costs sales, a discount
+        // buys them, scaled by how price-sensitive this zone type is.
+        final priceDemandFactor = PricingMath.demandFactor(
+          item.priceMultiplier,
+          machine.zone.type.priceElasticity,
+        );
         
-        final saleChancePerHour = baseDemand * zoneMultiplier * trafficMultiplier * reputationMultiplier * rushMultiplier;
+        final saleChancePerHour = baseDemand * zoneMultiplier * trafficMultiplier * reputationMultiplier * rushMultiplier * priceDemandFactor;
         final saleChance = saleChancePerHour / SimulationConstants.ticksPerHour;
         
         final clampedChance = saleChance.clamp(0.0, 1.0);
@@ -593,11 +601,15 @@ class SimulationEngine extends StateNotifier<SimulationState> {
             salesProgress: remainingProgress,
           );
 
-          // Apply Premium Branding price increase (10%)
-          double price = product.basePrice;
-          if (hasPremiumBranding) {
-            price *= 1.10;
-          }
+          // Price charged is the list price scaled by the player's multiplier,
+          // plus Premium Branding's flat +10% (applied on top, not through
+          // elasticity, since that research is explicitly "without losing
+          // customers").
+          final price = PricingMath.effectivePrice(
+            basePrice: product.basePrice,
+            priceMultiplier: item.priceMultiplier,
+            flatBonusMultiplier: hasPremiumBranding ? 1.10 : 1.0,
+          );
 
           updatedCash += price;
           salesCount++;

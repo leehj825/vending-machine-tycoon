@@ -10,6 +10,7 @@ import '../simulation/engine.dart';
 import '../simulation/models/product.dart';
 import '../simulation/models/zone.dart';
 import '../simulation/models/machine.dart';
+import '../simulation/models/pricing.dart';
 import '../simulation/models/truck.dart';
 import '../simulation/models/contract.dart';
 import '../simulation/models/research.dart';
@@ -1332,6 +1333,44 @@ class GameController extends StateNotifier<GlobalGameState> {
         quantity: 0,
         dayAdded: simulationEngine.state.time.day,
         allocation: newAllocation,
+      );
+    }
+
+    final updatedMachine = machine.copyWith(inventory: updatedInventory);
+    updateMachine(updatedMachine);
+  }
+
+  /// Update a machine's retail price for one product, as a multiplier of
+  /// list price. Clamped to the range the UI allows.
+  void updateMachinePrice(String machineId, Product product, double newMultiplier) {
+    final machineIndex = state.machines.indexWhere((m) => m.id == machineId);
+    if (machineIndex == -1) {
+      state = state.addLogMessage('Machine not found');
+      return;
+    }
+
+    final machine = state.machines[machineIndex];
+    final currentItem = machine.inventory[product];
+    // Snap to the step grid before clamping: repeated +/- taps on a double
+    // accumulate floating point drift (1.2 becomes 1.2000000000000002 etc.),
+    // which is harmless for the math but would show up as noise if ever
+    // displayed with more than 2 decimal places.
+    final step = AppConfig.machinePriceMultiplierStep;
+    final snapped = (newMultiplier / step).round() * step;
+    final clamped = PricingMath.clampMultiplier(snapped);
+
+    final updatedInventory = Map<Product, InventoryItem>.from(machine.inventory);
+    if (currentItem != null) {
+      updatedInventory[product] = currentItem.copyWith(priceMultiplier: clamped);
+    } else {
+      // Create a placeholder item so the price sticks even before any stock
+      // has been allocated
+      updatedInventory[product] = InventoryItem(
+        product: product,
+        quantity: 0,
+        dayAdded: simulationEngine.state.time.day,
+        allocation: 0,
+        priceMultiplier: clamped,
       );
     }
 

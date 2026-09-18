@@ -14,6 +14,7 @@ import '../../simulation/models/truck.dart' as sim;
 import '../../simulation/models/machine.dart' as sim;
 import '../../simulation/models/product.dart';
 import '../../simulation/models/weather.dart';
+import '../../simulation/models/pricing.dart';
 import '../../config.dart';
 import '../theme/zone_ui.dart';
 import '../utils/screen_utils.dart';
@@ -4274,6 +4275,8 @@ class _MachineStatusSection extends ConsumerWidget {
                   ],
                 ),
                 SizedBox(height: dialogWidth * AppConfig.machineStatusDialogStockItemPaddingFactor * 0.5),
+                _buildPriceControl(context, ref, machine, product, item, dialogWidth),
+                SizedBox(height: dialogWidth * AppConfig.machineStatusDialogStockItemPaddingFactor * 0.5),
                 // Customer Interest Progress Bar (only show if item has quantity > 0)
                 if (item.quantity > 0)
                 LinearProgressIndicator(
@@ -4368,6 +4371,78 @@ class _MachineStatusSection extends ConsumerWidget {
           ),
         ),
         // Retrieve cash button removed - cash collection is now done via Open Machine dialog
+      ],
+    );
+  }
+
+  /// Price control for one product in one machine: a -/+ stepper on the
+  /// player's price multiplier, the resulting retail price, and a live
+  /// demand indicator so the tradeoff (higher price, fewer sales) is visible
+  /// before committing to it.
+  Widget _buildPriceControl(
+    BuildContext context,
+    WidgetRef ref,
+    sim.Machine machine,
+    Product product,
+    sim.InventoryItem item,
+    double dialogWidth,
+  ) {
+    final elasticity = machine.zone.type.priceElasticity;
+    final demandFactor = PricingMath.demandFactor(item.priceMultiplier, elasticity);
+    final effectivePrice = PricingMath.effectivePrice(
+      basePrice: product.basePrice,
+      priceMultiplier: item.priceMultiplier,
+    );
+    final percentOfList = (item.priceMultiplier * 100).round();
+    final demandPercent = (demandFactor * 100).round();
+    final demandColor = demandFactor >= 1.0
+        ? Colors.green.shade700
+        : demandFactor >= 0.7
+            ? Colors.orange.shade800
+            : Colors.red.shade700;
+
+    void setMultiplier(double multiplier) {
+      final controller = ref.read(gameControllerProvider.notifier);
+      controller.updateMachinePrice(machine.id, product, multiplier);
+    }
+
+    return Row(
+      children: [
+        Expanded(
+          child: RichText(
+            text: TextSpan(
+              style: TextStyle(
+                fontSize: dialogWidth * AppConfig.machineStatusDialogStockItemFontSizeFactor * 0.85,
+                color: Colors.grey[800],
+              ),
+              children: [
+                TextSpan(
+                  text: '\$${effectivePrice.toStringAsFixed(2)} ',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                TextSpan(text: '($percentOfList% of list) · '),
+                TextSpan(
+                  text: 'Demand $demandPercent%',
+                  style: TextStyle(color: demandColor, fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+          ),
+        ),
+        IconButton(
+          icon: Icon(Icons.remove_circle_outline, size: dialogWidth * 0.045),
+          tooltip: 'Lower price',
+          onPressed: () => setMultiplier(item.priceMultiplier - AppConfig.machinePriceMultiplierStep),
+          padding: EdgeInsets.all(dialogWidth * 0.008),
+          constraints: const BoxConstraints(),
+        ),
+        IconButton(
+          icon: Icon(Icons.add_circle_outline, size: dialogWidth * 0.045),
+          tooltip: 'Raise price',
+          onPressed: () => setMultiplier(item.priceMultiplier + AppConfig.machinePriceMultiplierStep),
+          padding: EdgeInsets.all(dialogWidth * 0.008),
+          constraints: const BoxConstraints(),
+        ),
       ],
     );
   }

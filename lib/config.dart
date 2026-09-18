@@ -338,6 +338,23 @@ class AppConfig {
   /// Smallest unit goals, so contracts never ask for a trivial amount
   static const int contractMinProductUnits = 5;
   static const int contractMinTotalUnits = 15;
+
+  // ============================================================================
+  // MACHINE PRICING
+  // ============================================================================
+
+  /// Range a player can set a machine's per-product price multiplier to.
+  /// 1.0 = list price (product.basePrice), unchanged from the old fixed-price
+  /// behavior.
+  static const double machinePriceMultiplierMin = 0.5; // 50% off list price
+  static const double machinePriceMultiplierMax = 2.0; // Double list price
+  static const double machinePriceMultiplierStep = 0.1; // Per tap in the UI
+  static const double machinePriceMultiplierDefault = 1.0;
+
+  /// Bounds on how far a price change can push demand. Overpricing can never
+  /// fully kill demand; underpricing can't create unbounded volume.
+  static const double priceDemandFactorMin = 0.15;
+  static const double priceDemandFactorMax = 1.6;
   
   // ============================================================================
   // MACHINE UPGRADES
