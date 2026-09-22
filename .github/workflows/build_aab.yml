@@ -28,9 +28,9 @@ jobs:
       - name: Decode Keystore
         env:
           KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
-        # Saves the keystore directly into the android/app directory where Flutter expects it
-        run: echo $KEYSTORE_B64 | base64 --decode > android/app/release.jks
-
+        # Updated: Saves the keystore to android/release.jks to match Gradle's search path
+        run: echo $KEYSTORE_B64 | base64 --decode > android/release.jks
+  
       - name: Create key.properties for signing
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
