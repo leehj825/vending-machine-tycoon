@@ -1306,6 +1306,23 @@ class GameController extends StateNotifier<GlobalGameState> {
     simulationEngine.updateMachine(updatedMachine);
   }
 
+  /// Collect all cash sitting in a machine into the player's wallet. Returns
+  /// the amount collected (0 if the machine wasn't found or had none), so
+  /// callers can show a toast/animation without re-reading state.
+  double collectMachineCash(String machineId) {
+    final machineIndex = state.machines.indexWhere((m) => m.id == machineId);
+    if (machineIndex == -1) return 0.0;
+
+    final machine = state.machines[machineIndex];
+    final cashToCollect = machine.currentCash;
+    if (cashToCollect <= 0) return 0.0;
+
+    updateMachine(machine.copyWith(currentCash: 0.0));
+    updateCash(state.cash + cashToCollect);
+
+    return cashToCollect;
+  }
+
   /// Update machine inventory item allocation
   void updateMachineAllocation(String machineId, Product product, int newAllocation) {
     final machineIndex = state.machines.indexWhere((m) => m.id == machineId);

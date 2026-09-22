@@ -97,6 +97,11 @@ Vending Machine Tycoon is an idle/management game where players:
 - A Counter-Attack campaign pushes their presence back, at a cash cost that rises with how entrenched they are - but they always start creeping back in afterward, so it's a recurring decision, not a one-time fix
 - Tracked per zone type in the new Rival Company screen, reachable from HQ
 
+#### Quick Collect
+- Tapping a machine on the City map that has cash waiting collects it immediately - no dialog needed
+- A machine with nothing to collect still opens its status popup on tap, since there's something else worth checking (stock, condition, price)
+- Opening the machine itself (via its status popup, or the "fun" tap-to-collect animation inside the machine interior) still works exactly as before
+
 #### Machine Management
 - Machines can hold up to 50 items total
 - Maximum 20 items per product type
@@ -333,7 +338,7 @@ The game tracks:
 
 ---
 
-**Version**: 1.1.22+22  
+**Version**: 1.1.23+23  
 **Last Updated**: 2026
 
 Enjoy building your vending machine empire! 🏢💰

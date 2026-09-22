@@ -17,6 +17,7 @@ import '../../simulation/models/weather.dart';
 import '../../simulation/models/pricing.dart';
 import '../../simulation/models/district.dart';
 import '../../config.dart';
+import '../../services/sound_service.dart';
 import '../theme/zone_ui.dart';
 import '../utils/screen_utils.dart';
 import '../widgets/machine_interior_dialog.dart';
@@ -3620,7 +3621,29 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
       }
       
       if (existingMachine != null) {
-        // Machine exists - show status popup
+        // Machine exists and has cash waiting - collect it right from the
+        // map, no dialog needed. This is the fast path for the tedious
+        // "open every machine just to grab cash" loop; a machine with
+        // nothing to collect still opens the status popup below, since
+        // there's something else worth checking (stock, condition, price).
+        if (existingMachine.currentCash > 0) {
+          final collected = controller.collectMachineCash(existingMachine.id);
+          if (collected > 0) {
+            SoundService().playCoinCollectSound();
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('💰 Collected \$${collected.toStringAsFixed(2)} from ${existingMachine.name}'),
+                  duration: AppConfig.snackbarDurationShort,
+                  backgroundColor: Colors.green.shade700,
+                ),
+              );
+            }
+          }
+          return;
+        }
+
+        // No cash waiting - show status popup instead
         if (context.mounted) {
           _showMachineView(context, existingMachine);
         }

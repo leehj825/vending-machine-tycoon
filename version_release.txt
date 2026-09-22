@@ -1,6 +1,15 @@
 VENDING EMPIRE - RELEASE NOTES
 ================================
 
+Version 1.1.23
+-------------
+Release Date: September 22, 2026
+## Improvements
+- **Quick Collect from the Map**: Tapping a machine on the City map that has cash waiting now collects it immediately, with a coin sound and a toast showing the amount - no need to open the machine's dialog just to grab cash
+  - A machine with nothing to collect still opens its status popup on tap, since there's something else worth checking (stock, condition, price)
+  - Collecting cash from inside the machine (tapping the bill validator/coin bin in the interior view) still works exactly as before - this is a faster option alongside it, not a replacement
+  - Removes the single biggest source of "tedious" clicking reported from regular play: needing to open every machine one at a time just to bank its cash
+
 Version 1.1.22
 -------------
 Release Date: September 22, 2026

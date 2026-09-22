@@ -159,34 +159,13 @@ class _MachineInteriorDialogState extends ConsumerState<MachineInteriorDialog> w
     if (!_hasCash) return;
 
     final controller = ref.read(gameControllerProvider.notifier);
-    final machines = ref.read(machinesProvider);
-    final machineIndex = machines.indexWhere((m) => m.id == _currentMachine.id);
-    
-    if (machineIndex == -1) return;
-
-    final machine = machines[machineIndex];
-    final cashToCollect = machine.currentCash;
-
+    final cashToCollect = controller.collectMachineCash(_currentMachine.id);
     if (cashToCollect <= 0) return;
-
-    // Update machine (set cash to 0, preserve maintenance status)
-    final updatedMachine = machine.copyWith(
-      currentCash: 0.0,
-      isUnderMaintenance: machine.isUnderMaintenance, // Preserve maintenance status
-    );
-
-    // Add cash to player's wallet
-    final currentCash = ref.read(gameStateProvider).cash;
-    final newCash = currentCash + cashToCollect;
-
-    // Update state via controller
-    controller.updateMachine(updatedMachine);
-    controller.updateCash(newCash);
 
     // Update local state to reflect cash collection
     setState(() {
       _hasCash = false;
-      _currentMachine = updatedMachine;
+      _currentMachine = _currentMachine.copyWith(currentCash: 0.0);
     });
     
     // Hide tutorial if it was showing
