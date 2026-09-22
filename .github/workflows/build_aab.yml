@@ -4,18 +4,18 @@ on:
   push:
     branches:
       - '**'
-  workflow_dispatch: # Allows you to trigger this manually from the Actions tab
+  workflow_dispatch:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest # (Optional: Change this to ubuntu-24.04 if you want to silence the OS notice)
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7 # BUMPED: Fixes Node 20 warning
 
       - name: Set up Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6 # BUMPED: Fixes Node 20 and setup-java warnings
         with:
           distribution: 'zulu'
           java-version: '17'
@@ -28,15 +28,13 @@ jobs:
       - name: Decode Keystore
         env:
           KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
-        # Updated: Saves the keystore to android/release.jks to match Gradle's search path
         run: echo $KEYSTORE_B64 | base64 --decode > android/release.jks
-  
+
       - name: Create key.properties for signing
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        # Creates the standard Flutter configuration file to securely pass passwords to Gradle
         run: |
           cat << EOF > android/key.properties
           storePassword=$KEYSTORE_PASSWORD
@@ -58,8 +56,7 @@ jobs:
         run: flutter build appbundle --release
 
       - name: Upload AAB Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7 # BUMPED: Fixes Node 20 warning
         with:
           name: release-aab
-          # The exact path where Flutter outputs the finished app bundle
           path: build/app/outputs/bundle/release/app-release.aab
