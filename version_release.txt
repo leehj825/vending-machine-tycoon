@@ -1,6 +1,15 @@
 VENDING EMPIRE - RELEASE NOTES
 ================================
 
+Version 1.1.24
+-------------
+Release Date: September 22, 2026
+## Improvements
+- **Money Icon for Quick Collect**: Replaced the 1.1.23 "tap the building to collect" behavior with a dedicated floating money icon
+  - A machine with cash waiting now shows a small pulsing gold coin icon above it on the City map - tap that to collect instantly, with a coin sound and a toast showing the amount
+  - Tapping the building itself always opens its status popup now, whether or not there's cash waiting, so that tap stays predictable and the two actions (check status vs. grab cash) are visually distinct
+  - Collecting from inside the machine (the bill validator/coin bin in its interior view) is unaffected
+
 Version 1.1.23
 -------------
 Release Date: September 22, 2026

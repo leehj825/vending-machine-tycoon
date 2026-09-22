@@ -98,9 +98,9 @@ Vending Machine Tycoon is an idle/management game where players:
 - Tracked per zone type in the new Rival Company screen, reachable from HQ
 
 #### Quick Collect
-- Tapping a machine on the City map that has cash waiting collects it immediately - no dialog needed
-- A machine with nothing to collect still opens its status popup on tap, since there's something else worth checking (stock, condition, price)
-- Opening the machine itself (via its status popup, or the "fun" tap-to-collect animation inside the machine interior) still works exactly as before
+- A machine with cash waiting shows a small pulsing money icon floating above it on the City map - tap it to collect instantly, no dialog needed
+- Tapping the building itself always opens its status popup instead, whether or not there's cash waiting, since that's where stock, condition and price live
+- Collecting from inside the machine (tapping the bill validator/coin bin in its interior view) still works exactly as before - the map icon is a faster option alongside it
 
 #### Machine Management
 - Machines can hold up to 50 items total
@@ -338,7 +338,7 @@ The game tracks:
 
 ---
 
-**Version**: 1.1.23+23  
+**Version**: 1.1.24+24  
 **Last Updated**: 2026
 
 Enjoy building your vending machine empire! 🏢💰

@@ -2151,6 +2151,14 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
       );
     }
 
+    // Floating money icon: only shown once the machine has cash waiting.
+    // Sits above the status indicator's slot (whether or not one is showing)
+    // so the two never overlap. Tapping it collects instantly, without
+    // opening any dialog - tapping the building itself always opens the
+    // status popup instead (see _handleBuildingTap).
+    final moneyIconSize = tileWidth * 0.16;
+    final hasCashWaiting = machine.currentCash > 0;
+
     return Stack(
       clipBehavior: Clip.none,
       children: [
@@ -2160,6 +2168,17 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
             left: positionedX + (tileWidth / 2) - (indicatorSize),
             top: positionedY - (indicatorSize *2.0),
             child: statusIndicator,
+          ),
+        if (hasCashWaiting)
+          Positioned(
+            left: positionedX + (tileWidth / 2) - (moneyIconSize / 2),
+            top: positionedY - (indicatorSize * 2.0) - moneyIconSize - (tileHeight * 0.03),
+            width: moneyIconSize,
+            height: moneyIconSize,
+            child: _CashCollectButton(
+              size: moneyIconSize,
+              onTap: () => _collectMachineCashFromMap(machine),
+            ),
           ),
         // Machine button at bottom center of tile
         Positioned(
@@ -3593,6 +3612,27 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
     return ((a.x - b.x).abs() + (a.y - b.y).abs()).toDouble();
   }
 
+  /// Quick-collect a machine's waiting cash straight from the map, without
+  /// opening any dialog. Triggered by tapping the floating money icon that
+  /// appears above a machine once it has cash - tapping the building itself
+  /// still always opens the status popup (see _handleBuildingTap).
+  void _collectMachineCashFromMap(sim.Machine machine) {
+    final controller = ref.read(gameControllerProvider.notifier);
+    final collected = controller.collectMachineCash(machine.id);
+    if (collected <= 0) return;
+
+    SoundService().playCoinCollectSound();
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('💰 Collected \$${collected.toStringAsFixed(2)} from ${machine.name}'),
+          duration: AppConfig.snackbarDurationShort,
+          backgroundColor: Colors.green.shade700,
+        ),
+      );
+    }
+  }
+
   void _handleBuildingTap(int gridX, int gridY, TileType tileType) {
     try {
       final zoneX = (gridX + 1).toDouble() + 0.5;
@@ -3621,29 +3661,10 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
       }
       
       if (existingMachine != null) {
-        // Machine exists and has cash waiting - collect it right from the
-        // map, no dialog needed. This is the fast path for the tedious
-        // "open every machine just to grab cash" loop; a machine with
-        // nothing to collect still opens the status popup below, since
-        // there's something else worth checking (stock, condition, price).
-        if (existingMachine.currentCash > 0) {
-          final collected = controller.collectMachineCash(existingMachine.id);
-          if (collected > 0) {
-            SoundService().playCoinCollectSound();
-            if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('💰 Collected \$${collected.toStringAsFixed(2)} from ${existingMachine.name}'),
-                  duration: AppConfig.snackbarDurationShort,
-                  backgroundColor: Colors.green.shade700,
-                ),
-              );
-            }
-          }
-          return;
-        }
-
-        // No cash waiting - show status popup instead
+        // Machine exists - tapping the building itself always opens the
+        // status popup. Quick cash collection lives on the floating money
+        // icon rendered above the machine instead (see _buildGameMachine),
+        // so the building tap stays predictable regardless of cash state.
         if (context.mounted) {
           _showMachineView(context, existingMachine);
         }
@@ -4598,6 +4619,86 @@ class _PurchaseButtonState extends State<_PurchaseButton> {
                 size: widget.size * 0.75,
               ),
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Floating money icon shown above a machine once it has cash waiting.
+/// Tapping it collects instantly; a gentle continuous pulse draws the eye to
+/// it without needing any new art (Material icon + shadow only).
+class _CashCollectButton extends StatefulWidget {
+  final VoidCallback onTap;
+  final double size;
+
+  const _CashCollectButton({
+    required this.onTap,
+    required this.size,
+  });
+
+  @override
+  State<_CashCollectButton> createState() => _CashCollectButtonState();
+}
+
+class _CashCollectButtonState extends State<_CashCollectButton> with SingleTickerProviderStateMixin {
+  late final AnimationController _pulseController;
+  late final Animation<double> _pulseAnimation;
+  Offset? _pointerDownPosition;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    )..repeat(reverse: true);
+    _pulseAnimation = Tween<double>(begin: 0.92, end: 1.08).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Listener(
+      onPointerDown: (event) => _pointerDownPosition = event.position,
+      onPointerUp: (event) {
+        if (_pointerDownPosition != null) {
+          final distance = (event.position - _pointerDownPosition!).distance;
+          if (distance < 10.0) {
+            widget.onTap();
+          }
+        }
+        _pointerDownPosition = null;
+      },
+      onPointerCancel: (_) => _pointerDownPosition = null,
+      behavior: HitTestBehavior.opaque,
+      child: ScaleTransition(
+        scale: _pulseAnimation,
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.amber.shade600,
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white, width: ScreenUtils.relativeSize(context, 0.004)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.35),
+                blurRadius: ScreenUtils.relativeSize(context, 0.008),
+                offset: Offset(0, ScreenUtils.relativeSize(context, 0.003)),
+              ),
+            ],
+          ),
+          child: Icon(
+            Icons.attach_money,
+            color: Colors.white,
+            size: widget.size * 0.7,
           ),
         ),
       ),
