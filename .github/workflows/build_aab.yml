@@ -1,53 +1,65 @@
-name: Build and Sign AAB
+name: Build and Sign Android AAB
 
 on:
-  workflow_dispatch: # Allows you to manually trigger the build from the GitHub UI
   push:
     branches:
-      - main
-      - master
+      - '**'
+  workflow_dispatch: # Allows you to trigger this manually from the Actions tab
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Java JDK
+      - name: Set up Java
         uses: actions/setup-java@v4
         with:
-          java-version: '17' # Change to '11' or '21' if your project requires an older/newer JDK
-          distribution: 'temurin'
-          cache: 'gradle'
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
 
       - name: Decode Keystore
         env:
           KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
-        # Decodes the base64 string and saves it as a temporary file in the build runner
-        run: echo $KEYSTORE_B64 | base64 --decode > release.jks
+        # Saves the keystore directly into the android/app directory where Flutter expects it
+        run: echo $KEYSTORE_B64 | base64 --decode > android/app/release.jks
 
-      - name: Make Gradle executable
-        run: chmod +x ./gradlew
-
-      - name: Build Release AAB
+      - name: Create key.properties for signing
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        # Compiles the AAB and overrides the signing config to use your GitHub Secrets
+        # Creates the standard Flutter configuration file to securely pass passwords to Gradle
         run: |
-          ./gradlew bundleRelease \
-            -Pandroid.injected.signing.store.file=${{ github.workspace }}/release.jks \
-            -Pandroid.injected.signing.store.password=$KEYSTORE_PASSWORD \
-            -Pandroid.injected.signing.key.alias=$KEY_ALIAS \
-            -Pandroid.injected.signing.key.password=$KEY_PASSWORD
+          cat << EOF > android/key.properties
+          storePassword=$KEYSTORE_PASSWORD
+          keyPassword=$KEY_PASSWORD
+          keyAlias=$KEY_ALIAS
+          storeFile=release.jks
+          EOF
+
+      - name: Clean project
+        run: flutter clean
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Run tests
+        run: flutter test test/contract_test.dart test/pricing_test.dart test/security_test.dart test/rival_test.dart
+
+      - name: Build Release AAB
+        run: flutter build appbundle --release
 
       - name: Upload AAB Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: signed-app-bundle
-          # The exact path where Gradle outputs the AAB. 
-          # Note: If using React Native, change to: android/app/build/outputs/bundle/release/*.aab
-          path: app/build/outputs/bundle/release/*.aab
+          name: release-aab
+          # The exact path where Flutter outputs the finished app bundle
+          path: build/app/outputs/bundle/release/app-release.aab
