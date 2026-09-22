@@ -30,6 +30,11 @@ Vending Machine Tycoon is an idle/management game where players:
 - **Route Optimization**: Plan efficient delivery routes with distance calculations
 - **Reputation System**: Gain reputation from sales, lose it from empty machines
 - **Rush Hour Events**: Special events that multiply sales rates
+- **Daily Contracts**: Three client deals posted every game morning, with cash and reputation rewards
+- **Per-Machine Pricing**: Set each product's retail price independently per machine to trade margin for volume
+- **Theft & Vandalism**: Machines risk being robbed or vandalized, especially at night and in high-crime zones - collect cash promptly or invest in Security
+- **Rival Company**: A competitor grows into zone types where you're thin on machines, cutting your sales there - push them back with a counter-attack campaign
+- **Unlimited Machines**: Buy as many machines as the map has building tiles for - the only limit is your cash
 
 ### Game Mechanics
 
@@ -53,6 +58,43 @@ Vending Machine Tycoon is an idle/management game where players:
 - **Loss**: -5 reputation per hour per empty machine (after 4-hour grace period)
 - **Bonus**: +5% sales rate per 100 reputation (max +50% at 1000 reputation)
 - Starting reputation: 100
+
+#### Machine Pricing
+- Each product in each machine has its own price, set as a multiplier of list price (50% to 200%)
+- Raising the price increases margin per sale but reduces how often that product sells
+- Lowering the price does the opposite: more volume, thinner margin per unit
+- How much a price change affects demand depends on the zone type - captive audiences (Hospital, Office) barely notice a markup, price-sensitive ones (School) punish it hard
+- Every zone type has a revenue-maximizing price; finding it is the core pricing puzzle
+- Premium Branding research still adds its flat +10% on top, independent of this multiplier
+
+#### Daily Contracts
+- Three contracts are offered each game morning and expire when the next day's set is posted
+- Goal types:
+  - **Supply Deal**: sell N units of a specific product today
+  - **Revenue Target**: earn $N from sales today
+  - **Volume Deal**: sell N items across all machines today
+- Targets scale with the average revenue of the last 3 days and the number of machines
+- Rewards are paid automatically on completion: cash plus +15 reputation
+- An unfinished contract can be swapped once for $250
+
+#### Theft & Vandalism
+- Every game hour, each machine has a small chance of being targeted: robbed (loses a share of its uncollected cash) or vandalized (condition drops one level)
+- A machine with nothing in the till is always vandalized rather than robbed - there's nothing to steal
+- Risk rises at night (10 PM - 5 AM), with how much cash is sitting uncollected, and with the zone's own crime rate - Subway and School are the riskiest zones, Hospital and Office the safest
+- Only cash left sitting in the machine is ever at risk; cash already collected into your wallet is untouched
+- The Security System upgrade cuts the odds of either event sharply, and also halves the reputation penalty for an empty machine
+
+#### Rival Company
+- A competing vending company is chasing the same customers, one zone type at a time
+- Every game day, their presence in a zone type grows toward a cap - fastest where you have few or no machines there (an uncontested market), slower where you're already established
+- A more entrenched rival cuts your sale chance in that zone type, up to 45% at their strongest
+- A Counter-Attack campaign pushes their presence back, at a cash cost that rises with how entrenched they are - but they always start creeping back in afterward, so it's a recurring decision, not a one-time fix
+- Tracked per zone type in the new Rival Company screen, reachable from HQ
+
+#### Quick Collect
+- A machine with cash waiting shows a small pulsing money icon floating above it on the City map - tap it to collect instantly, no dialog needed
+- Tapping the building itself always opens its status popup instead, whether or not there's cash waiting, since that's where stock, condition and price live
+- Collecting from inside the machine (tapping the bill validator/coin bin in its interior view) still works exactly as before - the map icon is a faster option alongside it
 
 #### Machine Management
 - Machines can hold up to 50 items total
@@ -290,7 +332,7 @@ The game tracks:
 
 ---
 
-**Version**: 1.1.0+2  
-**Last Updated**: 2024
+**Version**: 1.1.26+26  
+**Last Updated**: 2026
 
 Enjoy building your vending machine empire! 🏢💰

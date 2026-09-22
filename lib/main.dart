@@ -75,21 +75,22 @@ class _VendingMachineTycoonAppState extends State<VendingMachineTycoonApp> with 
     
     switch (state) {
       case AppLifecycleState.paused:
+      case AppLifecycleState.hidden:
+      case AppLifecycleState.detached:
+        // The app is actually in the background (switched away, screen off or
+        // being terminated) - stop our music so it doesn't play on unseen.
+        soundService.pauseBackgroundMusic(isAppBackgrounding: true);
+        break;
       case AppLifecycleState.inactive:
-        // App is going to background or becoming inactive
-        // Pause music to save battery and be respectful of other apps
-        soundService.pauseBackgroundMusic();
+        // Transient: a notification shade, a permission dialog, or another
+        // app's floating window (e.g. YouTube picture-in-picture) overlapping
+        // the game. The game is still on screen, so keep playing - pausing
+        // here would cut the music every time something briefly overlaps.
         break;
       case AppLifecycleState.resumed:
         // App is coming back to foreground
         // Resume music if it was playing
         soundService.resumeBackgroundMusic();
-        break;
-      case AppLifecycleState.detached:
-      case AppLifecycleState.hidden:
-        // App is being terminated or hidden
-        // Pause music
-        soundService.pauseBackgroundMusic();
         break;
     }
   }

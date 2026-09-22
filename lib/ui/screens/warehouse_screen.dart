@@ -87,12 +87,7 @@ class _WarehouseScreenState extends ConsumerState<WarehouseScreen> with TickerPr
           content: Text(
             'No trucks available',
             style: TextStyle(
-              fontSize: ScreenUtils.relativeFontSize(
-                context,
-                AppConfig.fontSizeFactorNormal,
-                min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-              ),
+              fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
             ),
           ),
         ),
@@ -140,12 +135,7 @@ class _WarehouseScreenState extends ConsumerState<WarehouseScreen> with TickerPr
                   Text(
                     'Warehouse Status',
                     style: TextStyle(
-                      fontSize: ScreenUtils.relativeFontSize(
-                        context,
-                        AppConfig.fontSizeFactorLarge,
-                        min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                        max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                      ),
+                      fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorLarge),
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -160,12 +150,7 @@ class _WarehouseScreenState extends ConsumerState<WarehouseScreen> with TickerPr
                             Text(
                               'Capacity: $currentTotal / $maxCapacity items',
                               style: TextStyle(
-                                fontSize: ScreenUtils.relativeFontSize(
-                                  context,
-                                  AppConfig.fontSizeFactorNormal,
-                                  min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                                  max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                                ),
+                                fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
                               ),
                             ),
                             SizedBox(height: ScreenUtils.relativeSize(context, AppConfig.spacingFactorMedium)),
@@ -194,22 +179,12 @@ class _WarehouseScreenState extends ConsumerState<WarehouseScreen> with TickerPr
                       onPressed: _showLoadTruckDialog,
                       icon: Icon(
                         Icons.local_shipping,
-                        size: ScreenUtils.relativeSizeClamped(
-                          context,
-                          0.06,
-                          min: ScreenUtils.getSmallerDimension(context) * 0.04,
-                          max: ScreenUtils.getSmallerDimension(context) * 0.08,
-                        ),
+                        size: ScreenUtils.relativeSizeClamped(context, 0.06),
                       ),
                       label: Text(
                         'Load Truck',
                         style: TextStyle(
-                          fontSize: ScreenUtils.relativeFontSize(
-                            context,
-                            AppConfig.fontSizeFactorNormal,
-                            min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                            max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                          ),
+                          fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -226,12 +201,7 @@ class _WarehouseScreenState extends ConsumerState<WarehouseScreen> with TickerPr
                     Text(
                       'Current Stock',
                       style: TextStyle(
-                        fontSize: ScreenUtils.relativeFontSize(
-                          context,
-                          AppConfig.fontSizeFactorLarge,
-                          min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                          max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                        ),
+                        fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorLarge),
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -244,12 +214,7 @@ class _WarehouseScreenState extends ConsumerState<WarehouseScreen> with TickerPr
                           label: Text(
                             '${entry.key.name}: ${entry.value}',
                             style: TextStyle(
-                              fontSize: ScreenUtils.relativeFontSize(
-                                context,
-                                AppConfig.fontSizeFactorSmall,
-                                min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                                max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                              ),
+                              fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorSmall),
                             ),
                           ),
                           backgroundColor:
@@ -268,23 +233,14 @@ class _WarehouseScreenState extends ConsumerState<WarehouseScreen> with TickerPr
                         children: [
                           Icon(
                             Icons.inventory_2_outlined,
-                            size: ScreenUtils.relativeSizeClamped(
-                              context,
-                              0.08, // Match dashboard icon size
-                              min: ScreenUtils.getSmallerDimension(context) * 0.06,
-                              max: ScreenUtils.getSmallerDimension(context) * 0.12,
-                            ),
+                            size: ScreenUtils.relativeSizeClamped(context, 0.08, // Match dashboard icon size
+                              min: ScreenUtils.getSmallerDimension(context) * 0.06),
                           ),
                           SizedBox(width: ScreenUtils.relativeSize(context, 0.01)),
                           Text(
                             'Warehouse is empty',
                             style: TextStyle(
-                              fontSize: ScreenUtils.relativeFontSize(
-                                context,
-                                AppConfig.fontSizeFactorNormal,
-                                min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                                max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                              ),
+                              fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
                             ),
                           ),
                         ],
@@ -319,24 +275,14 @@ class _WarehouseScreenState extends ConsumerState<WarehouseScreen> with TickerPr
                         Text(
                           'Daily Prices',
                           style: TextStyle(
-                            fontSize: ScreenUtils.relativeFontSize(
-                              context,
-                              AppConfig.fontSizeFactorLarge,
-                              min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                              max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                            ),
+                            fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorLarge),
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                         Text(
                           'Prices update automatically',
                           style: TextStyle(
-                            fontSize: ScreenUtils.relativeFontSize(
-                              context,
-                              AppConfig.fontSizeFactorNormal,
-                              min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                              max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                            ),
+                            fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
                             color: Colors.grey[600],
                           ),
                         ),
@@ -352,12 +298,7 @@ class _WarehouseScreenState extends ConsumerState<WarehouseScreen> with TickerPr
                           content: Text(
                             'Prices update automatically',
                             style: TextStyle(
-                              fontSize: ScreenUtils.relativeFontSize(
-                                context,
-                                AppConfig.fontSizeFactorNormal,
-                                min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                                max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                              ),
+                              fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
                             ),
                           ),
                         ),
@@ -407,12 +348,7 @@ class _WarehouseScreenState extends ConsumerState<WarehouseScreen> with TickerPr
                         'Tap product cards to buy items for your warehouse!',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: ScreenUtils.relativeFontSize(
-                            context,
-                            AppConfig.fontSizeFactorSmall,
-                            min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                            max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                          ),
+                          fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorSmall),
                           fontWeight: FontWeight.bold,
                           shadows: [
                             Shadow(
@@ -510,12 +446,7 @@ class _WarehouseScreenState extends ConsumerState<WarehouseScreen> with TickerPr
                   child: Text(
                     'Hire Purchasing Agents in HQ to enable auto-buying',
                     style: TextStyle(
-                      fontSize: ScreenUtils.relativeFontSize(
-                        context,
-                        AppConfig.fontSizeFactorSmall,
-                        min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                        max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                      ),
+                      fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorSmall),
                       color: Colors.grey.shade600,
                     ),
                   ),
@@ -543,21 +474,11 @@ class _WarehouseScreenState extends ConsumerState<WarehouseScreen> with TickerPr
             right: ScreenUtils.relativeSize(context, AppConfig.spacingFactorMedium),
             bottom: ScreenUtils.relativeSize(context, AppConfig.spacingFactorMedium),
           ),
-          leading: Icon(Icons.shopping_cart, color: Colors.purple.shade700, size: ScreenUtils.relativeSizeClamped(
-            context,
-            0.04,
-            min: ScreenUtils.getSmallerDimension(context) * 0.03,
-            max: ScreenUtils.getSmallerDimension(context) * 0.05,
-          )),
+          leading: Icon(Icons.shopping_cart, color: Colors.purple.shade700, size: ScreenUtils.relativeSizeClamped(context, 0.04)),
           title: Text(
             'Purchasing Agent Settings',
             style: TextStyle(
-              fontSize: ScreenUtils.relativeFontSize(
-                context,
-                AppConfig.fontSizeFactorLarge,
-                min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-              ),
+              fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorLarge),
               fontWeight: FontWeight.bold,
               color: Colors.purple.shade900,
             ),
@@ -565,12 +486,7 @@ class _WarehouseScreenState extends ConsumerState<WarehouseScreen> with TickerPr
           subtitle: Text(
             '$agentCount Agent${agentCount > 1 ? 's' : ''} - Auto-buys when inventory < 50% of target',
             style: TextStyle(
-              fontSize: ScreenUtils.relativeFontSize(
-                context,
-                AppConfig.fontSizeFactorSmall,
-                min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-              ),
+              fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorSmall),
               color: Colors.grey.shade600,
             ),
           ),
@@ -579,12 +495,7 @@ class _WarehouseScreenState extends ConsumerState<WarehouseScreen> with TickerPr
               'Target Inventory Levels',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
-                fontSize: ScreenUtils.relativeFontSize(
-                  context,
-                  AppConfig.fontSizeFactorNormal,
-                  min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                  max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                ),
+                fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
               ),
             ),
             SizedBox(height: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall)),
@@ -603,12 +514,7 @@ class _WarehouseScreenState extends ConsumerState<WarehouseScreen> with TickerPr
                           child: Text(
                             product.name,
                             style: TextStyle(
-                              fontSize: ScreenUtils.relativeFontSize(
-                                context,
-                                AppConfig.fontSizeFactorNormal,
-                                min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                                max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                              ),
+                              fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -616,12 +522,7 @@ class _WarehouseScreenState extends ConsumerState<WarehouseScreen> with TickerPr
                         Row(
                           children: [
                             IconButton(
-                              icon: Icon(Icons.remove, size: ScreenUtils.relativeSizeClamped(
-                                context,
-                                0.025,
-                                min: ScreenUtils.getSmallerDimension(context) * 0.02,
-                                max: ScreenUtils.getSmallerDimension(context) * 0.03,
-                              )),
+                              icon: Icon(Icons.remove, size: ScreenUtils.relativeSizeClamped(context, 0.025)),
                               onPressed: currentTarget > 0 
                                 ? () => controller.setPurchasingAgentTarget(product, currentTarget - 10)
                                 : null,
@@ -629,33 +530,18 @@ class _WarehouseScreenState extends ConsumerState<WarehouseScreen> with TickerPr
                               constraints: BoxConstraints(),
                             ),
                             Container(
-                              width: ScreenUtils.relativeSizeClamped(
-                                context,
-                                0.1,
-                                min: ScreenUtils.getSmallerDimension(context) * 0.08,
-                                max: ScreenUtils.getSmallerDimension(context) * 0.12,
-                              ),
+                              width: ScreenUtils.relativeSizeClamped(context, 0.1),
                               alignment: Alignment.center,
                               child: Text(
                                 '$currentTarget',
                                 style: TextStyle(
-                                  fontSize: ScreenUtils.relativeFontSize(
-                                    context,
-                                    AppConfig.fontSizeFactorNormal,
-                                    min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                                    max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                                  ),
+                                  fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
                             ),
                             IconButton(
-                              icon: Icon(Icons.add, size: ScreenUtils.relativeSizeClamped(
-                                context,
-                                0.025,
-                                min: ScreenUtils.getSmallerDimension(context) * 0.02,
-                                max: ScreenUtils.getSmallerDimension(context) * 0.03,
-                              )),
+                              icon: Icon(Icons.add, size: ScreenUtils.relativeSizeClamped(context, 0.025)),
                               onPressed: () => controller.setPurchasingAgentTarget(product, currentTarget + 10),
                               padding: EdgeInsets.all(ScreenUtils.relativeSize(context, AppConfig.spacingFactorTiny)),
                               constraints: BoxConstraints(),
@@ -721,12 +607,7 @@ class _LoadTruckDialogState extends ConsumerState<_LoadTruckDialog> {
       title: Text(
         'Load Truck',
         style: TextStyle(
-          fontSize: ScreenUtils.relativeFontSize(
-            context,
-            AppConfig.fontSizeFactorMedium,
-            min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-            max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-          ),
+          fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorMedium),
         ),
       ),
       content: SizedBox(
@@ -740,12 +621,7 @@ class _LoadTruckDialogState extends ConsumerState<_LoadTruckDialog> {
               Text(
                 'Select Truck:',
                 style: TextStyle(
-                  fontSize: ScreenUtils.relativeFontSize(
-                    context,
-                    AppConfig.fontSizeFactorNormal,
-                    min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                    max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                  ),
+                  fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
                 ),
               ),
               SizedBox(
@@ -757,24 +633,14 @@ class _LoadTruckDialogState extends ConsumerState<_LoadTruckDialog> {
               DropdownButtonFormField<Truck>(
                 value: _selectedTruck,
                 style: TextStyle(
-                  fontSize: ScreenUtils.relativeFontSize(
-                    context,
-                    AppConfig.fontSizeFactorNormal,
-                    min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                    max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                  ),
+                  fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
                   color: Colors.black,
                 ),
                 decoration: InputDecoration(
                   border: const OutlineInputBorder(),
                   hintText: 'Choose a truck',
                   hintStyle: TextStyle(
-                    fontSize: ScreenUtils.relativeFontSize(
-                      context,
-                      AppConfig.fontSizeFactorNormal,
-                      min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                      max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                    ),
+                    fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
                     color: Colors.black,
                   ),
                 ),
@@ -786,12 +652,7 @@ class _LoadTruckDialogState extends ConsumerState<_LoadTruckDialog> {
                     child: Text(
                       '${truck.name} (Load: $load/$capacity)',
                       style: TextStyle(
-                        fontSize: ScreenUtils.relativeFontSize(
-                          context,
-                          AppConfig.fontSizeFactorNormal,
-                          min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                          max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                        ),
+                        fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
                         color: Colors.black,
                       ),
                     ),
@@ -815,12 +676,7 @@ class _LoadTruckDialogState extends ConsumerState<_LoadTruckDialog> {
                 Text(
                   'Available Capacity: $availableCapacity / ${_selectedTruck!.capacity}',
                   style: TextStyle(
-                    fontSize: ScreenUtils.relativeFontSize(
-                      context,
-                      AppConfig.fontSizeFactorNormal,
-                      min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                      max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                    ),
+                    fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
                   ),
                 ),
                 SizedBox(
@@ -832,12 +688,7 @@ class _LoadTruckDialogState extends ConsumerState<_LoadTruckDialog> {
                 Text(
                   'Select Product:',
                   style: TextStyle(
-                    fontSize: ScreenUtils.relativeFontSize(
-                      context,
-                      AppConfig.fontSizeFactorNormal,
-                      min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                      max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                    ),
+                    fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
                   ),
                 ),
                 SizedBox(
@@ -849,24 +700,14 @@ class _LoadTruckDialogState extends ConsumerState<_LoadTruckDialog> {
                 DropdownButtonFormField<Product>(
                   value: _selectedProduct,
                   style: TextStyle(
-                    fontSize: ScreenUtils.relativeFontSize(
-                      context,
-                      AppConfig.fontSizeFactorNormal,
-                      min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                      max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                    ),
+                    fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
                     color: Colors.black,
                   ),
                   decoration: InputDecoration(
                     border: const OutlineInputBorder(),
                     hintText: 'Choose a product',
                     hintStyle: TextStyle(
-                      fontSize: ScreenUtils.relativeFontSize(
-                        context,
-                        AppConfig.fontSizeFactorNormal,
-                        min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                        max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                      ),
+                      fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
                       color: Colors.black,
                     ),
                   ),
@@ -877,12 +718,7 @@ class _LoadTruckDialogState extends ConsumerState<_LoadTruckDialog> {
                       child: Text(
                         '${product.name} (Stock: $stock)',
                         style: TextStyle(
-                          fontSize: ScreenUtils.relativeFontSize(
-                            context,
-                            AppConfig.fontSizeFactorNormal,
-                            min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                            max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                          ),
+                          fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
                           color: Colors.black,
                         ),
                       ),
@@ -920,12 +756,7 @@ class _LoadTruckDialogState extends ConsumerState<_LoadTruckDialog> {
                       'Cannot load: Truck is full or no stock available',
                       style: TextStyle(
                         color: Colors.red,
-                        fontSize: ScreenUtils.relativeFontSize(
-                          context,
-                          AppConfig.fontSizeFactorNormal,
-                          min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                          max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                        ),
+                        fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
                       ),
                     ),
                 ],
@@ -943,12 +774,7 @@ class _LoadTruckDialogState extends ConsumerState<_LoadTruckDialog> {
               child: Text(
                 'Cancel',
                 style: TextStyle(
-                  fontSize: ScreenUtils.relativeFontSize(
-                    context,
-                    AppConfig.fontSizeFactorNormal,
-                    min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                    max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                  ),
+                  fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
                 ),
               ),
             ),
@@ -974,12 +800,7 @@ class _LoadTruckDialogState extends ConsumerState<_LoadTruckDialog> {
               child: Text(
                 'Load',
                 style: TextStyle(
-                  fontSize: ScreenUtils.relativeFontSize(
-                    context,
-                    AppConfig.fontSizeFactorNormal,
-                    min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                    max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                  ),
+                  fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
                 ),
               ),
             ),

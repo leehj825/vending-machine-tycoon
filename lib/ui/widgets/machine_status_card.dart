@@ -161,12 +161,7 @@ class _MachineStatusCardState extends ConsumerState<MachineStatusCard> {
                         Text(
                           machine.name,
                           style: TextStyle(
-                            fontSize: ScreenUtils.relativeFontSize(
-                            context,
-                            AppConfig.fontSizeFactorNormal,
-                            min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                            max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                          ),
+                            fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -178,12 +173,7 @@ class _MachineStatusCardState extends ConsumerState<MachineStatusCard> {
                             Text(
                               'Stock: ${machine.totalInventory} items',
                               style: TextStyle(
-                                fontSize: ScreenUtils.relativeFontSize(
-                            context,
-                            AppConfig.fontSizeFactorSmall,
-                            min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                            max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                          ),
+                                fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorSmall),
                                 color: Colors.grey[600],
                               ),
                             ),
@@ -217,24 +207,14 @@ class _MachineStatusCardState extends ConsumerState<MachineStatusCard> {
                             Text(
                               'Cash',
                               style: TextStyle(
-                                fontSize: ScreenUtils.relativeFontSize(
-                            context,
-                            AppConfig.fontSizeFactorTiny,
-                            min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                            max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                          ),
+                                fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorTiny),
                                 color: Colors.grey[600],
                               ),
                             ),
                             Text(
                               '\$${machine.currentCash.toStringAsFixed(2)}',
                               style: TextStyle(
-                                fontSize: ScreenUtils.relativeFontSize(
-                            context,
-                            AppConfig.fontSizeFactorNormal,
-                            min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                            max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                          ),
+                                fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
                                 fontWeight: FontWeight.bold,
                                 color: Colors.green,
                               ),
@@ -258,12 +238,7 @@ class _MachineStatusCardState extends ConsumerState<MachineStatusCard> {
                 Text(
                   'Stock Details:',
                   style: TextStyle(
-                    fontSize: ScreenUtils.relativeFontSize(
-                      context,
-                      AppConfig.fontSizeFactorMedium,
-                      min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                      max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                    ),
+                    fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorMedium),
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -292,12 +267,7 @@ class _MachineStatusCardState extends ConsumerState<MachineStatusCard> {
                               child: Text(
                                 item.product.name,
                                 style: TextStyle(
-                                  fontSize: ScreenUtils.relativeFontSize(
-                                    context,
-                                    AppConfig.fontSizeFactorNormal,
-                                    min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                                    max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                                  ),
+                                  fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
                                 ),
                               ),
                             ),
@@ -310,12 +280,7 @@ class _MachineStatusCardState extends ConsumerState<MachineStatusCard> {
                               child: Text(
                                 '${item.quantity}',
                                 style: TextStyle(
-                                  fontSize: ScreenUtils.relativeFontSize(
-                                    context,
-                                    AppConfig.fontSizeFactorNormal,
-                                    min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                                    max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                                  ),
+                                  fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
                                   fontWeight: FontWeight.bold,
                                   color: Colors.blue.shade900,
                                 ),
@@ -371,12 +336,7 @@ class _MachineStatusCardState extends ConsumerState<MachineStatusCard> {
                         'No cash to retrieve',
                         style: TextStyle(
                           color: Colors.grey[600],
-                          fontSize: ScreenUtils.relativeFontSize(
-                            context,
-                            AppConfig.fontSizeFactorSmall,
-                            min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                            max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                          ),
+                          fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorSmall),
                         ),
                       ),
                     ),

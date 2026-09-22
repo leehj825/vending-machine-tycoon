@@ -204,7 +204,7 @@ class _MachineUpgradeDialogState extends ConsumerState<MachineUpgradeDialog> {
                     _buildUpgradeItem(
                       context,
                       title: 'Security System',
-                      description: 'Reduces empty machine penalties',
+                      description: 'Cuts theft/vandalism risk & empty machine penalties',
                       icon: Icons.security,
                       currentLevel: latestMachine.levelSecurity,
                       maxLevel: AppConfig.upgradeSecurityMaxLevel,

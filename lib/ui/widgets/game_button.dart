@@ -84,12 +84,7 @@ class _GameButtonState extends State<GameButton> {
               style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
-                fontSize: ScreenUtils.relativeFontSize(
-                  context,
-                  AppConfig.gameButtonFontSizeFactor,
-                  min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                  max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                ),
+                fontSize: ScreenUtils.relativeFontSize(context, AppConfig.gameButtonFontSizeFactor),
                 letterSpacing: 1.0,
               ),
             ),

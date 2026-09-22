@@ -115,12 +115,7 @@ class MarketProductCard extends ConsumerWidget {
                         Text(
                           product.name,
                           style: TextStyle(
-                            fontSize: ScreenUtils.relativeFontSize(
-                              context,
-                              AppConfig.fontSizeFactorMedium,
-                              min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                              max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                            ),
+                            fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorMedium),
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -151,12 +146,7 @@ class MarketProductCard extends ConsumerWidget {
                     Text(
                       '\$${unitPrice.toStringAsFixed(2)}',
                       style: TextStyle(
-                        fontSize: ScreenUtils.relativeFontSize(
-                          context,
-                          AppConfig.fontSizeFactorNormal,
-                          min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                          max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                        ),
+                        fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
                         color: Colors.grey[700],
                       ),
                     ),
@@ -553,12 +543,7 @@ class _SmallGameButtonState extends State<_SmallGameButton> {
                   fontWeight: FontWeight.bold,
                   fontSize: widget.dialogWidth != null
                       ? widget.dialogWidth! * AppConfig.buyDialogButtonFontSizeFactor
-                      : ScreenUtils.relativeFontSize(
-                          context,
-                          AppConfig.fontSizeFactorSmall,
-                          min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                          max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                        ),
+                      : ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorSmall),
                   letterSpacing: AppConfig.buyDialogButtonLetterSpacing,
                 ),
                 textAlign: TextAlign.center,

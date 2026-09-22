@@ -159,34 +159,13 @@ class _MachineInteriorDialogState extends ConsumerState<MachineInteriorDialog> w
     if (!_hasCash) return;
 
     final controller = ref.read(gameControllerProvider.notifier);
-    final machines = ref.read(machinesProvider);
-    final machineIndex = machines.indexWhere((m) => m.id == _currentMachine.id);
-    
-    if (machineIndex == -1) return;
-
-    final machine = machines[machineIndex];
-    final cashToCollect = machine.currentCash;
-
+    final cashToCollect = controller.collectMachineCash(_currentMachine.id);
     if (cashToCollect <= 0) return;
-
-    // Update machine (set cash to 0, preserve maintenance status)
-    final updatedMachine = machine.copyWith(
-      currentCash: 0.0,
-      isUnderMaintenance: machine.isUnderMaintenance, // Preserve maintenance status
-    );
-
-    // Add cash to player's wallet
-    final currentCash = ref.read(gameStateProvider).cash;
-    final newCash = currentCash + cashToCollect;
-
-    // Update state via controller
-    controller.updateMachine(updatedMachine);
-    controller.updateCash(newCash);
 
     // Update local state to reflect cash collection
     setState(() {
       _hasCash = false;
-      _currentMachine = updatedMachine;
+      _currentMachine = _currentMachine.copyWith(currentCash: 0.0);
     });
     
     // Hide tutorial if it was showing
@@ -455,12 +434,7 @@ class _MachineInteriorDialogState extends ConsumerState<MachineInteriorDialog> w
                                           'Tap the green circles to collect cash!',
                                           style: TextStyle(
                                             color: Colors.white,
-                                            fontSize: ScreenUtils.relativeFontSize(
-                                              context,
-                                              AppConfig.fontSizeFactorSmall,
-                                              min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                                              max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                                            ),
+                                            fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorSmall),
                                             fontWeight: FontWeight.bold,
                                             shadows: [
                                               Shadow(
@@ -541,12 +515,7 @@ class _MachineInteriorDialogState extends ConsumerState<MachineInteriorDialog> w
                                 Text(
                                   'Cash Available',
                                   style: TextStyle(
-                                    fontSize: ScreenUtils.relativeFontSize(
-                                      context,
-                                      AppConfig.fontSizeFactorSmall,
-                                      min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                                      max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                                    ),
+                                    fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorSmall),
                                     color: Colors.grey[600],
                                   ),
                                 ),
@@ -554,12 +523,7 @@ class _MachineInteriorDialogState extends ConsumerState<MachineInteriorDialog> w
                                 Text(
                                   '\$${_currentMachine.currentCash.toStringAsFixed(2)}',
                                   style: TextStyle(
-                                    fontSize: ScreenUtils.relativeFontSize(
-                                      context,
-                                      AppConfig.fontSizeFactorLarge,
-                                      min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                                      max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                                    ),
+                                    fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorLarge),
                                     fontWeight: FontWeight.bold,
                                     color: _hasCash ? Colors.green.shade700 : Colors.grey[600],
                                   ),
@@ -572,12 +536,7 @@ class _MachineInteriorDialogState extends ConsumerState<MachineInteriorDialog> w
                             Text(
                               'Tap on the bill validator or coin bin to collect cash',
                               style: TextStyle(
-                                fontSize: ScreenUtils.relativeFontSize(
-                                  context,
-                                  AppConfig.fontSizeFactorSmall,
-                                  min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                                  max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                                ),
+                                fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorSmall),
                                 color: Colors.grey[600],
                               ),
                               textAlign: TextAlign.center,
@@ -586,12 +545,7 @@ class _MachineInteriorDialogState extends ConsumerState<MachineInteriorDialog> w
                             Text(
                               'No cash available',
                               style: TextStyle(
-                                fontSize: ScreenUtils.relativeFontSize(
-                                  context,
-                                  AppConfig.fontSizeFactorSmall,
-                                  min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                                  max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                                ),
+                                fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorSmall),
                                 color: Colors.grey[600],
                               ),
                               textAlign: TextAlign.center,

@@ -8,6 +8,9 @@ import 'models/truck.dart';
 import 'models/zone.dart';
 import 'models/research.dart';
 import 'models/weather.dart';
+import 'models/pricing.dart';
+import 'models/security.dart';
+import 'models/rival.dart';
 import '../state/providers.dart';
 
 /// Simulation constants
@@ -93,6 +96,7 @@ class SimulationState {
   final Map<Product, int> purchasingAgentTargetInventory; // Target inventory levels for purchasing agent
   final Set<ResearchType> unlockedResearch; // Unlocked research items
   final WeatherType weather; // Current weather
+  final Map<ZoneType, double> rivalPresence; // Rival company market share per zone type (0.0-1.0)
 
   // Helper to check if it's night time (8 PM to 6 AM)
   bool get isNight => time.hour < 6 || time.hour >= 20;
@@ -114,6 +118,7 @@ class SimulationState {
     this.purchasingAgentTargetInventory = const {},
     this.unlockedResearch = const {},
     this.weather = WeatherType.sunny,
+    this.rivalPresence = const {},
   });
 
   SimulationState copyWith({
@@ -133,6 +138,7 @@ class SimulationState {
     Map<Product, int>? purchasingAgentTargetInventory,
     Set<ResearchType>? unlockedResearch,
     WeatherType? weather,
+    Map<ZoneType, double>? rivalPresence,
   }) {
     return SimulationState(
       time: time ?? this.time,
@@ -151,6 +157,7 @@ class SimulationState {
       purchasingAgentTargetInventory: purchasingAgentTargetInventory ?? this.purchasingAgentTargetInventory,
       unlockedResearch: unlockedResearch ?? this.unlockedResearch,
       weather: weather ?? this.weather,
+      rivalPresence: rivalPresence ?? this.rivalPresence,
     );
   }
 }
@@ -217,9 +224,26 @@ class SimulationEngine extends StateNotifier<SimulationState> {
     _streamController.add(state);
   }
 
+  /// Apply a one-off bonus, e.g. a completed contract reward
+  void applyBonus({double cash = 0.0, int reputation = 0}) {
+    if (cash == 0.0 && reputation == 0) return;
+    state = state.copyWith(
+      cash: state.cash + cash,
+      reputation: (state.reputation + reputation).clamp(0, 1000).toInt(),
+    );
+    _streamController.add(state);
+  }
+
   /// Update unlocked research
   void updateUnlockedResearch(Set<ResearchType> unlocked) {
     state = state.copyWith(unlockedResearch: unlocked);
+    _streamController.add(state);
+  }
+
+  /// Update rival company presence per zone type (e.g. after a load, or a
+  /// player counter-attack)
+  void updateRivalPresence(Map<ZoneType, double> presence) {
+    state = state.copyWith(rivalPresence: presence);
     _streamController.add(state);
   }
 
@@ -275,6 +299,7 @@ class SimulationEngine extends StateNotifier<SimulationState> {
     int purchasingAgentCount = 0,
     Map<Product, int> purchasingAgentTargetInventory = const {},
     WeatherType weather = WeatherType.sunny,
+    Map<ZoneType, double> rivalPresence = const {},
   }) {
     print('🔴 ENGINE: Restoring state - Day ${time.day} ${time.hour}:00');
     state = state.copyWith(
@@ -292,6 +317,7 @@ class SimulationEngine extends StateNotifier<SimulationState> {
       purchasingAgentCount: purchasingAgentCount,
       purchasingAgentTargetInventory: purchasingAgentTargetInventory,
       weather: weather,
+      rivalPresence: rivalPresence,
     );
     _streamController.add(state);
   }
@@ -439,6 +465,7 @@ class SimulationEngine extends StateNotifier<SimulationState> {
     var pendingMessages = List<String>.from(currentState.pendingMessages);
     var updatedCash = currentState.cash;
     var updatedWeather = currentState.weather;
+    var updatedRivalPresence = currentState.rivalPresence;
 
     // Random weather change (5% chance per hour)
     if (nextTime.minute == 0 && nextTime.hour != currentState.time.hour) {
@@ -464,6 +491,10 @@ class SimulationEngine extends StateNotifier<SimulationState> {
         updatedCash = currentState.cash - totalSalary;
         pendingMessages.add('💰 Paid \$${totalSalary.toStringAsFixed(2)} in staff salaries');
       }
+
+      final rivalResult = _processRivalGrowth(currentState.machines, currentState.rivalPresence);
+      updatedRivalPresence = rivalResult.presence;
+      pendingMessages.addAll(rivalResult.messages);
     }
 
     final salesResult = _processMachineSales(currentState.machines, nextTime, currentState.reputation);
@@ -475,6 +506,12 @@ class SimulationEngine extends StateNotifier<SimulationState> {
     
     if (nextTime.minute == 0 && currentState.time.minute != 0) {
       updatedMachines = _processMechanics(updatedMachines);
+    }
+
+    if (nextTime.minute == 0 && currentState.time.minute != 0) {
+      final securityResult = _processSecurityEvents(updatedMachines, nextTime.hour);
+      updatedMachines = securityResult.machines;
+      pendingMessages.addAll(securityResult.messages);
     }
     var updatedWarehouse = currentState.warehouse;
     
@@ -512,6 +549,7 @@ class SimulationEngine extends StateNotifier<SimulationState> {
       warehouse: updatedWarehouse,
       pendingMessages: pendingMessages,
       weather: updatedWeather,
+      rivalPresence: updatedRivalPresence,
     );
     state = newState;
     
@@ -558,6 +596,10 @@ class SimulationEngine extends StateNotifier<SimulationState> {
       var salesCount = machine.totalSales;
       var hoursSinceRestock = machine.hoursSinceRestock;
 
+      // Rival company demand impact: a more entrenched rival in this zone
+      // type siphons off customers before they reach the player's machine.
+      final rivalMultiplier = RivalMath.demandMultiplier(state.rivalPresence[machine.zone.type] ?? 0.0);
+
       for (final product in Product.values) {
         final stock = machine.getStock(product);
         if (stock == 0) continue;
@@ -567,8 +609,15 @@ class SimulationEngine extends StateNotifier<SimulationState> {
         final baseDemand = product.baseDemand;
         final zoneMultiplier = machine.zone.getDemandMultiplier(time.hour);
         final trafficMultiplier = machine.zone.trafficMultiplier;
+
+        // Player-set price shifts demand: a markup costs sales, a discount
+        // buys them, scaled by how price-sensitive this zone type is.
+        final priceDemandFactor = PricingMath.demandFactor(
+          item.priceMultiplier,
+          machine.zone.type.priceElasticity,
+        );
         
-        final saleChancePerHour = baseDemand * zoneMultiplier * trafficMultiplier * reputationMultiplier * rushMultiplier;
+        final saleChancePerHour = baseDemand * zoneMultiplier * trafficMultiplier * rivalMultiplier * reputationMultiplier * rushMultiplier * priceDemandFactor;
         final saleChance = saleChancePerHour / SimulationConstants.ticksPerHour;
         
         final clampedChance = saleChance.clamp(0.0, 1.0);
@@ -583,11 +632,15 @@ class SimulationEngine extends StateNotifier<SimulationState> {
             salesProgress: remainingProgress,
           );
 
-          // Apply Premium Branding price increase (10%)
-          double price = product.basePrice;
-          if (hasPremiumBranding) {
-            price *= 1.10;
-          }
+          // Price charged is the list price scaled by the player's multiplier,
+          // plus Premium Branding's flat +10% (applied on top, not through
+          // elasticity, since that research is explicitly "without losing
+          // customers").
+          final price = PricingMath.effectivePrice(
+            basePrice: product.basePrice,
+            priceMultiplier: item.priceMultiplier,
+            flatBonusMultiplier: hasPremiumBranding ? 1.10 : 1.0,
+          );
 
           updatedCash += price;
           salesCount++;
@@ -712,6 +765,101 @@ class SimulationEngine extends StateNotifier<SimulationState> {
     return updatedMachines;
   }
 
+  /// Step down a machine's condition by one level (never below broken).
+  MachineCondition _degradeCondition(MachineCondition condition) {
+    final nextIndex = (condition.index + 1).clamp(0, MachineCondition.values.length - 1);
+    return MachineCondition.values[nextIndex];
+  }
+
+  /// Roll theft and vandalism for every eligible machine, once per game hour.
+  ///
+  /// A targeted machine either loses a share of its uncollected cash (theft)
+  /// or drops a condition level (vandalism) - a machine with nothing in the
+  /// till is always vandalized instead, since there is nothing to steal. The
+  /// Security upgrade cuts the odds of either sharply. This is the only
+  /// consequence for leaving cash sitting uncollected in a machine: the
+  /// player's own wallet is never touched, only what has not been picked up.
+  ({List<Machine> machines, List<String> messages}) _processSecurityEvents(
+    List<Machine> machines,
+    int hour,
+  ) {
+    final messages = <String>[];
+
+    final updatedMachines = machines.map((machine) {
+      // Nothing to target on a machine that is already out of commission -
+      // it would just be vandalized into the state it's already in.
+      if (machine.isBroken || machine.isUnderMaintenance) return machine;
+
+      final chance = SecurityMath.eventChance(
+        hour: hour,
+        currentCash: machine.currentCash,
+        hasSecurityUpgrade: machine.levelSecurity > 0,
+        crimeRiskMultiplier: machine.zone.type.crimeRiskMultiplier,
+      );
+
+      if (state.random.nextDouble() >= chance) return machine;
+
+      final eventType = SecurityMath.resolveEventType(
+        currentCash: machine.currentCash,
+        roll: state.random.nextDouble(),
+      );
+
+      if (eventType == SecurityEventType.theft) {
+        final stolen = SecurityMath.theftAmount(
+          currentCash: machine.currentCash,
+          roll: state.random.nextDouble(),
+        );
+        messages.add(
+          '🚨 ${machine.name} was robbed! Lost \$${stolen.toStringAsFixed(2)} in uncollected cash',
+        );
+        return machine.copyWith(currentCash: machine.currentCash - stolen);
+      } else {
+        final newCondition = _degradeCondition(machine.condition);
+        messages.add(
+          '🔨 ${machine.name} was vandalized! Condition dropped to ${newCondition.name}',
+        );
+        return machine.copyWith(condition: newCondition);
+      }
+    }).toList();
+
+    return (machines: updatedMachines, messages: messages);
+  }
+
+  /// Grow rival company presence in each zone type by one day, once per game
+  /// day. A zone type with more of the player's own machines standing in it
+  /// resists rival growth harder (a defended market); one with few or none
+  /// is an easy target. Emits a one-time log message the first time a rival
+  /// crosses one of the notable thresholds in a zone type.
+  ({Map<ZoneType, double> presence, List<String> messages}) _processRivalGrowth(
+    List<Machine> machines,
+    Map<ZoneType, double> presence,
+  ) {
+    final machineCountByZone = <ZoneType, int>{};
+    for (final machine in machines) {
+      machineCountByZone[machine.zone.type] = (machineCountByZone[machine.zone.type] ?? 0) + 1;
+    }
+
+    final messages = <String>[];
+    final updated = <ZoneType, double>{};
+
+    for (final type in ZoneType.values) {
+      final current = presence[type] ?? 0.0;
+      final playerCount = machineCountByZone[type] ?? 0;
+      final next = RivalMath.dailyGrowth(current, playerCount);
+      updated[type] = next;
+
+      for (final threshold in AppConfig.rivalPresenceLogThresholds) {
+        if (current < threshold && next >= threshold) {
+          messages.add(
+            '📉 A rival vending company now controls over ${(threshold * 100).round()}% of the ${type.name} market',
+          );
+        }
+      }
+    }
+
+    return (presence: updated, messages: messages);
+  }
+
   /// Process purchasing agents - auto-buy stock if warehouse inventory < 50% of target
   /// Returns updated cash, warehouse, and messages
   ({double cash, Warehouse warehouse, List<String> messages}) _processPurchasingAgents(double currentCash) {
@@ -770,15 +918,21 @@ class SimulationEngine extends StateNotifier<SimulationState> {
   }
 
   /// Calculate reputation penalty based on empty machines
-  /// Decreases by 1 reputation per second (per tick) for each empty machine
-  int _calculateReputationPenalty(List<Machine> machines) {
-    int totalPenalty = 0;
+  /// Decreases by 1 reputation per second (per tick) for each empty machine,
+  /// halved for a machine with the Security upgrade (its advertised effect -
+  /// previously unimplemented, so buying it did nothing toward this claim).
+  double _calculateReputationPenalty(List<Machine> machines) {
+    double totalPenalty = 0;
     
     for (final machine in machines) {
       if (machine.isEmpty && machine.hoursEmpty >= SimulationConstants.emptyMachinePenaltyHours) {
         // Apply -1 reputation per second (per tick) for each empty machine
         // This is much slower than the previous per-hour calculation
-        totalPenalty += 1;
+        var penalty = 1.0;
+        if (machine.levelSecurity > 0) {
+          penalty *= (1.0 - AppConfig.securityUpgradeReputationPenaltyReduction);
+        }
+        totalPenalty += penalty;
       }
     }
     

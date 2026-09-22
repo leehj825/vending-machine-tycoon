@@ -543,12 +543,7 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> with Ti
                                 : 'Select a truck, add machines to route, then load cargo!',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: ScreenUtils.relativeFontSize(
-                            context,
-                            AppConfig.fontSizeFactorSmall,
-                            min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                            max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                          ),
+                          fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorSmall),
                           fontWeight: FontWeight.bold,
                           shadows: [
                             Shadow(
@@ -582,12 +577,7 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> with Ti
                     child: Text(
                       'Select Truck',
                       style: TextStyle(
-                        fontSize: ScreenUtils.relativeFontSize(
-                          context,
-                          AppConfig.fontSizeFactorMedium,
-                          min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                          max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                        ),
+                        fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorMedium),
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -789,12 +779,7 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> with Ti
                                             color: isSelected
                                                 ? Colors.green
                                                 : Colors.black87,
-                                            fontSize: ScreenUtils.relativeFontSize(
-                                              context,
-                                              AppConfig.truckNameFontSizeFactor,
-                                              min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                                              max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                                            ),
+                                            fontSize: ScreenUtils.relativeFontSize(context, AppConfig.truckNameFontSizeFactor),
                                           ),
                                           textAlign: TextAlign.center,
                                           maxLines: 1,
@@ -833,12 +818,7 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> with Ti
                                           child: Text(
                                             _getStatusText(truck.status).toUpperCase(),
                                             style: TextStyle(
-                                              fontSize: ScreenUtils.relativeFontSize(
-                                                context,
-                                                AppConfig.truckStatusFontSizeFactor,
-                                                min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                                                max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                                              ),
+                                              fontSize: ScreenUtils.relativeFontSize(context, AppConfig.truckStatusFontSizeFactor),
                                               color: _getStatusColor(truck.status),
                                               fontWeight: FontWeight.bold,
                                               letterSpacing: 0.5,
@@ -983,12 +963,7 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> with Ti
                                           child: Text(
                                             'Cargo: ${selectedTruck.currentLoad}/${selectedTruck.capacity}',
                                             style: TextStyle(
-                                              fontSize: ScreenUtils.relativeFontSize(
-                                                context,
-                                                AppConfig.fontSizeFactorSmall,
-                                                min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                                                max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                                              ),
+                                              fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorSmall),
                                               fontWeight: FontWeight.bold,
                                               color: Colors.blue,
                                             ),
@@ -1032,12 +1007,7 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> with Ti
                                   child: Text(
                                     itemText,
                                     style: TextStyle(
-                                      fontSize: ScreenUtils.relativeFontSize(
-                                        context,
-                                        AppConfig.fontSizeFactorSmall,
-                                        min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                                        max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                                      ),
+                                      fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorSmall),
                                       fontWeight: FontWeight.w600,
                                       color: Colors.blue[900],
                                     ),
@@ -1069,12 +1039,7 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> with Ti
                     Text(
                       'Current Route (Drag to Reorder)',
                       style: TextStyle(
-                        fontSize: ScreenUtils.relativeFontSize(
-                          context,
-                          AppConfig.fontSizeFactorMedium,
-                          min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                          max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                        ),
+                        fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorMedium),
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -1121,12 +1086,7 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> with Ti
                               Icon(
                                 selectedTruck.hasDriver ? Icons.person : Icons.person_off,
                                 color: selectedTruck.hasDriver ? Colors.green.shade700 : Colors.grey.shade600,
-                                size: ScreenUtils.relativeSizeClamped(
-                                  context,
-                                  0.03,
-                                  min: ScreenUtils.getSmallerDimension(context) * 0.025,
-                                  max: ScreenUtils.getSmallerDimension(context) * 0.035,
-                                ),
+                                size: ScreenUtils.relativeSizeClamped(context, 0.03),
                               ),
                               SizedBox(width: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall)),
                               Text(
@@ -1134,12 +1094,7 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> with Ti
                                 style: TextStyle(
                                   color: selectedTruck.hasDriver ? Colors.green.shade900 : Colors.grey.shade700,
                                   fontWeight: FontWeight.bold,
-                                  fontSize: ScreenUtils.relativeFontSize(
-                                    context,
-                                    AppConfig.fontSizeFactorSmall,
-                                    min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                                    max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                                  ),
+                                  fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorSmall),
                                 ),
                               ),
                             ],
@@ -1219,12 +1174,7 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> with Ti
                       Text(
                         'No stops in route',
                         style: TextStyle(
-                          fontSize: ScreenUtils.relativeFontSize(
-                            context,
-                            AppConfig.fontSizeFactorSmall,
-                            min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                            max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                          ),
+                          fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorSmall),
                           color: Colors.grey[600],
                         ),
                       ),
@@ -1309,12 +1259,7 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> with Ti
                         Text(
                           'Route Efficiency',
                           style: TextStyle(
-                            fontSize: ScreenUtils.relativeFontSize(
-                              context,
-                              AppConfig.routeEfficiencyTitleFontSizeFactor,
-                              min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                              max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                            ),
+                            fontSize: ScreenUtils.relativeFontSize(context, AppConfig.routeEfficiencyTitleFontSizeFactor),
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -1419,12 +1364,7 @@ class _LoadCargoDialogState extends ConsumerState<_LoadCargoDialog> {
       title: Text(
         'Load Cargo - ${widget.truck.name}',
         style: TextStyle(
-          fontSize: ScreenUtils.relativeFontSize(
-            context,
-            AppConfig.fontSizeFactorMedium,
-            min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-            max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-          ),
+          fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorMedium),
         ),
       ),
       content: SizedBox(
@@ -1436,12 +1376,7 @@ class _LoadCargoDialogState extends ConsumerState<_LoadCargoDialog> {
             Text(
               'Available Capacity: $availableCapacity / ${widget.truck.capacity}',
               style: TextStyle(
-                fontSize: ScreenUtils.relativeFontSize(
-                  context,
-                  AppConfig.fontSizeFactorNormal,
-                  min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                  max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                ),
+                fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
               ),
             ),
             SizedBox(
@@ -1453,12 +1388,7 @@ class _LoadCargoDialogState extends ConsumerState<_LoadCargoDialog> {
             Text(
               'Select Product:',
               style: TextStyle(
-                fontSize: ScreenUtils.relativeFontSize(
-                  context,
-                  AppConfig.fontSizeFactorNormal,
-                  min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                  max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                ),
+                fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
               ),
             ),
             SizedBox(
@@ -1470,24 +1400,14 @@ class _LoadCargoDialogState extends ConsumerState<_LoadCargoDialog> {
             DropdownButtonFormField<Product>(
               value: _selectedProduct,
               style: TextStyle(
-                fontSize: ScreenUtils.relativeFontSize(
-                  context,
-                  AppConfig.fontSizeFactorNormal,
-                  min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                  max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                ),
+                fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
                 color: Colors.black,
               ),
               decoration: InputDecoration(
                 border: const OutlineInputBorder(),
                 hintText: 'Choose a product',
                 hintStyle: TextStyle(
-                  fontSize: ScreenUtils.relativeFontSize(
-                    context,
-                    AppConfig.fontSizeFactorNormal,
-                    min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                    max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                  ),
+                  fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
                   color: Colors.black,
                 ),
               ),
@@ -1498,12 +1418,7 @@ class _LoadCargoDialogState extends ConsumerState<_LoadCargoDialog> {
                   child: Text(
                     '${product.name} (Stock: $stock)',
                     style: TextStyle(
-                      fontSize: ScreenUtils.relativeFontSize(
-                        context,
-                        AppConfig.fontSizeFactorNormal,
-                        min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                        max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                      ),
+                      fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
                       color: Colors.black,
                     ),
                   ),
@@ -1541,12 +1456,7 @@ class _LoadCargoDialogState extends ConsumerState<_LoadCargoDialog> {
                   'Cannot load: Truck is full',
                   style: TextStyle(
                     color: Colors.red,
-                    fontSize: ScreenUtils.relativeFontSize(
-                      context,
-                      AppConfig.fontSizeFactorNormal,
-                      min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                      max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                    ),
+                    fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
                   ),
                 ),
             ],
@@ -1622,12 +1532,7 @@ class _StatItem extends StatelessWidget {
           Text(
             value,
             style: TextStyle(
-              fontSize: ScreenUtils.relativeFontSize(
-                context,
-                AppConfig.routeEfficiencyValueFontSizeFactor,
-                min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-              ),
+              fontSize: ScreenUtils.relativeFontSize(context, AppConfig.routeEfficiencyValueFontSizeFactor),
               fontWeight: FontWeight.bold,
               color: valueColor ?? Colors.black87,
             ),
@@ -1641,12 +1546,7 @@ class _StatItem extends StatelessWidget {
           Text(
             label,
             style: TextStyle(
-              fontSize: ScreenUtils.relativeFontSize(
-                context,
-                AppConfig.routeEfficiencyLabelFontSizeFactor,
-                min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-              ),
+              fontSize: ScreenUtils.relativeFontSize(context, AppConfig.routeEfficiencyLabelFontSizeFactor),
               color: Colors.grey[600],
             ),
             textAlign: TextAlign.center,
@@ -1750,12 +1650,7 @@ class _SmallGameButtonState extends State<_SmallGameButton> {
                 style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
-                  fontSize: ScreenUtils.relativeFontSize(
-                    context,
-                    AppConfig.smallGameButtonFontSizeFactor,
-                    min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                    max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                  ),
+                  fontSize: ScreenUtils.relativeFontSize(context, AppConfig.smallGameButtonFontSizeFactor),
                   letterSpacing: 0.5,
                 ),
                 textAlign: TextAlign.center,
@@ -1863,12 +1758,7 @@ class _BuyTruckButtonState extends State<_BuyTruckButton> {
                 style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
-                  fontSize: ScreenUtils.relativeFontSize(
-                    context,
-                    AppConfig.gameButtonFontSizeFactor,
-                    min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                    max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                  ),
+                  fontSize: ScreenUtils.relativeFontSize(context, AppConfig.gameButtonFontSizeFactor),
                   letterSpacing: 1.0,
                 ),
                 textAlign: TextAlign.center,

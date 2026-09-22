@@ -5,7 +5,10 @@ import 'providers.dart';
 import 'city_map_state.dart';
 import '../simulation/models/machine.dart';
 import '../simulation/models/truck.dart';
+import '../simulation/models/contract.dart';
 import '../simulation/models/product.dart';
+import '../simulation/models/research.dart';
+import '../simulation/models/weather.dart';
 import '../simulation/models/zone.dart';
 
 /// Save slot data structure
@@ -242,6 +245,12 @@ class SaveLoadService {
       'purchasingAgentCount': state.purchasingAgentCount,
       'purchasingAgentTargetInventory': state.purchasingAgentTargetInventory.map((key, value) => MapEntry(key.name, value)),
       'isGameOver': state.isGameOver,
+      // Research, weather and daily contracts
+      'unlockedResearch': state.unlockedResearch.map((r) => r.name).toList(),
+      'weather': state.weather.name,
+      'dailyContracts': state.dailyContracts.map((c) => c.toJson()).toList(),
+      'contractsCompleted': state.contractsCompleted,
+      'rivalPresence': state.rivalPresence.map((type, presence) => MapEntry(type.name, presence)),
     };
     return jsonEncode(map);
   }
@@ -322,6 +331,40 @@ class SaveLoadService {
               })
             : {},
         isGameOver: gameStateMap['isGameOver'] as bool? ?? false,
+        // Research (older saves have none, so researched perks default to empty)
+        unlockedResearch: gameStateMap['unlockedResearch'] != null
+            ? (gameStateMap['unlockedResearch'] as List)
+                .map((r) => ResearchType.values.firstWhere(
+                      (type) => type.name == r,
+                      orElse: () => ResearchType.turboTrucks,
+                    ))
+                .toSet()
+            : <ResearchType>{},
+        weather: gameStateMap['weather'] != null
+            ? WeatherType.values.firstWhere(
+                (w) => w.name == gameStateMap['weather'],
+                orElse: () => WeatherType.sunny,
+              )
+            : WeatherType.sunny,
+        dailyContracts: gameStateMap['dailyContracts'] != null
+            ? (gameStateMap['dailyContracts'] as List)
+                .map((c) => DailyContract.fromJson(c as Map<String, dynamic>))
+                .toList()
+            : <DailyContract>[],
+        contractsCompleted: gameStateMap['contractsCompleted'] as int? ?? 0,
+        // Rival company (older saves predate this feature - every zone type
+        // defaults to no rival presence, same as a fresh game)
+        rivalPresence: gameStateMap['rivalPresence'] != null
+            ? (gameStateMap['rivalPresence'] as Map<String, dynamic>).map(
+                (key, value) => MapEntry(
+                  ZoneType.values.firstWhere(
+                    (type) => type.name == key,
+                    orElse: () => ZoneType.shop,
+                  ),
+                  (value as num).toDouble(),
+                ),
+              )
+            : <ZoneType, double>{},
       );
     } catch (e) {
       print('Error deserializing game state: $e');
@@ -344,11 +387,18 @@ class SaveLoadService {
           'quantity': value.quantity,
           'dayAdded': value.dayAdded,
           'allocation': value.allocation, // Save allocation for each item
+          'priceMultiplier': value.priceMultiplier, // Save player-set price for each item
         },
       )),
       'currentCash': machine.currentCash,
       'hoursSinceRestock': machine.hoursSinceRestock,
       'totalSales': machine.totalSales,
+      // Upgrade levels - previously missing here, so upgrades bought with
+      // real cash were silently lost on every save/load
+      'levelCapacity': machine.levelCapacity,
+      'levelCooling': machine.levelCooling,
+      'levelSecurity': machine.levelSecurity,
+      'levelAds': machine.levelAds,
     };
   }
 
@@ -371,12 +421,20 @@ class SaveLoadService {
             quantity: itemMap['quantity'] as int,
             dayAdded: itemMap['dayAdded'] as int,
             allocation: (itemMap['allocation'] as int?) ?? 20, // Load allocation (default to 20 for backward compatibility)
+            priceMultiplier: (itemMap['priceMultiplier'] as num?)?.toDouble() ?? 1.0, // Default to list price for old saves
           ),
         );
       }),
       currentCash: ((map['currentCash'] as num?)?.toDouble() ?? 0.0).clamp(0.0, double.infinity), // Ensure cash is never negative
       hoursSinceRestock: ((map['hoursSinceRestock'] as num?)?.toDouble() ?? 0.0).clamp(0.0, double.infinity), // Ensure hours is never negative
       totalSales: (map['totalSales'] as int?) ?? 0,
+      // Upgrade levels default to 0 for saves made before this fix - those
+      // upgrades were already lost by the bug this restores, nothing to
+      // recover for them specifically
+      levelCapacity: (map['levelCapacity'] as int?) ?? 0,
+      levelCooling: (map['levelCooling'] as int?) ?? 0,
+      levelSecurity: (map['levelSecurity'] as int?) ?? 0,
+      levelAds: (map['levelAds'] as int?) ?? 0,
     );
   }
 

@@ -1,6 +1,133 @@
 VENDING EMPIRE - RELEASE NOTES
 ================================
 
+Version 1.1.26
+-------------
+Release Date: September 22, 2026
+## Bug Fixes
+- **Sound effects were pausing other apps' audio**: Coin collect, button clicks and truck sounds could interrupt Spotify or a YouTube popup playing alongside the game, even though background music already mixed fine. Root cause: the "don't request audio focus" config was only ever applied once, globally, at startup - `audioplayers` only re-applies that config to a player when it's passed explicitly on that player's own `play()` call, which the game's sound-effect and truck-sound calls never did. Now applied explicitly to every player (music, sound effects, truck) both at init and on every individual play call, closing the gap.
+
+## Improvements
+- **Money icon positioning**: The floating cash-collect icon above a machine now sits much closer to the building by default, only rising to its earlier higher position on the rare tile where a status indicator (broken/empty/low-stock) is also showing - fixes it overlapping a neighboring building's "+" purchase marker.
+
+Version 1.1.25
+-------------
+Release Date: September 22, 2026
+## Changes
+- **Removed District Expansion**: The unlockable-districts system from 1.1.21 (Downtown Core / Suburban Expansion / Outer Limits, with a per-district traffic bonus and unlock cost) has been removed entirely, along with its HQ screen. Machines already standing anywhere on the map keep working exactly as before - this only removes the unlock gate and the traffic bonus it granted.
+- **Removed the 2-per-type machine cap**: Buying a machine was capped at 2 per zone type (14 machines total, regardless of map size). That cap is gone - buy a machine on every building tile the map has, for every zone type, limited only by how much cash you have.
+- Rival Company (1.1.22) is unaffected and stays as-is.
+
+Version 1.1.24
+-------------
+Release Date: September 22, 2026
+## Improvements
+- **Money Icon for Quick Collect**: Replaced the 1.1.23 "tap the building to collect" behavior with a dedicated floating money icon
+  - A machine with cash waiting now shows a small pulsing gold coin icon above it on the City map - tap that to collect instantly, with a coin sound and a toast showing the amount
+  - Tapping the building itself always opens its status popup now, whether or not there's cash waiting, so that tap stays predictable and the two actions (check status vs. grab cash) are visually distinct
+  - Collecting from inside the machine (the bill validator/coin bin in its interior view) is unaffected
+
+Version 1.1.23
+-------------
+Release Date: September 22, 2026
+## Improvements
+- **Quick Collect from the Map**: Tapping a machine on the City map that has cash waiting now collects it immediately, with a coin sound and a toast showing the amount - no need to open the machine's dialog just to grab cash
+  - A machine with nothing to collect still opens its status popup on tap, since there's something else worth checking (stock, condition, price)
+  - Collecting cash from inside the machine (tapping the bill validator/coin bin in the interior view) still works exactly as before - this is a faster option alongside it, not a replacement
+  - Removes the single biggest source of "tedious" clicking reported from regular play: needing to open every machine one at a time just to bank its cash
+
+Version 1.1.22
+-------------
+Release Date: September 22, 2026
+## New Features
+- **Rival Company**: A competitor now fights you for the same customers, zone type by zone type
+  - Every game day, the rival's presence in a zone type grows toward a cap - fastest where you have few or no machines there, slower where you already have a strong foothold
+  - A more entrenched rival cuts your sale chance in that zone type by up to 45% at their strongest
+  - A Counter-Attack campaign (new RIVAL COMPANY screen in HQ) pushes their presence back for a cash cost that rises with how entrenched they are - presence always starts creeping back afterward, so it's a recurring decision rather than a one-time fix
+  - No new art needed - the screen uses the same Material icons already used for zone types elsewhere
+
+Version 1.1.21
+-------------
+Release Date: September 22, 2026
+## New Features
+- **District Expansion**: A new late-game cash sink and progression goal
+  - The city is split into three rings by distance from the warehouse: Downtown Core (always free), Suburban Expansion ($15,000), and Outer Limits ($60,000)
+  - New-machine purchases in a locked district are blocked with a one-tap "Unlock" prompt right at the build spot; a machine already standing there from before this feature keeps working regardless of unlock state
+  - Unlocking a district grants every machine in it a permanent traffic bonus (+15% Suburban, +35% Outer Limits) on top of its zone's own traffic multiplier
+  - New DISTRICTS screen in HQ showing all three rings, their cost, bonus and unlock state
+  - The map itself is unchanged - this uses the existing 15x15 city, so no new art or layout was needed
+
+Version 1.1.20
+-------------
+Release Date: September 19, 2026
+## New Features
+- **Theft & Vandalism**: Machines now carry real risk, not just idle upkeep
+  - Every game hour, an eligible machine has a small chance of being targeted: robbed (loses a share of its uncollected cash) or vandalized (condition drops a level)
+  - A machine with no cash on hand is always vandalized instead of robbed - there's nothing to steal
+  - Risk rises at night (10 PM - 5 AM), with how much cash is sitting uncollected, and with the zone's own crime rate - Subway and School are the riskiest zones, Hospital and Office the safest (the same two zones that are also the most price-tolerant, so a "good" zone is good on both axes)
+  - Only cash left sitting uncollected in the machine is ever at risk; cash already banked into your wallet is untouched
+  - The Security System upgrade now actually does something: it cuts theft/vandalism odds by 65%, and also halves the reputation penalty for an empty machine - the latter was already advertised in its description but had never been implemented, so buying Security did nothing at all until now
+
+## Bug Fixes
+- **Security Upgrade Did Nothing**: The Security System upgrade was purchasable but had zero effect on the simulation - its advertised "reduces empty machine penalties" was dead code. Now implemented, alongside the new theft/vandalism protection.
+
+Version 1.1.19
+-------------
+Release Date: September 18, 2026
+## New Features
+- **Per-Machine Pricing**: Every product in every machine now has its own price, set as a multiplier of list price (50%-200%)
+  - Raise the price for more margin per sale at the cost of fewer sales; lower it for more volume at thinner margin
+  - How much a price change affects demand depends on the zone: captive audiences (Hospital, Office, Subway) barely notice a markup, price-sensitive ones (School) punish it hard
+  - Every zone type has its own revenue-maximizing price - finding it is the core pricing puzzle
+  - New price control in the machine status dialog shows the effective price and a live "Demand %" indicator before you commit to a change
+  - Premium Branding research still adds its flat +10% independently, unaffected by the multiplier
+  - Saved with the game; old saves default every item to list price (100%), unchanged from prior behavior
+
+## Bug Fixes
+- **Machine Upgrades Lost on Save/Load**: Capacity, Cooling, Security and Ad Display upgrade levels were never written to save files, so upgrades bought with real cash were silently lost every time a game was saved and reloaded. Now persisted.
+
+Version 1.1.18
+-------------
+Release Date: September 17, 2026
+## Bug Fixes (UI sizing & audio)
+- **Consistent UI Scale**: Icons, buttons and fonts are now sized from a fixed reference screen with a bounded scale factor
+  - Sizes no longer grow without limit on tablets and wide windows (a tablet used to draw everything ~1.9x phone size)
+  - A device now gets the same UI size in portrait and landscape
+  - Removed 282 size "limits" that were themselves proportional to the screen, so they never actually limited anything
+  - Save/Exit buttons took their width from raw screen width while their height came from the smaller dimension, so they ballooned in landscape
+- **Bigger Navigation Buttons**: The four bottom tabs are ~1.65x larger in both dimensions
+  - Save/Exit moved into the empty space in the top status bar, freeing the whole bottom row for the tabs
+  - The bar is sized from the width its tabs actually get, instead of a height factor that left them smaller than the space available
+- **Background Music Behaviour**: Game music now reliably pauses when the app goes to the background and resumes when you come back
+  - Android fires two background events in a row (hidden, then paused); the second one used to overwrite the "was playing" flag, so nothing resumed on return
+  - Resume verifies the track is really playing again and restarts it if the system dropped it while backgrounded
+  - A 3 second "protection window" used to swallow pause requests, leaving music playing after switching apps
+  - Music no longer pauses when something merely overlaps the game (notification shade, floating video window)
+  - Other apps (Spotify, YouTube) keep playing while the game runs, as before
+- **Better Icon & Button Sizes**: Status cards are smaller and no longer overlap their own text
+  - Tablets and wide screens get noticeably larger bottom buttons (a 621x800dp screen went from 62dp to 89dp bars)
+  - Top and bottom bars never take more than ~15% of the screen height, so landscape keeps its usable area
+  - Status cards are sized from their frame artwork's aspect ratio, so the frame fills the card instead of being shrunk inside it
+- **Debug Build Audio**: Music and sound effects were completely silent in debug builds
+  - An invalid iOS audio option tripped a Dart assert (active only in debug builds) on every platform, which left the audio players uninitialized
+
+## New Features
+- **Daily Contracts**: Three time-limited client deals are posted every game morning
+  - **Supply Deal**: Sell a set number of units of one product before the day ends
+  - **Revenue Target**: Hit a daily sales revenue goal
+  - **Volume Deal**: Sell a set number of items across the whole empire
+  - Targets scale with recent revenue and machine count, so they stay reachable early and meaningful later
+  - Rewards (cash + 15 reputation) are paid automatically the moment a goal is met
+  - Unfinished contracts expire when the next day's set is posted
+  - Any unfinished contract can be swapped for a different one for $250 (once per contract)
+  - New "DAILY CONTRACTS" screen in HQ showing live progress, rewards and lifetime completions
+
+## Bug Fixes
+- **Research Persistence**: Unlocked research is now saved and restored - previously, perks bought in the Research Lab were lost when a game was loaded
+- **Weather Visuals**: The current weather is now synced from the simulation to the city view, so rain and storm effects actually appear (and weather is saved with the game)
+
+---
+
 Version 1.1.17
 -------------
 Release Date: January 5, 2026

@@ -232,34 +232,44 @@ class AppConfig {
   static const double routePlannerSmallButtonBorderWidthFactor = spacingFactorTiny * 1.5; // 0.0015 - Border width
   
   /// Bottom navigation bar sizes
-  static const double bottomNavBarHeightFactor = 0.20; // Height as factor of smaller screen dimension
+  /// All factors below are relative to ScreenUtils.referenceShortSide (400dp),
+  /// so a factor of 0.155 means ~62dp on the reference screen.
+  static const double bottomNavBarHeightFactor = 0.34; // Upper bound; the bar is sized from the width its tabs get
   
-  /// Tab button sizes (HQ, City, Fleet, Market buttons) - Removed min/max duplicates
-  static const double tabButtonHeightFactor = 0.20; // Height as factor of smaller screen dimension
+  /// Bars never take more than this fraction of the screen height, so a
+  /// landscape phone or a short window keeps its usable area
+  static const double bottomNavBarMaxHeightFraction = 0.20;
+  static const double statusBarMaxHeightFraction = 0.14;
+  
+  /// Number of navigation tabs sharing the bottom bar's width
+  static const int tabButtonCount = 4;
+  
+  /// Aspect ratio (width / height) of the tab button artwork (204x174)
+  static const double tabButtonAspectRatio = 204.0 / 174.0;
+  
+  /// Share of the bar's height a tab button takes, leaving a little breathing room
+  static const double tabButtonHeightRatio = 0.92;
   
   /// Tab button icon size (for fallback icons) - Removed min/max duplicates
-  static const double tabButtonIconSizeFactor = 0.20; // Icon size as factor of smaller screen dimension
+  static const double tabButtonIconSizeFactor = 0.075; // ~30dp fallback icon
   
   /// Save/Exit button sizes - Removed min/max duplicates
-  static const double saveExitButtonHeightFactor = 0.10; // Height as factor of smaller screen dimension
-  static const double saveExitButtonWidthFactor = 0.10; // Width as factor of screen width
+  /// Save/Exit buttons sit in the status bar; sized as a share of a status card
+  static const double saveExitButtonSizeRatio = 0.72; // Share of the status card height
   
   /// Top status bar boxes (cash, reputation, time)
-  static const double statusCardWidthFactor = 0.90; // Width as factor of smaller dimension (increased from 0.75)
-  static const double statusCardWidthMinFactor = 0.30; // Minimum width as factor of smaller dimension (increased from 0.25)
-  static const double statusCardWidthMaxFactor = 0.30; // Maximum width as factor of smaller dimension (increased from 0.25)
-  static const double statusCardHeightRatio = 0.75; // Height ratio relative to card width (decreased to maintain same height)
-  
-  /// Status card icon settings - Removed min/max duplicates
-  static const double statusCardIconSizeFactor = 0.50; // Icon size factor relative to card width
-  static const double statusCardIconTopPositionFactor = 0.1; // Icon top position as factor of card height (relative to card height)
+  /// Card size is driven by height; the width follows the frame artwork's own
+  /// aspect ratio (status_icon.png is 138x156). Picking an unrelated width made
+  /// BoxFit.contain shrink the frame inside the card box, so the icon and value
+  /// no longer lined up with the frame they were drawn on.
+  static const double statusCardHeightFactor = 0.17; // ~68dp tall
+  static const double statusCardAspectRatio = 138.0 / 156.0; // width / height of the frame art
   
   /// Status card text settings
-  static const double statusCardTextSizeFactor = 0.025; // Text font size factor (relative to smaller screen dimension)
-  static const double statusCardTextBottomPositionFactor = 0.05; // Text bottom position as factor of card height (relative to card height)
+  static const double statusCardTextSizeFactor = 0.028; // Text font size factor (~11dp)
   
   /// Status card padding and spacing - Removed min/max duplicates
-  static const double statusCardPaddingFactor = 0.01; // Internal padding factor relative to card width
+  static const double statusCardPaddingFactor = 0.06; // Internal padding factor relative to card width
   static const double statusBarContainerPaddingFactor = spacingFactorTiny; // 0.001 - Container padding around status bar (reuse)
   
   /// Card dimension factors (relative to smaller screen dimension)
@@ -290,6 +300,96 @@ class AppConfig {
   
   /// Warehouse capacity
   static const int warehouseMaxCapacity = 1000;
+
+  // ============================================================================
+  // DAILY CONTRACTS
+  // ============================================================================
+
+  /// Number of contracts offered each morning
+  static const int contractsPerDay = 3;
+
+  /// Cost of swapping a single contract for a new one
+  static const double contractRerollCost = 250.0;
+
+  /// Reputation granted by every completed contract
+  static const int contractRewardReputation = 15;
+
+  /// Floor used when scaling contract targets (day 1 has no revenue history)
+  static const double contractMinDailyRevenueEstimate = 400.0;
+
+  /// Revenue a single machine is assumed to bring in per day when scaling targets
+  static const double contractRevenuePerMachineEstimate = 250.0;
+
+  /// Share of the estimated daily revenue a revenue contract asks for
+  static const double contractRevenueShare = 0.6;
+
+  /// Share of the estimated daily revenue a single product deal asks for
+  static const double contractProductRevenueShare = 0.25;
+
+  /// Share of the estimated daily revenue a volume deal asks for
+  static const double contractUnitsRevenueShare = 0.4;
+
+  /// Reward paid as a fraction of the revenue target
+  static const double contractRewardRate = 0.25;
+
+  /// Reward paid as a fraction of the goods value for unit based contracts
+  static const double contractProductRewardRate = 0.3;
+
+  /// Smallest unit goals, so contracts never ask for a trivial amount
+  static const int contractMinProductUnits = 5;
+  static const int contractMinTotalUnits = 15;
+
+  // ============================================================================
+  // MACHINE PRICING
+  // ============================================================================
+
+  /// Range a player can set a machine's per-product price multiplier to.
+  /// 1.0 = list price (product.basePrice), unchanged from the old fixed-price
+  /// behavior.
+  static const double machinePriceMultiplierMin = 0.5; // 50% off list price
+  static const double machinePriceMultiplierMax = 2.0; // Double list price
+  static const double machinePriceMultiplierStep = 0.1; // Per tap in the UI
+  static const double machinePriceMultiplierDefault = 1.0;
+
+  /// Bounds on how far a price change can push demand. Overpricing can never
+  /// fully kill demand; underpricing can't create unbounded volume.
+  static const double priceDemandFactorMin = 0.15;
+  static const double priceDemandFactorMax = 1.6;
+
+  // ============================================================================
+  // SECURITY: THEFT & VANDALISM
+  // ============================================================================
+
+  /// Baseline chance an eligible machine is targeted during any given game
+  /// hour, before zone risk, time of day, cash-on-hand, or Security upgrade
+  /// are factored in.
+  static const double securityEventBaseHourlyChance = 0.003; // ~0.3%/hr baseline
+
+  /// Night hours see a multiplied risk. Night is [22:00, 5:00).
+  static const int securityEventNightStartHour = 22;
+  static const int securityEventNightEndHour = 5;
+  static const double securityEventNightMultiplier = 3.0;
+
+  /// Cash sitting uncollected in a machine raises its risk: +X% relative risk
+  /// per $100 stored, capped so it can never push risk past double.
+  static const double securityEventCashRiskPer100 = 0.05;
+  static const double securityEventCashRiskCap = 1.0;
+
+  /// How much the Security machine upgrade cuts the event chance by.
+  static const double securityUpgradeRiskReduction = 0.65;
+
+  /// How much the Security upgrade reduces the per-empty-machine reputation
+  /// penalty (its advertised effect in the upgrade dialog).
+  static const double securityUpgradeReputationPenaltyReduction = 0.5;
+
+  /// Of the machines targeted while holding cash, the share that are robbed
+  /// rather than vandalized (a machine with no cash is always vandalized -
+  /// there's nothing to steal).
+  static const double theftVsVandalismShareWithCash = 0.65;
+
+  /// Range of the machine's stored cash a successful theft takes.
+  static const double theftCashShareMin = 0.5;
+  static const double theftCashShareMax = 1.0;
   
   // ============================================================================
   // MACHINE UPGRADES
@@ -479,10 +579,7 @@ class AppConfig {
   /// Machine capacity
   static const double machineMaxCapacity = 50.0;
   static const int machineMaxItemsPerProduct = 20;
-  
-  /// Machine purchase limits per type
-  static const int machineLimitPerType = 2;
-  
+
   /// Fuel cost per unit distance
   static const double fuelCostPerUnit = 0.50;
   
@@ -533,7 +630,44 @@ class AppConfig {
   
   /// Grid size
   static const int cityGridSize = 15;
-  
+
+  // ============================================================================
+  // RIVAL COMPANY
+  // ============================================================================
+
+  /// How much of a zone type's market a fully entrenched rival can claim.
+  /// Never reaches 1.0, so a zone type is never entirely lost to the player.
+  static const double rivalMaxPresence = 0.75;
+
+  /// Share of the remaining gap to [rivalMaxPresence] a rival closes per day
+  /// when completely uncontested (zero player machines in that zone type).
+  static const double rivalBaseDailyGrowthRate = 0.04;
+
+  /// Each player machine in a zone type raises "saturation resistance",
+  /// slowing rival growth there: resistance = 1 / (1 + count * this).
+  static const double rivalResistancePerMachine = 0.18;
+
+  /// Floor on that resistance factor, so growth never drops all the way to
+  /// zero - a rival pushed out by counter-attacks always starts creeping
+  /// back, keeping it a recurring decision rather than a one-time chore.
+  static const double rivalMinResistanceFloor = 0.12;
+
+  /// At maximum rival presence, how much the player's sale chance in that
+  /// zone type is cut by (e.g. 0.45 = up to 45% fewer sales).
+  static const double rivalDemandImpactMax = 0.45;
+
+  /// Cash cost of a counter-attack campaign: a flat base plus a share that
+  /// scales with how entrenched the rival already is.
+  static const double rivalCounterAttackBaseCost = 1500.0;
+  static const double rivalCounterAttackCostPerPresence = 3000.0;
+
+  /// How much presence (in 0.0-1.0 terms) a single counter-attack removes.
+  static const double rivalCounterAttackReduction = 0.3;
+
+  /// Presence levels that trigger a one-time log message the first time a
+  /// rival crosses them in a zone type.
+  static const List<double> rivalPresenceLogThresholds = [0.25, 0.5, 0.7];
+
   /// Tile spacing factors
   static const double tileSpacingFactor = 0.80;
   static const double horizontalSpacingFactor = 0.70;

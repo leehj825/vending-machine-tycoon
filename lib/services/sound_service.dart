@@ -70,9 +70,17 @@ class SoundService {
   }
   
   /// Wait for volume settings to be loaded (used before playing music)
+  ///
+  /// Bounded by a timeout: if storage is slow or never answers, music starts at
+  /// the default volume rather than never starting at all.
   Future<void> _ensureSettingsLoaded() async {
     if (_settingsLoadCompleter != null && !_settingsLoadCompleter!.isCompleted) {
-      await _settingsLoadCompleter!.future;
+      try {
+        await _settingsLoadCompleter!.future
+            .timeout(const Duration(seconds: 3));
+      } on TimeoutException {
+        print('⚠️ Volume settings not loaded in time, using defaults');
+      }
     }
   }
   
@@ -88,12 +96,14 @@ class SoundService {
     }
   }
 
-  // Instantiate players after configuring global audio context so they inherit
-  // the configured mixing/audio-focus behavior. Using `late final` ensures
-  // they're created once during initialization.
-  late final AudioPlayer _backgroundMusicPlayer;
-  late final AudioPlayer _soundEffectPlayer;
-  late final AudioPlayer _truckSoundPlayer; // Separate player for truck sound to enable fade out
+  // Players are created eagerly. They used to be created inside
+  // _initAudioContext(), which meant a failing setAudioContext() call left them
+  // uninitialized and every later playback threw LateInitializationError -
+  // silently killing all audio. Players pick up the global audio context when
+  // it is applied, so creating them first is safe.
+  final AudioPlayer _backgroundMusicPlayer = AudioPlayer();
+  final AudioPlayer _soundEffectPlayer = AudioPlayer();
+  final AudioPlayer _truckSoundPlayer = AudioPlayer(); // Separate player for truck sound to enable fade out
   
   bool _isMusicEnabled = true;
   bool _isSoundEnabled = true;
@@ -112,38 +122,59 @@ class SoundService {
   bool _wasPlayingBeforePause = false; // Track if music was playing before app was paused
   Completer<void>? _settingsLoadCompleter; // Completer to track when settings are loaded
 
+  /// Audio context that requests no focus, so sound effects and music mix
+  /// with whatever else is already playing (Spotify, a YouTube popup) instead
+  /// of pausing it. Built once and re-applied per player - see
+  /// _initAudioContext() for why the global default alone isn't enough.
+  static final AudioContext _mixingAudioContext = AudioContext(
+    android: const AudioContextAndroid(
+      // Must stay false: true makes the plugin call
+      // AudioManager.setSpeakerphoneOn(), which needs the
+      // MODIFY_AUDIO_SETTINGS permission and throws without it, failing the
+      // whole setAudioContext call. It also forces call-style routing.
+      isSpeakerphoneOn: false,
+      stayAwake: false,
+      // Music must be tagged as music, otherwise Android treats it as a
+      // notification-style sound and plays it on the ringer stream - so it
+      // is inaudible whenever the phone is on silent or vibrate.
+      contentType: AndroidContentType.music,
+      usageType: AndroidUsageType.media, // 'media' is less aggressive than 'game'
+      audioFocus: AndroidAudioFocus.none, // Key setting: Don't request focus to avoid stopping other apps
+    ),
+    iOS: AudioContextIOS(
+      // `ambient` already mixes with other apps, and audioplayers asserts
+      // that `mixWithOthers` is only passed with playback/playAndRecord/
+      // multiRoute. That assert is plain Dart, so it fires on EVERY
+      // platform in debug builds (and is stripped in release) - passing the
+      // option here is what killed all audio in debug APKs.
+      category: AVAudioSessionCategory.ambient,
+      options: const {},
+    ),
+  );
+
   /// Initialize audio context to allow mixing with other sounds
   Future<void> _initAudioContext() async {
     try {
-      // Configure audio context to allow mixing with other apps (like YouTube)
-      // This prevents the game from stopping background music when sounds play
-      final audioContext = AudioContext(
-        android: const AudioContextAndroid(
-          isSpeakerphoneOn: true,
-          stayAwake: false,
-          contentType: AndroidContentType.sonification,
-          usageType: AndroidUsageType.media, // CHANGED: 'media' is less aggressive than 'game'
-          audioFocus: AndroidAudioFocus.none, // Key setting: Don't request focus to avoid stopping other apps
-        ),
-        iOS: AudioContextIOS(
-          category: AVAudioSessionCategory.ambient,
-          options: const {
-            AVAudioSessionOptions.mixWithOthers,
-          },
-        ),
-      );
+      // The global default only configures players created *after* this call,
+      // and audioplayers only re-applies a context on play() when one is
+      // passed to that specific call. Sound effects and truck sounds never
+      // passed one, so on some platforms/timings they fell back to the
+      // platform default (which requests audio focus) even though background
+      // music - started later, well after this had settled - happened to
+      // mix fine. Setting the context on every existing player explicitly
+      // closes that gap for all three.
+      await AudioPlayer.global.setAudioContext(_mixingAudioContext);
+      await Future.wait([
+        _backgroundMusicPlayer.setAudioContext(_mixingAudioContext),
+        _soundEffectPlayer.setAudioContext(_mixingAudioContext),
+        _truckSoundPlayer.setAudioContext(_mixingAudioContext),
+      ]);
 
-      await AudioPlayer.global.setAudioContext(audioContext);
-      // Instantiate players after the global context is set so they use
-      // the intended AudioContext (mixing with other apps / no focus).
-      _backgroundMusicPlayer = AudioPlayer();
-      _soundEffectPlayer = AudioPlayer();
-      _truckSoundPlayer = AudioPlayer();
-
-      print('✅ Audio context configured to mix with other apps and players created');
+      print('✅ Audio context configured to mix with other apps');
     } catch (e) {
-      print('⚠️ Error configuring audio context: $e');
-      // Continue even if audio context setup fails
+      // Audio still works on the platform defaults, so never let this stop
+      // playback - the players already exist at this point.
+      print('⚠️ Error configuring audio context (continuing with defaults): $e');
     }
   }
 
@@ -348,7 +379,7 @@ class SoundService {
       
       print('🎵 Playing background music: $assetPath (target volume: $volume)');
       
-      await _backgroundMusicPlayer.play(AssetSource(assetPath));
+      await _backgroundMusicPlayer.play(AssetSource(assetPath), ctx: _mixingAudioContext);
     } catch (e) {
       print('⚠️ Error starting playback: $e');
       // Reset on error
@@ -507,14 +538,20 @@ class SoundService {
     }
   }
 
-  /// Stop background music (e.g., when app goes to background)
-  Future<void> pauseBackgroundMusic() async {
+  /// Pause background music (e.g., when the app goes to the background)
+  ///
+  /// Set [isAppBackgrounding] when this comes from a real lifecycle change. The
+  /// just-started protection window below exists to survive screen navigation,
+  /// but the app genuinely leaving the foreground must always win - otherwise
+  /// backgrounding the game within a few seconds of music starting left it
+  /// playing on unseen.
+  Future<void> pauseBackgroundMusic({bool isAppBackgrounding = false}) async {
     try {
       if (_currentMusicPath != null) {
         // Prevent pausing music that was just started (within last 3000ms)
         // This prevents race conditions when navigating between screens triggers lifecycle events
         // Use longer window for menu music since navigation can take time
-        if (_lastMusicStartTime != null) {
+        if (!isAppBackgrounding && _lastMusicStartTime != null) {
           final timeSinceStart = DateTime.now().difference(_lastMusicStartTime!);
           if (timeSinceStart.inMilliseconds < 3000) {
             print('⚠️ Ignoring pause request - music was just started ${timeSinceStart.inMilliseconds}ms ago (protection window: 3000ms)');
@@ -522,44 +559,52 @@ class SoundService {
           }
         }
         
-        // Check if music is actually playing before stopping
+        // Check if music is actually playing before pausing.
+        //
+        // The flag is latched, never cleared here: Android fires more than one
+        // background lifecycle event in a row (hidden, then paused). The first
+        // call pauses the player, and a second call that overwrote this flag
+        // with "not playing" left resume with nothing to restart - which is
+        // exactly why music stayed silent after switching back to the game.
+        bool isPlaying;
         try {
           final playerState = await _backgroundMusicPlayer.state;
-          _wasPlayingBeforePause = (playerState == PlayerState.playing);
+          isPlaying = (playerState == PlayerState.playing);
         } catch (e) {
-          // If we can't check state, assume it's not playing to avoid errors
+          // If we can't check state, leave any existing flag alone
           print('⚠️ Could not check player state: $e');
-          _wasPlayingBeforePause = false;
           return;
         }
         
-        if (_wasPlayingBeforePause) {
-          print('⏸️ Stopping background music (app going to background): $_currentMusicPath');
+        if (isPlaying) {
+          _wasPlayingBeforePause = true;
+          print('⏸️ Pausing background music (app going to background): $_currentMusicPath');
           // Stop fade timer
           _fadeTimer?.cancel();
           _fadeTimer = null;
           _isFading = false;
-          // Stop the music (don't clear _currentMusicPath so we know what to restart)
+          // Pause rather than stop, so returning to the game picks the track up
+          // where it left off (_currentMusicPath is kept either way)
           try {
-            await _backgroundMusicPlayer.stop();
+            await _backgroundMusicPlayer.pause();
           } catch (e) {
             // Ignore errors if player is already stopped or disposed
             print('⚠️ Error pausing player (may already be stopped): $e');
           }
         } else {
-          print('ℹ️ Music not playing, nothing to stop');
-          _wasPlayingBeforePause = false;
+          // Already paused by an earlier lifecycle event - keep the flag so
+          // resume still knows the music should come back
+          print('ℹ️ Music already paused (wasPlaying: $_wasPlayingBeforePause)');
         }
       } else {
         _wasPlayingBeforePause = false;
       }
     } catch (e) {
-      print('Error stopping background music: $e');
-      _wasPlayingBeforePause = false;
+      print('Error pausing background music: $e');
     }
   }
 
-  /// Restart background music from beginning (e.g., when app returns to foreground)
+  /// Resume background music (e.g., when app returns to foreground)
   Future<void> resumeBackgroundMusic() async {
     if (!_isMusicEnabled) {
       print('🔇 Music is disabled, not restarting');
@@ -568,12 +613,42 @@ class SoundService {
     }
     
     try {
-      // Only restart if we have a track and it was playing before pause
+      // Only resume if we have a track and it was playing before pause
       if (_currentMusicPath != null && _wasPlayingBeforePause) {
-        print('🔄 Restarting background music from beginning (app returning to foreground): $_currentMusicPath');
-        // Restart from beginning instead of resuming
-        await playBackgroundMusic(_currentMusicPath!);
-        _wasPlayingBeforePause = false; // Reset flag after restart
+        final path = _currentMusicPath!;
+        print('🔄 Resuming background music (app returning to foreground): $path');
+        _wasPlayingBeforePause = false; // Reset flag up front
+
+        // Restore the volume: the app may have been backgrounded mid fade-out,
+        // which would otherwise bring the track back silent
+        final baseVolume =
+            path.contains('game_background') ? _gameBackgroundVolume : _musicVolume;
+        final volume =
+            (baseVolume * _applyVolumeCurve(_musicVolumeMultiplier)).clamp(0.0, 1.0);
+        _targetVolume = volume;
+
+        var resumed = false;
+        try {
+          await _backgroundMusicPlayer.resume();
+          await _backgroundMusicPlayer.setVolume(volume);
+          resumed = await _isReallyPlaying();
+        } catch (e) {
+          print('⚠️ Could not resume, will restart the track: $e');
+        }
+
+        if (resumed) {
+          // Fade monitoring was cancelled on pause, so start watching again
+          _startFadeMonitoring(path, volume);
+        } else {
+          // The platform dropped the prepared source while backgrounded.
+          // Clear the current path first: playBackgroundMusic() would otherwise
+          // trust the player's own state - which reports "playing" straight
+          // after a resume() that never actually produced sound - and return
+          // early without restarting anything.
+          print('⚠️ Resume did not take, restarting the track');
+          _currentMusicPath = null;
+          await playBackgroundMusic(path);
+        }
       } else {
         if (_currentMusicPath == null) {
           print('ℹ️ No music track to restart');
@@ -584,6 +659,23 @@ class SoundService {
     } catch (e) {
       print('Error restarting background music: $e');
       _wasPlayingBeforePause = false;
+    }
+  }
+
+  /// Whether the player is genuinely producing audio.
+  ///
+  /// [AudioPlayer.state] is updated optimistically as soon as resume() is
+  /// called, so it says "playing" even when the native player did nothing.
+  /// Watching the playback position actually move is the reliable check.
+  Future<bool> _isReallyPlaying() async {
+    try {
+      final first = await _backgroundMusicPlayer.getCurrentPosition();
+      await Future.delayed(const Duration(milliseconds: 350));
+      final second = await _backgroundMusicPlayer.getCurrentPosition();
+      if (first == null || second == null) return false;
+      return second > first;
+    } catch (e) {
+      return false;
     }
   }
 
@@ -622,7 +714,7 @@ class SoundService {
       await _soundEffectPlayer.setReleaseMode(ReleaseMode.release);
       await _soundEffectPlayer.setVolume(finalVolume);
       print('🔊 Playing sound effect: $assetPath (volume: $finalVolume = curved($_soundVolumeMultiplier) * $volumeMultiplier)');
-      await _soundEffectPlayer.play(AssetSource(assetPath));
+      await _soundEffectPlayer.play(AssetSource(assetPath), ctx: _mixingAudioContext);
     } catch (e) {
       print('❌ Error playing sound effect ($assetPath): $e');
     }
@@ -655,7 +747,7 @@ class SoundService {
       await _truckSoundPlayer.setReleaseMode(ReleaseMode.release);
       await _truckSoundPlayer.setVolume(finalVolume);
       print('🔊 Playing truck sound: sound/truck.m4a (volume: $finalVolume)');
-      await _truckSoundPlayer.play(AssetSource('sound/truck.m4a'));
+      await _truckSoundPlayer.play(AssetSource('sound/truck.m4a'), ctx: _mixingAudioContext);
       
       // Start monitoring position to fade out 1 second before the end
       _startTruckSoundFadeMonitoring(finalVolume);

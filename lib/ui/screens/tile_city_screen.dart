@@ -14,7 +14,9 @@ import '../../simulation/models/truck.dart' as sim;
 import '../../simulation/models/machine.dart' as sim;
 import '../../simulation/models/product.dart';
 import '../../simulation/models/weather.dart';
+import '../../simulation/models/pricing.dart';
 import '../../config.dart';
+import '../../services/sound_service.dart';
 import '../theme/zone_ui.dart';
 import '../utils/screen_utils.dart';
 import '../widgets/machine_interior_dialog.dart';
@@ -1739,11 +1741,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
           final posX = screenPos.dx + centerOffset.dx;
           final posY = screenPos.dy + centerOffset.dy;
           
-          final buttonSize = ScreenUtils.relativeSizeClamped(
-            context, 0.03,
-            min: ScreenUtils.getSmallerDimension(context) * 0.03,
-            max: ScreenUtils.getSmallerDimension(context) * 0.03,
-          );
+          final buttonSize = ScreenUtils.relativeSizeClamped(context, 0.03);
           
           final buttonTop = posY;
           final buttonLeft = posX + (tileWidth / 2) - (buttonSize / 2);
@@ -1857,12 +1855,8 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
                         'Keep pressing to rush selling!',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: ScreenUtils.relativeFontSize(
-                            context,
-                            0.018, // Smaller font
-                            min: ScreenUtils.getSmallerDimension(context) * 0.014,
-                            max: ScreenUtils.getSmallerDimension(context) * 0.025,
-                          ),
+                          fontSize: ScreenUtils.relativeFontSize(context, 0.018, // Smaller font
+                            min: ScreenUtils.getSmallerDimension(context) * 0.014),
                           fontWeight: FontWeight.bold,
                           shadows: [
                             Shadow(
@@ -2156,6 +2150,20 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
       );
     }
 
+    // Floating money icon: only shown once the machine has cash waiting.
+    // Sits close to the building's own top, well below where the status
+    // indicator (and a neighboring tile's "+" purchase marker, in the row
+    // above) live - only stacked higher, above the status indicator's own
+    // slot, on the rare tile where both are showing at once, so the two
+    // never overlap each other. Tapping it collects instantly, without
+    // opening any dialog - tapping the building itself always opens the
+    // status popup instead (see _handleBuildingTap).
+    final moneyIconSize = tileWidth * 0.16;
+    final hasCashWaiting = machine.currentCash > 0;
+    final moneyIconTop = statusIndicator != null
+        ? positionedY - (indicatorSize * 2.0) - (moneyIconSize * 0.3) - (tileHeight * 0.01)
+        : positionedY - (indicatorSize * 1.0);
+
     return Stack(
       clipBehavior: Clip.none,
       children: [
@@ -2165,6 +2173,17 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
             left: positionedX + (tileWidth / 2) - (indicatorSize),
             top: positionedY - (indicatorSize *2.0),
             child: statusIndicator,
+          ),
+        if (hasCashWaiting)
+          Positioned(
+            left: positionedX + (tileWidth / 2) - (moneyIconSize / 2),
+            top: moneyIconTop,
+            width: moneyIconSize,
+            height: moneyIconSize,
+            child: _CashCollectButton(
+              size: moneyIconSize,
+              onTap: () => _collectMachineCashFromMap(machine),
+            ),
           ),
         // Machine button at bottom center of tile
         Positioned(
@@ -2231,23 +2250,13 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
       builder: (dialogContext) => AlertDialog(
         title: Row(
           children: [
-            Icon(Icons.warning, color: Colors.red, size: ScreenUtils.relativeSizeClamped(
-              context,
-              0.06,
-              min: ScreenUtils.getSmallerDimension(context) * 0.04,
-              max: ScreenUtils.getSmallerDimension(context) * 0.08,
-            )),
+            Icon(Icons.warning, color: Colors.red, size: ScreenUtils.relativeSizeClamped(context, 0.06)),
             SizedBox(width: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall)),
             Expanded(
               child: Text(
                 'Game Over',
                 style: TextStyle(
-                  fontSize: ScreenUtils.relativeFontSize(
-                    context,
-                    AppConfig.fontSizeFactorLarge,
-                    min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                    max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                  ),
+                  fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorLarge),
                   fontWeight: FontWeight.bold,
                   color: Colors.red.shade900,
                 ),
@@ -2262,12 +2271,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
             Text(
               'Your business went bankrupt!',
               style: TextStyle(
-                fontSize: ScreenUtils.relativeFontSize(
-                  context,
-                  AppConfig.fontSizeFactorNormal,
-                  min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                  max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                ),
+                fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -2275,12 +2279,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
             Text(
               'Final Cash: \$${gameState.cash.toStringAsFixed(2)}',
               style: TextStyle(
-                fontSize: ScreenUtils.relativeFontSize(
-                  context,
-                  AppConfig.fontSizeFactorNormal,
-                  min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                  max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                ),
+                fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
                 color: Colors.red.shade700,
               ),
             ),
@@ -2288,12 +2287,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
             Text(
               'Day ${gameState.dayCount}',
               style: TextStyle(
-                fontSize: ScreenUtils.relativeFontSize(
-                  context,
-                  AppConfig.fontSizeFactorSmall,
-                  min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                  max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                ),
+                fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorSmall),
                 color: Colors.grey.shade600,
               ),
             ),
@@ -2301,12 +2295,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
             Text(
               'Try to manage your expenses better next time!',
               style: TextStyle(
-                fontSize: ScreenUtils.relativeFontSize(
-                  context,
-                  AppConfig.fontSizeFactorSmall,
-                  min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                  max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                ),
+                fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorSmall),
                 color: Colors.grey.shade700,
               ),
             ),
@@ -2321,12 +2310,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
             child: Text(
               'Back to Menu',
               style: TextStyle(
-                fontSize: ScreenUtils.relativeFontSize(
-                  context,
-                  AppConfig.fontSizeFactorNormal,
-                  min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                  max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                ),
+                fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
               ),
             ),
           ),
@@ -2344,12 +2328,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
             child: Text(
               'New Game',
               style: TextStyle(
-                fontSize: ScreenUtils.relativeFontSize(
-                  context,
-                  AppConfig.fontSizeFactorNormal,
-                  min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                  max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-                ),
+                fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
               ),
             ),
           ),
@@ -2469,12 +2448,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
           child: Text(
             'T',
             style: TextStyle(
-              fontSize: ScreenUtils.relativeFontSize(
-                context,
-                AppConfig.fontSizeFactorNormal,
-                min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-              ),
+              fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
               color: Colors.white,
             ),
           ),
@@ -3416,12 +3390,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
                   'Tap pedestrians to make them buy items!',
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: ScreenUtils.relativeFontSize(
-                      context,
-                      0.018,
-                      min: ScreenUtils.getSmallerDimension(context) * 0.014,
-                      max: ScreenUtils.getSmallerDimension(context) * 0.025,
-                    ),
+                    fontSize: ScreenUtils.relativeFontSize(context, 0.018),
                     fontWeight: FontWeight.bold,
                     shadows: [
                       Shadow(
@@ -3648,6 +3617,27 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
     return ((a.x - b.x).abs() + (a.y - b.y).abs()).toDouble();
   }
 
+  /// Quick-collect a machine's waiting cash straight from the map, without
+  /// opening any dialog. Triggered by tapping the floating money icon that
+  /// appears above a machine once it has cash - tapping the building itself
+  /// still always opens the status popup (see _handleBuildingTap).
+  void _collectMachineCashFromMap(sim.Machine machine) {
+    final controller = ref.read(gameControllerProvider.notifier);
+    final collected = controller.collectMachineCash(machine.id);
+    if (collected <= 0) return;
+
+    SoundService().playCoinCollectSound();
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('💰 Collected \$${collected.toStringAsFixed(2)} from ${machine.name}'),
+          duration: AppConfig.snackbarDurationShort,
+          backgroundColor: Colors.green.shade700,
+        ),
+      );
+    }
+  }
+
   void _handleBuildingTap(int gridX, int gridY, TileType tileType) {
     try {
       final zoneX = (gridX + 1).toDouble() + 0.5;
@@ -3676,24 +3666,18 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
       }
       
       if (existingMachine != null) {
-        // Machine exists - show status popup
+        // Machine exists - tapping the building itself always opens the
+        // status popup. Quick cash collection lives on the floating money
+        // icon rendered above the machine instead (see _buildGameMachine),
+        // so the building tap stays predictable regardless of cash state.
         if (context.mounted) {
           _showMachineView(context, existingMachine);
         }
       } else {
-        // Machine doesn't exist - show purchase dialog
-        if (!_canPurchaseMachine(zoneType)) {
-          if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(_getProgressionMessage(zoneType)),
-                duration: AppConfig.snackbarDurationShort,
-              ),
-            );
-          }
-          return;
-        }
-        
+        // Machine doesn't exist - show purchase dialog. Purchases are gated
+        // by cash alone (checked in the dialog itself) - buy as many
+        // machines as the map has building tiles for, as long as you can
+        // afford them.
         if (context.mounted) {
           _showMachinePurchaseDialog(context, zoneType, zoneX, zoneY);
         }
@@ -3719,8 +3703,6 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
     final zoneType = _tileTypeToZoneType(tileType);
     if (zoneType == null) return false;
 
-    if (!_canPurchaseMachine(zoneType)) return false;
-
     final machines = ref.watch(machinesProvider);
     final hasExistingMachine = machines.any(
       (m) => (m.zone.x - zoneX).abs() < 0.1 && (m.zone.y - zoneY).abs() < 0.1,
@@ -3740,24 +3722,6 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
       case TileType.university: return ZoneType.university;
       default: return null;
     }
-  }
-
-  bool _canPurchaseMachine(ZoneType zoneType) {
-    final machines = ref.read(machinesProvider);
-    // All machine types are available from the start - just check if under limit
-    final machinesOfType = machines.where((m) => m.zone.type == zoneType).length;
-    return machinesOfType < AppConfig.machineLimitPerType;
-  }
-
-  String _getProgressionMessage(ZoneType zoneType) {
-    final machines = ref.read(machinesProvider);
-    final machinesOfType = machines.where((m) => m.zone.type == zoneType).length;
-    final limit = AppConfig.machineLimitPerType;
-    
-    if (machinesOfType >= limit) {
-      return '${zoneType.name.toUpperCase()} limit reached (have $machinesOfType/$limit)';
-    }
-    return 'Can purchase ${zoneType.name} machines ($machinesOfType/$limit)';
   }
 
   Widget _buildGroundTile(TileType tileType, RoadDirection? roadDir, int x, int y, {BuildContext? context}) {
@@ -3794,12 +3758,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
           child: Text(
             _getTileLabel(tileType),
             style: TextStyle(
-            fontSize: ScreenUtils.relativeFontSize(
-              context,
-              AppConfig.fontSizeFactorTiny,
-              min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-              max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-            ),
+            fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorTiny),
           ),
           ),
         );
@@ -3831,12 +3790,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
             child: Text(
               _getTileLabel(tileType),
               style: TextStyle(
-              fontSize: ScreenUtils.relativeFontSize(
-                context,
-                AppConfig.fontSizeFactorTiny,
-                min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-                max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-              ),
+              fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorTiny),
             ),
             ),
           ),
@@ -4342,6 +4296,8 @@ class _MachineStatusSection extends ConsumerWidget {
                   ],
                 ),
                 SizedBox(height: dialogWidth * AppConfig.machineStatusDialogStockItemPaddingFactor * 0.5),
+                _buildPriceControl(context, ref, machine, product, item, dialogWidth),
+                SizedBox(height: dialogWidth * AppConfig.machineStatusDialogStockItemPaddingFactor * 0.5),
                 // Customer Interest Progress Bar (only show if item has quantity > 0)
                 if (item.quantity > 0)
                 LinearProgressIndicator(
@@ -4439,6 +4395,78 @@ class _MachineStatusSection extends ConsumerWidget {
       ],
     );
   }
+
+  /// Price control for one product in one machine: a -/+ stepper on the
+  /// player's price multiplier, the resulting retail price, and a live
+  /// demand indicator so the tradeoff (higher price, fewer sales) is visible
+  /// before committing to it.
+  Widget _buildPriceControl(
+    BuildContext context,
+    WidgetRef ref,
+    sim.Machine machine,
+    Product product,
+    sim.InventoryItem item,
+    double dialogWidth,
+  ) {
+    final elasticity = machine.zone.type.priceElasticity;
+    final demandFactor = PricingMath.demandFactor(item.priceMultiplier, elasticity);
+    final effectivePrice = PricingMath.effectivePrice(
+      basePrice: product.basePrice,
+      priceMultiplier: item.priceMultiplier,
+    );
+    final percentOfList = (item.priceMultiplier * 100).round();
+    final demandPercent = (demandFactor * 100).round();
+    final demandColor = demandFactor >= 1.0
+        ? Colors.green.shade700
+        : demandFactor >= 0.7
+            ? Colors.orange.shade800
+            : Colors.red.shade700;
+
+    void setMultiplier(double multiplier) {
+      final controller = ref.read(gameControllerProvider.notifier);
+      controller.updateMachinePrice(machine.id, product, multiplier);
+    }
+
+    return Row(
+      children: [
+        Expanded(
+          child: RichText(
+            text: TextSpan(
+              style: TextStyle(
+                fontSize: dialogWidth * AppConfig.machineStatusDialogStockItemFontSizeFactor * 0.85,
+                color: Colors.grey[800],
+              ),
+              children: [
+                TextSpan(
+                  text: '\$${effectivePrice.toStringAsFixed(2)} ',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                TextSpan(text: '($percentOfList% of list) · '),
+                TextSpan(
+                  text: 'Demand $demandPercent%',
+                  style: TextStyle(color: demandColor, fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+          ),
+        ),
+        IconButton(
+          icon: Icon(Icons.remove_circle_outline, size: dialogWidth * 0.045),
+          tooltip: 'Lower price',
+          onPressed: () => setMultiplier(item.priceMultiplier - AppConfig.machinePriceMultiplierStep),
+          padding: EdgeInsets.all(dialogWidth * 0.008),
+          constraints: const BoxConstraints(),
+        ),
+        IconButton(
+          icon: Icon(Icons.add_circle_outline, size: dialogWidth * 0.045),
+          tooltip: 'Raise price',
+          onPressed: () => setMultiplier(item.priceMultiplier + AppConfig.machinePriceMultiplierStep),
+          padding: EdgeInsets.all(dialogWidth * 0.008),
+          constraints: const BoxConstraints(),
+        ),
+      ],
+    );
+  }
 }
 
 /// Refactored Button Widget that handles the tap/drag distinction logic
@@ -4507,6 +4535,86 @@ class _PurchaseButtonState extends State<_PurchaseButton> {
                 size: widget.size * 0.75,
               ),
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Floating money icon shown above a machine once it has cash waiting.
+/// Tapping it collects instantly; a gentle continuous pulse draws the eye to
+/// it without needing any new art (Material icon + shadow only).
+class _CashCollectButton extends StatefulWidget {
+  final VoidCallback onTap;
+  final double size;
+
+  const _CashCollectButton({
+    required this.onTap,
+    required this.size,
+  });
+
+  @override
+  State<_CashCollectButton> createState() => _CashCollectButtonState();
+}
+
+class _CashCollectButtonState extends State<_CashCollectButton> with SingleTickerProviderStateMixin {
+  late final AnimationController _pulseController;
+  late final Animation<double> _pulseAnimation;
+  Offset? _pointerDownPosition;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    )..repeat(reverse: true);
+    _pulseAnimation = Tween<double>(begin: 0.92, end: 1.08).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Listener(
+      onPointerDown: (event) => _pointerDownPosition = event.position,
+      onPointerUp: (event) {
+        if (_pointerDownPosition != null) {
+          final distance = (event.position - _pointerDownPosition!).distance;
+          if (distance < 10.0) {
+            widget.onTap();
+          }
+        }
+        _pointerDownPosition = null;
+      },
+      onPointerCancel: (_) => _pointerDownPosition = null,
+      behavior: HitTestBehavior.opaque,
+      child: ScaleTransition(
+        scale: _pulseAnimation,
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.amber.shade600,
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white, width: ScreenUtils.relativeSize(context, 0.004)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.35),
+                blurRadius: ScreenUtils.relativeSize(context, 0.008),
+                offset: Offset(0, ScreenUtils.relativeSize(context, 0.003)),
+              ),
+            ],
+          ),
+          child: Icon(
+            Icons.attach_money,
+            color: Colors.white,
+            size: widget.size * 0.7,
           ),
         ),
       ),

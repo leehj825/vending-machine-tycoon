@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dashboard_screen.dart';
@@ -100,16 +102,12 @@ class _MainScreenState extends ConsumerState<MainScreen> {
 
 /// Calculate the required height for the status bar
 double _calculateStatusBarHeight(BuildContext context) {
-  final smallerDim = ScreenUtils.getSmallerDimension(context);
-  
   // Calculate card dimensions (same logic as in _StatusBar)
-  final cardWidth = ScreenUtils.relativeSizeClamped(
+  final cardHeight = ScreenUtils.barHeight(
     context,
-    AppConfig.statusCardWidthFactor,
-    min: smallerDim * AppConfig.statusCardWidthMinFactor,
-    max: smallerDim * AppConfig.statusCardWidthMaxFactor,
+    AppConfig.statusCardHeightFactor,
+    AppConfig.statusBarMaxHeightFraction,
   );
-  final cardHeight = (cardWidth * AppConfig.statusCardHeightRatio);
   
   // Container padding
   final containerPadding = ScreenUtils.relativeSize(context, AppConfig.statusBarContainerPaddingFactor);
@@ -134,36 +132,20 @@ class _StatusBar extends ConsumerWidget {
     final amPm = hourOfDay < 12 ? 'AM' : 'PM';
     final timeString = 'Day $dayCount, $hour12$amPm';
     
-    final smallerDim = ScreenUtils.getSmallerDimension(context);
-    
-    // Calculate card width using config constants
-    final cardWidth = ScreenUtils.relativeSizeClamped(
+    // Card height drives the size; width follows the frame artwork's aspect
+    final cardHeight = ScreenUtils.barHeight(
       context,
-      AppConfig.statusCardWidthFactor,
-      min: smallerDim * AppConfig.statusCardWidthMinFactor,
-      max: smallerDim * AppConfig.statusCardWidthMaxFactor,
+      AppConfig.statusCardHeightFactor,
+      AppConfig.statusBarMaxHeightFraction,
     );
-    final cardHeight = (cardWidth * AppConfig.statusCardHeightRatio);
+    final cardWidth = cardHeight * AppConfig.statusCardAspectRatio;
     
-    // Calculate icon size using config constants
-    final iconSize = ScreenUtils.relativeSize(
-      context,
-      (cardWidth / smallerDim * AppConfig.statusCardIconSizeFactor),
-    );
-    
+    // Padding is a fraction of the card itself, so it stays in proportion
+    // with it on every screen
     // Font size for value - use status card specific size
-    final valueFontSize = ScreenUtils.relativeFontSize(
-      context,
-      AppConfig.statusCardTextSizeFactor,
-      min: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMinMultiplier,
-      max: ScreenUtils.getSmallerDimension(context) * AppConfig.fontSizeMaxMultiplier,
-    );
+    final valueFontSize = ScreenUtils.relativeFontSize(context, AppConfig.statusCardTextSizeFactor);
     
-    // Calculate padding using config constants
-    final padding = ScreenUtils.relativeSize(
-      context,
-      (cardWidth / smallerDim * AppConfig.statusCardPaddingFactor),
-    );
+    final padding = cardWidth * AppConfig.statusCardPaddingFactor;
     
     final containerPadding = ScreenUtils.relativeSize(context, AppConfig.statusBarContainerPaddingFactor);
     
@@ -173,8 +155,23 @@ class _StatusBar extends ConsumerWidget {
         vertical: containerPadding,
       ),
       color: Theme.of(context).colorScheme.surface,
-      child: Row(
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // Save/Exit sit in the space the status cards leave free on the right
+          Positioned(
+            right: 0,
+            top: 0,
+            bottom: 0,
+            child: Center(
+              child: _SaveExitButtons(
+                size: cardHeight * AppConfig.saveExitButtonSizeRatio,
+              ),
+            ),
+          ),
+          Row(
         mainAxisAlignment: MainAxisAlignment.center,
+        spacing: containerPadding * 4,
         children: [
           _StatusCard(
             iconAsset: 'assets/images/cash_icon.png',
@@ -182,7 +179,6 @@ class _StatusBar extends ConsumerWidget {
             valueColor: Colors.green,
             cardWidth: cardWidth,
             cardHeight: cardHeight,
-            iconSize: iconSize,
             valueFontSize: valueFontSize,
             padding: padding,
           ),
@@ -192,7 +188,6 @@ class _StatusBar extends ConsumerWidget {
             valueColor: Colors.amber,
             cardWidth: cardWidth,
             cardHeight: cardHeight,
-            iconSize: iconSize,
             valueFontSize: valueFontSize,
             padding: padding,
           ),
@@ -202,9 +197,10 @@ class _StatusBar extends ConsumerWidget {
             valueColor: Colors.blue,
             cardWidth: cardWidth,
             cardHeight: cardHeight,
-            iconSize: iconSize,
             valueFontSize: valueFontSize,
             padding: padding,
+          ),
+            ],
           ),
         ],
       ),
@@ -219,7 +215,6 @@ class _StatusCard extends StatelessWidget {
   final Color valueColor;
   final double cardWidth;
   final double cardHeight;
-  final double iconSize;
   final double valueFontSize;
   final double padding;
 
@@ -229,7 +224,6 @@ class _StatusCard extends StatelessWidget {
     required this.valueColor,
     required this.cardWidth,
     required this.cardHeight,
-    required this.iconSize,
     required this.valueFontSize,
     required this.padding,
   });
@@ -258,49 +252,43 @@ class _StatusCard extends StatelessWidget {
               );
             },
           ),
-          // Content overlay - icons at center top, values at center bottom
+          // Content overlay - icon above, value below.
+          // Laid out in a Column rather than absolutely positioned so the icon
+          // and the value can never overlap, whatever the card size works out
+          // to on a given screen.
           Positioned.fill(
-            child: Stack(
-              children: [
-                // Icon positioned at center upper part
-                Positioned(
-                  left: (cardWidth - iconSize) / 2,
-                  top: cardHeight * AppConfig.statusCardIconTopPositionFactor,
-                  child: Image.asset(
-                    iconAsset,
-                    width: iconSize,
-                    height: iconSize,
-                    fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) {
-                      return SizedBox(
-                        width: iconSize,
-                        height: iconSize,
-                      );
-                    },
-                  ),
-                ),
-                // Value positioned at center bottom
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: cardHeight * AppConfig.statusCardTextBottomPositionFactor,
-                  child: Center(
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        value,
-                        style: TextStyle(
-                          fontSize: valueFontSize,
-                          fontWeight: FontWeight.bold,
-                          color: valueColor,
-                        ),
-                        maxLines: 1,
-                        textAlign: TextAlign.center,
-                      ),
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: padding,
+                vertical: cardHeight * 0.08,
+              ),
+              child: Column(
+                children: [
+                  // The icon takes whatever height is left after the value
+                  Expanded(
+                    child: Image.asset(
+                      iconAsset,
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) =>
+                          const SizedBox.shrink(),
                     ),
                   ),
-                ),
-              ],
+                  SizedBox(height: cardHeight * 0.04),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      value,
+                      style: TextStyle(
+                        fontSize: valueFontSize,
+                        fontWeight: FontWeight.bold,
+                        color: valueColor,
+                      ),
+                      maxLines: 1,
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -321,85 +309,99 @@ class _CustomBottomNavigationBar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final barHeight = ScreenUtils.relativeSize(context, AppConfig.bottomNavBarHeightFactor);
-    
-    return Container(
-      height: barHeight,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: ScreenUtils.relativeSize(context, 0.0017),
-            offset: Offset(0, -ScreenUtils.relativeSize(context, 0.00085)),
+    // The four tab buttons share the full width of the row, so size them from
+    // the width each one actually gets and let the bar be as tall as those
+    // buttons need. Driving the bar from a height factor alone left the buttons
+    // far smaller than the space available to them.
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final tabSlotWidth =
+            (constraints.maxWidth - AppConfig.tabButtonCount * _tabGap(context)) /
+                AppConfig.tabButtonCount;
+        // Tab artwork is wider than it is tall, so width decides the height
+        final tabHeightForWidth = tabSlotWidth / AppConfig.tabButtonAspectRatio;
+        final maxBarHeight = ScreenUtils.barHeight(
+          context,
+          AppConfig.bottomNavBarHeightFactor,
+          AppConfig.bottomNavBarMaxHeightFraction,
+        );
+        final tabHeight = math.min(
+          tabHeightForWidth,
+          maxBarHeight * AppConfig.tabButtonHeightRatio,
+        );
+        final barHeight = tabHeight / AppConfig.tabButtonHeightRatio;
+
+        return Container(
+          height: barHeight,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.1),
+                blurRadius: ScreenUtils.relativeSize(context, 0.0017),
+                offset: Offset(0, -ScreenUtils.relativeSize(context, 0.00085)),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: SafeArea(
-        top: false,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.start,
-          children: [
-            Expanded(
-              child: _buildTabItem(
-                context,
-                index: 0,
-                pressAsset: 'assets/images/hq_tab_press.png',
-                unpressAsset: 'assets/images/hq_tab_unpress.png',
-              ),
+          child: SafeArea(
+            top: false,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _buildTabItem(
+                  context,
+                  tabHeight: tabHeight,
+                  index: 0,
+                  pressAsset: 'assets/images/hq_tab_press.png',
+                  unpressAsset: 'assets/images/hq_tab_unpress.png',
+                ),
+                _buildTabItem(
+                  context,
+                  tabHeight: tabHeight,
+                  index: 1,
+                  pressAsset: 'assets/images/city_tab_press.png',
+                  unpressAsset: 'assets/images/city_tab_unpress.png',
+                ),
+                _buildTabItem(
+                  context,
+                  tabHeight: tabHeight,
+                  index: 2,
+                  pressAsset: 'assets/images/fleet_tab_press.png',
+                  unpressAsset: 'assets/images/fleet_tab_unpress.png',
+                ),
+                _buildTabItem(
+                  context,
+                  tabHeight: tabHeight,
+                  index: 3,
+                  pressAsset: 'assets/images/market_tab_press.png',
+                  unpressAsset: 'assets/images/market_tab_unpress.png',
+                ),
+              ],
             ),
-            Expanded(
-              child: _buildTabItem(
-                context,
-                index: 1,
-                pressAsset: 'assets/images/city_tab_press.png',
-                unpressAsset: 'assets/images/city_tab_unpress.png',
-              ),
-            ),
-            Expanded(
-              child: _buildTabItem(
-                context,
-                index: 2,
-                pressAsset: 'assets/images/fleet_tab_press.png',
-                unpressAsset: 'assets/images/fleet_tab_unpress.png',
-              ),
-            ),
-            Expanded(
-              child: _buildTabItem(
-                context,
-                index: 3,
-                pressAsset: 'assets/images/market_tab_press.png',
-                unpressAsset: 'assets/images/market_tab_unpress.png',
-              ),
-            ),
-            // Save and Exit buttons on the right - no margin
-            _buildActionButtons(context, ref),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
+  double _tabGap(BuildContext context) =>
+      ScreenUtils.relativeSize(context, AppConfig.paddingSmallFactor);
+
   Widget _buildTabItem(
     BuildContext context, {
+    required double tabHeight,
     required int index,
     required String pressAsset,
     required String unpressAsset,
   }) {
     final isSelected = currentIndex == index;
     
-    // Calculate responsive tab button height
-    final tabButtonHeight = ScreenUtils.relativeSize(
-      context,
-      AppConfig.tabButtonHeightFactor,
-    );
-    
     return GestureDetector(
       onTap: () => onTap(index),
       behavior: HitTestBehavior.opaque,
-      child: Container(
-        height: tabButtonHeight, // Responsive height
-        color: Colors.transparent, // Ensures the empty space is tappable
+      child: SizedBox(
+        height: tabHeight,
+        width: tabHeight * AppConfig.tabButtonAspectRatio,
         child: Center(
           child: Image.asset(
             isSelected ? pressAsset : unpressAsset,
@@ -421,20 +423,36 @@ class _CustomBottomNavigationBar extends ConsumerWidget {
     );
   }
 
-  Widget _buildActionButtons(BuildContext context, WidgetRef ref) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final screenWidth = MediaQuery.of(context).size.width;
-        
-        // Calculate button height
-        final buttonHeight = ScreenUtils.relativeSizeClamped(
-          context,
-          AppConfig.saveExitButtonHeightFactor,
-          min: ScreenUtils.relativeSize(context, AppConfig.buttonHeightFactor), // Minimum for comfortable touch target
-        );
-        
-        // Adjust button width for side-by-side layout
-        final sideBySideButtonWidth = screenWidth * AppConfig.saveExitButtonWidthFactor;
+  IconData _getIconForIndex(int index) {
+    switch (index) {
+      case 0:
+        return Icons.dashboard_rounded;
+      case 1:
+        return Icons.map_rounded;
+      case 2:
+        return Icons.local_shipping_rounded;
+      case 3:
+        return Icons.store_rounded;
+      default:
+        return Icons.circle;
+    }
+  }
+}
+
+/// Save and Exit buttons.
+///
+/// These live in the status bar rather than the bottom navigation row: they are
+/// utility actions, not navigation, and taking them out of that row gives the
+/// four tab buttons the whole width to grow into.
+class _SaveExitButtons extends ConsumerWidget {
+  final double size;
+
+  const _SaveExitButtons({required this.size});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+        final buttonHeight = size;
+        final sideBySideButtonWidth = size;
         
         return Row(
           mainAxisSize: MainAxisSize.min, // Keep compact on the right side
@@ -501,8 +519,6 @@ class _CustomBottomNavigationBar extends ConsumerWidget {
             ),
           ],
         );
-      },
-    );
   }
 
   Future<void> _saveGame(BuildContext context, WidgetRef ref) async {
@@ -581,20 +597,6 @@ class _CustomBottomNavigationBar extends ConsumerWidget {
     );
   }
 
-  IconData _getIconForIndex(int index) {
-    switch (index) {
-      case 0:
-        return Icons.dashboard_rounded;
-      case 1:
-        return Icons.map_rounded;
-      case 2:
-        return Icons.local_shipping_rounded;
-      case 3:
-        return Icons.store_rounded;
-      default:
-        return Icons.circle;
-    }
-  }
 }
 
 /// Dialog for selecting save slot and entering name
