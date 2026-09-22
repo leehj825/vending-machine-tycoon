@@ -2151,12 +2151,18 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
     }
 
     // Floating money icon: only shown once the machine has cash waiting.
-    // Sits above the status indicator's slot (whether or not one is showing)
-    // so the two never overlap. Tapping it collects instantly, without
+    // Sits close to the building's own top, well below where the status
+    // indicator (and a neighboring tile's "+" purchase marker, in the row
+    // above) live - only stacked higher, above the status indicator's own
+    // slot, on the rare tile where both are showing at once, so the two
+    // never overlap each other. Tapping it collects instantly, without
     // opening any dialog - tapping the building itself always opens the
     // status popup instead (see _handleBuildingTap).
     final moneyIconSize = tileWidth * 0.16;
     final hasCashWaiting = machine.currentCash > 0;
+    final moneyIconTop = statusIndicator != null
+        ? positionedY - (indicatorSize * 2.0) - (moneyIconSize * 0.3) - (tileHeight * 0.01)
+        : positionedY - (indicatorSize * 1.0);
 
     return Stack(
       clipBehavior: Clip.none,
@@ -2171,7 +2177,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
         if (hasCashWaiting)
           Positioned(
             left: positionedX + (tileWidth / 2) - (moneyIconSize / 2),
-            top: positionedY - (indicatorSize * 2.0) - (moneyIconSize * 0.3) - (tileHeight * 0.01),
+            top: moneyIconTop,
             width: moneyIconSize,
             height: moneyIconSize,
             child: _CashCollectButton(

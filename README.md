@@ -332,7 +332,7 @@ The game tracks:
 
 ---
 
-**Version**: 1.1.25+25  
+**Version**: 1.1.26+26  
 **Last Updated**: 2026
 
 Enjoy building your vending machine empire! 🏢💰

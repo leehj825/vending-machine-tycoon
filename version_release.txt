@@ -1,6 +1,15 @@
 VENDING EMPIRE - RELEASE NOTES
 ================================
 
+Version 1.1.26
+-------------
+Release Date: September 22, 2026
+## Bug Fixes
+- **Sound effects were pausing other apps' audio**: Coin collect, button clicks and truck sounds could interrupt Spotify or a YouTube popup playing alongside the game, even though background music already mixed fine. Root cause: the "don't request audio focus" config was only ever applied once, globally, at startup - `audioplayers` only re-applies that config to a player when it's passed explicitly on that player's own `play()` call, which the game's sound-effect and truck-sound calls never did. Now applied explicitly to every player (music, sound effects, truck) both at init and on every individual play call, closing the gap.
+
+## Improvements
+- **Money icon positioning**: The floating cash-collect icon above a machine now sits much closer to the building by default, only rising to its earlier higher position on the rare tile where a status indicator (broken/empty/low-stock) is also showing - fixes it overlapping a neighboring building's "+" purchase marker.
+
 Version 1.1.25
 -------------
 Release Date: September 22, 2026

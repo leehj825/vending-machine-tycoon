@@ -122,38 +122,53 @@ class SoundService {
   bool _wasPlayingBeforePause = false; // Track if music was playing before app was paused
   Completer<void>? _settingsLoadCompleter; // Completer to track when settings are loaded
 
+  /// Audio context that requests no focus, so sound effects and music mix
+  /// with whatever else is already playing (Spotify, a YouTube popup) instead
+  /// of pausing it. Built once and re-applied per player - see
+  /// _initAudioContext() for why the global default alone isn't enough.
+  static final AudioContext _mixingAudioContext = AudioContext(
+    android: const AudioContextAndroid(
+      // Must stay false: true makes the plugin call
+      // AudioManager.setSpeakerphoneOn(), which needs the
+      // MODIFY_AUDIO_SETTINGS permission and throws without it, failing the
+      // whole setAudioContext call. It also forces call-style routing.
+      isSpeakerphoneOn: false,
+      stayAwake: false,
+      // Music must be tagged as music, otherwise Android treats it as a
+      // notification-style sound and plays it on the ringer stream - so it
+      // is inaudible whenever the phone is on silent or vibrate.
+      contentType: AndroidContentType.music,
+      usageType: AndroidUsageType.media, // 'media' is less aggressive than 'game'
+      audioFocus: AndroidAudioFocus.none, // Key setting: Don't request focus to avoid stopping other apps
+    ),
+    iOS: AudioContextIOS(
+      // `ambient` already mixes with other apps, and audioplayers asserts
+      // that `mixWithOthers` is only passed with playback/playAndRecord/
+      // multiRoute. That assert is plain Dart, so it fires on EVERY
+      // platform in debug builds (and is stripped in release) - passing the
+      // option here is what killed all audio in debug APKs.
+      category: AVAudioSessionCategory.ambient,
+      options: const {},
+    ),
+  );
+
   /// Initialize audio context to allow mixing with other sounds
   Future<void> _initAudioContext() async {
     try {
-      // Configure audio context to allow mixing with other apps (like YouTube)
-      // This prevents the game from stopping background music when sounds play
-      final audioContext = AudioContext(
-        android: const AudioContextAndroid(
-          // Must stay false: true makes the plugin call
-          // AudioManager.setSpeakerphoneOn(), which needs the
-          // MODIFY_AUDIO_SETTINGS permission and throws without it, failing the
-          // whole setAudioContext call. It also forces call-style routing.
-          isSpeakerphoneOn: false,
-          stayAwake: false,
-          // Music must be tagged as music, otherwise Android treats it as a
-          // notification-style sound and plays it on the ringer stream - so it
-          // is inaudible whenever the phone is on silent or vibrate.
-          contentType: AndroidContentType.music,
-          usageType: AndroidUsageType.media, // CHANGED: 'media' is less aggressive than 'game'
-          audioFocus: AndroidAudioFocus.none, // Key setting: Don't request focus to avoid stopping other apps
-        ),
-        iOS: AudioContextIOS(
-          // `ambient` already mixes with other apps, and audioplayers asserts
-          // that `mixWithOthers` is only passed with playback/playAndRecord/
-          // multiRoute. That assert is plain Dart, so it fires on EVERY
-          // platform in debug builds (and is stripped in release) - passing the
-          // option here is what killed all audio in debug APKs.
-          category: AVAudioSessionCategory.ambient,
-          options: const {},
-        ),
-      );
-
-      await AudioPlayer.global.setAudioContext(audioContext);
+      // The global default only configures players created *after* this call,
+      // and audioplayers only re-applies a context on play() when one is
+      // passed to that specific call. Sound effects and truck sounds never
+      // passed one, so on some platforms/timings they fell back to the
+      // platform default (which requests audio focus) even though background
+      // music - started later, well after this had settled - happened to
+      // mix fine. Setting the context on every existing player explicitly
+      // closes that gap for all three.
+      await AudioPlayer.global.setAudioContext(_mixingAudioContext);
+      await Future.wait([
+        _backgroundMusicPlayer.setAudioContext(_mixingAudioContext),
+        _soundEffectPlayer.setAudioContext(_mixingAudioContext),
+        _truckSoundPlayer.setAudioContext(_mixingAudioContext),
+      ]);
 
       print('✅ Audio context configured to mix with other apps');
     } catch (e) {
@@ -364,7 +379,7 @@ class SoundService {
       
       print('🎵 Playing background music: $assetPath (target volume: $volume)');
       
-      await _backgroundMusicPlayer.play(AssetSource(assetPath));
+      await _backgroundMusicPlayer.play(AssetSource(assetPath), ctx: _mixingAudioContext);
     } catch (e) {
       print('⚠️ Error starting playback: $e');
       // Reset on error
@@ -699,7 +714,7 @@ class SoundService {
       await _soundEffectPlayer.setReleaseMode(ReleaseMode.release);
       await _soundEffectPlayer.setVolume(finalVolume);
       print('🔊 Playing sound effect: $assetPath (volume: $finalVolume = curved($_soundVolumeMultiplier) * $volumeMultiplier)');
-      await _soundEffectPlayer.play(AssetSource(assetPath));
+      await _soundEffectPlayer.play(AssetSource(assetPath), ctx: _mixingAudioContext);
     } catch (e) {
       print('❌ Error playing sound effect ($assetPath): $e');
     }
@@ -732,7 +747,7 @@ class SoundService {
       await _truckSoundPlayer.setReleaseMode(ReleaseMode.release);
       await _truckSoundPlayer.setVolume(finalVolume);
       print('🔊 Playing truck sound: sound/truck.m4a (volume: $finalVolume)');
-      await _truckSoundPlayer.play(AssetSource('sound/truck.m4a'));
+      await _truckSoundPlayer.play(AssetSource('sound/truck.m4a'), ctx: _mixingAudioContext);
       
       // Start monitoring position to fade out 1 second before the end
       _startTruckSoundFadeMonitoring(finalVolume);
