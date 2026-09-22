@@ -11,6 +11,7 @@ import 'models/weather.dart';
 import 'models/pricing.dart';
 import 'models/security.dart';
 import 'models/district.dart';
+import 'models/rival.dart';
 import '../state/providers.dart';
 
 /// Simulation constants
@@ -96,6 +97,7 @@ class SimulationState {
   final Map<Product, int> purchasingAgentTargetInventory; // Target inventory levels for purchasing agent
   final Set<ResearchType> unlockedResearch; // Unlocked research items
   final WeatherType weather; // Current weather
+  final Map<ZoneType, double> rivalPresence; // Rival company market share per zone type (0.0-1.0)
 
   // Helper to check if it's night time (8 PM to 6 AM)
   bool get isNight => time.hour < 6 || time.hour >= 20;
@@ -117,6 +119,7 @@ class SimulationState {
     this.purchasingAgentTargetInventory = const {},
     this.unlockedResearch = const {},
     this.weather = WeatherType.sunny,
+    this.rivalPresence = const {},
   });
 
   SimulationState copyWith({
@@ -136,6 +139,7 @@ class SimulationState {
     Map<Product, int>? purchasingAgentTargetInventory,
     Set<ResearchType>? unlockedResearch,
     WeatherType? weather,
+    Map<ZoneType, double>? rivalPresence,
   }) {
     return SimulationState(
       time: time ?? this.time,
@@ -154,6 +158,7 @@ class SimulationState {
       purchasingAgentTargetInventory: purchasingAgentTargetInventory ?? this.purchasingAgentTargetInventory,
       unlockedResearch: unlockedResearch ?? this.unlockedResearch,
       weather: weather ?? this.weather,
+      rivalPresence: rivalPresence ?? this.rivalPresence,
     );
   }
 }
@@ -236,6 +241,13 @@ class SimulationEngine extends StateNotifier<SimulationState> {
     _streamController.add(state);
   }
 
+  /// Update rival company presence per zone type (e.g. after a load, or a
+  /// player counter-attack)
+  void updateRivalPresence(Map<ZoneType, double> presence) {
+    state = state.copyWith(rivalPresence: presence);
+    _streamController.add(state);
+  }
+
   /// Update trucks in the simulation
   void updateTrucks(List<Truck> trucks) {
     print('🔴 ENGINE: Updating trucks list');
@@ -288,6 +300,7 @@ class SimulationEngine extends StateNotifier<SimulationState> {
     int purchasingAgentCount = 0,
     Map<Product, int> purchasingAgentTargetInventory = const {},
     WeatherType weather = WeatherType.sunny,
+    Map<ZoneType, double> rivalPresence = const {},
   }) {
     print('🔴 ENGINE: Restoring state - Day ${time.day} ${time.hour}:00');
     state = state.copyWith(
@@ -305,6 +318,7 @@ class SimulationEngine extends StateNotifier<SimulationState> {
       purchasingAgentCount: purchasingAgentCount,
       purchasingAgentTargetInventory: purchasingAgentTargetInventory,
       weather: weather,
+      rivalPresence: rivalPresence,
     );
     _streamController.add(state);
   }
@@ -452,6 +466,7 @@ class SimulationEngine extends StateNotifier<SimulationState> {
     var pendingMessages = List<String>.from(currentState.pendingMessages);
     var updatedCash = currentState.cash;
     var updatedWeather = currentState.weather;
+    var updatedRivalPresence = currentState.rivalPresence;
 
     // Random weather change (5% chance per hour)
     if (nextTime.minute == 0 && nextTime.hour != currentState.time.hour) {
@@ -477,6 +492,10 @@ class SimulationEngine extends StateNotifier<SimulationState> {
         updatedCash = currentState.cash - totalSalary;
         pendingMessages.add('💰 Paid \$${totalSalary.toStringAsFixed(2)} in staff salaries');
       }
+
+      final rivalResult = _processRivalGrowth(currentState.machines, currentState.rivalPresence);
+      updatedRivalPresence = rivalResult.presence;
+      pendingMessages.addAll(rivalResult.messages);
     }
 
     final salesResult = _processMachineSales(currentState.machines, nextTime, currentState.reputation);
@@ -531,6 +550,7 @@ class SimulationEngine extends StateNotifier<SimulationState> {
       warehouse: updatedWarehouse,
       pendingMessages: pendingMessages,
       weather: updatedWeather,
+      rivalPresence: updatedRivalPresence,
     );
     state = newState;
     
@@ -587,6 +607,10 @@ class SimulationEngine extends StateNotifier<SimulationState> {
       );
       final districtTrafficBonus = DistrictData.getById(district).trafficBonusMultiplier;
 
+      // Rival company demand impact: a more entrenched rival in this zone
+      // type siphons off customers before they reach the player's machine.
+      final rivalMultiplier = RivalMath.demandMultiplier(state.rivalPresence[machine.zone.type] ?? 0.0);
+
       for (final product in Product.values) {
         final stock = machine.getStock(product);
         if (stock == 0) continue;
@@ -604,7 +628,7 @@ class SimulationEngine extends StateNotifier<SimulationState> {
           machine.zone.type.priceElasticity,
         );
         
-        final saleChancePerHour = baseDemand * zoneMultiplier * trafficMultiplier * districtTrafficBonus * reputationMultiplier * rushMultiplier * priceDemandFactor;
+        final saleChancePerHour = baseDemand * zoneMultiplier * trafficMultiplier * districtTrafficBonus * rivalMultiplier * reputationMultiplier * rushMultiplier * priceDemandFactor;
         final saleChance = saleChancePerHour / SimulationConstants.ticksPerHour;
         
         final clampedChance = saleChance.clamp(0.0, 1.0);
@@ -810,6 +834,41 @@ class SimulationEngine extends StateNotifier<SimulationState> {
     }).toList();
 
     return (machines: updatedMachines, messages: messages);
+  }
+
+  /// Grow rival company presence in each zone type by one day, once per game
+  /// day. A zone type with more of the player's own machines standing in it
+  /// resists rival growth harder (a defended market); one with few or none
+  /// is an easy target. Emits a one-time log message the first time a rival
+  /// crosses one of the notable thresholds in a zone type.
+  ({Map<ZoneType, double> presence, List<String> messages}) _processRivalGrowth(
+    List<Machine> machines,
+    Map<ZoneType, double> presence,
+  ) {
+    final machineCountByZone = <ZoneType, int>{};
+    for (final machine in machines) {
+      machineCountByZone[machine.zone.type] = (machineCountByZone[machine.zone.type] ?? 0) + 1;
+    }
+
+    final messages = <String>[];
+    final updated = <ZoneType, double>{};
+
+    for (final type in ZoneType.values) {
+      final current = presence[type] ?? 0.0;
+      final playerCount = machineCountByZone[type] ?? 0;
+      final next = RivalMath.dailyGrowth(current, playerCount);
+      updated[type] = next;
+
+      for (final threshold in AppConfig.rivalPresenceLogThresholds) {
+        if (current < threshold && next >= threshold) {
+          messages.add(
+            '📉 A rival vending company now controls over ${(threshold * 100).round()}% of the ${type.name} market',
+          );
+        }
+      }
+    }
+
+    return (presence: updated, messages: messages);
   }
 
   /// Process purchasing agents - auto-buy stock if warehouse inventory < 50% of target

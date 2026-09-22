@@ -15,6 +15,7 @@ import '../simulation/models/truck.dart';
 import '../simulation/models/contract.dart';
 import '../simulation/models/research.dart';
 import '../simulation/models/district.dart';
+import '../simulation/models/rival.dart';
 import '../services/rewarded_ad_manager.dart';
 import 'game_state.dart';
 import 'city_map_state.dart';
@@ -361,6 +362,7 @@ class GameController extends StateNotifier<GlobalGameState> {
         productSalesCount: updatedProductSales,
         warehouse: simState.warehouse, // Sync warehouse from engine (for auto-restock)
         weather: simState.weather, // Sync weather so rain/storm visuals can react
+        rivalPresence: simState.rivalPresence, // Sync rival market share for the Rivals screen
         dailyContracts: contractResult.contracts,
         contractsCompleted: state.contractsCompleted + contractResult.completedCount,
         isGameOver: isGameOver || state.isGameOver, // Set game over flag if cash is too negative
@@ -1241,6 +1243,9 @@ class GameController extends StateNotifier<GlobalGameState> {
     // Restore research state
     simulationEngine.updateUnlockedResearch(savedState.unlockedResearch);
 
+    // Restore rival company presence
+    simulationEngine.updateRivalPresence(savedState.rivalPresence);
+
     // Restore game state
     state = savedState;
     
@@ -1546,6 +1551,31 @@ class GameController extends StateNotifier<GlobalGameState> {
 
     final districtName = DistrictData.getById(id).name;
     state = state.addLogMessage('🏙️ Unlocked $districtName for new machines!');
+  }
+
+  /// Run a counter-attack marketing campaign against the rival company in a
+  /// zone type, pushing their market presence back. Presence always creeps
+  /// back on its own afterward, so this is a recurring decision rather than
+  /// a one-time fix.
+  void counterAttackRival(ZoneType type) {
+    final currentPresence = state.rivalPresence[type] ?? 0.0;
+    if (currentPresence <= 0) return;
+
+    final cost = RivalMath.counterAttackCost(currentPresence);
+    if (state.cash < cost) {
+      state = state.addLogMessage('Not enough cash for a counter-attack campaign');
+      return;
+    }
+
+    final newCash = state.cash - cost;
+    final newPresence = Map<ZoneType, double>.from(state.rivalPresence)
+      ..[type] = RivalMath.counterAttackResult(currentPresence);
+
+    state = state.copyWith(cash: newCash, rivalPresence: newPresence);
+    simulationEngine.updateCash(newCash);
+    simulationEngine.updateRivalPresence(newPresence);
+
+    state = state.addLogMessage('📣 Ran a counter-attack campaign against rivals in the ${type.name} market');
   }
 
   /// End Rush Hour - resets multiplier to 1.0 and spawns marketing button at random location

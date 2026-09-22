@@ -12,6 +12,7 @@ import '../utils/screen_utils.dart';
 import 'contracts_screen.dart';
 import 'districts_screen.dart';
 import 'research_screen.dart';
+import 'rival_screen.dart';
 
 /// CEO Dashboard - Main HQ screen displaying empire overview
 class HQDashboard extends ConsumerWidget {
@@ -56,6 +57,11 @@ class HQDashboard extends ConsumerWidget {
 
             // Research Lab Button
             _buildResearchLabButton(context),
+
+            SizedBox(height: ScreenUtils.relativeSize(context, AppConfig.spacingFactorLarge)),
+
+            // Rival Company Button
+            _buildRivalButton(context, gameState),
           ],
         ),
       ),
@@ -236,6 +242,76 @@ class HQDashboard extends ConsumerWidget {
                 letterSpacing: 1.2,
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Entry point for the Rival Company screen, with the worst-hit zone's
+  /// presence shown as a warning badge
+  Widget _buildRivalButton(BuildContext context, GlobalGameState gameState) {
+    final maxPresence = gameState.rivalPresence.values.isEmpty
+        ? 0.0
+        : gameState.rivalPresence.values.reduce((a, b) => a > b ? a : b);
+    final hasThreat = maxPresence > 0.0;
+
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => const RivalScreen(),
+            ),
+          );
+        },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: maxPresence > 0.5 ? Colors.red.shade800 : Colors.deepOrange.shade800,
+          foregroundColor: Colors.white,
+          padding: EdgeInsets.symmetric(
+            vertical: ScreenUtils.relativeSize(context, 0.02),
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(
+              ScreenUtils.relativeSize(context, 0.012),
+            ),
+          ),
+          elevation: ScreenUtils.relativeSize(context, AppConfig.cardElevationFactor),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.storefront,
+              size: ScreenUtils.relativeSizeClamped(context, 0.04),
+            ),
+            SizedBox(width: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall)),
+            Text(
+              'RIVAL COMPANY',
+              style: TextStyle(
+                fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorLarge),
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.2,
+              ),
+            ),
+            if (hasThreat) ...[
+              SizedBox(width: ScreenUtils.relativeSize(context, AppConfig.spacingFactorMedium)),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '${(maxPresence * 100).round()}% max',
+                  style: TextStyle(
+                    fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),

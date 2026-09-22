@@ -252,6 +252,7 @@ class SaveLoadService {
       'dailyContracts': state.dailyContracts.map((c) => c.toJson()).toList(),
       'contractsCompleted': state.contractsCompleted,
       'unlockedDistricts': state.unlockedDistricts.map((d) => d.name).toList(),
+      'rivalPresence': state.rivalPresence.map((type, presence) => MapEntry(type.name, presence)),
     };
     return jsonEncode(map);
   }
@@ -365,6 +366,19 @@ class SaveLoadService {
                     ))
                 .toSet()
             : {DistrictId.core},
+        // Rival company (older saves predate this feature - every zone type
+        // defaults to no rival presence, same as a fresh game)
+        rivalPresence: gameStateMap['rivalPresence'] != null
+            ? (gameStateMap['rivalPresence'] as Map<String, dynamic>).map(
+                (key, value) => MapEntry(
+                  ZoneType.values.firstWhere(
+                    (type) => type.name == key,
+                    orElse: () => ZoneType.shop,
+                  ),
+                  (value as num).toDouble(),
+                ),
+              )
+            : <ZoneType, double>{},
       );
     } catch (e) {
       print('Error deserializing game state: $e');

@@ -34,6 +34,7 @@ Vending Machine Tycoon is an idle/management game where players:
 - **Per-Machine Pricing**: Set each product's retail price independently per machine to trade margin for volume
 - **Theft & Vandalism**: Machines risk being robbed or vandalized, especially at night and in high-crime zones - collect cash promptly or invest in Security
 - **District Expansion**: Unlock outer rings of the city for a traffic bonus and room to grow, a late-game cash sink
+- **Rival Company**: A competitor grows into zone types where you're thin on machines, cutting your sales there - push them back with a counter-attack campaign
 
 ### Game Mechanics
 
@@ -88,6 +89,13 @@ Vending Machine Tycoon is an idle/management game where players:
 - New-machine purchases require the district they fall in to be unlocked; a machine already standing somewhere (e.g. from an older save) always keeps working regardless
 - Unlocking a district also grants every machine in it a permanent traffic bonus - a growth market with less competition than the crowded core
 - A late-game cash sink: Suburban costs $15,000, Outer Limits $60,000
+
+#### Rival Company
+- A competing vending company is chasing the same customers, one zone type at a time
+- Every game day, their presence in a zone type grows toward a cap - fastest where you have few or no machines there (an uncontested market), slower where you're already established
+- A more entrenched rival cuts your sale chance in that zone type, up to 45% at their strongest
+- A Counter-Attack campaign pushes their presence back, at a cash cost that rises with how entrenched they are - but they always start creeping back in afterward, so it's a recurring decision, not a one-time fix
+- Tracked per zone type in the new Rival Company screen, reachable from HQ
 
 #### Machine Management
 - Machines can hold up to 50 items total
@@ -325,7 +333,7 @@ The game tracks:
 
 ---
 
-**Version**: 1.1.21+21  
+**Version**: 1.1.22+22  
 **Last Updated**: 2026
 
 Enjoy building your vending machine empire! 🏢💰

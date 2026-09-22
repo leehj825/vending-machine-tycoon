@@ -656,6 +656,43 @@ class AppConfig {
   static const double districtSuburbanTrafficBonus = 1.15;
   static const double districtOuterTrafficBonus = 1.35;
 
+  // ============================================================================
+  // RIVAL COMPANY
+  // ============================================================================
+
+  /// How much of a zone type's market a fully entrenched rival can claim.
+  /// Never reaches 1.0, so a zone type is never entirely lost to the player.
+  static const double rivalMaxPresence = 0.75;
+
+  /// Share of the remaining gap to [rivalMaxPresence] a rival closes per day
+  /// when completely uncontested (zero player machines in that zone type).
+  static const double rivalBaseDailyGrowthRate = 0.04;
+
+  /// Each player machine in a zone type raises "saturation resistance",
+  /// slowing rival growth there: resistance = 1 / (1 + count * this).
+  static const double rivalResistancePerMachine = 0.18;
+
+  /// Floor on that resistance factor, so growth never drops all the way to
+  /// zero - a rival pushed out by counter-attacks always starts creeping
+  /// back, keeping it a recurring decision rather than a one-time chore.
+  static const double rivalMinResistanceFloor = 0.12;
+
+  /// At maximum rival presence, how much the player's sale chance in that
+  /// zone type is cut by (e.g. 0.45 = up to 45% fewer sales).
+  static const double rivalDemandImpactMax = 0.45;
+
+  /// Cash cost of a counter-attack campaign: a flat base plus a share that
+  /// scales with how entrenched the rival already is.
+  static const double rivalCounterAttackBaseCost = 1500.0;
+  static const double rivalCounterAttackCostPerPresence = 3000.0;
+
+  /// How much presence (in 0.0-1.0 terms) a single counter-attack removes.
+  static const double rivalCounterAttackReduction = 0.3;
+
+  /// Presence levels that trigger a one-time log message the first time a
+  /// rival crosses them in a zone type.
+  static const List<double> rivalPresenceLogThresholds = [0.25, 0.5, 0.7];
+
   /// Tile spacing factors
   static const double tileSpacingFactor = 0.80;
   static const double horizontalSpacingFactor = 0.70;

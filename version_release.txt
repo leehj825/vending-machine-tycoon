@@ -1,6 +1,16 @@
 VENDING EMPIRE - RELEASE NOTES
 ================================
 
+Version 1.1.22
+-------------
+Release Date: September 22, 2026
+## New Features
+- **Rival Company**: A competitor now fights you for the same customers, zone type by zone type
+  - Every game day, the rival's presence in a zone type grows toward a cap - fastest where you have few or no machines there, slower where you already have a strong foothold
+  - A more entrenched rival cuts your sale chance in that zone type by up to 45% at their strongest
+  - A Counter-Attack campaign (new RIVAL COMPANY screen in HQ) pushes their presence back for a cash cost that rises with how entrenched they are - presence always starts creeping back afterward, so it's a recurring decision rather than a one-time fix
+  - No new art needed - the screen uses the same Material icons already used for zone types elsewhere
+
 Version 1.1.21
 -------------
 Release Date: September 22, 2026
