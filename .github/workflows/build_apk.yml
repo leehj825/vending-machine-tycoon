@@ -31,7 +31,7 @@ jobs:
         run: flutter pub get
 
       - name: Run tests
-        run: flutter test test/contract_test.dart test/pricing_test.dart test/security_test.dart
+        run: flutter test test/contract_test.dart test/pricing_test.dart test/security_test.dart test/district_test.dart
 
       - name: Build debug APK
         run: flutter build apk --debug

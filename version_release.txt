@@ -1,6 +1,17 @@
 VENDING EMPIRE - RELEASE NOTES
 ================================
 
+Version 1.1.21
+-------------
+Release Date: September 22, 2026
+## New Features
+- **District Expansion**: A new late-game cash sink and progression goal
+  - The city is split into three rings by distance from the warehouse: Downtown Core (always free), Suburban Expansion ($15,000), and Outer Limits ($60,000)
+  - New-machine purchases in a locked district are blocked with a one-tap "Unlock" prompt right at the build spot; a machine already standing there from before this feature keeps working regardless of unlock state
+  - Unlocking a district grants every machine in it a permanent traffic bonus (+15% Suburban, +35% Outer Limits) on top of its zone's own traffic multiplier
+  - New DISTRICTS screen in HQ showing all three rings, their cost, bonus and unlock state
+  - The map itself is unchanged - this uses the existing 15x15 city, so no new art or layout was needed
+
 Version 1.1.20
 -------------
 Release Date: September 19, 2026

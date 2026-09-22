@@ -15,6 +15,7 @@ import '../../simulation/models/machine.dart' as sim;
 import '../../simulation/models/product.dart';
 import '../../simulation/models/weather.dart';
 import '../../simulation/models/pricing.dart';
+import '../../simulation/models/district.dart';
 import '../../config.dart';
 import '../theme/zone_ui.dart';
 import '../utils/screen_utils.dart';
@@ -3636,7 +3637,23 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
           }
           return;
         }
-        
+
+        // A brand new machine here needs its district unlocked first. An
+        // already-placed machine (checked above) is never re-gated by this -
+        // only new purchases are.
+        final district = DistrictMath.districtForZonePosition(
+          zoneX: zoneX,
+          zoneY: zoneY,
+          gridSize: gridSize,
+        );
+        final gameState = ref.read(gameStateProvider);
+        if (!gameState.unlockedDistricts.contains(district)) {
+          if (context.mounted) {
+            _showDistrictLockedDialog(context, district);
+          }
+          return;
+        }
+
         if (context.mounted) {
           _showMachinePurchaseDialog(context, zoneType, zoneX, zoneY);
         }
@@ -3653,6 +3670,50 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
         );
       }
     }
+  }
+
+  /// Prompt to unlock the district a locked build spot falls in, with a
+  /// one-tap unlock button right there instead of sending the player away to
+  /// the Districts screen.
+  void _showDistrictLockedDialog(BuildContext context, DistrictId district) {
+    final data = DistrictData.getById(district);
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        // read, not watch: this is a plain builder callback, not a widget
+        // build method, so watch would not trigger a rebuild on cash change
+        // anyway - read is the honest choice here.
+        final gameState = ref.read(gameStateProvider);
+        final canAfford = gameState.cash >= data.unlockCost;
+        return AlertDialog(
+          title: Row(
+            children: [
+              const Icon(Icons.lock, color: Colors.indigo),
+              const SizedBox(width: 8),
+              Expanded(child: Text(data.name)),
+            ],
+          ),
+          content: Text(
+            '${data.description}\n\nUnlock this district for \$${data.unlockCost.toStringAsFixed(0)} to place new machines here.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Not Now'),
+            ),
+            ElevatedButton(
+              onPressed: canAfford
+                  ? () {
+                      ref.read(gameControllerProvider.notifier).unlockDistrict(district);
+                      Navigator.of(dialogContext).pop();
+                    }
+                  : null,
+              child: Text('Unlock \$${data.unlockCost.toStringAsFixed(0)}'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   bool _shouldShowPurchaseButton(int gridX, int gridY, TileType tileType) {

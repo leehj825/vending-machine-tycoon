@@ -10,6 +10,7 @@ import '../simulation/models/product.dart';
 import '../simulation/models/research.dart';
 import '../simulation/models/weather.dart';
 import '../simulation/models/zone.dart';
+import '../simulation/models/district.dart';
 
 /// Save slot data structure
 class SaveSlot {
@@ -250,6 +251,7 @@ class SaveLoadService {
       'weather': state.weather.name,
       'dailyContracts': state.dailyContracts.map((c) => c.toJson()).toList(),
       'contractsCompleted': state.contractsCompleted,
+      'unlockedDistricts': state.unlockedDistricts.map((d) => d.name).toList(),
     };
     return jsonEncode(map);
   }
@@ -351,6 +353,18 @@ class SaveLoadService {
                 .toList()
             : <DailyContract>[],
         contractsCompleted: gameStateMap['contractsCompleted'] as int? ?? 0,
+        // Districts (older saves predate this feature - default to just the
+        // core district, same as a fresh game; any machines an old save
+        // already has standing in what is now the suburban/outer ring keep
+        // working regardless, since unlock state only gates new purchases)
+        unlockedDistricts: gameStateMap['unlockedDistricts'] != null
+            ? (gameStateMap['unlockedDistricts'] as List)
+                .map((d) => DistrictId.values.firstWhere(
+                      (id) => id.name == d,
+                      orElse: () => DistrictId.core,
+                    ))
+                .toSet()
+            : {DistrictId.core},
       );
     } catch (e) {
       print('Error deserializing game state: $e');

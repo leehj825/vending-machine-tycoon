@@ -10,6 +10,7 @@ import 'models/research.dart';
 import 'models/weather.dart';
 import 'models/pricing.dart';
 import 'models/security.dart';
+import 'models/district.dart';
 import '../state/providers.dart';
 
 /// Simulation constants
@@ -576,6 +577,16 @@ class SimulationEngine extends StateNotifier<SimulationState> {
       var salesCount = machine.totalSales;
       var hoursSinceRestock = machine.hoursSinceRestock;
 
+      // District traffic bonus: purely a function of where the machine
+      // stands, not of unlock state - a machine already placed there always
+      // gets the bonus, even one from a save made before districts existed.
+      final district = DistrictMath.districtForZonePosition(
+        zoneX: machine.zone.x,
+        zoneY: machine.zone.y,
+        gridSize: AppConfig.cityGridSize,
+      );
+      final districtTrafficBonus = DistrictData.getById(district).trafficBonusMultiplier;
+
       for (final product in Product.values) {
         final stock = machine.getStock(product);
         if (stock == 0) continue;
@@ -593,7 +604,7 @@ class SimulationEngine extends StateNotifier<SimulationState> {
           machine.zone.type.priceElasticity,
         );
         
-        final saleChancePerHour = baseDemand * zoneMultiplier * trafficMultiplier * reputationMultiplier * rushMultiplier * priceDemandFactor;
+        final saleChancePerHour = baseDemand * zoneMultiplier * trafficMultiplier * districtTrafficBonus * reputationMultiplier * rushMultiplier * priceDemandFactor;
         final saleChance = saleChancePerHour / SimulationConstants.ticksPerHour;
         
         final clampedChance = saleChance.clamp(0.0, 1.0);
