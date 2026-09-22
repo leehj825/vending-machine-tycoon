@@ -3,7 +3,6 @@ import '../simulation/models/machine.dart';
 import '../simulation/models/truck.dart';
 import '../simulation/models/product.dart';
 import '../simulation/models/contract.dart';
-import '../simulation/models/district.dart';
 import '../simulation/models/research.dart';
 import '../simulation/models/weather.dart';
 import '../simulation/models/zone.dart';
@@ -52,7 +51,6 @@ abstract class GlobalGameState with _$GlobalGameState {
     @Default(WeatherType.sunny) WeatherType weather, // Current weather
     // Daily Contracts
     @Default([]) List<DailyContract> dailyContracts, // Contracts offered today
-    @Default({DistrictId.core}) Set<DistrictId> unlockedDistricts, // Districts unlocked for new-machine purchases
     @Default(0) int contractsCompleted, // Lifetime number of completed contracts
     @Default({}) Map<ZoneType, double> rivalPresence, // Rival company market share per zone type (0.0-1.0)
   }) = _GlobalGameState;

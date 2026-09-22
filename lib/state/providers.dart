@@ -14,7 +14,6 @@ import '../simulation/models/pricing.dart';
 import '../simulation/models/truck.dart';
 import '../simulation/models/contract.dart';
 import '../simulation/models/research.dart';
-import '../simulation/models/district.dart';
 import '../simulation/models/rival.dart';
 import '../services/rewarded_ad_manager.dart';
 import 'game_state.dart';
@@ -1543,31 +1542,6 @@ class GameController extends StateNotifier<GlobalGameState> {
     // Log
     final researchName = ResearchData.getByType(type).name;
     state = state.addLogMessage('Unlocked $researchName!');
-  }
-
-  /// Unlock a district for new-machine purchases. Machines already standing
-  /// in that district (e.g. from a save made before this feature existed)
-  /// already work regardless - this only gates buying a *new* one there.
-  void unlockDistrict(DistrictId id) {
-    if (state.unlockedDistricts.contains(id)) return;
-
-    final cost = DistrictData.getById(id).unlockCost;
-    if (state.cash < cost) {
-      state = state.addLogMessage('Not enough cash to unlock this district');
-      return;
-    }
-
-    final newCash = state.cash - cost;
-    final newUnlocked = Set<DistrictId>.from(state.unlockedDistricts)..add(id);
-
-    state = state.copyWith(
-      cash: newCash,
-      unlockedDistricts: newUnlocked,
-    );
-    simulationEngine.updateCash(newCash);
-
-    final districtName = DistrictData.getById(id).name;
-    state = state.addLogMessage('🏙️ Unlocked $districtName for new machines!');
   }
 
   /// Run a counter-attack marketing campaign against the rival company in a

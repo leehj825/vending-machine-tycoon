@@ -10,7 +10,6 @@ import 'models/research.dart';
 import 'models/weather.dart';
 import 'models/pricing.dart';
 import 'models/security.dart';
-import 'models/district.dart';
 import 'models/rival.dart';
 import '../state/providers.dart';
 
@@ -597,16 +596,6 @@ class SimulationEngine extends StateNotifier<SimulationState> {
       var salesCount = machine.totalSales;
       var hoursSinceRestock = machine.hoursSinceRestock;
 
-      // District traffic bonus: purely a function of where the machine
-      // stands, not of unlock state - a machine already placed there always
-      // gets the bonus, even one from a save made before districts existed.
-      final district = DistrictMath.districtForZonePosition(
-        zoneX: machine.zone.x,
-        zoneY: machine.zone.y,
-        gridSize: AppConfig.cityGridSize,
-      );
-      final districtTrafficBonus = DistrictData.getById(district).trafficBonusMultiplier;
-
       // Rival company demand impact: a more entrenched rival in this zone
       // type siphons off customers before they reach the player's machine.
       final rivalMultiplier = RivalMath.demandMultiplier(state.rivalPresence[machine.zone.type] ?? 0.0);
@@ -628,7 +617,7 @@ class SimulationEngine extends StateNotifier<SimulationState> {
           machine.zone.type.priceElasticity,
         );
         
-        final saleChancePerHour = baseDemand * zoneMultiplier * trafficMultiplier * districtTrafficBonus * rivalMultiplier * reputationMultiplier * rushMultiplier * priceDemandFactor;
+        final saleChancePerHour = baseDemand * zoneMultiplier * trafficMultiplier * rivalMultiplier * reputationMultiplier * rushMultiplier * priceDemandFactor;
         final saleChance = saleChancePerHour / SimulationConstants.ticksPerHour;
         
         final clampedChance = saleChance.clamp(0.0, 1.0);

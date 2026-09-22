@@ -579,10 +579,7 @@ class AppConfig {
   /// Machine capacity
   static const double machineMaxCapacity = 50.0;
   static const int machineMaxItemsPerProduct = 20;
-  
-  /// Machine purchase limits per type
-  static const int machineLimitPerType = 2;
-  
+
   /// Fuel cost per unit distance
   static const double fuelCostPerUnit = 0.50;
   
@@ -633,28 +630,6 @@ class AppConfig {
   
   /// Grid size
   static const int cityGridSize = 15;
-
-  // ============================================================================
-  // DISTRICT EXPANSION
-  // ============================================================================
-
-  /// Chebyshev distance from the grid center that counts as each district.
-  /// On a 15x15 grid (center index 7, max distance 7): core is a 5x5 block
-  /// around the warehouse, suburban extends that to 11x11, and anything
-  /// further out (the last couple of rings, near the map edge) is outer.
-  static const double districtCoreRadius = 2.0;
-  static const double districtSuburbanRadius = 5.0;
-
-  /// Cost to unlock new-machine purchases in each outer district. The core
-  /// district is always unlocked and costs nothing.
-  static const double districtSuburbanUnlockCost = 15000.0;
-  static const double districtOuterUnlockCost = 60000.0;
-
-  /// Extra traffic multiplier for machines in each district, stacked on top
-  /// of the zone's own traffic multiplier - a growth market with less
-  /// competition than the crowded core.
-  static const double districtSuburbanTrafficBonus = 1.15;
-  static const double districtOuterTrafficBonus = 1.35;
 
   // ============================================================================
   // RIVAL COMPANY

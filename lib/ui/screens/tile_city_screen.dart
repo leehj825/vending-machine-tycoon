@@ -15,7 +15,6 @@ import '../../simulation/models/machine.dart' as sim;
 import '../../simulation/models/product.dart';
 import '../../simulation/models/weather.dart';
 import '../../simulation/models/pricing.dart';
-import '../../simulation/models/district.dart';
 import '../../config.dart';
 import '../../services/sound_service.dart';
 import '../theme/zone_ui.dart';
@@ -2172,7 +2171,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
         if (hasCashWaiting)
           Positioned(
             left: positionedX + (tileWidth / 2) - (moneyIconSize / 2),
-            top: positionedY - (indicatorSize * 2.0) - moneyIconSize - (tileHeight * 0.03),
+            top: positionedY - (indicatorSize * 2.0) - (moneyIconSize * 0.3) - (tileHeight * 0.01),
             width: moneyIconSize,
             height: moneyIconSize,
             child: _CashCollectButton(
@@ -3669,35 +3668,10 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
           _showMachineView(context, existingMachine);
         }
       } else {
-        // Machine doesn't exist - show purchase dialog
-        if (!_canPurchaseMachine(zoneType)) {
-          if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(_getProgressionMessage(zoneType)),
-                duration: AppConfig.snackbarDurationShort,
-              ),
-            );
-          }
-          return;
-        }
-
-        // A brand new machine here needs its district unlocked first. An
-        // already-placed machine (checked above) is never re-gated by this -
-        // only new purchases are.
-        final district = DistrictMath.districtForZonePosition(
-          zoneX: zoneX,
-          zoneY: zoneY,
-          gridSize: gridSize,
-        );
-        final gameState = ref.read(gameStateProvider);
-        if (!gameState.unlockedDistricts.contains(district)) {
-          if (context.mounted) {
-            _showDistrictLockedDialog(context, district);
-          }
-          return;
-        }
-
+        // Machine doesn't exist - show purchase dialog. Purchases are gated
+        // by cash alone (checked in the dialog itself) - buy as many
+        // machines as the map has building tiles for, as long as you can
+        // afford them.
         if (context.mounted) {
           _showMachinePurchaseDialog(context, zoneType, zoneX, zoneY);
         }
@@ -3716,58 +3690,12 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
     }
   }
 
-  /// Prompt to unlock the district a locked build spot falls in, with a
-  /// one-tap unlock button right there instead of sending the player away to
-  /// the Districts screen.
-  void _showDistrictLockedDialog(BuildContext context, DistrictId district) {
-    final data = DistrictData.getById(district);
-    showDialog(
-      context: context,
-      builder: (dialogContext) {
-        // read, not watch: this is a plain builder callback, not a widget
-        // build method, so watch would not trigger a rebuild on cash change
-        // anyway - read is the honest choice here.
-        final gameState = ref.read(gameStateProvider);
-        final canAfford = gameState.cash >= data.unlockCost;
-        return AlertDialog(
-          title: Row(
-            children: [
-              const Icon(Icons.lock, color: Colors.indigo),
-              const SizedBox(width: 8),
-              Expanded(child: Text(data.name)),
-            ],
-          ),
-          content: Text(
-            '${data.description}\n\nUnlock this district for \$${data.unlockCost.toStringAsFixed(0)} to place new machines here.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('Not Now'),
-            ),
-            ElevatedButton(
-              onPressed: canAfford
-                  ? () {
-                      ref.read(gameControllerProvider.notifier).unlockDistrict(district);
-                      Navigator.of(dialogContext).pop();
-                    }
-                  : null,
-              child: Text('Unlock \$${data.unlockCost.toStringAsFixed(0)}'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   bool _shouldShowPurchaseButton(int gridX, int gridY, TileType tileType) {
     final zoneX = (gridX + 1).toDouble() + 0.5;
     final zoneY = (gridY + 1).toDouble() + 0.5;
 
     final zoneType = _tileTypeToZoneType(tileType);
     if (zoneType == null) return false;
-
-    if (!_canPurchaseMachine(zoneType)) return false;
 
     final machines = ref.watch(machinesProvider);
     final hasExistingMachine = machines.any(
@@ -3788,24 +3716,6 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
       case TileType.university: return ZoneType.university;
       default: return null;
     }
-  }
-
-  bool _canPurchaseMachine(ZoneType zoneType) {
-    final machines = ref.read(machinesProvider);
-    // All machine types are available from the start - just check if under limit
-    final machinesOfType = machines.where((m) => m.zone.type == zoneType).length;
-    return machinesOfType < AppConfig.machineLimitPerType;
-  }
-
-  String _getProgressionMessage(ZoneType zoneType) {
-    final machines = ref.read(machinesProvider);
-    final machinesOfType = machines.where((m) => m.zone.type == zoneType).length;
-    final limit = AppConfig.machineLimitPerType;
-    
-    if (machinesOfType >= limit) {
-      return '${zoneType.name.toUpperCase()} limit reached (have $machinesOfType/$limit)';
-    }
-    return 'Can purchase ${zoneType.name} machines ($machinesOfType/$limit)';
   }
 
   Widget _buildGroundTile(TileType tileType, RoadDirection? roadDir, int x, int y, {BuildContext? context}) {

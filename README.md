@@ -33,8 +33,8 @@ Vending Machine Tycoon is an idle/management game where players:
 - **Daily Contracts**: Three client deals posted every game morning, with cash and reputation rewards
 - **Per-Machine Pricing**: Set each product's retail price independently per machine to trade margin for volume
 - **Theft & Vandalism**: Machines risk being robbed or vandalized, especially at night and in high-crime zones - collect cash promptly or invest in Security
-- **District Expansion**: Unlock outer rings of the city for a traffic bonus and room to grow, a late-game cash sink
 - **Rival Company**: A competitor grows into zone types where you're thin on machines, cutting your sales there - push them back with a counter-attack campaign
+- **Unlimited Machines**: Buy as many machines as the map has building tiles for - the only limit is your cash
 
 ### Game Mechanics
 
@@ -83,12 +83,6 @@ Vending Machine Tycoon is an idle/management game where players:
 - Risk rises at night (10 PM - 5 AM), with how much cash is sitting uncollected, and with the zone's own crime rate - Subway and School are the riskiest zones, Hospital and Office the safest
 - Only cash left sitting in the machine is ever at risk; cash already collected into your wallet is untouched
 - The Security System upgrade cuts the odds of either event sharply, and also halves the reputation penalty for an empty machine
-
-#### District Expansion
-- The city is split into three rings: **Downtown Core** (always free), **Suburban Expansion**, and **Outer Limits**
-- New-machine purchases require the district they fall in to be unlocked; a machine already standing somewhere (e.g. from an older save) always keeps working regardless
-- Unlocking a district also grants every machine in it a permanent traffic bonus - a growth market with less competition than the crowded core
-- A late-game cash sink: Suburban costs $15,000, Outer Limits $60,000
 
 #### Rival Company
 - A competing vending company is chasing the same customers, one zone type at a time
@@ -338,7 +332,7 @@ The game tracks:
 
 ---
 
-**Version**: 1.1.24+24  
+**Version**: 1.1.25+25  
 **Last Updated**: 2026
 
 Enjoy building your vending machine empire! 🏢💰

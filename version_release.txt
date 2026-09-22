@@ -1,6 +1,14 @@
 VENDING EMPIRE - RELEASE NOTES
 ================================
 
+Version 1.1.25
+-------------
+Release Date: September 22, 2026
+## Changes
+- **Removed District Expansion**: The unlockable-districts system from 1.1.21 (Downtown Core / Suburban Expansion / Outer Limits, with a per-district traffic bonus and unlock cost) has been removed entirely, along with its HQ screen. Machines already standing anywhere on the map keep working exactly as before - this only removes the unlock gate and the traffic bonus it granted.
+- **Removed the 2-per-type machine cap**: Buying a machine was capped at 2 per zone type (14 machines total, regardless of map size). That cap is gone - buy a machine on every building tile the map has, for every zone type, limited only by how much cash you have.
+- Rival Company (1.1.22) is unaffected and stays as-is.
+
 Version 1.1.24
 -------------
 Release Date: September 22, 2026

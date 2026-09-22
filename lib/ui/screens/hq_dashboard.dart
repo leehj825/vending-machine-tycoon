@@ -10,7 +10,6 @@ import '../../config.dart';
 import '../../simulation/models/machine.dart';
 import '../utils/screen_utils.dart';
 import 'contracts_screen.dart';
-import 'districts_screen.dart';
 import 'research_screen.dart';
 import 'rival_screen.dart';
 
@@ -47,11 +46,6 @@ class HQDashboard extends ConsumerWidget {
 
             // Daily Contracts Button
             _buildContractsButton(context, gameState),
-
-            SizedBox(height: ScreenUtils.relativeSize(context, AppConfig.spacingFactorLarge)),
-
-            // Districts Button
-            _buildDistrictsButton(context, gameState),
 
             SizedBox(height: ScreenUtils.relativeSize(context, AppConfig.spacingFactorLarge)),
 
@@ -130,72 +124,6 @@ class HQDashboard extends ConsumerWidget {
                 ),
               ),
             ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// Entry point for the Districts screen, with how many are unlocked
-  Widget _buildDistrictsButton(BuildContext context, GlobalGameState gameState) {
-    final unlockedCount = gameState.unlockedDistricts.length;
-    const totalCount = 3; // DistrictId has 3 values (core, suburban, outer)
-    final allUnlocked = unlockedCount == totalCount;
-
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(
-        onPressed: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => const DistrictsScreen(),
-            ),
-          );
-        },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: allUnlocked ? Colors.green.shade700 : Colors.indigo.shade900,
-          foregroundColor: Colors.white,
-          padding: EdgeInsets.symmetric(
-            vertical: ScreenUtils.relativeSize(context, 0.02),
-          ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(
-              ScreenUtils.relativeSize(context, 0.012),
-            ),
-          ),
-          elevation: ScreenUtils.relativeSize(context, AppConfig.cardElevationFactor),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.map,
-              size: ScreenUtils.relativeSizeClamped(context, 0.04),
-            ),
-            SizedBox(width: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall)),
-            Text(
-              'DISTRICTS',
-              style: TextStyle(
-                fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorLarge),
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.2,
-              ),
-            ),
-            SizedBox(width: ScreenUtils.relativeSize(context, AppConfig.spacingFactorMedium)),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                '$unlockedCount/$totalCount',
-                style: TextStyle(
-                  fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
           ],
         ),
       ),
