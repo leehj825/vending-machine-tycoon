@@ -12,8 +12,8 @@ class RewardedAdManager {
   bool get isReady => _isReady && _rewardedAd != null;
 
   /// Get the appropriate ad unit ID based on build type
-  /// - Bundle builds (with BUILD_TYPE=bundle): Use real ad unit ID
-  /// - APK builds (debug or release): Use test ad unit ID
+  /// - Release builds: Use real ad unit ID
+  /// - Debug/profile builds: Use test ad unit ID
   /// - Can be overridden via AppConfig.forceTestAds
   String get _adUnitId {
     if (kIsWeb) {
@@ -28,12 +28,12 @@ class RewardedAdManager {
     
     // Check if BUILD_TYPE was set to 'bundle' via --dart-define
     // This allows distinguishing bundle builds from APK builds
-    if (AppConfig.buildType == 'bundle' && kReleaseMode) {
+    if (kReleaseMode) {
       return AppConfig.admobRewardedRealId;
     }
     
-    // Default: Use test ads for all APK builds (both debug and release)
-    // Only bundle builds with BUILD_TYPE=bundle will use real ads
+    // Default (debug/profile): test ads
+    // Release builds always use real ads
     return AppConfig.admobRewardedTestId;
   }
 

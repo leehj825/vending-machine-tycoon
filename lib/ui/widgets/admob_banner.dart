@@ -17,8 +17,8 @@ class AdMobBanner extends StatefulWidget {
   });
   
   /// Get the appropriate ad unit ID based on build type
-  /// - Bundle builds (with BUILD_TYPE=bundle): Use real ad unit ID
-  /// - APK builds (debug or release): Use test ad unit ID
+  /// - Release builds: Use real ad unit ID
+  /// - Debug/profile builds: Use test ad unit ID
   /// - Can be overridden via AppConfig.forceTestAds or by passing adUnitId parameter
   String get effectiveAdUnitId {
     if (adUnitId != null) {
@@ -30,11 +30,11 @@ class AdMobBanner extends StatefulWidget {
     }
     // Check if BUILD_TYPE was set to 'bundle' via --dart-define
     // This allows distinguishing bundle builds from APK builds
-    if (AppConfig.buildType == 'bundle' && kReleaseMode) {
+    if (kReleaseMode) {
       return AppConfig.admobBannerRealId;
     }
-    // Default: Use test ads for all APK builds (both debug and release)
-    // Only bundle builds with BUILD_TYPE=bundle will use real ads
+    // Default (debug/profile): test ads
+    // Release builds always use real ads
     return AppConfig.admobBannerTestId;
   }
 
