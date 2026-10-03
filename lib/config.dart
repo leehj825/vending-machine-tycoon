@@ -757,16 +757,16 @@ class AppConfig {
   // ============================================================================
   
   /// Ad unit IDs for banner ads
-  /// Test ID: Use for APK builds (both debug and release)
+  /// Test ID: Used in debug/profile builds
   static const String admobBannerTestId = 'ca-app-pub-3940256099942544/6300978111';
   
-  /// Real ID: Use for bundle release builds (Play Store)
+  /// Real ID: Used in release builds (APK and Play Store bundle)
   static const String admobBannerRealId = 'ca-app-pub-4400173019354346/5798507534';
   
-  /// Test ID: Use for APK builds (both debug and release)
+  /// Test ID: Used in debug/profile builds
   static const String admobRewardedTestId = 'ca-app-pub-3940256099942544/5224354917';
   
-  /// Real ID: Use for bundle release builds (Play Store)
+  /// Real ID: Used in release builds (APK and Play Store bundle)
   static const String admobRewardedRealId = 'ca-app-pub-4400173019354346/8820412223';
   
   /// Build type detection via --dart-define
@@ -778,8 +778,8 @@ class AppConfig {
   /// Force use of test ads (overrides automatic detection)
   /// Set to true to always use test ads, false to use automatic detection
   /// Automatic behavior: 
-  /// - APK builds (debug or release): test ads
-  /// - Bundle builds (release with BUILD_TYPE=bundle): real ads
+  /// - Debug/profile builds: test ads
+  /// - Release builds: real ads
   static const bool forceTestAds = false;
   
   // ============================================================================
