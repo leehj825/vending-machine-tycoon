@@ -963,14 +963,18 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
     final now = DateTime.now();
     final walkers = <Map<String, Object?>>[];
     for (final pedestrian in _pedestrians) {
-      final cx = pedestrian.gridX + 0.5 + pedestrian.offsetX;
-      final cz = pedestrian.gridY + 0.5 + pedestrian.offsetZ;
+      // Heading comes from the walk along the tile centres. The side offset is added only
+      // for drawing; using the drawn spot would feed the offset back into the heading.
+      final centreX = pedestrian.gridX + 0.5;
+      final centreZ = pedestrian.gridY + 0.5;
+      final cx = centreX + pedestrian.offsetX;
+      final cz = centreZ + pedestrian.offsetZ;
       final look = personLook(pedestrian.personId);
       // The tutorial walker is yellow, so it is easy to find.
       final isTutorial = pedestrian == _tutorialPedestrian;
       // Walks while moving, and runs once a tap sends them to a machine.
       final running = pedestrian.isHeadingToShop;
-      final moving = advanceHumanPose(pedestrian.pose, cx, cz, running, now);
+      final moving = advanceHumanPose(pedestrian.pose, centreX, centreZ, running, now);
       walkers.add(walkerJson(
         key: 'p${pedestrian.personId}',
         x: cx,
