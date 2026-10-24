@@ -543,6 +543,10 @@ Color _shade(Color c, double k) => Color.from(
       blue: (c.b * k).clamp(0.0, 1.0).toDouble(),
     );
 
+/// The objects that lie flat on the ground, which are drawn first.
+List<LowPolyObject> _groundOf(List<LowPolyObject> objects) =>
+    [for (final object in objects) if (object.onGround) object];
+
 /// Draws objects onto [canvas]: the background first, then every drawn
 /// object in draw order. Triangles are batched into a few vertex calls.
 void _drawObjects(
@@ -632,7 +636,9 @@ class LowPolyStaticLayer {
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);
     canvas.scale(pixelRatio);
-    _drawObjects(canvas, size, objects, camera, background);
+    // Only the ground is cached. Standing objects and moving objects are drawn each frame
+    // in one depth order, so a walker behind a building is hidden by it.
+    _drawObjects(canvas, size, _groundOf(objects), camera, background);
     final picture = recorder.endRecording();
     try {
       _image = picture.toImageSync(
@@ -699,12 +705,20 @@ class LowPolyPainter extends CustomPainter {
         Paint(),
       );
     } else {
-      _drawObjects(canvas, size, objects, camera, background);
+      _drawObjects(canvas, size, _groundOf(objects), camera, background);
     }
-    if (overlay.isNotEmpty) {
-      _drawObjects(canvas, size, overlay, camera, Colors.transparent);
+    // Standing scene objects and moving ones share one depth sort. The sort works per
+    // object, so buildings and people draw in the right order against each other.
+    final standing = [
+      for (final object in objects)
+        if (!object.onGround) object,
+      ...overlay,
+    ];
+    if (standing.isNotEmpty) {
+      _drawObjects(canvas, size, standing, camera, Colors.transparent);
     }
   }
+
 
   @override
   bool shouldRepaint(LowPolyPainter oldDelegate) =>
@@ -778,6 +792,8 @@ class _LowPolyViewState extends State<LowPolyView> with TickerProviderStateMixin
   DateTime? _downTime;
   bool _tapCandidate = false;
   double? _pinchSpan;
+  // The closest the camera may zoom: the widget's minimum, or a closer focus distance.
+  late double _zoomFloor = widget.minDistance;
 
   @override
   void initState() {
@@ -816,6 +832,7 @@ class _LowPolyViewState extends State<LowPolyView> with TickerProviderStateMixin
   }
 
   void _resetView() {
+    _zoomFloor = widget.minDistance;
     // A dialog can open over the view while a finger is down, so its release is never
     // seen here. Forget any stale pointers, or later taps would count as a pinch.
     _pointers.clear();
@@ -825,6 +842,8 @@ class _LowPolyViewState extends State<LowPolyView> with TickerProviderStateMixin
   }
 
   void _focusOn(Vec3 target, double distance, double pitch) {
+    // A focus can sit closer than the normal minimum, so zooming must reach it again.
+    _zoomFloor = math.min(widget.minDistance, distance);
     _glideTo(LowPolyCamera(target: target, yaw: _camera.yaw, pitch: pitch, distance: distance));
   }
 
@@ -861,7 +880,7 @@ class _LowPolyViewState extends State<LowPolyView> with TickerProviderStateMixin
 
   void _zoomBy(double factor) {
     final distance = (_camera.distance * factor)
-        .clamp(widget.minDistance, widget.maxDistance)
+        .clamp(_zoomFloor, widget.maxDistance)
         .toDouble();
     setState(() => _camera = _camera.withDistance(distance));
   }
