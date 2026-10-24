@@ -131,6 +131,22 @@ void main() {
     expect(cell.y, 3);
   });
 
+  test('undrawn pick pads still take taps', () {
+    final camera = defaultCityCamera(_size);
+    final pad = LowPolyMeshBuilder()
+      ..flat(4, 4, 5, 5, 0.01, const Color(0xFFFFFFFF));
+    final padObject = pad.build(
+      center: const Vec3(4.5, 0.01, 4.5),
+      payload: 'walker',
+      drawn: false,
+    );
+    final at = LowPolyProjector(camera, _viewport).project(const Vec3(4.5, 0.01, 4.5));
+    expect(
+      lowPolyPick(objects: [padObject], camera: camera, size: _viewport, at: at!),
+      'walker',
+    );
+  });
+
   test('tapping empty grass picks nothing', () {
     final camera = defaultCityCamera(_size);
     final scene = _testScene();

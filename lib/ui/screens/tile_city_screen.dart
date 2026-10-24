@@ -1476,8 +1476,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
         final isNight = gameState.hourOfDay < 6 || gameState.hourOfDay >= 20;
         final weather = gameState.weather;
 
-        // Pedestrians and the tutorial only exist on the 2D map, so the tutorial keeps it.
-        final use3D = _use3DMap && !_showPedestrianTutorial;
+        final use3D = _use3DMap;
 
         return Stack(
           children: [
@@ -1554,14 +1553,35 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
               ),
 
             // Switches between the 3D lowpoly city and the 2D isometric map
-            if (!_showPedestrianTutorial)
+            Positioned(
+              top: ScreenUtils.relativeSize(context, 0.01),
+              right: ScreenUtils.relativeSize(context, 0.02),
+              child: IconButton.filledTonal(
+                tooltip: use3D ? 'Show 2D map' : 'Show 3D map',
+                icon: Icon(use3D ? Icons.map_outlined : Icons.view_in_ar),
+                onPressed: () => setState(() => _use3DMap = !_use3DMap),
+              ),
+            ),
+
+            // Tutorial hint for the 3D city. The 2D map draws its message beside the pedestrian.
+            if (use3D && _showPedestrianTutorial)
               Positioned(
-                top: ScreenUtils.relativeSize(context, 0.01),
-                right: ScreenUtils.relativeSize(context, 0.02),
-                child: IconButton.filledTonal(
-                  tooltip: use3D ? 'Show 2D map' : 'Show 3D map',
-                  icon: Icon(use3D ? Icons.map_outlined : Icons.view_in_ar),
-                  onPressed: () => setState(() => _use3DMap = !_use3DMap),
+                left: 16,
+                right: 16,
+                bottom: 12,
+                child: IgnorePointer(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF2E7D32),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Text(
+                      'Tap pedestrians to make them buy items!',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                  ),
                 ),
               ),
 
@@ -1598,7 +1618,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
       _scene3DBrightness = brightness;
     }
     return LowPolyView(
-      objects: _scene3D!,
+      objects: [..._scene3D!, ..._pedestrianObjects3D(brightness)],
       camera: defaultCityCamera(gridSize),
       background: isNight ? cityNightSky : cityDaySky,
       minDistance: 10,
@@ -1606,9 +1626,43 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
       onTapTarget: (target) {
         if (target is CityCell) {
           _handleDebouncedBuildingTap(target.x, target.y, target.tileType);
+        } else if (target is _PedestrianState) {
+          _handlePedestrianTap(target);
         }
       },
     );
+  }
+
+  /// Lowpoly walkers, plus an invisible pad under each one so a finger can
+  /// hit a figure that is only a few pixels wide. They move every update, so
+  /// they are rebuilt each time and kept apart from the cached city scene.
+  List<LowPolyObject> _pedestrianObjects3D(double brightness) {
+    const bodyColors = [
+      Color(0xFF3949AB),
+      Color(0xFFD81B60),
+      Color(0xFF43A047),
+      Color(0xFFFB8C00),
+      Color(0xFF8E24AA),
+    ];
+    const tutorialColor = Color(0xFFFFEB3B);
+    const skin = Color(0xFFF1C27D);
+    final objects = <LowPolyObject>[];
+    for (final pedestrian in _pedestrians) {
+      final cx = pedestrian.gridX + 0.5;
+      final cz = pedestrian.gridY + 0.5;
+      final body = pedestrian == _tutorialPedestrian
+          ? tutorialColor
+          : bodyColors[pedestrian.personId % bodyColors.length];
+      final figure = LowPolyMeshBuilder(brightness: brightness)
+        ..box(cx - 0.06, 0, cz - 0.04, cx + 0.06, 0.26, cz + 0.04, body)
+        ..box(cx - 0.05, 0.26, cz - 0.05, cx + 0.05, 0.38, cz + 0.05, skin);
+      objects.add(figure.build(center: Vec3(cx, 0.2, cz), payload: pedestrian));
+
+      final pad = LowPolyMeshBuilder(brightness: brightness)
+        ..flat(cx - 0.3, cz - 0.3, cx + 0.3, cz + 0.3, 0.01, skin);
+      objects.add(pad.build(center: Vec3(cx, 0.01, cz), payload: pedestrian, drawn: false));
+    }
+    return objects;
   }
 
   Map<String, List<Widget>> _buildMapComponents(BuildContext context, Offset centerOffset, double tileWidth, double tileHeight, double buildingImageHeight) {

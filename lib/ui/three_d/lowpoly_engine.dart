@@ -59,11 +59,15 @@ class LowPolyObject {
   /// What a tap on this object reports. Null objects cannot be tapped.
   final Object? payload;
 
+  /// Undrawn objects only take taps. They make small things easier to hit.
+  final bool drawn;
+
   const LowPolyObject({
     required this.triangles,
     required this.center,
     this.onGround = false,
     this.payload,
+    this.drawn = true,
   });
 }
 
@@ -85,12 +89,14 @@ class LowPolyMeshBuilder {
     required Vec3 center,
     bool onGround = false,
     Object? payload,
+    bool drawn = true,
   }) {
     return LowPolyObject(
       triangles: List.unmodifiable(_triangles),
       center: center,
       onGround: onGround,
       payload: payload,
+      drawn: drawn,
     );
   }
 
@@ -444,6 +450,7 @@ class LowPolyPainter extends CustomPainter {
     }
 
     for (final object in lowPolyDrawOrder(objects, projector)) {
+      if (!object.drawn) continue;
       for (final tri in object.triangles) {
         if (!_facesEye(tri, eye)) continue;
         final pa = projector.project(tri.a);
