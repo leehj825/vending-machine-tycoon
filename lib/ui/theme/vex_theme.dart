@@ -11,7 +11,7 @@ class VexColors {
   static const Color gold = Color(0xFFF2D27A);
   static const Color goldDeep = Color(0xFFC9963A);
   static const Color cream = Color(0xFFEEE6D6);
-  static const Color muted = Color(0xB3EEE6D6);
+  static const Color muted = Color(0xDDEEE6D6);
   static const Color green = Color(0xFF9AD060);
   static const Color red = Color(0xFFE0483A);
   static const Color border = Color(0x66F2D27A);

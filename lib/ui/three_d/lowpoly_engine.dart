@@ -665,12 +665,17 @@ class LowPolyPainter extends CustomPainter {
 class LowPolyController {
   void Function(double factor)? _zoom;
   VoidCallback? _reset;
+  void Function(Vec3 target, double distance, double pitch)? _focus;
 
   /// Multiplies the camera distance: below 1 zooms in, above 1 zooms out.
   void zoomBy(double factor) => _zoom?.call(factor);
 
   /// Returns the camera to the view the widget was given.
   void reset() => _reset?.call();
+
+  /// Glides the camera to look at [target] from [distance] at [pitch].
+  void focusOn(Vec3 target, {double distance = 5, double pitch = 0.5}) =>
+      _focus?.call(target, distance, pitch);
 }
 
 /// Interactive lowpoly view. One finger orbits, a pinch or the scroll wheel
@@ -705,13 +710,14 @@ class LowPolyView extends StatefulWidget {
   State<LowPolyView> createState() => _LowPolyViewState();
 }
 
-class _LowPolyViewState extends State<LowPolyView> {
+class _LowPolyViewState extends State<LowPolyView> with SingleTickerProviderStateMixin {
   static const double _tapSlop = 10;
   static const Duration _tapDuration = Duration(milliseconds: 350);
   static const double _orbitSpeedYaw = 0.008;
   static const double _orbitSpeedPitch = 0.006;
 
   late LowPolyCamera _camera = widget.camera;
+  AnimationController? _glide;
   final Map<int, Offset> _pointers = {};
   final LowPolyStaticLayer _layer = LowPolyStaticLayer();
   Offset? _downAt;
@@ -737,6 +743,7 @@ class _LowPolyViewState extends State<LowPolyView> {
   @override
   void dispose() {
     _detach(widget.controller);
+    _glide?.dispose();
     _layer.dispose();
     super.dispose();
   }
@@ -744,16 +751,45 @@ class _LowPolyViewState extends State<LowPolyView> {
   void _attach(LowPolyController? controller) {
     controller?._zoom = _zoomBy;
     controller?._reset = _resetView;
+    controller?._focus = _focusOn;
   }
 
   void _detach(LowPolyController? controller) {
     if (controller == null) return;
     controller._zoom = null;
     controller._reset = null;
+    controller._focus = null;
   }
 
-  void _resetView() {
-    setState(() => _camera = widget.camera);
+  void _resetView() => _glideTo(widget.camera);
+
+  void _focusOn(Vec3 target, double distance, double pitch) {
+    _glideTo(LowPolyCamera(target: target, yaw: _camera.yaw, pitch: pitch, distance: distance));
+  }
+
+  /// Animates the camera from where it is to [goal] over about half a second.
+  void _glideTo(LowPolyCamera goal) {
+    _glide?.dispose();
+    final from = _camera;
+    final glide = AnimationController(vsync: this, duration: const Duration(milliseconds: 450));
+    glide.addListener(() {
+      final t = Curves.easeInOut.transform(glide.value);
+      double mix(double a, double b) => a + (b - a) * t;
+      setState(() {
+        _camera = LowPolyCamera(
+          target: Vec3(
+            mix(from.target.x, goal.target.x),
+            mix(from.target.y, goal.target.y),
+            mix(from.target.z, goal.target.z),
+          ),
+          yaw: mix(from.yaw, goal.yaw),
+          pitch: mix(from.pitch, goal.pitch),
+          distance: mix(from.distance, goal.distance),
+        );
+      });
+    });
+    _glide = glide;
+    glide.forward();
   }
 
   double? _span() {
@@ -770,6 +806,8 @@ class _LowPolyViewState extends State<LowPolyView> {
   }
 
   void _onPointerDown(PointerDownEvent event) {
+    // A finger on the view takes over from any glide in progress.
+    _glide?.stop();
     _pointers[event.pointer] = event.localPosition;
     if (_pointers.length == 1) {
       _downAt = event.localPosition;

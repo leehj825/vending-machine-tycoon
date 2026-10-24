@@ -992,13 +992,18 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
 
   void _showMachineView(BuildContext context, sim.Machine machine) {
     final machineId = machine.id;
+    // Glide the 3D camera to the machine's tile, so the machine is in front of the
+    // building, then open its details over that view. The overview comes back on close.
+    final gx = math.min(math.max((machine.zone.x - 1).floor(), 0), gridSize - 1);
+    final gy = math.min(math.max((machine.zone.y - 1).floor(), 0), gridSize - 1);
+    _mapController.focusOn(Vec3(gx + 0.5, 0.6, gy + 0.92), distance: 4.2, pitch: 0.42);
     showDialog(
       context: context,
-      barrierColor: Colors.black.withValues(alpha: 0.7),
+      barrierColor: Colors.black.withValues(alpha: 0.35),
       builder: (context) => _MachineViewDialog(
         machineId: machineId,
       ),
-    );
+    ).then((_) => _mapController.reset());
   }
 
   void _showMachinePurchaseDialog(BuildContext context, ZoneType zoneType, double zoneX, double zoneY) {
