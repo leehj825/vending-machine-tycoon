@@ -74,6 +74,7 @@ class _PedestrianState {
   List<({int x, int y})> path; // Path waypoints through road tiles (A* pathfinding)
   int pathIndex; // Current index in path
   final HumanPose pose = HumanPose(); // Walk cycle state for the 3D figure
+  int walkSide = 0; // +1 walks on the right of their heading, -1 on the left; 0 until placed
   
   _PedestrianState({
     required this.personId,
@@ -850,12 +851,35 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
   // buys as they pass the machine's front.
   static const double _passerPeriod = 14;
   static const double _passerActive = 0.25;
-  static const double _passerBuyPhase = 0.1625;
+  /// The walk reaches the machine's front at this phase (its x is 0.8 across the tile).
+  static const double _passerBuyPhase = 0.2;
 
   /// Where a machine's cycle is, from 0 to 1, at [now]. Machines start at different times.
   double _passerPhase(int index, DateTime now) {
     final cycles = now.millisecondsSinceEpoch / 1000.0 / _passerPeriod + index * 0.31;
     return cycles - cycles.floorToDouble();
+  }
+
+  /// The pavement a passer-by walks along in front of [machine]: a line on the road
+  /// tile that touches the machine's tile, one tile long. Null when no road touches it.
+  ({double x0, double z0, double x1, double z1})? _passerWalk(sim.Machine machine) {
+    final gx = (machine.zone.x - 1).floor();
+    final gy = (machine.zone.y - 1).floor();
+    // The machine sits at the building's front corner, so the street to the south is
+    // its front. Other sides are used when the south is not a road.
+    if (isRoadTile(_grid, gx, gy + 1)) {
+      return (x0: gx.toDouble(), z0: gy + 1.1, x1: gx + 1.0, z1: gy + 1.1);
+    }
+    if (isRoadTile(_grid, gx, gy - 1)) {
+      return (x0: gx.toDouble(), z0: gy - 0.1, x1: gx + 1.0, z1: gy - 0.1);
+    }
+    if (isRoadTile(_grid, gx + 1, gy)) {
+      return (x0: gx + 1.1, z0: gy.toDouble(), x1: gx + 1.1, z1: gy + 1.0);
+    }
+    if (isRoadTile(_grid, gx - 1, gy)) {
+      return (x0: gx - 0.1, z0: gy.toDouble(), x1: gx - 0.1, z1: gy + 1.0);
+    }
+    return null;
   }
 
   /// Sells to the customer who passes each machine, as they pass its front.
@@ -864,6 +888,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
     final now = DateTime.now();
     for (var i = 0; i < machines.length; i++) {
       final machine = machines[i];
+      if (_passerWalk(machine) == null) continue;
       final cycles = now.millisecondsSinceEpoch / 1000.0 / _passerPeriod + i * 0.31;
       final cycle = cycles.floor();
       final phase = cycles - cycle;
@@ -888,8 +913,9 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
     for (var i = 0; i < machines.length; i++) {
       final machine = machines[i];
       final pose = _passerPoses.putIfAbsent(machine.id, HumanPose.new);
+      final walk = _passerWalk(machine);
       final phase = _passerPhase(i, now);
-      if (phase >= _passerActive) {
+      if (walk == null || phase >= _passerActive) {
         // Out of sight: forget the last position, so the next walk starts cleanly.
         pose
           ..lastX = null
@@ -897,18 +923,20 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
           ..lastMovedAt = null;
         continue;
       }
-      final gx = (machine.zone.x - 1).floor();
-      final gy = (machine.zone.y - 1).floor();
       final progress = phase / _passerActive;
+      // Walkers grow in at the start of their walk and shrink out at the end, so
+      // they do not pop into view.
+      final edge = math.min(progress, 1 - progress);
+      final grow = (edge / 0.1).clamp(0.05, 1.0).toDouble();
       objects.add(buildHumanObject(
-        x: gx - 0.5 + 2.0 * progress,
-        z: gy + 1.1,
+        x: walk.x0 + (walk.x1 - walk.x0) * progress,
+        z: walk.z0 + (walk.z1 - walk.z0) * progress,
         pose: pose,
         running: false,
         shirt: shirts[i % shirts.length],
         cap: const Color(0xFF5D4037),
         brightness: brightness,
-        scale: 0.13,
+        scale: 0.13 * grow,
       ));
     }
     return objects;
@@ -933,8 +961,23 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
     const walkOffset = 0.4;
     for (final pedestrian in _pedestrians) {
       final heading = pedestrian.pose.yaw;
-      final cx = pedestrian.gridX + 0.5 - math.cos(heading) * walkOffset;
-      final cz = pedestrian.gridY + 0.5 + math.sin(heading) * walkOffset;
+      // Right of the heading, as a unit vector across the road.
+      final rightX = -math.cos(heading);
+      final rightZ = math.sin(heading);
+      final centreX = pedestrian.gridX + 0.5;
+      final centreZ = pedestrian.gridY + 0.5;
+      // Keep to one side. Switch only when that side has no pavement, so a heading that
+      // wobbles does not make the walker jump across the road.
+      var side = pedestrian.walkSide == 0 ? 1 : pedestrian.walkSide;
+      bool onPavement(int s) => isPavementAt(
+            _grid,
+            centreX + rightX * walkOffset * s,
+            centreZ + rightZ * walkOffset * s,
+          );
+      if (!onPavement(side) && onPavement(-side)) side = -side;
+      pedestrian.walkSide = side;
+      final cx = centreX + rightX * walkOffset * side;
+      final cz = centreZ + rightZ * walkOffset * side;
       final body = pedestrian == _tutorialPedestrian
           ? tutorialColor
           : bodyColors[pedestrian.personId % bodyColors.length];

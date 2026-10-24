@@ -146,9 +146,24 @@ List<LowPolyObject> buildCityScene({
 double _cellNoise(int x, int y) => ((x * 73 + y * 151 + x * y * 31) % 97) / 96.0;
 
 /// Whether the tile at ([x], [y]) is a road. Off the map counts as no road.
-bool _isRoadAt(List<List<TileType>> grid, int x, int y) {
+bool isRoadTile(List<List<TileType>> grid, int x, int y) {
   if (y < 0 || y >= grid.length || x < 0 || x >= grid[y].length) return false;
   return grid[y][x] == TileType.road;
+}
+
+/// Whether the point ([px], [pz]) is on a pavement strip. Pavement lies on the
+/// edge of a road tile that faces a tile which is not road, so people can walk there.
+bool isPavementAt(List<List<TileType>> grid, double px, double pz) {
+  final tx = px.floor();
+  final ty = pz.floor();
+  if (!isRoadTile(grid, tx, ty)) return false;
+  final lx = px - tx;
+  final lz = pz - ty;
+  if (lx < _pavementWidth && !isRoadTile(grid, tx - 1, ty)) return true;
+  if (lx > 1 - _pavementWidth && !isRoadTile(grid, tx + 1, ty)) return true;
+  if (lz < _pavementWidth && !isRoadTile(grid, tx, ty - 1)) return true;
+  if (lz > 1 - _pavementWidth && !isRoadTile(grid, tx, ty + 1)) return true;
+  return false;
 }
 
 /// Ground under one tile: asphalt with lane markings and kerbs on a road,
@@ -165,10 +180,10 @@ LowPolyObject _groundTile(
   if (type == TileType.road) {
     // The asphalt stops short of any side that faces grass or a building. The strip left
     // behind is the pavement that people walk on.
-    final leftOpen = !_isRoadAt(grid, x - 1, y);
-    final rightOpen = !_isRoadAt(grid, x + 1, y);
-    final backOpen = !_isRoadAt(grid, x, y - 1);
-    final frontOpen = !_isRoadAt(grid, x, y + 1);
+    final leftOpen = !isRoadTile(grid, x - 1, y);
+    final rightOpen = !isRoadTile(grid, x + 1, y);
+    final backOpen = !isRoadTile(grid, x, y - 1);
+    final frontOpen = !isRoadTile(grid, x, y + 1);
     final x0 = leftOpen ? _pavementWidth : 0.0;
     final x1 = rightOpen ? 1 - _pavementWidth : 1.0;
     final y0 = backOpen ? _pavementWidth : 0.0;
@@ -209,8 +224,8 @@ List<LowPolyObject> _streetObjects(
 ) {
   if (type == TileType.road || type == TileType.park) return const [];
   final objects = <LowPolyObject>[];
-  final onRoad = _isRoadAt(grid, x, y - 1) || _isRoadAt(grid, x, y + 1) ||
-      _isRoadAt(grid, x - 1, y) || _isRoadAt(grid, x + 1, y);
+  final onRoad = isRoadTile(grid, x, y - 1) || isRoadTile(grid, x, y + 1) ||
+      isRoadTile(grid, x - 1, y) || isRoadTile(grid, x + 1, y);
   if (!onRoad) return objects;
 
   final m = LowPolyMeshBuilder(brightness: brightness);
