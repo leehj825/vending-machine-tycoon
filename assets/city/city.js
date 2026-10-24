@@ -46,6 +46,7 @@
   let soups = [];
   let follow = null; // where the camera drifts to, when following the player
   let collectMachine = null; // the machine the Collect button is for
+  let thirdPerson = false; // the camera follows the player from behind
 
   function applyCamera() {
     const cp = Math.cos(cam.pitch);
@@ -430,6 +431,7 @@
     setFrame(message) {
       follow = message.follow || null;
       const actions = message.actions || {};
+      stick.style.display = actions.stick ? 'block' : 'none';
       talkBtn.style.display = actions.talk ? 'block' : 'none';
       collectMachine = actions.collect || null;
       collectBtn.style.display = collectMachine ? 'block' : 'none';
@@ -471,6 +473,12 @@
       }
     },
 
+    setThirdPerson(on) {
+      thirdPerson = on;
+      glide = null;
+      if (!on) glideTo(home, GLIDE_MS);
+    },
+
     focus(x, y, z, distance, pitch, yaw) {
       zoomFloor = Math.min(minDistance, distance);
       glideTo(
@@ -501,7 +509,15 @@
 
   function frame(now) {
     stepGlide(now);
-    if (follow && !glide) {
+    if (thirdPerson && follow) {
+      // Behind the player: the camera looks the way they walk, from a little above.
+      const turn = follow.yaw + Math.PI - cam.yaw;
+      cam.yaw += (((turn + Math.PI) % (2 * Math.PI)) - Math.PI) * 0.1;
+      cam.target.x += (follow.x - cam.target.x) * 0.2;
+      cam.target.z += (follow.z - cam.target.z) * 0.2;
+      cam.distance += (3.2 - cam.distance) * 0.1;
+      cam.pitch += (0.5 - cam.pitch) * 0.1;
+    } else if (follow && !glide) {
       cam.target.x += (follow.x - cam.target.x) * 0.12;
       cam.target.z += (follow.z - cam.target.z) * 0.12;
     }

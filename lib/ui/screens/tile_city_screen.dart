@@ -197,7 +197,8 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen>
   _PedestrianState? _playerTalkTo;
   int _playerRepathTicks = 0;
   bool _playerRunning = false;
-  bool _playerFollow = true;
+  // Whether the player is out walking the town. In map view they are at the office.
+  bool _walking = false;
   List<List<TileType>>? _playerGrid;
   // Where the stick pushes, in world ground directions, each up to 1 long.
   double _stickDx = 0;
@@ -846,25 +847,27 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen>
                   onPressed: _mapController.reset,
                 ),
                 const SizedBox(height: 6),
-                VexIconButton(
-                  icon: _playerRunning
-                      ? Icons.directions_run
-                      : Icons.directions_walk,
-                  tooltip: _playerRunning
-                      ? 'Running (tap to walk)'
-                      : 'Walking (tap to run)',
-                  onPressed: () =>
-                      setState(() => _playerRunning = !_playerRunning),
-                ),
-                const SizedBox(height: 6),
-                VexIconButton(
-                  icon: _playerFollow
-                      ? Icons.my_location
-                      : Icons.location_searching,
-                  tooltip: _playerFollow ? 'Stop following me' : 'Follow me',
-                  onPressed: () =>
-                      setState(() => _playerFollow = !_playerFollow),
-                ),
+                if (!_walking)
+                  VexIconButton(
+                    icon: Icons.directions_walk,
+                    tooltip: 'Walk out into town',
+                    onPressed: _startWalking,
+                  )
+                else ...[
+                  VexIconButton(
+                    icon: _playerRunning
+                        ? Icons.directions_run
+                        : Icons.accessibility_new,
+                    tooltip: _playerRunning ? 'Running (tap to walk)' : 'Walking (tap to run)',
+                    onPressed: () => setState(() => _playerRunning = !_playerRunning),
+                  ),
+                  const SizedBox(height: 6),
+                  VexIconButton(
+                    icon: Icons.business,
+                    tooltip: 'Back to office',
+                    onPressed: _stopWalking,
+                  ),
+                ],
               ],
             ),
           ),
@@ -936,7 +939,8 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen>
         ),
       ..._tileMarkers(machines, brightness, ref.watch(cashProvider)),
     ];
-    final playerWalker = _playerWalker(brightness);
+    final playerWalker = _walking ? _playerWalker(brightness) : null;
+    final walking = _walking && _playerX != null;
     final frame = jsonEncode(
       cityFrameJson(
         walkers: [
@@ -944,12 +948,11 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen>
           if (playerWalker != null) playerWalker,
         ],
         soups: soups,
-        follow: _playerFollow && _playerX != null
-            ? {'x': _playerX, 'z': _playerZ}
-            : null,
+        follow: walking ? {'x': _playerX, 'z': _playerZ, 'yaw': _playerPose.yaw} : null,
         actions: {
-          'talk': _nearbyPedestrian() != null,
-          'collect': _nearbyMachineId(),
+          'stick': walking,
+          'talk': walking && _nearbyPedestrian() != null,
+          'collect': walking ? _nearbyMachineId() : null,
         },
       ),
     );
@@ -1061,8 +1064,13 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen>
         if (key == 'player') return;
         for (final pedestrian in _pedestrians) {
           if ('p${pedestrian.personId}' == key) {
-            // Walk over to them; they are talked to on arrival.
-            _playerWalkToPedestrian(pedestrian);
+            if (_walking) {
+              // Walk over to them; they are talked to on arrival.
+              _playerWalkToPedestrian(pedestrian);
+            } else {
+              // In map view a tap makes them buy, as it always has.
+              _handlePedestrianTap(pedestrian);
+            }
             return;
           }
         }
@@ -1081,7 +1089,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen>
         final near =
             math.sqrt(math.pow(px - ax, 2) + math.pow(pz - az, 2)) < 2.5;
         final front = frontTile(_grid, gx, gy);
-        if (near || front == null) {
+        if (!_walking || near || front == null) {
           _collectCash(machineId);
         } else {
           // Walk to the machine's front, then collect.
@@ -1709,8 +1717,34 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen>
       ..targetGridY = next.y.toDouble();
   }
 
+  /// Walks out into town: the camera goes behind the player, and the stick takes over.
+  void _startWalking() {
+    setState(() {
+      _walking = true;
+      _playerX = null;
+      _playerPath = [];
+      _playerTalkTo = null;
+    });
+    _mapController.setThirdPerson(true);
+  }
+
+  /// Back to the office: the map view returns, and the player leaves the street.
+  void _stopWalking() {
+    setState(() {
+      _walking = false;
+      _playerX = null;
+      _playerPath = [];
+      _playerArrived = null;
+      _playerTalkTo = null;
+      _stickDx = 0;
+      _stickDz = 0;
+    });
+    _mapController.setThirdPerson(false);
+  }
+
   /// Walks the player along their path, one update at a time.
   void _updatePlayer() {
+    if (!_walking) return;
     if (!identical(_playerGrid, _grid)) {
       _playerGrid = _grid;
       _playerX = null;
@@ -1797,6 +1831,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen>
 
   /// Starts the player walking to a tile. A grass tile sends them to the nearest road.
   void _playerWalkToTile(int tx, int ty, {VoidCallback? then}) {
+    if (!_walking) return;
     final px = _playerX;
     final pz = _playerZ;
     if (px == null || pz == null) return;
@@ -1823,6 +1858,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen>
 
   /// Walks the player to a walker, and talks to them on arrival.
   void _playerWalkToPedestrian(_PedestrianState pedestrian) {
+    if (!_walking) return;
     _playerArrived = null;
     _playerTalkTo = pedestrian;
     _playerRepathTicks = 0;

@@ -14,6 +14,9 @@ class CityWebController {
   /// Multiplies the camera distance: below 1 zooms in, above 1 zooms out.
   void zoomBy(double factor) => _state?._run('window.city.zoom($factor)');
 
+  /// Third person: the camera follows the player from behind. Off, it returns to the map.
+  void setThirdPerson(bool on) => _state?._run('window.city.setThirdPerson($on)');
+
   /// Returns the camera to the city's starting view.
   void reset() => _state?._run('window.city.reset()');
 
