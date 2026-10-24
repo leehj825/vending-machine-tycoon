@@ -6,6 +6,7 @@
   // Colours are already the final values from the Dart builders, so skip three.js's
   // conversion to linear light, which would make them paler.
   THREE.ColorManagement.enabled = false;
+  // The colours are already sRGB, so the output must not encode them a second time.
 
   const TAP_SLOP = 10; // pixels a finger may move and still count as a tap
   const TAP_MS = 350;
@@ -20,6 +21,7 @@
   const host = document.getElementById('host');
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
   host.appendChild(renderer.domElement);
   const dom = renderer.domElement;
 

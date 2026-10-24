@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show Factory;
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
@@ -120,6 +122,11 @@ class _CityWebViewState extends State<CityWebView> {
   Widget build(BuildContext context) {
     final web = _web;
     if (web == null) return ColoredBox(color: widget.background);
-    return WebViewWidget(controller: web);
+    // The page needs every touch for orbiting and pinching. Without this, the parent's
+    // gesture recognizers take drags and the camera stays where it is.
+    return WebViewWidget(
+      controller: web,
+      gestureRecognizers: {Factory<OneSequenceGestureRecognizer>(EagerGestureRecognizer.new)},
+    );
   }
 }
