@@ -1,0 +1,298 @@
+import 'dart:math' as math;
+
+import 'package:flutter/material.dart';
+
+import 'human_clips.dart';
+import 'lowpoly_engine.dart';
+
+/// A baked walk or run cycle from vexmarch's crowd (human_clips.dart).
+///
+/// [quats] holds 13 bone rotations per frame, each as x, y, z, w, and
+/// [hipY] and [hipZ] give the hips' height and depth for each frame.
+class HumanClip {
+  const HumanClip({
+    required this.frames,
+    required this.quats,
+    required this.hipY,
+    required this.hipZ,
+  });
+
+  final int frames;
+  final List<double> quats;
+  final List<double> hipY;
+  final List<double> hipZ;
+}
+
+/// Animation state of one person, advanced each time they are drawn.
+class HumanPose {
+  /// Position in the walk cycle, in cycles.
+  double phase = 0;
+
+  /// Direction the person is facing, in radians around the vertical axis.
+  double yaw = 0;
+  double? lastX;
+  double? lastY;
+  DateTime? lastMovedAt;
+}
+
+/// Distance covered by one step cycle. Running takes longer steps.
+const double _walkStride = 0.2;
+const double _runStride = 0.4;
+
+/// Scale from vexmarch's figure size (about 1.9 units tall) to a tile.
+const double _figureScale = 0.2;
+
+/// How long a person keeps their walking pose after moving, so a briefly
+/// unchanged position between updates does not make them freeze.
+const Duration _movingHold = Duration(milliseconds: 150);
+
+/// vexmarch's rig: the parent bone of each of the 13 bones.
+const List<int> _parent = [-1, 0, 1, 1, 1, 3, 4, 5, 6, 0, 0, 9, 10];
+
+/// Each bone's offset from its parent in the rest pose.
+const List<List<double>> _offset = [
+  [0, 0.9, 0],
+  [0, 0.05, 0],
+  [0, 0.66, 0],
+  [-0.34, 0.58, 0],
+  [0.34, 0.58, 0],
+  [0, -0.3, 0],
+  [0, -0.3, 0],
+  [0, -0.3, 0],
+  [0, -0.3, 0],
+  [-0.14, -0.04, 0],
+  [0.14, -0.04, 0],
+  [0, -0.45, 0],
+  [0, -0.45, 0],
+];
+
+const int _hips = 0;
+const int _head = 2;
+const int _shoulderL = 3;
+const int _shoulderR = 4;
+const int _elbowL = 5;
+const int _elbowR = 6;
+const int _hipL = 9;
+const int _hipR = 10;
+const int _kneeL = 11;
+const int _kneeR = 12;
+
+final List<Vec3> _rest = _restPose();
+
+List<Vec3> _restPose() {
+  final rest = <Vec3>[];
+  for (var i = 0; i < _parent.length; i++) {
+    final parent = _parent[i] < 0 ? const Vec3(0, 0, 0) : rest[_parent[i]];
+    final o = _offset[i];
+    rest.add(Vec3(parent.x + o[0], parent.y + o[1], parent.z + o[2]));
+  }
+  return rest;
+}
+
+/// A rigid transform: a point p maps to r·p + t, with r row-major.
+class _Affine {
+  const _Affine(this.r, this.t);
+
+  final List<double> r;
+  final Vec3 t;
+}
+
+List<double> _mul3(List<double> a, List<double> b) {
+  final o = List<double>.filled(9, 0);
+  for (var i = 0; i < 3; i++) {
+    for (var j = 0; j < 3; j++) {
+      var s = 0.0;
+      for (var k = 0; k < 3; k++) {
+        s += a[i * 3 + k] * b[k * 3 + j];
+      }
+      o[i * 3 + j] = s;
+    }
+  }
+  return o;
+}
+
+Vec3 _apply(List<double> r, Vec3 v) => Vec3(
+      r[0] * v.x + r[1] * v.y + r[2] * v.z,
+      r[3] * v.x + r[4] * v.y + r[5] * v.z,
+      r[6] * v.x + r[7] * v.y + r[8] * v.z,
+    );
+
+_Affine _compose(_Affine a, _Affine b) =>
+    _Affine(_mul3(a.r, b.r), _apply(a.r, b.t) + a.t);
+
+/// Rotation matrix of a unit quaternion, matching vexmarch's fromQuat.
+List<double> _quatMatrix(double x, double y, double z, double w) {
+  final n = math.sqrt(x * x + y * y + z * z + w * w);
+  final qx = n == 0 ? 0.0 : x / n;
+  final qy = n == 0 ? 0.0 : y / n;
+  final qz = n == 0 ? 0.0 : z / n;
+  final qw = n == 0 ? 1.0 : w / n;
+  return [
+    1 - 2 * (qy * qy + qz * qz), 2 * (qx * qy - qz * qw), 2 * (qx * qz + qy * qw),
+    2 * (qx * qy + qz * qw), 1 - 2 * (qx * qx + qz * qz), 2 * (qy * qz - qx * qw),
+    2 * (qx * qz - qy * qw), 2 * (qy * qz + qx * qw), 1 - 2 * (qx * qx + qy * qy),
+  ];
+}
+
+/// The world transform of each bone for one pose. A null [clip] is the rest pose.
+List<_Affine> _poseBones(HumanClip? clip, double phase) {
+  final q = List<double>.filled(_parent.length * 4, 0);
+  for (var b = 0; b < _parent.length; b++) {
+    q[b * 4 + 3] = 1;
+  }
+  var hipY = _rest[_hips].y;
+  var hipZ = _rest[_hips].z;
+  if (clip != null) {
+    final cycle = phase - phase.floorToDouble();
+    final frame = math.min((cycle * clip.frames).floor(), clip.frames - 1);
+    for (var i = 0; i < _parent.length * 4; i++) {
+      q[i] = clip.quats[frame * _parent.length * 4 + i];
+    }
+    hipY = clip.hipY[frame];
+    hipZ = clip.hipZ[frame];
+  }
+
+  final world = <_Affine>[];
+  for (var b = 0; b < _parent.length; b++) {
+    final o = _offset[b];
+    final offset = b == 0 ? Vec3(0, hipY, hipZ) : Vec3(o[0], o[1], o[2]);
+    final local = _Affine(
+      _quatMatrix(q[b * 4], q[b * 4 + 1], q[b * 4 + 2], q[b * 4 + 3]),
+      offset,
+    );
+    world.add(_parent[b] < 0 ? local : _compose(world[_parent[b]], local));
+  }
+  return world;
+}
+
+/// One box of a person, in the rest pose, hung on one bone.
+class _Part {
+  const _Part(this.bone, this.center, this.half, this.color);
+
+  final int bone;
+  final Vec3 center;
+  final Vec3 half;
+  final Color color;
+}
+
+const Color _skin = Color(0xFFE2B88E);
+const Color _pants = Color(0xFF4B4036);
+const Color _boot = Color(0xFF2E241C);
+const Color _sleeve = Color(0xFFFFFFFF);
+
+/// The body every person shares, as vexmarch's civilian figure: legs, torso
+/// in the shirt colour, arms, head and cap.
+List<_Part> _personParts(Color shirt, Color cap) {
+  final parts = <_Part>[
+    _Part(_hips, _rest[_hips], const Vec3(0.19, 0.1, 0.11), _pants),
+    _Part(1, const Vec3(0, 1.3, 0), const Vec3(0.25, 0.3, 0.135), shirt),
+    _Part(_head, const Vec3(0, 1.78, 0), const Vec3(0.105, 0.115, 0.105), _skin),
+    _Part(_head, const Vec3(0, 1.9, -0.01), const Vec3(0.12, 0.04, 0.12), cap),
+  ];
+  for (final side in [
+    (_shoulderL, _elbowL, _hipL, _kneeL),
+    (_shoulderR, _elbowR, _hipR, _kneeR),
+  ]) {
+    final (shoulder, elbow, hip, knee) = side;
+    final sx = _rest[shoulder].x;
+    final hx = _rest[hip].x;
+    parts.addAll([
+      _Part(shoulder, Vec3(sx, 1.39, 0), const Vec3(0.07, 0.155, 0.07), _sleeve),
+      _Part(elbow, Vec3(sx, 1.05, 0), const Vec3(0.0575, 0.19, 0.0575), _skin),
+      _Part(hip, Vec3(hx, 0.64, 0), const Vec3(0.09, 0.23, 0.1), _pants),
+      _Part(knee, Vec3(hx, 0.2, 0), const Vec3(0.0775, 0.21, 0.085), _pants),
+      _Part(knee, Vec3(hx, 0.04, 0.045), const Vec3(0.085, 0.05, 0.14), _boot),
+    ]);
+  }
+  return parts;
+}
+
+/// Builds one person, posed by the walk or run clip, and facing the way
+/// they are moving. A person who has not moved recently stands still.
+///
+/// [x] and [z] are the world position of the feet. [running] picks the run
+/// cycle over the walk cycle while moving.
+LowPolyObject buildHumanObject({
+  required double x,
+  required double z,
+  required HumanPose pose,
+  required bool running,
+  required Color shirt,
+  required Color cap,
+  required double brightness,
+  Object? payload,
+}) {
+  final now = DateTime.now();
+  final lastX = pose.lastX;
+  final lastZ = pose.lastY;
+  if (lastX != null && lastZ != null) {
+    final dx = x - lastX;
+    final dz = z - lastZ;
+    final dist = math.sqrt(dx * dx + dz * dz);
+    if (dist > 0.0005) {
+      pose.yaw = math.atan2(dx, dz);
+      pose.phase += dist / (running ? _runStride : _walkStride);
+      pose.lastMovedAt = now;
+    }
+  }
+  pose.lastX = x;
+  pose.lastY = z;
+  final moving = pose.lastMovedAt != null &&
+      now.difference(pose.lastMovedAt!) < _movingHold;
+  final clip = moving ? (running ? humanRunClip : humanWalkClip) : null;
+  final world = _poseBones(clip, pose.phase);
+
+  final cosYaw = math.cos(pose.yaw);
+  final sinYaw = math.sin(pose.yaw);
+  // Figure space to world: scale, turn to face the direction, then move to (x, z).
+  Vec3 toWorld(Vec3 p) {
+    final sx = p.x * _figureScale;
+    final sz = p.z * _figureScale;
+    return Vec3(
+      x + sx * cosYaw + sz * sinYaw,
+      p.y * _figureScale,
+      z - sx * sinYaw + sz * cosYaw,
+    );
+  }
+
+  final m = LowPolyMeshBuilder(brightness: brightness);
+  for (final part in _personParts(shirt, cap)) {
+    final bone = world[part.bone];
+    final rest = _rest[part.bone];
+    final corners = List<Vec3>.filled(8, const Vec3(0, 0, 0));
+    for (var i = 0; i < 8; i++) {
+      final sx = i & 1 == 0 ? -1.0 : 1.0;
+      final sy = i & 2 == 0 ? -1.0 : 1.0;
+      final sz = i & 4 == 0 ? -1.0 : 1.0;
+      final local = Vec3(
+        part.center.x + sx * part.half.x - rest.x,
+        part.center.y + sy * part.half.y - rest.y,
+        part.center.z + sz * part.half.z - rest.z,
+      );
+      corners[i] = toWorld(_apply(bone.r, local) + bone.t);
+    }
+    final centre = toWorld(_apply(bone.r, part.center - rest) + bone.t);
+    // Faces are listed in order around the box, from corner index i.
+    const faces = [
+      [1, 5, 7, 3],
+      [0, 2, 6, 4],
+      [2, 6, 7, 3],
+      [0, 1, 5, 4],
+      [4, 5, 7, 6],
+      [0, 1, 3, 2],
+    ];
+    for (final f in faces) {
+      final a = corners[f[0]];
+      final b = corners[f[1]];
+      final c = corners[f[2]];
+      final d = corners[f[3]];
+      final face = Vec3(
+        (a.x + b.x + c.x + d.x) / 4,
+        (a.y + b.y + c.y + d.y) / 4,
+        (a.z + b.z + c.z + d.z) / 4,
+      );
+      m.quad(a, b, c, d, face - centre, part.color);
+    }
+  }
+  return m.build(center: Vec3(x, 0.2, z), payload: payload);
+}

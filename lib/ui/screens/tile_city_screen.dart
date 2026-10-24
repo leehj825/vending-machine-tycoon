@@ -24,6 +24,7 @@ import '../widgets/marketing_button.dart';
 import '../three_d/city_scene_3d.dart';
 import '../three_d/lowpoly_engine.dart';
 import '../three_d/vending_machine_3d.dart';
+import '../three_d/human_rig.dart';
 
 enum TileType {
   grass,
@@ -73,6 +74,7 @@ class _PedestrianState {
   int? jumpStartStep; // Step count when jump animation started (for jump effect)
   List<({int x, int y})> path; // Path waypoints through road tiles (A* pathfinding)
   int pathIndex; // Current index in path
+  final HumanPose pose = HumanPose(); // Walk cycle state for the 3D figure
   
   _PedestrianState({
     required this.personId,
@@ -1677,10 +1679,17 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
       final body = pedestrian == _tutorialPedestrian
           ? tutorialColor
           : bodyColors[pedestrian.personId % bodyColors.length];
-      final figure = LowPolyMeshBuilder(brightness: brightness)
-        ..box(cx - 0.06, 0, cz - 0.04, cx + 0.06, 0.26, cz + 0.04, body)
-        ..box(cx - 0.05, 0.26, cz - 0.05, cx + 0.05, 0.38, cz + 0.05, skin);
-      objects.add(figure.build(center: Vec3(cx, 0.2, cz), payload: pedestrian));
+      // Walks while moving, and runs once a tap sends them to a machine.
+      objects.add(buildHumanObject(
+        x: cx,
+        z: cz,
+        pose: pedestrian.pose,
+        running: pedestrian.isHeadingToShop,
+        shirt: body,
+        cap: const Color(0xFFB79A52),
+        brightness: brightness,
+        payload: pedestrian,
+      ));
 
       final pad = LowPolyMeshBuilder(brightness: brightness)
         ..flat(cx - 0.3, cz - 0.3, cx + 0.3, cz + 0.3, 0.01, skin);

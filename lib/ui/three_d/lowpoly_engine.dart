@@ -116,6 +116,10 @@ class LowPolyMeshBuilder {
     _tri(a, c, d, outward, color);
   }
 
+  /// A quad with corners in order around its face. [outward] orients its normal.
+  void quad(Vec3 a, Vec3 b, Vec3 c, Vec3 d, Vec3 outward, Color color) =>
+      _quad(a, b, c, d, outward, color);
+
   /// A flat horizontal rectangle at height [y].
   void flat(double x0, double z0, double x1, double z1, double y, Color color) {
     _quad(
