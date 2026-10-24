@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 
-/// Colours from vexmarch: an ink background, warm cream text, and gold accents.
+/// Colours from vexmarch, lifted to a brighter slate so the screens are not so dark:
+/// a slate background, warm cream text, and gold accents.
 class VexColors {
   VexColors._();
 
-  static const Color ink = Color(0xFF07060A);
-  static const Color panel = Color(0xF20C0A0E);
-  static const Color panelSoft = Color(0xFF1C1620);
-  static const Color card = Color(0xFF14101A);
+  static const Color ink = Color(0xFF353C4E);
+  static const Color panel = Color(0xF2434C60);
+  static const Color panelSoft = Color(0xFF515B70);
+  static const Color card = Color(0xFF3E475A);
   static const Color gold = Color(0xFFF2D27A);
   static const Color goldDeep = Color(0xFFC9963A);
   static const Color cream = Color(0xFFEEE6D6);
@@ -18,7 +19,7 @@ class VexColors {
   static const Color line = Color(0x26FFE6BE);
 }
 
-/// The app theme: dark ink surfaces, cream text, and gold for emphasis.
+/// The app theme: slate surfaces, cream text, and gold for emphasis.
 class VexTheme {
   VexTheme._();
 
