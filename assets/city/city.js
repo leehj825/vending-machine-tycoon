@@ -47,6 +47,10 @@
   let follow = null; // where the camera drifts to, when following the player
   let collectMachine = null; // the machine the Collect button is for
   let thirdPerson = false; // the camera follows the player from behind
+  let thirdDistance = 3.2; // how far behind the player, which two fingers or the wheel change
+  let thirdNeedsYaw = false; // the first frame of walking starts the camera behind the player
+  const THIRD_MIN = 1.4;
+  const THIRD_MAX = 9;
 
   function applyCamera() {
     const cp = Math.cos(cam.pitch);
@@ -63,6 +67,10 @@
   }
 
   function zoomBy(factor) {
+    if (thirdPerson) {
+      thirdDistance = clamp(thirdDistance * factor, THIRD_MIN, THIRD_MAX);
+      return;
+    }
     cam.distance = clamp(cam.distance * factor, zoomFloor, maxDistance);
   }
 
@@ -148,14 +156,17 @@
       }
       cam.yaw -= (e.clientX - prev.x) * ORBIT_YAW;
       cam.pitch = clamp(cam.pitch + (e.clientY - prev.y) * ORBIT_PITCH, 0.2, 1.45);
+      // Walking, the figure faces where the camera looks, so a drag turns the player too.
+      if (thirdPerson) post({ kind: 'facing', facing: cam.yaw - Math.PI });
       return;
     }
     tapCandidate = false;
     const s = span();
     if (s != null && pinchSpan != null && pinchSpan > 0) zoomBy(pinchSpan / s);
     pinchSpan = s;
+    // Walking, the view stays on the player, so two fingers only zoom.
     const mid = midpoint();
-    if (mid && lastMid) panBy(mid.x - lastMid.x, mid.y - lastMid.y);
+    if (!thirdPerson && mid && lastMid) panBy(mid.x - lastMid.x, mid.y - lastMid.y);
     lastMid = mid;
   });
 
@@ -213,7 +224,12 @@
     const rightZ = -Math.sin(cam.yaw);
     const forwardX = -Math.sin(cam.yaw);
     const forwardZ = -Math.cos(cam.yaw);
-    post({ kind: 'move', dx: rightX * sx - forwardX * sy, dz: rightZ * sx - forwardZ * sy });
+    post({
+      kind: 'move',
+      dx: rightX * sx - forwardX * sy,
+      dz: rightZ * sx - forwardZ * sy,
+      facing: cam.yaw - Math.PI,
+    });
   }
 
   function stickRelease() {
@@ -431,10 +447,15 @@
     setFrame(message) {
       follow = message.follow || null;
       const actions = message.actions || {};
-      stick.style.display = actions.stick ? 'block' : 'none';
-      talkBtn.style.display = actions.talk ? 'block' : 'none';
+      // While walking, the stick and both buttons show. A button works only when its
+      // target is close and in front; otherwise it is shown but disabled.
+      const walking = !!actions.walking;
+      stick.style.display = walking ? 'block' : 'none';
+      talkBtn.style.display = walking ? 'block' : 'none';
+      collectBtn.style.display = walking ? 'block' : 'none';
+      talkBtn.disabled = !actions.talk;
       collectMachine = actions.collect || null;
-      collectBtn.style.display = collectMachine ? 'block' : 'none';
+      collectBtn.disabled = !collectMachine;
       // Moving vehicles and markers are rebuilt from triangles every frame.
       for (const mesh of soups) {
         dynamicGroup.remove(mesh);
@@ -476,7 +497,13 @@
     setThirdPerson(on) {
       thirdPerson = on;
       glide = null;
-      if (!on) glideTo(home, GLIDE_MS);
+      if (on) {
+        thirdDistance = 3.2;
+        thirdNeedsYaw = true;
+        cam.pitch = 0.5;
+      } else {
+        glideTo(home, GLIDE_MS);
+      }
     },
 
     focus(x, y, z, distance, pitch, yaw) {
@@ -510,13 +537,15 @@
   function frame(now) {
     stepGlide(now);
     if (thirdPerson && follow) {
-      // Behind the player: the camera looks the way they walk, from a little above.
-      const turn = follow.yaw + Math.PI - cam.yaw;
-      cam.yaw += (((turn + Math.PI) % (2 * Math.PI)) - Math.PI) * 0.1;
+      // Behind the player. The camera's direction is the player's, so it is only set once,
+      // when walking starts; after that the player's own drags and strafes steer it.
+      if (thirdNeedsYaw) {
+        cam.yaw = follow.yaw + Math.PI;
+        thirdNeedsYaw = false;
+      }
       cam.target.x += (follow.x - cam.target.x) * 0.2;
       cam.target.z += (follow.z - cam.target.z) * 0.2;
-      cam.distance += (3.2 - cam.distance) * 0.1;
-      cam.pitch += (0.5 - cam.pitch) * 0.1;
+      cam.distance += (thirdDistance - cam.distance) * 0.2;
     } else if (follow && !glide) {
       cam.target.x += (follow.x - cam.target.x) * 0.12;
       cam.target.z += (follow.z - cam.target.z) * 0.12;

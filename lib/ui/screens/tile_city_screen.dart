@@ -203,6 +203,9 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen>
   // Where the stick pushes, in world ground directions, each up to 1 long.
   double _stickDx = 0;
   double _stickDz = 0;
+  // Which way the player faces: the way the camera looks, so the stick strafes and backs up
+  // without turning the figure.
+  double _playerFacing = 0;
 
   // When each machine last sold to a walker passing its front.
   final Map<String, DateTime> _customerSoldAt = {};
@@ -950,7 +953,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen>
         soups: soups,
         follow: walking ? {'x': _playerX, 'z': _playerZ, 'yaw': _playerPose.yaw} : null,
         actions: {
-          'stick': walking,
+          'walking': walking,
           'talk': walking && _nearbyPedestrian() != null,
           'collect': walking ? _nearbyMachineId() : null,
         },
@@ -1104,6 +1107,9 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen>
       case 'move':
         _stickDx = (target['dx']! as num).toDouble();
         _stickDz = (target['dz']! as num).toDouble();
+        _playerFacing = (target['facing']! as num).toDouble();
+      case 'facing':
+        _playerFacing = (target['facing']! as num).toDouble();
       case 'talk':
         final near = _nearbyPedestrian();
         if (near != null) _playerTalk(near);
@@ -1821,6 +1827,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen>
     _playerX = px;
     _playerZ = pz;
     advanceHumanPose(_playerPose, px, pz, _playerRunning, DateTime.now());
+    _playerPose.yaw = _playerFacing;
 
     if (_playerPath.isEmpty && _playerTalkTo == null) {
       final arrived = _playerArrived;
@@ -1917,24 +1924,32 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen>
   /// Whether the player may stand at ([x], [z]): only on a road.
   bool _playerWalkable(double x, double z) => isRoadTile(_grid, x.floor(), z.floor());
 
-  /// The walker within talking distance of the player, or null.
-  _PedestrianState? _nearbyPedestrian() {
+  /// Whether ([tx], [tz]) is within [maxDistance] of the player and in front of them, within
+  /// about 60 degrees of the way they face.
+  bool _isInFront(double tx, double tz, double maxDistance) {
     final px = _playerX;
     final pz = _playerZ;
-    if (px == null || pz == null) return null;
+    if (px == null || pz == null) return false;
+    final dx = tx - px;
+    final dz = tz - pz;
+    final distance = math.sqrt(dx * dx + dz * dz);
+    if (distance > maxDistance) return false;
+    if (distance < 0.3) return true;
+    final facingX = math.sin(_playerFacing);
+    final facingZ = math.cos(_playerFacing);
+    return (dx * facingX + dz * facingZ) / distance >= 0.5;
+  }
+
+  /// The walker close in front of the player, or null.
+  _PedestrianState? _nearbyPedestrian() {
     for (final pedestrian in _pedestrians) {
-      final dx = pedestrian.gridX + 0.5 - px;
-      final dz = pedestrian.gridY + 0.5 - pz;
-      if (math.sqrt(dx * dx + dz * dz) < 1.3) return pedestrian;
+      if (_isInFront(pedestrian.gridX + 0.5, pedestrian.gridY + 0.5, 1.6)) return pedestrian;
     }
     return null;
   }
 
   /// The machine with cash close enough to collect from, or null.
   String? _nearbyMachineId() {
-    final px = _playerX;
-    final pz = _playerZ;
-    if (px == null || pz == null) return null;
     for (final machine in ref.read(machinesProvider)) {
       if (machine.currentCash <= 0) continue;
       final (ax, az) = machineAnchor(
@@ -1942,7 +1957,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen>
         (machine.zone.x - 1).floor(),
         (machine.zone.y - 1).floor(),
       );
-      if (math.sqrt(math.pow(px - ax, 2) + math.pow(pz - az, 2)) < 2.5) return machine.id;
+      if (_isInFront(ax, az, 2.2)) return machine.id;
     }
     return null;
   }
