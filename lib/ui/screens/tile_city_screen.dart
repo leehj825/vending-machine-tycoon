@@ -75,6 +75,10 @@ class _PedestrianState {
   int pathIndex; // Current index in path
   final HumanPose pose = HumanPose(); // Walk cycle state for the 3D figure
   int walkSide = 0; // +1 walks on the right of their heading, -1 on the left; 0 until placed
+  // Where they stand, as an offset from their tile centre. It eases toward the side they
+  // walk on, so turning or changing sides slides them over instead of jumping.
+  double offsetX = 0;
+  double offsetZ = 0;
   
   _PedestrianState({
     required this.personId,
@@ -977,28 +981,9 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
     const tutorialColor = Color(0xFFFFEB3B);
     const skin = Color(0xFFF1C27D);
     final objects = <LowPolyObject>[];
-    // People walk on the pavement, on the right of their heading. The road's centre is
-    // 0.4 tiles away, which leaves the body on the 0.2 wide pavement strip.
-    const walkOffset = 0.4;
     for (final pedestrian in _pedestrians) {
-      final heading = pedestrian.pose.yaw;
-      // Right of the heading, as a unit vector across the road.
-      final rightX = -math.cos(heading);
-      final rightZ = math.sin(heading);
-      final centreX = pedestrian.gridX + 0.5;
-      final centreZ = pedestrian.gridY + 0.5;
-      // Keep to one side. Switch only when that side has no pavement, so a heading that
-      // wobbles does not make the walker jump across the road.
-      var side = pedestrian.walkSide == 0 ? 1 : pedestrian.walkSide;
-      bool onPavement(int s) => isPavementAt(
-            _grid,
-            centreX + rightX * walkOffset * s,
-            centreZ + rightZ * walkOffset * s,
-          );
-      if (!onPavement(side) && onPavement(-side)) side = -side;
-      pedestrian.walkSide = side;
-      final cx = centreX + rightX * walkOffset * side;
-      final cz = centreZ + rightZ * walkOffset * side;
+      final cx = pedestrian.gridX + 0.5 + pedestrian.offsetX;
+      final cz = pedestrian.gridY + 0.5 + pedestrian.offsetZ;
       final body = pedestrian == _tutorialPedestrian
           ? tutorialColor
           : bodyColors[pedestrian.personId % bodyColors.length];
@@ -1393,8 +1378,52 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
   }
   
   /// Update pedestrian positions and find new targets
+  /// How far a walker's offset may move per update. Walkers cover 0.01 tiles per update,
+  /// so this lets them slide across the road in about a second.
+  static const double _maxOffsetStep = 0.02;
+  static const double _walkOffset = 0.4;
+
+  /// Eases a walker's offset toward the pavement they walk on: the right of their
+  /// heading, or the left when the right has no pavement at that spot.
+  void _easeWalkerOffset(_PedestrianState pedestrian) {
+    final heading = pedestrian.pose.yaw;
+    final rightX = -math.cos(heading);
+    final rightZ = math.sin(heading);
+    final centreX = pedestrian.gridX + 0.5;
+    final centreZ = pedestrian.gridY + 0.5;
+    var side = pedestrian.walkSide == 0 ? 1 : pedestrian.walkSide;
+    bool onPavement(int s) => isPavementAt(
+          _grid,
+          centreX + rightX * _walkOffset * s,
+          centreZ + rightZ * _walkOffset * s,
+        );
+    if (!onPavement(side) && onPavement(-side)) side = -side;
+    pedestrian.walkSide = side;
+    final targetX = rightX * _walkOffset * side;
+    final targetZ = rightZ * _walkOffset * side;
+    // A new walker starts on the pavement, rather than sliding in from the tile centre.
+    if (pedestrian.offsetX == 0 && pedestrian.offsetZ == 0) {
+      pedestrian.offsetX = targetX;
+      pedestrian.offsetZ = targetZ;
+      return;
+    }
+    final dx = targetX - pedestrian.offsetX;
+    final dz = targetZ - pedestrian.offsetZ;
+    final dist = math.sqrt(dx * dx + dz * dz);
+    if (dist <= _maxOffsetStep) {
+      pedestrian.offsetX = targetX;
+      pedestrian.offsetZ = targetZ;
+    } else {
+      pedestrian.offsetX += dx / dist * _maxOffsetStep;
+      pedestrian.offsetZ += dz / dist * _maxOffsetStep;
+    }
+  }
+
   void _updatePedestrians() {
     _updatePassers();
+    for (final pedestrian in _pedestrians) {
+      _easeWalkerOffset(pedestrian);
+    }
     const double normalSpeed = 0.01; // Grid units per update (50ms = 0.2 grid units per second) - slower
     const double fastSpeed = 0.03; // Faster speed when heading to shop (3x normal speed)
     const double arrivalThreshold = 0.1;
