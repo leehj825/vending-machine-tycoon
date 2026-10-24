@@ -410,9 +410,12 @@
       }
     },
 
-    focus(x, y, z, distance, pitch) {
+    focus(x, y, z, distance, pitch, yaw) {
       zoomFloor = Math.min(minDistance, distance);
-      glideTo({ target: new THREE.Vector3(x, y, z), yaw: cam.yaw, pitch, distance }, GLIDE_MS);
+      glideTo(
+        { target: new THREE.Vector3(x, y, z), yaw: yaw == null ? cam.yaw : yaw, pitch, distance },
+        GLIDE_MS,
+      );
     },
 
     reset() {

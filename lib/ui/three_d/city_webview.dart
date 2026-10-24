@@ -17,9 +17,11 @@ class CityWebController {
   /// Returns the camera to the city's starting view.
   void reset() => _state?._run('window.city.reset()');
 
-  /// Glides the camera to look at [target] from [distance] at [pitch].
-  void focusOn(Vec3 target, {double distance = 5, double pitch = 0.5}) => _state?._run(
-        'window.city.focus(${target.x}, ${target.y}, ${target.z}, $distance, $pitch)',
+  /// Glides the camera to look at [target] from [distance] at [pitch]. With [yaw], the
+  /// camera comes in from that direction; otherwise it keeps its current direction.
+  void focusOn(Vec3 target, {double distance = 5, double pitch = 0.5, double? yaw}) =>
+      _state?._run(
+        'window.city.focus(${target.x}, ${target.y}, ${target.z}, $distance, $pitch, ${yaw ?? 'null'})',
       );
 }
 

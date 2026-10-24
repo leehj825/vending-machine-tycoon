@@ -127,7 +127,10 @@ List<LowPolyObject> buildCityScene({
           ? roadDirections[y][x]
           : null;
       objects.add(_groundTile(brightness, grid, x, y, type, road));
-      objects.addAll(_buildingObjects(brightness, x, y, type));
+      final turns = _isBuilding(type) ? frontTurns(grid, x, y) ?? 0 : 0;
+      for (final building in _buildingObjects(brightness, x, y, type)) {
+        objects.add(_turnAbout(building, turns, x + 0.5, y + 0.5));
+      }
       objects.addAll(_streetObjects(brightness, grid, x, y, type));
     }
   }
@@ -136,10 +139,82 @@ List<LowPolyObject> buildCityScene({
     final gx = math.min(math.max((machine.zone.x - 1).floor(), 0), size - 1);
     final gy = math.min(math.max((machine.zone.y - 1).floor(), 0), size - 1);
     final cell = CityCell(gx, gy, grid[gy][gx]);
-    objects.addAll(_vendingMachineOnTile(brightness, machine, gx, gy, cell));
+    objects.addAll(_vendingMachineOnTile(brightness, machine, grid, gx, gy, cell));
   }
 
   return objects;
+}
+
+/// Whether a tile holds a building, as opposed to grass, road or park.
+bool _isBuilding(TileType type) =>
+    type != TileType.grass && type != TileType.road && type != TileType.park;
+
+/// Quarter turns that turn a building so its front faces a road next to it. The front
+/// starts facing south, and each turn is a quarter turn. Taken in order south, east,
+/// north, west, so a corner faces one of its roads. Null when no road touches the tile.
+int? frontTurns(List<List<TileType>> grid, int x, int y) {
+  if (isRoadTile(grid, x, y + 1)) return 0;
+  if (isRoadTile(grid, x + 1, y)) return 3;
+  if (isRoadTile(grid, x, y - 1)) return 2;
+  if (isRoadTile(grid, x - 1, y)) return 1;
+  return null;
+}
+
+/// The tile the front of the building on ([x], [y]) faces, or null when no road touches it.
+(int, int)? frontTile(List<List<TileType>> grid, int x, int y) {
+  final turns = frontTurns(grid, x, y);
+  if (turns == null) return null;
+  return switch (turns) {
+    0 => (x, y + 1),
+    3 => (x + 1, y),
+    2 => (x, y - 1),
+    _ => (x - 1, y),
+  };
+}
+
+/// Turns the point ([dx], [dz]) about the origin by [turns] quarter turns.
+(double, double) _turnPoint(double dx, double dz, int turns) {
+  var x = dx;
+  var z = dz;
+  for (var i = 0; i < turns % 4; i++) {
+    final t = x;
+    x = -z;
+    z = t;
+  }
+  return (x, z);
+}
+
+/// Where a machine stands on its tile once the building is turned: the front corner
+/// on the road side. Returned as world (x, z).
+(double, double) machineAnchor(List<List<TileType>> grid, int x, int y) {
+  final turns = frontTurns(grid, x, y) ?? 0;
+  final (dx, dz) = _turnPoint(0.8 - 0.5, 0.95 - 0.5, turns);
+  return (x + 0.5 + dx, y + 0.5 + dz);
+}
+
+/// The object turned by [turns] quarter turns about the vertical axis through (cx, cz).
+LowPolyObject _turnAbout(LowPolyObject object, int turns, double cx, double cz) {
+  if (turns % 4 == 0) return object;
+  Vec3 point(Vec3 v) {
+    final (dx, dz) = _turnPoint(v.x - cx, v.z - cz, turns);
+    return Vec3(cx + dx, v.y, cz + dz);
+  }
+
+  Vec3 direction(Vec3 v) {
+    final (dx, dz) = _turnPoint(v.x, v.z, turns);
+    return Vec3(dx, v.y, dz);
+  }
+
+  return LowPolyObject(
+    triangles: [
+      for (final t in object.triangles)
+        LowPolyTriangle(point(t.a), point(t.b), point(t.c), direction(t.normal), t.color),
+    ],
+    center: point(object.center),
+    onGround: object.onGround,
+    payload: object.payload,
+    drawn: object.drawn,
+  );
 }
 
 /// Deterministic 0..1 value per cell, so grass varies without flickering.
@@ -466,23 +541,28 @@ const double _machineScale = 0.13;
 List<LowPolyObject> _vendingMachineOnTile(
   double brightness,
   sim.Machine machine,
+  List<List<TileType>> grid,
   int gx,
   int gy,
   CityCell cell,
 ) {
   final model = buildVendingMachineScene(machine, brightness: brightness).single;
+  final (ax, az) = machineAnchor(grid, gx, gy);
+  final turns = frontTurns(grid, gx, gy) ?? 0;
   final placed = placeObject(
     model,
-    at: Vec3(gx + 0.8, 0, gy + 0.95),
+    at: Vec3(ax, 0, az),
     scale: _machineScale,
+    // placeObject turns the other way from the tile turns, so the angle is negated.
+    yaw: -turns * math.pi / 2,
     payload: cell,
   );
   // A bigger, invisible pad, so a finger can hit the machine.
   final pad = LowPolyMeshBuilder(brightness: brightness)
-    ..flat(gx + 0.6, gy + 0.82, gx + 1.0, gy + 1.08, 0.01, _pavement);
+    ..flat(ax - 0.2, az - 0.13, ax + 0.2, az + 0.13, 0.01, _pavement);
   return [
     placed,
-    pad.build(center: Vec3(gx + 0.8, 0.01, gy + 0.95), payload: cell, drawn: false),
+    pad.build(center: Vec3(ax, 0.01, az), payload: cell, drawn: false),
   ];
 }
 

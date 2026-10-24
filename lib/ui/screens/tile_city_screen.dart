@@ -189,8 +189,8 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
   String? _scene3DSignature;
   // Customers who walk past each machine on the pavement. Each machine has its own
   // walker, and its own record of the last time a customer bought from it.
-  final Map<String, HumanPose> _passerPoses = {};
-  final Map<String, int> _passerSaleCycle = {};
+  // When each machine last sold to a walker passing its front.
+  final Map<String, DateTime> _customerSoldAt = {};
   final GlobalKey<MarketingButtonState> _marketingKey = GlobalKey<MarketingButtonState>();
 
   @override
@@ -872,7 +872,6 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
     final frame = jsonEncode(cityFrameJson(
       walkers: [
         ..._pedestrianWalkers(brightness),
-        ..._passerWalkers(machines, brightness),
       ],
       soups: soups,
     ));
@@ -927,105 +926,29 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
     }
   }
 
-  // A passer-by walks past each machine every 14 seconds, for 3.5 of them. The customer
-  // buys as they pass the machine's front.
-  static const double _passerPeriod = 14;
-  static const double _passerActive = 0.25;
-  /// The walk reaches the machine's front at this phase (its x is 0.8 across the tile).
-  static const double _passerBuyPhase = 0.2;
+  /// A machine sells to a walker who reaches the road in front of it. Each machine waits
+  /// this long between sales to walkers, so a busy street does not drain it at once.
+  static const Duration _customerCooldown = Duration(seconds: 10);
 
-  /// Where a machine's cycle is, from 0 to 1, at [now]. Machines start at different times.
-  double _passerPhase(int index, DateTime now) {
-    final cycles = now.millisecondsSinceEpoch / 1000.0 / _passerPeriod + index * 0.31;
-    return cycles - cycles.floorToDouble();
-  }
-
-  /// The pavement a passer-by walks along in front of [machine]: a line on the road
-  /// tile that touches the machine's tile, one tile long. Null when no road touches it.
-  ({double x0, double z0, double x1, double z1})? _passerWalk(sim.Machine machine) {
-    final gx = (machine.zone.x - 1).floor();
-    final gy = (machine.zone.y - 1).floor();
-    // The machine sits at the building's front corner, so the street to the south is
-    // its front. Other sides are used when the south is not a road.
-    if (isRoadTile(_grid, gx, gy + 1)) {
-      return (x0: gx.toDouble(), z0: gy + 1.1, x1: gx + 1.0, z1: gy + 1.1);
-    }
-    if (isRoadTile(_grid, gx, gy - 1)) {
-      return (x0: gx.toDouble(), z0: gy - 0.1, x1: gx + 1.0, z1: gy - 0.1);
-    }
-    if (isRoadTile(_grid, gx + 1, gy)) {
-      return (x0: gx + 1.1, z0: gy.toDouble(), x1: gx + 1.1, z1: gy + 1.0);
-    }
-    if (isRoadTile(_grid, gx - 1, gy)) {
-      return (x0: gx - 0.1, z0: gy.toDouble(), x1: gx - 0.1, z1: gy + 1.0);
-    }
-    return null;
-  }
-
-  /// Sells to the customer who passes each machine, as they pass its front.
-  void _updatePassers() {
+  /// Sells from each machine when a walker stands on the road in front of it.
+  void _updateCustomers() {
     final machines = ref.read(machinesProvider);
     final now = DateTime.now();
-    for (var i = 0; i < machines.length; i++) {
-      final machine = machines[i];
-      if (_passerWalk(machine) == null) continue;
-      final cycles = now.millisecondsSinceEpoch / 1000.0 / _passerPeriod + i * 0.31;
-      final cycle = cycles.floor();
-      final phase = cycles - cycle;
-      if (phase < _passerBuyPhase || phase >= _passerActive) continue;
-      if (_passerSaleCycle[machine.id] == cycle) continue;
-      _passerSaleCycle[machine.id] = cycle;
+    for (final machine in machines) {
+      final gx = (machine.zone.x - 1).floor();
+      final gy = (machine.zone.y - 1).floor();
+      final front = frontTile(_grid, gx, gy);
+      if (front == null) continue;
+      final soldAt = _customerSoldAt[machine.id];
+      if (soldAt != null && now.difference(soldAt) < _customerCooldown) continue;
+      final walkerHere = _pedestrians.any((p) =>
+          !p.isHeadingToShop &&
+          (p.gridX + 0.5).floor() == front.$1 &&
+          (p.gridY + 0.5).floor() == front.$2);
+      if (!walkerHere) continue;
+      _customerSoldAt[machine.id] = now;
       sellToCustomer(ref, machine.id, math.Random().nextDouble() < 0.2);
     }
-  }
-
-  /// Walkers on the pavement in front of each machine. They are only drawn while they
-  /// walk past, and they are rebuilt every update, like the pedestrians.
-  /// Walkers on the pavement in front of each machine, as frame entries. They are only
-  /// listed while they walk past, and they are rebuilt every update, like the pedestrians.
-  List<Map<String, Object?>> _passerWalkers(List<sim.Machine> machines, double brightness) {
-    const shirts = [
-      Color(0xFF00838F),
-      Color(0xFF6A1B9A),
-      Color(0xFFEF6C00),
-      Color(0xFF2E7D32),
-    ];
-    final now = DateTime.now();
-    final walkers = <Map<String, Object?>>[];
-    for (var i = 0; i < machines.length; i++) {
-      final machine = machines[i];
-      final pose = _passerPoses.putIfAbsent(machine.id, HumanPose.new);
-      final walk = _passerWalk(machine);
-      final phase = _passerPhase(i, now);
-      if (walk == null || phase >= _passerActive) {
-        // Out of sight: forget the last position, so the next walk starts cleanly.
-        pose
-          ..lastX = null
-          ..lastY = null
-          ..lastMovedAt = null;
-        continue;
-      }
-      final progress = phase / _passerActive;
-      // Walkers grow in at the start of their walk and shrink out at the end, so
-      // they do not pop into view.
-      final edge = math.min(progress, 1 - progress);
-      final grow = (edge / 0.1).clamp(0.05, 1.0).toDouble();
-      final x = walk.x0 + (walk.x1 - walk.x0) * progress;
-      final z = walk.z0 + (walk.z1 - walk.z0) * progress;
-      final moving = advanceHumanPose(pose, x, z, false, now);
-      walkers.add(walkerJson(
-        key: 'x${machine.id}',
-        x: x,
-        z: z,
-        yaw: pose.yaw,
-        scale: _walkerScale * grow,
-        shirt: shirts[i % shirts.length],
-        cap: const Color(0xFF5D4037),
-        brightness: brightness,
-        bones: humanBoneValues(pose, false, moving),
-      ));
-    }
-    return walkers;
   }
 
   /// Walkers on the pavement, as frame entries. A tap on one is found by its key.
@@ -1182,7 +1105,12 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
     // building, then open its details beside that view. The overview comes back on close.
     final gx = math.min(math.max((machine.zone.x - 1).floor(), 0), gridSize - 1);
     final gy = math.min(math.max((machine.zone.y - 1).floor(), 0), gridSize - 1);
-    _mapController.focusOn(Vec3(gx + 0.8, 0.3, gy + 0.95), distance: 3.0, pitch: 0.38);
+    // Look at the machine from the road it faces, so the building is behind it, not in
+    // the way. Close in on it so the machine fills the view.
+    final (ax, az) = machineAnchor(_grid, gx, gy);
+    final front = frontTile(_grid, gx, gy);
+    final yaw = front == null ? 0.0 : math.atan2((front.$1 - gx).toDouble(), (front.$2 - gy).toDouble());
+    _mapController.focusOn(Vec3(ax, 0.3, az), distance: 1.8, pitch: 0.34, yaw: yaw);
     setState(() {
       _openMachineId = machine.id;
       _machinePanelMinimized = false;
@@ -1417,6 +1345,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
   
   /// Check if tutorial should be shown and select a pedestrian to highlight
   void _checkAndShowTutorial() {
+    if (_openMachineId != null) return;
     final machines = ref.read(machinesProvider);
     final gameState = ref.read(gameStateProvider);
     
@@ -1491,7 +1420,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
   }
 
   void _updatePedestrians() {
-    _updatePassers();
+    _updateCustomers();
     for (final pedestrian in _pedestrians) {
       _easeWalkerOffset(pedestrian);
     }
@@ -1502,7 +1431,9 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
     // Check if tutorial should be shown
     final machines = ref.read(machinesProvider);
     final gameState = ref.read(gameStateProvider);
-    if (machines.isNotEmpty && !_showPedestrianTutorial && !gameState.hasSeenPedestrianTapTutorial) {
+    // The tutorial waits for the machine panel to close, so it appears on the map.
+    if (machines.isNotEmpty && !_showPedestrianTutorial && !gameState.hasSeenPedestrianTapTutorial &&
+        _openMachineId == null) {
       _showPedestrianTutorial = true;
       _checkAndShowTutorial();
     }
