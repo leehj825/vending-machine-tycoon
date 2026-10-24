@@ -155,10 +155,6 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen>
   DateTime? _lastTapTime;
   String? _lastTappedButton;
 
-  // Tutorial state
-  bool _showPedestrianTutorial = false;
-  _PedestrianState? _tutorialPedestrian;
-  AnimationController? _tutorialBlinkController;
 
   // Draggable message position (null = use default position)
 
@@ -263,14 +259,6 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen>
         },
       );
 
-      // Initialize tutorial blink animation
-      _tutorialBlinkController = AnimationController(
-        vsync: this,
-        duration: const Duration(milliseconds: 800),
-      )..repeat(reverse: true);
-
-      // Check if tutorial should be shown (when machines exist)
-      _checkAndShowTutorial(); // Async function, will handle SharedPreferences check
     });
   }
 
@@ -344,7 +332,6 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen>
     _transformationController.dispose();
     _pedestrianUpdateTimer?.cancel();
     _panEndTimer?.cancel();
-    _tutorialBlinkController?.dispose();
     super.dispose();
   }
 
@@ -829,28 +816,6 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen>
             ),
           ),
 
-        // Tutorial hint: tap a pedestrian to make them buy
-        if (_showPedestrianTutorial)
-          Positioned(
-            left: 16,
-            right: 16,
-            bottom: 12,
-            child: IgnorePointer(
-              child: VexPanel(
-                borderColor: VexColors.gold,
-                child: const Text(
-                  'Tap pedestrians to make them buy items!',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: VexColors.gold,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ),
-          ),
-
         // Camera controls on the right
         Positioned(
           right: 10,
@@ -1001,7 +966,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen>
         ..write(machine.zone.x)
         ..write(machine.zone.y)
         ..write(machine.isBroken ? 'b' : 'w')
-        ..write(machine.currentCash > 0 ? 'c' : 'n');
+        ..write(machine.currentCash >= _coinCashThreshold ? 'c' : 'n');
       for (final item in machine.inventory.values) {
         out
           ..write(item.product.name)
@@ -1011,6 +976,9 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen>
     }
     return out.toString();
   }
+
+  /// The coin over a machine appears once it holds at least this much cash.
+  static const double _coinCashThreshold = 50;
 
   /// Markers over the buildings: a green or grey arrow over each one that can be bought,
   /// a blue plate over each one already bought, and a coin over each machine with cash.
@@ -1056,7 +1024,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen>
             brightness: brightness,
           ),
         );
-        if (machine.currentCash > 0) {
+        if (machine.currentCash >= _coinCashThreshold) {
           final (ax, az) = machineAnchor(_grid, x, y);
           markers.add(
             buildCollectCoin(
@@ -1153,7 +1121,6 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen>
 
   /// Walkers on the pavement, as frame entries. A tap on one is found by its key.
   List<Map<String, Object?>> _pedestrianWalkers(double brightness) {
-    const tutorialShirt = Color(0xFFFFEB3B);
     final now = DateTime.now();
     final walkers = <Map<String, Object?>>[];
     for (final pedestrian in _pedestrians) {
@@ -1164,8 +1131,6 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen>
       final cx = centreX + pedestrian.offsetX;
       final cz = centreZ + pedestrian.offsetZ;
       final look = personLook(pedestrian.personId);
-      // The tutorial walker is yellow, so it is easy to find.
-      final isTutorial = pedestrian == _tutorialPedestrian;
       // Walks while moving, and runs once a tap sends them to a machine.
       final running = pedestrian.isHeadingToShop;
       final moving = advanceHumanPose(
@@ -1183,7 +1148,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen>
           yaw: pedestrian.pose.yaw,
           scale: _walkerScale,
           look: PersonLook(
-            shirt: isTutorial ? tutorialShirt : look.shirt,
+            shirt: look.shirt,
             pants: look.pants,
             skin: look.skin,
             hair: look.hair,
@@ -1644,36 +1609,6 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen>
     return spawnTiles;
   }
 
-  /// Check if tutorial should be shown and select a pedestrian to highlight
-  void _checkAndShowTutorial() {
-    if (_openMachineId != null) return;
-    final machines = ref.read(machinesProvider);
-    final gameState = ref.read(gameStateProvider);
-
-    // Check if tutorial has been seen before (from game state)
-    final hasSeenTutorial = gameState.hasSeenPedestrianTapTutorial;
-
-    // Show tutorial if machines exist, tutorial hasn't been dismissed, and user hasn't seen it before
-    if (machines.isNotEmpty &&
-        _showPedestrianTutorial &&
-        _tutorialPedestrian == null &&
-        !hasSeenTutorial) {
-      // Select the first non-moving pedestrian (not heading to shop) for tutorial
-      final availablePedestrians = _pedestrians
-          .where((p) => !p.isHeadingToShop)
-          .toList();
-      if (availablePedestrians.isNotEmpty) {
-        _tutorialPedestrian = availablePedestrians.first;
-        setState(() {});
-      }
-    } else if (machines.isEmpty || hasSeenTutorial) {
-      // Hide tutorial if no machines or if already seen
-      _showPedestrianTutorial = false;
-      _tutorialPedestrian = null;
-      setState(() {});
-    }
-  }
-
   /// Update pedestrian positions and find new targets
   /// How far a walker's offset may move per update. Walkers cover 0.01 tiles per update,
   /// so this lets them slide across the road in about a second.
@@ -1968,18 +1903,6 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen>
     const double fastSpeed =
         0.03; // Faster speed when heading to shop (3x normal speed)
     const double arrivalThreshold = 0.1;
-
-    // Check if tutorial should be shown
-    final machines = ref.read(machinesProvider);
-    final gameState = ref.read(gameStateProvider);
-    // The tutorial waits for the machine panel to close, so it appears on the map.
-    if (machines.isNotEmpty &&
-        !_showPedestrianTutorial &&
-        !gameState.hasSeenPedestrianTapTutorial &&
-        _openMachineId == null) {
-      _showPedestrianTutorial = true;
-      _checkAndShowTutorial();
-    }
 
     // Track pedestrians to remove after forced sale
     final pedestriansToRemove = <_PedestrianState>[];
@@ -2498,14 +2421,6 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen>
           : 0.02; // 5% if < 3, 2% otherwise
       if (_pedestrianRandom.nextDouble() < spawnChance) {
         _spawnSinglePedestrian();
-        // Check tutorial after spawning
-        final gameState = ref.read(gameStateProvider);
-        if (machines.isNotEmpty &&
-            _showPedestrianTutorial &&
-            _tutorialPedestrian == null &&
-            !gameState.hasSeenPedestrianTapTutorial) {
-          _checkAndShowTutorial();
-        }
       }
     }
   }
@@ -2588,19 +2503,6 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen>
 
   /// Handle pedestrian tap - force pedestrian to walk to nearest machine and buy
   void _handlePedestrianTap(_PedestrianState pedestrian) {
-    // Dismiss tutorial when any pedestrian is tapped and mark as seen
-    if (_showPedestrianTutorial) {
-      _showPedestrianTutorial = false;
-      _tutorialPedestrian = null;
-      // Mark tutorial as seen in game state
-      final controller = ref.read(gameControllerProvider.notifier);
-      final currentState = controller.state;
-      controller.state = currentState.copyWith(
-        hasSeenPedestrianTapTutorial: true,
-      );
-      setState(() {});
-    }
-
     final machines = ref.read(machinesProvider);
 
     if (machines.isEmpty) {
