@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import 'human_clips.dart';
+import 'human_clips_dw.dart';
 import 'lowpoly_engine.dart';
 
 /// A baked walk or run cycle from vexmarch's crowd (human_clips.dart).
@@ -33,6 +34,11 @@ class HumanPose {
   double? lastX;
   double? lastY;
   DateTime? lastMovedAt;
+
+  /// The player's movement read against [yaw]: forward (+1 straight ahead, -1 back) and side
+  /// (+ or - for the two strafe directions). Null for people who simply walk where they face.
+  double? dirF;
+  double? dirS;
 }
 
 /// Distance covered by one step cycle. Running takes longer steps.
@@ -242,14 +248,50 @@ bool advanceHumanPose(HumanPose pose, double x, double z, bool running, DateTime
   return pose.lastMovedAt != null && now.difference(pose.lastMovedAt!) < _movingHold;
 }
 
-HumanClip? _clipFor(bool moving, bool running) =>
-    moving ? (running ? humanRunClip : humanWalkClip) : null;
+HumanClip? _clipFor(HumanPose pose, bool moving, bool running) {
+  if (!moving) return null;
+  final forward = pose.dirF;
+  final side = pose.dirS;
+  if (forward == null || side == null) return running ? humanRunClip : humanWalkClip;
+  // Same thresholds and sides as Deepward's locomotion, so a strafe looks as it does there.
+  if (forward > 0.5) return running ? dwRunClip : dwWalkClip;
+  if (forward < -0.5) return running ? dwRunBackClip : dwWalkBackClip;
+  if (side > 0) return running ? dwStrafeRunNClip : dwStrafeWalkNClip;
+  return running ? dwStrafeRunPClip : dwStrafeWalkPClip;
+}
+
+/// Moves the player's figure. It faces [facing] whatever way it steps, and each step is read
+/// against that facing, so walking backward or sideways plays the matching clip.
+bool advancePlayerPose(HumanPose pose, double x, double z, double facing, bool running, DateTime now) {
+  pose.yaw = facing;
+  final lastX = pose.lastX;
+  final lastZ = pose.lastY;
+  if (lastX != null && lastZ != null) {
+    final dx = x - lastX;
+    final dz = z - lastZ;
+    final dist = math.sqrt(dx * dx + dz * dz);
+    if (dist > 0.0005) {
+      // Deepward's convention: forward is (sin, cos) of the facing, side is (cos, -sin).
+      final ux = dx / dist;
+      final uz = dz / dist;
+      final fx = math.sin(facing);
+      final fz = math.cos(facing);
+      pose.dirF = ux * fx + uz * fz;
+      pose.dirS = ux * fz - uz * fx;
+      pose.phase += dist / (running ? _runStride : _walkStride);
+      pose.lastMovedAt = now;
+    }
+  }
+  pose.lastX = x;
+  pose.lastY = z;
+  return pose.lastMovedAt != null && now.difference(pose.lastMovedAt!) < _movingHold;
+}
 
 /// The 13 bone transforms of a person for the pose, as 12 numbers each: the row-major
 /// rotation followed by the translation. Bones are in the figure's own space.
 List<double> humanBoneValues(HumanPose pose, bool running, bool moving) {
   final out = <double>[];
-  for (final bone in _poseBones(_clipFor(moving, running), pose.phase)) {
+  for (final bone in _poseBones(_clipFor(pose, moving, running), pose.phase)) {
     out.addAll(bone.r);
     out.addAll([bone.t.x, bone.t.y, bone.t.z]);
   }
@@ -288,7 +330,7 @@ LowPolyObject buildHumanObject({
   double scale = _figureScale,
 }) {
   final moving = advanceHumanPose(pose, x, z, running, DateTime.now());
-  final world = _poseBones(_clipFor(moving, running), pose.phase);
+  final world = _poseBones(_clipFor(pose, moving, running), pose.phase);
 
   final cosYaw = math.cos(pose.yaw);
   final sinYaw = math.sin(pose.yaw);

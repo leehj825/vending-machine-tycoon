@@ -208,6 +208,24 @@
   const collectBtn = document.getElementById('collectBtn');
   const STICK_RADIUS = 50;
   let stickId = null;
+  // The stick's push, in screen terms: x to the right, y down, each -1 to 1.
+  let stickX = 0;
+  let stickY = 0;
+
+  // Sends the stick's push turned to the ground from the camera as it is now. Sent every frame
+  // while the stick is held, so a drag that turns the view also turns the walk direction.
+  function postMove() {
+    const rightX = Math.cos(cam.yaw);
+    const rightZ = -Math.sin(cam.yaw);
+    const forwardX = -Math.sin(cam.yaw);
+    const forwardZ = -Math.cos(cam.yaw);
+    post({
+      kind: 'move',
+      dx: rightX * stickX - forwardX * stickY,
+      dz: rightZ * stickX - forwardZ * stickY,
+      facing: cam.yaw - Math.PI,
+    });
+  }
 
   function stickMove(clientX, clientY) {
     const r = stick.getBoundingClientRect();
@@ -218,24 +236,17 @@
     dx *= k;
     dy *= k;
     knob.style.transform = `translate(${dx}px, ${dy}px)`;
-    const sx = dx / STICK_RADIUS;
-    const sy = dy / STICK_RADIUS;
-    const rightX = Math.cos(cam.yaw);
-    const rightZ = -Math.sin(cam.yaw);
-    const forwardX = -Math.sin(cam.yaw);
-    const forwardZ = -Math.cos(cam.yaw);
-    post({
-      kind: 'move',
-      dx: rightX * sx - forwardX * sy,
-      dz: rightZ * sx - forwardZ * sy,
-      facing: cam.yaw - Math.PI,
-    });
+    stickX = dx / STICK_RADIUS;
+    stickY = dy / STICK_RADIUS;
+    postMove();
   }
 
   function stickRelease() {
     stickId = null;
+    stickX = 0;
+    stickY = 0;
     knob.style.transform = '';
-    post({ kind: 'move', dx: 0, dz: 0 });
+    post({ kind: 'move', dx: 0, dz: 0, facing: cam.yaw - Math.PI });
   }
 
   stick.addEventListener('pointerdown', (e) => {
@@ -536,6 +547,7 @@
 
   function frame(now) {
     stepGlide(now);
+    if (stickId !== null) postMove();
     if (thirdPerson && follow) {
       // Behind the player. The camera's direction is the player's, so it is only set once,
       // when walking starts; after that the player's own drags and strafes steer it.

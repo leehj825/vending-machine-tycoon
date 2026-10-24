@@ -1826,8 +1826,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen>
     }
     _playerX = px;
     _playerZ = pz;
-    advanceHumanPose(_playerPose, px, pz, _playerRunning, DateTime.now());
-    _playerPose.yaw = _playerFacing;
+    advancePlayerPose(_playerPose, px, pz, _playerFacing, _playerRunning, DateTime.now());
 
     if (_playerPath.isEmpty && _playerTalkTo == null) {
       final arrived = _playerArrived;
@@ -1982,10 +1981,11 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen>
     final px = _playerX;
     final pz = _playerZ;
     if (px == null || pz == null) return null;
-    final moving = advanceHumanPose(
+    final moving = advancePlayerPose(
       _playerPose,
       px,
       pz,
+      _playerFacing,
       _playerRunning,
       DateTime.now(),
     );
