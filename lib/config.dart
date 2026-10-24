@@ -474,6 +474,8 @@ class AppConfig {
   /// Machine interior dialog dimensions (relative to screen)
   static const double machineInteriorDialogWidthFactor = 0.9; // 90% of screen width
   static const double machineInteriorDialogHeightFactor = 0.8; // 80% of screen height
+  /// Widest the interior dialog may be, as a share of screen height, so it fits landscape.
+  static const double machineInteriorDialogLandscapeHeightFactor = 0.5;
   static const double machineInteriorDialogInsetPaddingFactor = 0.04; // Inset padding relative to screen
   
   /// Machine interior dialog sizing (relative to dialog width)
