@@ -42,9 +42,10 @@ const double _runStride = 0.4;
 /// Scale from vexmarch's figure size (about 1.9 units tall) to a tile.
 const double _figureScale = 0.13;
 
-/// How long a person keeps their walking pose after moving, so a briefly
-/// unchanged position between updates does not make them freeze.
-const Duration _movingHold = Duration(milliseconds: 150);
+/// How long a person keeps their walking pose after moving. The city redraws
+/// slower than its 50 ms tick on a busy frame, so this must cover several
+/// frames. Too short a hold makes walkers flicker between walk and stand.
+const Duration _movingHold = Duration(milliseconds: 600);
 
 /// vexmarch's rig: the parent bone of each of the 13 bones.
 const List<int> _parent = [-1, 0, 1, 1, 1, 3, 4, 5, 6, 0, 0, 9, 10];
