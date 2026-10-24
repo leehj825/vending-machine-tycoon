@@ -188,8 +188,9 @@ class LowPolyMeshBuilder {
   /// Window panes on the four sides of a box spanning [y0] to [y1].
   ///
   /// Panes are flat quads just outside each face, which is much cheaper to
-  /// draw than small boxes. Every pane on a lit side uses [lit] in a pattern,
-  /// so buildings look lived in. Add this after the box it decorates.
+  /// draw than small boxes. When [frame] is given, each pane sits in a frame of
+  /// that colour. Every pane on a lit side uses [lit] in a pattern, so buildings
+  /// look lived in. Add this after the box it decorates.
   void windows(
     double x0,
     double z0,
@@ -201,8 +202,8 @@ class LowPolyMeshBuilder {
     required int rows,
     required Color glass,
     Color? lit,
+    Color? frame,
   }) {
-    const off = 0.012;
     const edge = 0.1;
     const gap = 0.03;
     final rowH = (y1 - y0) / rows;
@@ -213,44 +214,65 @@ class LowPolyMeshBuilder {
         final color = lit != null && (r + c) % 3 == 0 ? lit : glass;
         final t0 = edge + (1 - 2 * edge) * c / cols + gap;
         final t1 = edge + (1 - 2 * edge) * (c + 1) / cols - gap;
-        final ax0 = x0 + (x1 - x0) * t0;
-        final ax1 = x0 + (x1 - x0) * t1;
-        final az0 = z0 + (z1 - z0) * t0;
-        final az1 = z0 + (z1 - z0) * t1;
-        _quad(
-          Vec3(ax0, wy0, z1 + off),
-          Vec3(ax1, wy0, z1 + off),
-          Vec3(ax1, wy1, z1 + off),
-          Vec3(ax0, wy1, z1 + off),
-          const Vec3(0, 0, 1),
-          color,
-        );
-        _quad(
-          Vec3(ax1, wy0, z0 - off),
-          Vec3(ax0, wy0, z0 - off),
-          Vec3(ax0, wy1, z0 - off),
-          Vec3(ax1, wy1, z0 - off),
-          const Vec3(0, 0, -1),
-          color,
-        );
-        _quad(
-          Vec3(x1 + off, wy0, az1),
-          Vec3(x1 + off, wy0, az0),
-          Vec3(x1 + off, wy1, az0),
-          Vec3(x1 + off, wy1, az1),
-          const Vec3(1, 0, 0),
-          color,
-        );
-        _quad(
-          Vec3(x0 - off, wy0, az0),
-          Vec3(x0 - off, wy0, az1),
-          Vec3(x0 - off, wy1, az1),
-          Vec3(x0 - off, wy1, az0),
-          const Vec3(-1, 0, 0),
-          color,
-        );
+        if (frame != null) {
+          // The frame is a little bigger than the pane and sits just behind it.
+          _paneOnFaces(x0, z0, x1, z1, t0 - 0.02, t1 + 0.02, wy0 - 0.02, wy1 + 0.02, 0.008, frame);
+        }
+        _paneOnFaces(x0, z0, x1, z1, t0, t1, wy0, wy1, 0.014, color);
       }
     }
+  }
+
+  /// One pane on each of the four faces of a box: [t0] to [t1] along the face,
+  /// from [wy0] to [wy1] up it, pushed [off] outside the face.
+  void _paneOnFaces(
+    double x0,
+    double z0,
+    double x1,
+    double z1,
+    double t0,
+    double t1,
+    double wy0,
+    double wy1,
+    double off,
+    Color color,
+  ) {
+    final ax0 = x0 + (x1 - x0) * t0;
+    final ax1 = x0 + (x1 - x0) * t1;
+    final az0 = z0 + (z1 - z0) * t0;
+    final az1 = z0 + (z1 - z0) * t1;
+    _quad(
+      Vec3(ax0, wy0, z1 + off),
+      Vec3(ax1, wy0, z1 + off),
+      Vec3(ax1, wy1, z1 + off),
+      Vec3(ax0, wy1, z1 + off),
+      const Vec3(0, 0, 1),
+      color,
+    );
+    _quad(
+      Vec3(ax1, wy0, z0 - off),
+      Vec3(ax0, wy0, z0 - off),
+      Vec3(ax0, wy1, z0 - off),
+      Vec3(ax1, wy1, z0 - off),
+      const Vec3(0, 0, -1),
+      color,
+    );
+    _quad(
+      Vec3(x1 + off, wy0, az1),
+      Vec3(x1 + off, wy0, az0),
+      Vec3(x1 + off, wy1, az0),
+      Vec3(x1 + off, wy1, az1),
+      const Vec3(1, 0, 0),
+      color,
+    );
+    _quad(
+      Vec3(x0 - off, wy0, az0),
+      Vec3(x0 - off, wy0, az1),
+      Vec3(x0 - off, wy1, az1),
+      Vec3(x0 - off, wy1, az0),
+      const Vec3(-1, 0, 0),
+      color,
+    );
   }
 
   /// A four-sided pyramid roof over a rectangle at height [y0].
@@ -420,6 +442,38 @@ class LowPolyProjector {
     if (!x.isFinite || !y.isFinite) return null;
     return Offset(x, y);
   }
+}
+
+/// Copies [object] into the world: scaled, turned by [yaw] about the vertical axis, then
+/// moved to [at]. Used to place a model built at its own size on the map.
+LowPolyObject placeObject(
+  LowPolyObject object, {
+  required Vec3 at,
+  required double scale,
+  double yaw = 0,
+  Object? payload,
+  bool drawn = true,
+}) {
+  final c = math.cos(yaw);
+  final s = math.sin(yaw);
+  Vec3 move(Vec3 p) {
+    final x = p.x * scale;
+    final z = p.z * scale;
+    return Vec3(at.x + x * c + z * s, at.y + p.y * scale, at.z - x * s + z * c);
+  }
+
+  Vec3 turn(Vec3 n) => Vec3(n.x * c + n.z * s, n.y, -n.x * s + n.z * c);
+
+  return LowPolyObject(
+    triangles: [
+      for (final t in object.triangles)
+        LowPolyTriangle(move(t.a), move(t.b), move(t.c), turn(t.normal), t.color),
+    ],
+    center: move(object.center),
+    onGround: object.onGround,
+    payload: payload,
+    drawn: drawn,
+  );
 }
 
 /// Sorts objects into draw order: ground first, then standing objects from
@@ -761,7 +815,14 @@ class _LowPolyViewState extends State<LowPolyView> with SingleTickerProviderStat
     controller._focus = null;
   }
 
-  void _resetView() => _glideTo(widget.camera);
+  void _resetView() {
+    // A dialog can open over the view while a finger is down, so its release is never
+    // seen here. Forget any stale pointers, or later taps would count as a pinch.
+    _pointers.clear();
+    _tapCandidate = false;
+    _pinchSpan = null;
+    _glideTo(widget.camera);
+  }
 
   void _focusOn(Vec3 target, double distance, double pitch) {
     _glideTo(LowPolyCamera(target: target, yaw: _camera.yaw, pitch: pitch, distance: distance));

@@ -7,6 +7,7 @@ import '../../simulation/models/truck.dart' as sim;
 import '../screens/tile_city_screen.dart' show RoadDirection, TileType;
 import '../theme/zone_ui.dart';
 import 'lowpoly_engine.dart';
+import 'vending_machine_3d.dart';
 
 /// Tap target for one cell of the 3D city.
 class CityCell {
@@ -58,6 +59,22 @@ const List<Color> _awnings = [
 /// One colour from [palette], chosen by tile position, so neighbours differ.
 Color _variant(List<Color> palette, int x, int y) =>
     palette[(x * 7 + y * 13 + x * y) % palette.length];
+
+const Color _trim = Color(0xFF37474F);
+const Color _plinthColor = Color(0xFF9E9E94);
+
+/// Footprint and height of each building's main body, for its plinth and cornice.
+const Map<TileType, (double, double, double, double, double)> _bodies = {
+  TileType.shop: (0.1, 0.12, 0.9, 0.88, 0.55),
+  TileType.gym: (0.08, 0.1, 0.92, 0.9, 0.7),
+  TileType.office: (0.2, 0.2, 0.8, 0.8, 1.5),
+  TileType.school: (0.1, 0.12, 0.9, 0.88, 0.5),
+  TileType.house: (0.2, 0.25, 0.8, 0.8, 0.42),
+  TileType.warehouse: (0.04, 0.12, 0.96, 0.9, 0.5),
+  TileType.subway: (0.1, 0.14, 0.9, 0.86, 0.32),
+  TileType.hospital: (0.1, 0.1, 0.9, 0.9, 0.9),
+  TileType.university: (0.1, 0.14, 0.9, 0.86, 0.72),
+};
 
 const Color _pavement = Color(0xFFBDBDB5);
 const double _pavementWidth = 0.2;
@@ -119,7 +136,7 @@ List<LowPolyObject> buildCityScene({
     final gx = math.min(math.max((machine.zone.x - 1).floor(), 0), size - 1);
     final gy = math.min(math.max((machine.zone.y - 1).floor(), 0), size - 1);
     final cell = CityCell(gx, gy, grid[gy][gx]);
-    objects.add(_vendingMachineOnTile(brightness, machine, gx, gy, cell));
+    objects.addAll(_vendingMachineOnTile(brightness, machine, gx, gy, cell));
   }
 
   return objects;
@@ -259,7 +276,7 @@ List<LowPolyObject> _buildingObjects(
         ..box(x + 0.1, 0, y + 0.12, x + 0.9, 0.55, y + 0.88, const Color(0xFFF2C14E),
             top: const Color(0xFF8D6E63))
         ..windows(x + 0.1, y + 0.12, x + 0.9, y + 0.88, 0.12, 0.42,
-            cols: 3, rows: 1, glass: _glass, lit: _warm)
+            cols: 3, rows: 1, glass: _glass, frame: _trim, lit: _warm)
         ..box(x + 0.44, 0, y + 0.88, x + 0.56, 0.34, y + 0.93, _brown)
         ..box(x + 0.06, 0.42, y + 0.84, x + 0.94, 0.52, y + 0.94, const Color(0xFFE4572E));
       // Awning stripes and a sign board above the door.
@@ -277,7 +294,7 @@ List<LowPolyObject> _buildingObjects(
       m
         ..box(x + 0.08, 0, y + 0.1, x + 0.92, 0.7, y + 0.9, _brick, top: const Color(0xFF6B7280))
         ..windows(x + 0.08, y + 0.1, x + 0.92, y + 0.9, 0.14, 0.58,
-            cols: 4, rows: 1, glass: _glass, lit: _warm)
+            cols: 4, rows: 1, glass: _glass, frame: _trim, lit: _warm)
         ..box(x + 0.44, 0, y + 0.9, x + 0.56, 0.3, y + 0.94, _glassDark)
         ..box(x + 0.25, 0.7, y + 0.84, x + 0.75, 0.8, y + 0.92, _red)
         ..box(x + 0.3, 0.74, y + 0.92, x + 0.7, 0.76, y + 0.935, _white)
@@ -289,7 +306,7 @@ List<LowPolyObject> _buildingObjects(
         ..box(x + 0.2, 0, y + 0.2, x + 0.8, 1.5, y + 0.8, _variant(_officeBodies, x, y),
             top: const Color(0xFF3D5A80))
         ..windows(x + 0.2, y + 0.2, x + 0.8, y + 0.8, 0.12, 1.42,
-            cols: 3, rows: 6, glass: _glass, lit: _warm)
+            cols: 3, rows: 6, glass: _glass, frame: _trim, lit: _warm)
         ..box(x + 0.3, 1.5, y + 0.3, x + 0.7, 1.62, y + 0.7, const Color(0xFF3D5A80))
         ..box(x + 0.32, 1.62, y + 0.32, x + 0.44, 1.7, y + 0.44, _grey)
         ..box(x + 0.56, 1.62, y + 0.56, x + 0.6, 1.95, y + 0.6, _grey)
@@ -301,7 +318,7 @@ List<LowPolyObject> _buildingObjects(
       m
         ..box(x + 0.1, 0, y + 0.12, x + 0.9, 0.5, y + 0.88, const Color(0xFFF4E3B5))
         ..windows(x + 0.1, y + 0.12, x + 0.9, y + 0.88, 0.14, 0.44,
-            cols: 4, rows: 1, glass: _glass, lit: _warm)
+            cols: 4, rows: 1, glass: _glass, frame: _trim, lit: _warm)
         ..box(x + 0.42, 0, y + 0.88, x + 0.58, 0.24, y + 0.93, _brown)
         ..box(x + 0.45, 0.3, y + 0.88, x + 0.55, 0.4, y + 0.92, _white)
         ..roof(x + 0.08, y + 0.1, x + 0.92, y + 0.9, 0.5, 0.8, const Color(0xFFC0392B))
@@ -315,7 +332,7 @@ List<LowPolyObject> _buildingObjects(
       m
         ..box(x + 0.36, 0, y + 0.36, x + 0.64, 0.36, y + 0.64, _white)
         ..windows(x + 0.36, y + 0.36, x + 0.64, y + 0.64, 0.1, 0.3,
-            cols: 2, rows: 1, glass: _glass)
+            cols: 2, rows: 1, glass: _glass, frame: _trim)
         ..box(x + 0.18, 0, y + 0.5, x + 0.26, 0.3, y + 0.6, pump)
         ..box(x + 0.74, 0, y + 0.5, x + 0.82, 0.3, y + 0.6, pump)
         ..box(x + 0.18, 0.3, y + 0.5, x + 0.26, 0.34, y + 0.6, const Color(0xFFFFEB3B))
@@ -335,7 +352,7 @@ List<LowPolyObject> _buildingObjects(
       m
         ..box(x + 0.2, 0, y + 0.25, x + 0.8, 0.42, y + 0.8, _variant(_houseWalls, x, y))
         ..windows(x + 0.2, y + 0.25, x + 0.8, y + 0.8, 0.1, 0.36,
-            cols: 2, rows: 1, glass: _glass, lit: _warm)
+            cols: 2, rows: 1, glass: _glass, frame: _trim, lit: _warm)
         ..box(x + 0.44, 0, y + 0.8, x + 0.56, 0.22, y + 0.84, _brown)
         ..roof(x + 0.14, y + 0.19, x + 0.86, y + 0.86, 0.42, 0.7, _variant(_houseRoofs, x, y))
         ..box(x + 0.62, 0.5, y + 0.3, x + 0.7, 0.86, y + 0.38, _brick)
@@ -347,7 +364,7 @@ List<LowPolyObject> _buildingObjects(
         ..box(x + 0.04, 0, y + 0.12, x + 0.96, 0.5, y + 0.9, _grey,
             top: const Color(0xFF6B7785))
         ..windows(x + 0.04, y + 0.12, x + 0.96, y + 0.9, 0.32, 0.44,
-            cols: 6, rows: 1, glass: _glass)
+            cols: 6, rows: 1, glass: _glass, frame: _trim)
         ..box(x + 0.18, 0, y + 0.9, x + 0.44, 0.36, y + 0.93, _darkGrey)
         ..box(x + 0.56, 0, y + 0.9, x + 0.82, 0.36, y + 0.93, _darkGrey)
         ..box(x + 0.2, 0.5, y + 0.3, x + 0.36, 0.54, y + 0.44, _glass)
@@ -375,7 +392,7 @@ List<LowPolyObject> _buildingObjects(
         ..box(x + 0.1, 0, y + 0.1, x + 0.9, 0.9, y + 0.9, _white,
             top: const Color(0xFFE3E8EF))
         ..windows(x + 0.1, y + 0.1, x + 0.9, y + 0.9, 0.3, 0.86,
-            cols: 4, rows: 2, glass: _glass, lit: _warm)
+            cols: 4, rows: 2, glass: _glass, frame: _trim, lit: _warm)
         ..box(x + 0.34, 0.24, y + 0.9, x + 0.66, 0.3, y + 0.99, const Color(0xFF26A69A))
         ..box(x + 0.42, 0, y + 0.9, x + 0.58, 0.24, y + 0.94, _glassDark)
         ..box(x + 0.42, 0.9, y + 0.28, x + 0.58, 0.94, y + 0.72, _red)
@@ -388,7 +405,7 @@ List<LowPolyObject> _buildingObjects(
         ..box(x + 0.1, 0, y + 0.14, x + 0.9, 0.72, y + 0.86, const Color(0xFFD8C3A5),
             top: const Color(0xFFB89F82))
         ..windows(x + 0.1, y + 0.14, x + 0.9, y + 0.86, 0.12, 0.66,
-            cols: 5, rows: 2, glass: _glass, lit: _warm)
+            cols: 5, rows: 2, glass: _glass, frame: _trim, lit: _warm)
         ..box(x + 0.14, 0, y + 0.86, x + 0.86, 0.05, y + 0.96, const Color(0xFFEEE6D8))
         ..box(x + 0.2, 0.72, y + 0.84, x + 0.8, 0.78, y + 0.94, const Color(0xFFD8C3A5))
         ..prism(x + 0.5, y + 0.5, 0.24, 8, 0.72, 0.84, dome)
@@ -404,32 +421,46 @@ List<LowPolyObject> _buildingObjects(
     case TileType.park:
       return [];
   }
+  // A plinth at the base and a cornice under the roof give the body a finished edge.
+  final body = _bodies[type];
+  if (body != null) {
+    final (bx0, bz0, bx1, bz1, top) = body;
+    m
+      ..box(x + bx0 - 0.015, 0, y + bz0 - 0.015, x + bx1 + 0.015, 0.06, y + bz1 + 0.015, _plinthColor)
+      ..box(x + bx0 - 0.02, top, y + bz0 - 0.02, x + bx1 + 0.02, top + 0.04, y + bz1 + 0.02, _trim);
+  }
   return [
     m.build(center: Vec3(x + 0.5, 0.5, y + 0.5), payload: cell),
   ];
 }
 
-/// A small vending machine standing on the front of its building tile.
-LowPolyObject _vendingMachineOnTile(
+/// Scale from the machine model's own size (about 2 units tall) to a tile. At this
+/// size it is as tall as a person.
+const double _machineScale = 0.13;
+
+/// The real vending machine, standing at the front corner of its building on the
+/// pavement and turned to face the street. Tapping it opens its details.
+List<LowPolyObject> _vendingMachineOnTile(
   double brightness,
   sim.Machine machine,
   int gx,
   int gy,
   CityCell cell,
 ) {
-  final cx = gx + 0.5;
-  final cz = gy + 0.92;
-  final statusColor = machine.isBroken || machine.totalInventory == 0
-      ? _red
-      : machine.needsRestock()
-          ? const Color(0xFFFFB300)
-          : const Color(0xFF43A047);
-
-  final m = LowPolyMeshBuilder(brightness: brightness)
-    ..box(cx - 0.14, 0, cz - 0.09, cx + 0.14, 0.36, cz + 0.09, machine.zone.type.color)
-    ..box(cx - 0.11, 0.1, cz + 0.09, cx + 0.11, 0.28, cz + 0.11, _glass)
-    ..box(cx - 0.03, 0.36, cz - 0.02, cx + 0.03, 0.4, cz + 0.04, statusColor);
-  return m.build(center: Vec3(cx, 0.2, cz), payload: cell);
+  final model = buildVendingMachineScene(machine, brightness: brightness).single;
+  final placed = placeObject(
+    model,
+    at: Vec3(gx + 0.8, 0, gy + 0.95),
+    scale: _machineScale,
+    payload: cell,
+  );
+  // A bigger, invisible pad, so a finger can hit the machine.
+  final pad = LowPolyMeshBuilder(brightness: brightness)
+    ..flat(gx + 0.6, gy + 0.82, gx + 1.0, gy + 1.08, 0.01, _pavement);
+  return [
+    placed,
+    pad.build(center: Vec3(gx + 0.8, 0.01, gy + 0.95), payload: cell, drawn: false),
+  ];
 }
 
 /// A delivery truck on its road tile, turned to face the way it is driving.

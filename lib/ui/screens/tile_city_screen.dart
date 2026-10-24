@@ -24,7 +24,6 @@ import '../theme/vex_theme.dart';
 import '../theme/vex_widgets.dart';
 import '../three_d/human_rig.dart';
 import '../three_d/vending_machine_3d.dart';
-import '../three_d/vending_machine_stage.dart';
 
 enum TileType {
   grass,
@@ -168,6 +167,10 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
   List<List<TileType>>? _scene3DGrid;
   List<sim.Machine>? _scene3DMachines;
   double? _scene3DBrightness;
+  // Customers who walk past each machine on the pavement. Each machine has its own
+  // walker, and its own record of the last time a customer bought from it.
+  final Map<String, HumanPose> _passerPoses = {};
+  final Map<String, int> _passerSaleCycle = {};
   final GlobalKey<MarketingButtonState> _marketingKey = GlobalKey<MarketingButtonState>();
 
   @override
@@ -821,6 +824,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
           brightness: brightness,
         ),
       ..._pedestrianObjects3D(brightness),
+      ..._passersObjects3D(machines, brightness),
     ];
     return LowPolyView(
       objects: _scene3D!,
@@ -840,6 +844,74 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
         }
       },
     );
+  }
+
+  // A passer-by walks past each machine every 14 seconds, for 3.5 of them. The customer
+  // buys as they pass the machine's front.
+  static const double _passerPeriod = 14;
+  static const double _passerActive = 0.25;
+  static const double _passerBuyPhase = 0.1625;
+
+  /// Where a machine's cycle is, from 0 to 1, at [now]. Machines start at different times.
+  double _passerPhase(int index, DateTime now) {
+    final cycles = now.millisecondsSinceEpoch / 1000.0 / _passerPeriod + index * 0.31;
+    return cycles - cycles.floorToDouble();
+  }
+
+  /// Sells to the customer who passes each machine, as they pass its front.
+  void _updatePassers() {
+    final machines = ref.read(machinesProvider);
+    final now = DateTime.now();
+    for (var i = 0; i < machines.length; i++) {
+      final machine = machines[i];
+      final cycles = now.millisecondsSinceEpoch / 1000.0 / _passerPeriod + i * 0.31;
+      final cycle = cycles.floor();
+      final phase = cycles - cycle;
+      if (phase < _passerBuyPhase || phase >= _passerActive) continue;
+      if (_passerSaleCycle[machine.id] == cycle) continue;
+      _passerSaleCycle[machine.id] = cycle;
+      sellToCustomer(ref, machine.id, math.Random().nextDouble() < 0.2);
+    }
+  }
+
+  /// Walkers on the pavement in front of each machine. They are only drawn while they
+  /// walk past, and they are rebuilt every update, like the pedestrians.
+  List<LowPolyObject> _passersObjects3D(List<sim.Machine> machines, double brightness) {
+    const shirts = [
+      Color(0xFF00838F),
+      Color(0xFF6A1B9A),
+      Color(0xFFEF6C00),
+      Color(0xFF2E7D32),
+    ];
+    final now = DateTime.now();
+    final objects = <LowPolyObject>[];
+    for (var i = 0; i < machines.length; i++) {
+      final machine = machines[i];
+      final pose = _passerPoses.putIfAbsent(machine.id, HumanPose.new);
+      final phase = _passerPhase(i, now);
+      if (phase >= _passerActive) {
+        // Out of sight: forget the last position, so the next walk starts cleanly.
+        pose
+          ..lastX = null
+          ..lastY = null
+          ..lastMovedAt = null;
+        continue;
+      }
+      final gx = (machine.zone.x - 1).floor();
+      final gy = (machine.zone.y - 1).floor();
+      final progress = phase / _passerActive;
+      objects.add(buildHumanObject(
+        x: gx - 0.5 + 2.0 * progress,
+        z: gy + 1.1,
+        pose: pose,
+        running: false,
+        shirt: shirts[i % shirts.length],
+        cap: const Color(0xFF5D4037),
+        brightness: brightness,
+        scale: 0.13,
+      ));
+    }
+    return objects;
   }
 
   /// Lowpoly walkers, plus an invisible pad under each one so a finger can
@@ -1000,7 +1072,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
     // building, then open its details over that view. The overview comes back on close.
     final gx = math.min(math.max((machine.zone.x - 1).floor(), 0), gridSize - 1);
     final gy = math.min(math.max((machine.zone.y - 1).floor(), 0), gridSize - 1);
-    _mapController.focusOn(Vec3(gx + 0.5, 0.6, gy + 0.92), distance: 4.2, pitch: 0.42);
+    _mapController.focusOn(Vec3(gx + 0.8, 0.3, gy + 0.95), distance: 3.0, pitch: 0.38);
     showDialog(
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.35),
@@ -1257,6 +1329,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
   
   /// Update pedestrian positions and find new targets
   void _updatePedestrians() {
+    _updatePassers();
     const double normalSpeed = 0.01; // Grid units per update (50ms = 0.2 grid units per second) - slower
     const double fastSpeed = 0.03; // Faster speed when heading to shop (3x normal speed)
     const double arrivalThreshold = 0.1;
@@ -2093,6 +2166,67 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
 
 }
 
+/// Sells a customer's bundle from a machine: one soda and one chips, or two of each when
+/// [isSpecial]. Used by customers walking past the machine.
+void sellToCustomer(WidgetRef ref, String machineId, bool isSpecial) {
+  // 1. Get current machine state
+  final machines = ref.read(machinesProvider);
+  final machineIndex = machines.indexWhere((m) => m.id == machineId);
+  if (machineIndex == -1) return;
+  final machine = machines[machineIndex];
+
+  // 2. Determine "Bundle" size
+  // Normal: 1 Soda + 1 Chips
+  // Special: 2 Soda + 2 Chips (Double Benefit)
+  final multiplier = isSpecial ? 2 : 1;
+  final requiredSoda = 1 * multiplier;
+  final requiredChips = 1 * multiplier;
+
+  // 3. Check and deduct inventory
+  final newInventory = Map<Product, sim.InventoryItem>.from(machine.inventory);
+  double earnedCash = 0.0;
+  bool soldAnything = false;
+
+  // Process Soda
+  if (newInventory.containsKey(Product.soda)) {
+    final item = newInventory[Product.soda]!;
+    final soldQty = math.min(item.quantity, requiredSoda);
+    if (soldQty > 0) {
+      newInventory[Product.soda] = item.copyWith(quantity: item.quantity - soldQty);
+      earnedCash += soldQty * Product.soda.basePrice;
+      soldAnything = true;
+    }
+  }
+
+  // Process Chips
+  if (newInventory.containsKey(Product.chips)) {
+    final item = newInventory[Product.chips]!;
+    final soldQty = math.min(item.quantity, requiredChips);
+    if (soldQty > 0) {
+      newInventory[Product.chips] = item.copyWith(quantity: item.quantity - soldQty);
+      earnedCash += soldQty * Product.chips.basePrice;
+      soldAnything = true;
+    }
+  }
+
+  // 4. Apply Updates if purchase happened
+  if (soldAnything) {
+    // If Special person (Any Zone), apply Double Benefit to the cash earned
+    // (They buy 2x items naturally, but we can add a bonus multiplier if desired. 
+    //  Here we stick to the volume benefit: 2x items = 2x cash).
+    
+    final updatedMachine = machine.copyWith(
+      inventory: newInventory,
+      currentCash: machine.currentCash + earnedCash,
+      totalSales: machine.totalSales + (isSpecial ? 2 : 1), 
+    );
+
+    // Update Controller
+    ref.read(gameControllerProvider.notifier).updateMachine(updatedMachine);
+  }
+}
+
+
 class _MachineViewDialog extends ConsumerWidget {
   final String machineId;
 
@@ -2100,64 +2234,6 @@ class _MachineViewDialog extends ConsumerWidget {
     required this.machineId,
   });
 
-  /// Handles the logic when a customer makes a purchase
-  void _handlePurchase(WidgetRef ref, bool isSpecial) {
-    // 1. Get current machine state
-    final machines = ref.read(machinesProvider);
-    final machineIndex = machines.indexWhere((m) => m.id == machineId);
-    if (machineIndex == -1) return;
-    final machine = machines[machineIndex];
-
-    // 2. Determine "Bundle" size
-    // Normal: 1 Soda + 1 Chips
-    // Special: 2 Soda + 2 Chips (Double Benefit)
-    final multiplier = isSpecial ? 2 : 1;
-    final requiredSoda = 1 * multiplier;
-    final requiredChips = 1 * multiplier;
-
-    // 3. Check and deduct inventory
-    final newInventory = Map<Product, sim.InventoryItem>.from(machine.inventory);
-    double earnedCash = 0.0;
-    bool soldAnything = false;
-
-    // Process Soda
-    if (newInventory.containsKey(Product.soda)) {
-      final item = newInventory[Product.soda]!;
-      final soldQty = math.min(item.quantity, requiredSoda);
-      if (soldQty > 0) {
-        newInventory[Product.soda] = item.copyWith(quantity: item.quantity - soldQty);
-        earnedCash += soldQty * Product.soda.basePrice;
-        soldAnything = true;
-      }
-    }
-
-    // Process Chips
-    if (newInventory.containsKey(Product.chips)) {
-      final item = newInventory[Product.chips]!;
-      final soldQty = math.min(item.quantity, requiredChips);
-      if (soldQty > 0) {
-        newInventory[Product.chips] = item.copyWith(quantity: item.quantity - soldQty);
-        earnedCash += soldQty * Product.chips.basePrice;
-        soldAnything = true;
-      }
-    }
-
-    // 4. Apply Updates if purchase happened
-    if (soldAnything) {
-      // If Special person (Any Zone), apply Double Benefit to the cash earned
-      // (They buy 2x items naturally, but we can add a bonus multiplier if desired. 
-      //  Here we stick to the volume benefit: 2x items = 2x cash).
-      
-      final updatedMachine = machine.copyWith(
-        inventory: newInventory,
-        currentCash: machine.currentCash + earnedCash,
-        totalSales: machine.totalSales + (isSpecial ? 2 : 1), 
-      );
-
-      // Update Controller
-      ref.read(gameControllerProvider.notifier).updateMachine(updatedMachine);
-    }
-  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -2205,23 +2281,10 @@ class _MachineViewDialog extends ConsumerWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Stack(
-                  children: [
-                    VendingMachineStage(
-                      machine: machine!,
-                      height: imageHeight,
-                      onPurchase: (isSpecial) => _handlePurchase(ref, isSpecial),
-                    ),
-                    Positioned(
-                      top: padding * AppConfig.machineStatusDialogHeaderImageTopPaddingFactor,
-                      right: padding * AppConfig.machineStatusDialogHeaderImageTopPaddingFactor,
-                      child: IconButton(
-                        icon: Icon(Icons.close, color: Colors.white, size: dialogWidth * AppConfig.machineStatusDialogCloseButtonSizeFactor),
-                        onPressed: () => Navigator.of(context).pop(),
-                        style: IconButton.styleFrom(backgroundColor: Colors.black.withValues(alpha: 0.5), padding: EdgeInsets.all(padding * AppConfig.machineStatusDialogCloseButtonPaddingFactor)),
-                      ),
-                    ),
-                  ],
+                _MachineHeader(
+                  machine: machine!,
+                  padding: padding,
+                  onClose: () => Navigator.of(context).pop(),
                 ),
                 Flexible(
                   child: SingleChildScrollView(
@@ -3137,5 +3200,60 @@ class RainPainter extends CustomPainter {
   @override
   bool shouldRepaint(RainPainter oldDelegate) {
     return oldDelegate.time != time || oldDelegate.intensity != intensity;
+  }
+}
+
+/// Title bar of the machine details: the machine's name and zone, and a close button.
+class _MachineHeader extends StatelessWidget {
+  const _MachineHeader({
+    required this.machine,
+    required this.padding,
+    required this.onClose,
+  });
+
+  final sim.Machine machine;
+  final double padding;
+  final VoidCallback onClose;
+
+  @override
+  Widget build(BuildContext context) {
+    final zone = machine.zone.type;
+    return Container(
+      padding: EdgeInsets.fromLTRB(padding, padding * 0.8, padding * 0.4, padding * 0.8),
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: VexColors.line)),
+      ),
+      child: Row(
+        children: [
+          Icon(zone.icon, color: zone.color, size: 26),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  machine.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: VexColors.gold,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                Text(
+                  '${zone.name.toUpperCase()} · ${machine.isBroken ? 'BROKEN' : 'WORKING'}',
+                  style: const TextStyle(color: VexColors.muted, fontSize: 11, letterSpacing: 0.8),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.close, color: VexColors.cream),
+            onPressed: onClose,
+          ),
+        ],
+      ),
+    );
   }
 }

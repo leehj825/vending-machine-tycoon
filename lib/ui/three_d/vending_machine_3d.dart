@@ -91,19 +91,34 @@ const int _slotCount = _slotRows * _slotColumns;
 const int _fullSlotStock = 20;
 
 /// Builds the vending machine as a single object, with parts listed back to front.
-List<LowPolyObject> buildVendingMachineScene(sim.Machine machine) {
+///
+/// The model is about 2 units tall in its own space. Place it with [placeObject] to
+/// put it on the map at a smaller scale.
+List<LowPolyObject> buildVendingMachineScene(sim.Machine machine, {double brightness = 1.0}) {
   final accent = machine.zone.type.color;
   final sign = Color.lerp(accent, Colors.white, 0.25) ?? accent;
   final cabinetTop = Color.lerp(accent, Colors.black, 0.2) ?? accent;
+  final cabinetSide = Color.lerp(accent, Colors.black, 0.12) ?? accent;
+  const steel = Color(0xFFB0BEC5);
+  const dark = Color(0xFF2B2F38);
   final cashColor = machine.currentCash > 0
       ? const Color(0xFF43A047)
       : const Color(0xFF9E9E9E);
 
-  final m = LowPolyMeshBuilder()
+  final m = LowPolyMeshBuilder(brightness: brightness)
+    // Plinth, cabinet and a sign band with a light strip.
     ..box(-0.52, 0, -0.4, 0.52, 0.12, 0.4, const Color(0xFF3A3F47))
     ..box(-0.5, 0.12, -0.38, 0.5, 1.85, 0.38, accent, top: cabinetTop)
     ..box(-0.5, 1.85, -0.38, 0.5, 2.0, 0.38, sign)
-    ..box(-0.36, 0.5, 0.38, 0.34, 1.65, 0.4, const Color(0xFF203040));
+    ..box(-0.46, 1.8, 0.38, 0.46, 1.84, 0.41, const Color(0xFFFFF59D))
+    // Side vents and a rounded side panel, so the side reads as a machine too.
+    ..box(0.5, 0.2, -0.3, 0.53, 1.2, 0.3, cabinetSide)
+    ..box(0.53, 0.3, -0.25, 0.55, 0.36, 0.25, const Color(0xFF263238))
+    ..box(0.53, 0.42, -0.25, 0.55, 0.48, 0.25, const Color(0xFF263238))
+    ..box(0.53, 0.54, -0.25, 0.55, 0.60, 0.25, const Color(0xFF263238))
+    // Glass front with a steel frame around it.
+    ..box(-0.4, 0.46, 0.38, 0.38, 1.7, 0.4, steel)
+    ..box(-0.36, 0.5, 0.38, 0.34, 1.65, 0.42, const Color(0xFF203040));
 
   final slots = _slotLayout(machine);
   for (var row = 0; row < _slotRows; row++) {
@@ -114,15 +129,30 @@ List<LowPolyObject> buildVendingMachineScene(sim.Machine machine) {
       final color = slot == null
           ? const Color(0xFF2B2F38)
           : productSlotColor(slot.product).withValues(alpha: slot.filled ? 1.0 : 0.35);
-      m.box(x0, y1 - 0.22, 0.4, x0 + 0.18, y1, 0.44, color);
+      // A product box with a lighter cap on top, and a spiral shelf behind it.
+      m.box(x0, y1 - 0.22, 0.4, x0 + 0.18, y1, 0.45, color);
+      m.box(x0 + 0.02, y1 - 0.04, 0.44, x0 + 0.16, y1, 0.47,
+          Color.lerp(color, Colors.white, 0.35) ?? color);
+      m.box(x0, y1 - 0.25, 0.38, x0 + 0.18, y1 - 0.22, 0.4, steel);
     }
   }
 
   m
-    ..box(0.37, 0.5, 0.38, 0.46, 1.3, 0.41, const Color(0xFF2B2F38))
-    ..box(0.39, 1.36, 0.41, 0.44, 1.5, 0.43, cashColor)
-    ..box(0.39, 0.6, 0.41, 0.44, 0.7, 0.43, const Color(0xFFCFD8DC))
-    ..box(-0.3, 0.2, 0.38, 0.3, 0.42, 0.42, const Color(0xFF1B1F26));
+    // Keypad: a 3 by 3 grid of buttons with a selection display above.
+    ..box(0.37, 0.5, 0.38, 0.46, 1.3, 0.42, dark)
+    ..box(0.39, 1.36, 0.41, 0.44, 1.5, 0.44, cashColor)
+    ..box(0.39, 0.6, 0.41, 0.44, 0.7, 0.44, const Color(0xFFCFD8DC))
+    // Bill validator slot and card reader.
+    ..box(0.39, 0.78, 0.41, 0.44, 0.84, 0.45, const Color(0xFF12161D))
+    ..box(0.39, 1.0, 0.41, 0.44, 1.06, 0.45, const Color(0xFF90A4AE))
+    // Delivery bin and its flap.
+    ..box(-0.3, 0.2, 0.38, 0.3, 0.42, 0.42, const Color(0xFF1B1F26))
+    ..box(-0.3, 0.38, 0.42, 0.3, 0.42, 0.46, steel);
+  for (var key = 0; key < 9; key++) {
+    final kx = 0.385 + (key % 3) * 0.022;
+    final ky = 0.9 + (key ~/ 3) * 0.1;
+    m.box(kx, ky, 0.43, kx + 0.014, ky + 0.05, 0.45, const Color(0xFFECEFF1));
+  }
 
   return [m.build(center: const Vec3(0, 1, 0))];
 }
