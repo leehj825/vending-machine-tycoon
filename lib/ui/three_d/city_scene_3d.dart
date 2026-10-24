@@ -270,6 +270,13 @@ List<LowPolyObject> _buildingObjects(
   }
 
   final m = LowPolyMeshBuilder(brightness: brightness);
+  // The plinth goes in first. Parts are drawn in list order with no depth buffer, so
+  // anything added later, like the walls and roof, covers it.
+  final body = _bodies[type];
+  if (body != null) {
+    final (bx0, bz0, bx1, bz1, _) = body;
+    m.box(x + bx0 - 0.015, 0, y + bz0 - 0.015, x + bx1 + 0.015, 0.06, y + bz1 + 0.015, _plinthColor);
+  }
   switch (type) {
     case TileType.shop:
       m
@@ -421,13 +428,14 @@ List<LowPolyObject> _buildingObjects(
     case TileType.park:
       return [];
   }
-  // A plinth at the base and a cornice under the roof give the body a finished edge.
-  final body = _bodies[type];
+  // A cornice rim under the roof. Only the outer ring is drawn, so the roof stays visible.
   if (body != null) {
     final (bx0, bz0, bx1, bz1, top) = body;
     m
-      ..box(x + bx0 - 0.015, 0, y + bz0 - 0.015, x + bx1 + 0.015, 0.06, y + bz1 + 0.015, _plinthColor)
-      ..box(x + bx0 - 0.02, top, y + bz0 - 0.02, x + bx1 + 0.02, top + 0.04, y + bz1 + 0.02, _trim);
+      ..box(x + bx0 - 0.02, top, y + bz0 - 0.02, x + bx1 + 0.02, top + 0.04, y + bz0, _trim)
+      ..box(x + bx0 - 0.02, top, y + bz1, x + bx1 + 0.02, top + 0.04, y + bz1 + 0.02, _trim)
+      ..box(x + bx0 - 0.02, top, y + bz0, x + bx0, top + 0.04, y + bz1, _trim)
+      ..box(x + bx1, top, y + bz0, x + bx1 + 0.02, top + 0.04, y + bz1, _trim);
   }
   return [
     m.build(center: Vec3(x + 0.5, 0.5, y + 0.5), payload: cell),

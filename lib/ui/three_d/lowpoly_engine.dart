@@ -764,7 +764,7 @@ class LowPolyView extends StatefulWidget {
   State<LowPolyView> createState() => _LowPolyViewState();
 }
 
-class _LowPolyViewState extends State<LowPolyView> with SingleTickerProviderStateMixin {
+class _LowPolyViewState extends State<LowPolyView> with TickerProviderStateMixin {
   static const double _tapSlop = 10;
   static const Duration _tapDuration = Duration(milliseconds: 350);
   static const double _orbitSpeedYaw = 0.008;

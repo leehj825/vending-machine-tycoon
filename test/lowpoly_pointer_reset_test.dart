@@ -40,4 +40,80 @@ void main() {
     await tester.tapAt(centre);
     expect(taps, ['machine', 'machine'], reason: 'the view should accept taps again after a reset');
   });
+
+  testWidgets('a dialog that opens over a held finger does not leave the view stuck', (tester) async {
+    final taps = <Object>[];
+    final square = LowPolyObject(
+      center: const Vec3(0, 0, 0),
+      payload: 'machine',
+      triangles: [
+        LowPolyTriangle(const Vec3(-1, -1, 0), const Vec3(1, -1, 0), const Vec3(1, 1, 0), const Vec3(0, 0, 1), const Color(0xFF888888)),
+        LowPolyTriangle(const Vec3(-1, -1, 0), const Vec3(1, 1, 0), const Vec3(-1, 1, 0), const Vec3(0, 0, 1), const Color(0xFF888888)),
+      ],
+    );
+    await tester.pumpWidget(MaterialApp(
+      home: SizedBox(
+        width: 400,
+        height: 400,
+        child: LowPolyView(
+          objects: [square],
+          camera: const LowPolyCamera(target: Vec3(0, 0, 0), yaw: 0, pitch: 0, distance: 6),
+          background: const Color(0xFFEEEEEE),
+          onTapTarget: taps.add,
+        ),
+      ),
+    ));
+
+    final centre = tester.getCenter(find.byType(LowPolyView));
+    final context = tester.element(find.byType(LowPolyView));
+
+    // A finger goes down on the view, then a dialog opens and closes before it lifts.
+    await tester.startGesture(centre, pointer: 7);
+    showDialog<void>(context: context, builder: (_) => const SizedBox());
+    await tester.pumpAndSettle();
+    Navigator.of(context, rootNavigator: true).pop();
+    await tester.pumpAndSettle();
+
+    // The held finger's release never reached the view, so it is not counted as down.
+    final next = await tester.startGesture(centre, pointer: 8);
+    await next.up();
+    expect(taps, ['machine'], reason: 'a tap after the dialog closed should register');
+  });
+
+  testWidgets('a tap still registers after the view glides twice', (tester) async {
+    final controller = LowPolyController();
+    final taps = <Object>[];
+    final square = LowPolyObject(
+      center: const Vec3(0, 0, 0),
+      payload: 'machine',
+      triangles: [
+        LowPolyTriangle(const Vec3(-1, -1, 0), const Vec3(1, -1, 0), const Vec3(1, 1, 0), const Vec3(0, 0, 1), const Color(0xFF888888)),
+        LowPolyTriangle(const Vec3(-1, -1, 0), const Vec3(1, 1, 0), const Vec3(-1, 1, 0), const Vec3(0, 0, 1), const Color(0xFF888888)),
+      ],
+    );
+    await tester.pumpWidget(MaterialApp(
+      home: SizedBox(
+        width: 400,
+        height: 400,
+        child: LowPolyView(
+          objects: [square],
+          camera: const LowPolyCamera(target: Vec3(0, 0, 0), yaw: 0, pitch: 0, distance: 6),
+          background: const Color(0xFFEEEEEE),
+          controller: controller,
+          onTapTarget: taps.add,
+        ),
+      ),
+    ));
+
+    // Opening a machine focuses the camera, and closing it resets the view: two glides.
+    controller.focusOn(const Vec3(0, 0, 0), distance: 3, pitch: 0.4);
+    await tester.pumpAndSettle();
+    controller.reset();
+    await tester.pumpAndSettle();
+
+    final centre = tester.getCenter(find.byType(LowPolyView));
+    await tester.tapAt(centre);
+    expect(tester.takeException(), isNull);
+    expect(taps, ['machine'], reason: 'the view should keep taking taps after a second glide');
+  });
 }
