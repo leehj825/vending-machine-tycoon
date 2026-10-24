@@ -181,6 +181,74 @@ class LowPolyMeshBuilder {
     );
   }
 
+  /// Window panes on the four sides of a box spanning [y0] to [y1].
+  ///
+  /// Panes are flat quads just outside each face, which is much cheaper to
+  /// draw than small boxes. Every pane on a lit side uses [lit] in a pattern,
+  /// so buildings look lived in. Add this after the box it decorates.
+  void windows(
+    double x0,
+    double z0,
+    double x1,
+    double z1,
+    double y0,
+    double y1, {
+    required int cols,
+    required int rows,
+    required Color glass,
+    Color? lit,
+  }) {
+    const off = 0.012;
+    const edge = 0.1;
+    const gap = 0.03;
+    final rowH = (y1 - y0) / rows;
+    for (var r = 0; r < rows; r++) {
+      final wy0 = y0 + rowH * (r + 0.25);
+      final wy1 = y0 + rowH * (r + 0.7);
+      for (var c = 0; c < cols; c++) {
+        final color = lit != null && (r + c) % 3 == 0 ? lit : glass;
+        final t0 = edge + (1 - 2 * edge) * c / cols + gap;
+        final t1 = edge + (1 - 2 * edge) * (c + 1) / cols - gap;
+        final ax0 = x0 + (x1 - x0) * t0;
+        final ax1 = x0 + (x1 - x0) * t1;
+        final az0 = z0 + (z1 - z0) * t0;
+        final az1 = z0 + (z1 - z0) * t1;
+        _quad(
+          Vec3(ax0, wy0, z1 + off),
+          Vec3(ax1, wy0, z1 + off),
+          Vec3(ax1, wy1, z1 + off),
+          Vec3(ax0, wy1, z1 + off),
+          const Vec3(0, 0, 1),
+          color,
+        );
+        _quad(
+          Vec3(ax1, wy0, z0 - off),
+          Vec3(ax0, wy0, z0 - off),
+          Vec3(ax0, wy1, z0 - off),
+          Vec3(ax1, wy1, z0 - off),
+          const Vec3(0, 0, -1),
+          color,
+        );
+        _quad(
+          Vec3(x1 + off, wy0, az1),
+          Vec3(x1 + off, wy0, az0),
+          Vec3(x1 + off, wy1, az0),
+          Vec3(x1 + off, wy1, az1),
+          const Vec3(1, 0, 0),
+          color,
+        );
+        _quad(
+          Vec3(x0 - off, wy0, az0),
+          Vec3(x0 - off, wy0, az1),
+          Vec3(x0 - off, wy1, az1),
+          Vec3(x0 - off, wy1, az0),
+          const Vec3(-1, 0, 0),
+          color,
+        );
+      }
+    }
+  }
+
   /// A four-sided pyramid roof over a rectangle at height [y0].
   void roof(
     double x0,

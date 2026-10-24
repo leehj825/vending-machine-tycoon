@@ -13,6 +13,8 @@ class MarketingButton extends ConsumerStatefulWidget {
   final Offset screenPosition;
   final double tileWidth;
   final double tileHeight;
+  /// When false the button keeps its timers and state but draws nothing.
+  final bool visible;
 
   const MarketingButton({
     super.key,
@@ -21,13 +23,14 @@ class MarketingButton extends ConsumerStatefulWidget {
     required this.screenPosition,
     required this.tileWidth,
     required this.tileHeight,
+    this.visible = true,
   });
 
   @override
-  ConsumerState<MarketingButton> createState() => _MarketingButtonState();
+  ConsumerState<MarketingButton> createState() => MarketingButtonState();
 }
 
-class _MarketingButtonState extends ConsumerState<MarketingButton>
+class MarketingButtonState extends ConsumerState<MarketingButton>
     with TickerProviderStateMixin {
   Timer? _decayTimer;
   Timer? _rushHourTimer;
@@ -114,6 +117,9 @@ class _MarketingButtonState extends ConsumerState<MarketingButton>
       },
     );
   }
+
+  /// Runs the same action as a tap on the button. The 3D city calls this.
+  void tap() => _onTap();
 
   void _onTap() {
     final gameState = ref.read(gameStateProvider);
@@ -225,6 +231,10 @@ class _MarketingButtonState extends ConsumerState<MarketingButton>
       }
     }
     
+    // On the 3D city the button is drawn as a 3D marker instead. The timers above
+    // still run, so the marker hides and resets just like this button.
+    if (!widget.visible) return const SizedBox.shrink();
+
     // Button size relative to tile - make it smaller
     final buttonSize = widget.tileWidth * 0.5;
     

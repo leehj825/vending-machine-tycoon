@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vending_empire/simulation/models/machine.dart';
 import 'package:vending_empire/simulation/models/product.dart';
+import 'package:vending_empire/simulation/models/truck.dart' as sim;
 import 'package:vending_empire/simulation/models/zone.dart';
 import 'package:vending_empire/ui/screens/tile_city_screen.dart';
 import 'package:vending_empire/ui/three_d/city_scene_3d.dart';
@@ -129,6 +130,29 @@ void main() {
     final cell = picked! as CityCell;
     expect(cell.x, 3);
     expect(cell.y, 3);
+  });
+
+  test('trucks and marketing markers build with tap targets', () {
+    final truck = sim.Truck(
+      id: 't1',
+      name: 'Truck',
+      currentX: 3.0,
+      currentY: 5.0,
+      targetX: 6.0,
+      targetY: 5.0,
+    );
+    final truckObject = buildTruckObject(truck, 1.0);
+    expect(truckObject.triangles, isNotEmpty);
+    expect(truckObject.payload, isNull);
+
+    final marker = buildMarketingMarker(
+      gridX: 4,
+      gridY: 4,
+      rushHour: true,
+      brightness: 1.0,
+    );
+    expect(marker.where((o) => o.drawn).length, 1);
+    expect(marker.every((o) => identical(o.payload, marketingTapTarget)), isTrue);
   });
 
   test('undrawn pick pads still take taps', () {

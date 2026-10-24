@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../simulation/models/machine.dart' as sim;
+import '../../simulation/models/truck.dart' as sim;
 import '../screens/tile_city_screen.dart' show RoadDirection, TileType;
 import '../theme/zone_ui.dart';
 import 'lowpoly_engine.dart';
@@ -16,6 +17,9 @@ class CityCell {
   final TileType tileType;
 }
 
+/// Tap target for the marketing marker, which the screen handles itself.
+const Object marketingTapTarget = Object();
+
 const Color cityDaySky = Color(0xFFA7D8F2);
 const Color cityNightSky = Color(0xFF0E1A2E);
 const double cityNightBrightness = 0.55;
@@ -25,13 +29,22 @@ const Color _grassA = Color(0xFF7CC26A);
 const Color _grassB = Color(0xFF69B05A);
 const Color _asphalt = Color(0xFF4A4F57);
 const Color _lane = Color(0xFFF2F2F2);
+const Color _pathStone = Color(0xFFD7CCC8);
+const Color _water = Color(0xFF4FC3F7);
+const Color _benchWood = Color(0xFF8D6E63);
 const Color _trunk = Color(0xFF7A5230);
 const Color _foliage = Color(0xFF3F9142);
+const Color _bush = Color(0xFF4CAF50);
 const Color _glass = Color(0xFFBFE7F2);
+const Color _glassDark = Color(0xFF2C3E50);
+const Color _warm = Color(0xFFFFE9A8);
+const Color _lampLight = Color(0xFFFFF59D);
 const Color _white = Color(0xFFF5F7FA);
 const Color _red = Color(0xFFE53935);
 const Color _grey = Color(0xFF9AA5B1);
 const Color _darkGrey = Color(0xFF4B5563);
+const Color _brick = Color(0xFFB5523B);
+const Color _brown = Color(0xFF6D4C41);
 
 /// Default camera: a three-quarter view looking down on the whole grid.
 LowPolyCamera defaultCityCamera(int gridSize) => LowPolyCamera(
@@ -44,7 +57,7 @@ LowPolyCamera defaultCityCamera(int gridSize) => LowPolyCamera(
 /// Builds the lowpoly city from the same grid the 2D map uses.
 ///
 /// Ground tiles come first in list order, so their flat pieces never sort.
-/// Buildings, trees and vending machines are standing objects sorted by depth.
+/// Buildings and vending machines are standing objects sorted by depth.
 List<LowPolyObject> buildCityScene({
   required List<List<TileType>> grid,
   required List<List<RoadDirection?>> roadDirections,
@@ -101,8 +114,23 @@ LowPolyObject _groundTile(
   } else {
     final grass = Color.lerp(_grassA, _grassB, _cellNoise(x, y)) ?? _grassA;
     m.flat(x + 0.0, y + 0.0, x + 1.0, y + 1.0, 0.0, grass);
+    if (type == TileType.park) {
+      // Paths cross the park, with a pond and a bench on the grass.
+      m
+        ..flat(x + 0.46, y + 0.0, x + 0.54, y + 1.0, 0.003, _pathStone)
+        ..flat(x + 0.0, y + 0.46, x + 1.0, y + 0.54, 0.003, _pathStone)
+        ..flat(x + 0.08, y + 0.6, x + 0.34, y + 0.9, 0.004, _water)
+        ..box(x + 0.6, 0, y + 0.6, x + 0.74, 0.1, y + 0.66, _benchWood);
+    }
   }
   return m.build(center: Vec3(x + 0.5, 0, y + 0.5), onGround: true);
+}
+
+/// A small lamp post with a warm light, placed at a tile corner.
+void _lamp(LowPolyMeshBuilder m, double px, double pz) {
+  m
+    ..box(px - 0.02, 0, pz - 0.02, px + 0.02, 0.42, pz + 0.02, _darkGrey)
+    ..box(px - 0.05, 0.42, pz - 0.05, px + 0.05, 0.48, pz + 0.05, _lampLight);
 }
 
 /// Standing geometry for a tile. Parks return one object per tree, and every
@@ -127,7 +155,8 @@ List<LowPolyObject> _buildingObjects(
     for (final (tx, tz) in trees) {
       final m = LowPolyMeshBuilder(brightness: brightness)
         ..box(x + tx - 0.04, 0, y + tz - 0.04, x + tx + 0.04, 0.22, y + tz + 0.04, _trunk)
-        ..cone(x + tx, y + tz, 0.2, 6, 0.18, 0.62, _foliage);
+        ..cone(x + tx, y + tz, 0.2, 6, 0.18, 0.62, _foliage)
+        ..cone(x + tx, y + tz, 0.12, 6, 0.5, 0.78, _bush);
       objects.add(m.build(center: Vec3(x + tx, 0.35, y + tz), payload: cell));
     }
     return objects;
@@ -139,72 +168,146 @@ List<LowPolyObject> _buildingObjects(
       m
         ..box(x + 0.1, 0, y + 0.12, x + 0.9, 0.55, y + 0.88, const Color(0xFFF2C14E),
             top: const Color(0xFF8D6E63))
-        ..box(x + 0.25, 0.18, y + 0.86, x + 0.75, 0.36, y + 0.9, _glass)
+        ..windows(x + 0.1, y + 0.12, x + 0.9, y + 0.88, 0.12, 0.42,
+            cols: 3, rows: 1, glass: _glass, lit: _warm)
+        ..box(x + 0.44, 0, y + 0.88, x + 0.56, 0.34, y + 0.93, _brown)
         ..box(x + 0.06, 0.42, y + 0.84, x + 0.94, 0.52, y + 0.94, const Color(0xFFE4572E));
+      // Awning stripes and a sign board above the door.
+      for (final sx in [0.16, 0.44, 0.72]) {
+        m.box(x + sx, 0.42, y + 0.94, x + sx + 0.1, 0.52, y + 0.955, _white);
+      }
+      m
+        ..box(x + 0.3, 0.55, y + 0.84, x + 0.7, 0.66, y + 0.9, const Color(0xFFFFF176))
+        ..box(x + 0.12, 0, y + 0.9, x + 0.22, 0.12, y + 0.98, _bush)
+        ..box(x + 0.78, 0, y + 0.9, x + 0.88, 0.12, y + 0.98, _bush)
+        ..box(x + 0.7, 0.55, y + 0.3, x + 0.84, 0.63, y + 0.46, _darkGrey);
+      _lamp(m, x + 0.93, y + 0.93);
       break;
     case TileType.gym:
       m
-        ..box(x + 0.08, 0, y + 0.1, x + 0.92, 0.7, y + 0.9, const Color(0xFFB5523B),
-            top: const Color(0xFF6B7280))
-        ..box(x + 0.2, 0.42, y + 0.9, x + 0.8, 0.52, y + 0.93, _glass)
+        ..box(x + 0.08, 0, y + 0.1, x + 0.92, 0.7, y + 0.9, _brick, top: const Color(0xFF6B7280))
+        ..windows(x + 0.08, y + 0.1, x + 0.92, y + 0.9, 0.14, 0.58,
+            cols: 4, rows: 1, glass: _glass, lit: _warm)
+        ..box(x + 0.44, 0, y + 0.9, x + 0.56, 0.3, y + 0.94, _glassDark)
+        ..box(x + 0.25, 0.7, y + 0.84, x + 0.75, 0.8, y + 0.92, _red)
+        ..box(x + 0.3, 0.74, y + 0.92, x + 0.7, 0.76, y + 0.935, _white)
         ..box(x + 0.35, 0.7, y + 0.35, x + 0.65, 0.8, y + 0.65, _darkGrey);
+      _lamp(m, x + 0.93, y + 0.93);
       break;
     case TileType.office:
       m
         ..box(x + 0.2, 0, y + 0.2, x + 0.8, 1.5, y + 0.8, const Color(0xFF8FB8DE),
             top: const Color(0xFF3D5A80))
-        ..box(x + 0.18, 0.45, y + 0.18, x + 0.82, 0.5, y + 0.82, const Color(0xFFE0ECF7))
-        ..box(x + 0.18, 0.95, y + 0.18, x + 0.82, 1.0, y + 0.82, const Color(0xFFE0ECF7))
-        ..box(x + 0.3, 1.5, y + 0.3, x + 0.7, 1.62, y + 0.7, const Color(0xFF3D5A80));
+        ..windows(x + 0.2, y + 0.2, x + 0.8, y + 0.8, 0.12, 1.42,
+            cols: 3, rows: 6, glass: _glass, lit: _warm)
+        ..box(x + 0.3, 1.5, y + 0.3, x + 0.7, 1.62, y + 0.7, const Color(0xFF3D5A80))
+        ..box(x + 0.32, 1.62, y + 0.32, x + 0.44, 1.7, y + 0.44, _grey)
+        ..box(x + 0.56, 1.62, y + 0.56, x + 0.6, 1.95, y + 0.6, _grey)
+        ..box(x + 0.42, 0, y + 0.8, x + 0.58, 0.24, y + 0.86, _glassDark)
+        ..box(x + 0.36, 0.24, y + 0.78, x + 0.64, 0.28, y + 0.9, const Color(0xFF1F2A44));
+      _lamp(m, x + 0.93, y + 0.93);
       break;
     case TileType.school:
       m
         ..box(x + 0.1, 0, y + 0.12, x + 0.9, 0.5, y + 0.88, const Color(0xFFF4E3B5))
-        ..box(x + 0.4, 0, y + 0.86, x + 0.6, 0.22, y + 0.9, const Color(0xFF6D4C41))
-        ..roof(x + 0.08, y + 0.1, x + 0.92, y + 0.9, 0.5, 0.8, const Color(0xFFC0392B));
+        ..windows(x + 0.1, y + 0.12, x + 0.9, y + 0.88, 0.14, 0.44,
+            cols: 4, rows: 1, glass: _glass, lit: _warm)
+        ..box(x + 0.42, 0, y + 0.88, x + 0.58, 0.24, y + 0.93, _brown)
+        ..box(x + 0.45, 0.3, y + 0.88, x + 0.55, 0.4, y + 0.92, _white)
+        ..roof(x + 0.08, y + 0.1, x + 0.92, y + 0.9, 0.5, 0.8, const Color(0xFFC0392B))
+        ..box(x + 0.88, 0, y + 0.95, x + 0.92, 0.9, y + 0.99, _grey)
+        ..box(x + 0.92, 0.72, y + 0.96, x + 0.99, 0.9, y + 0.97, _red);
+      _lamp(m, x + 0.07, y + 0.93);
       break;
     case TileType.gasStation:
       const pillar = Color(0xFFB0BEC5);
+      const pump = Color(0xFF1E88E5);
       m
         ..box(x + 0.36, 0, y + 0.36, x + 0.64, 0.36, y + 0.64, _white)
+        ..windows(x + 0.36, y + 0.36, x + 0.64, y + 0.64, 0.1, 0.3,
+            cols: 2, rows: 1, glass: _glass)
+        ..box(x + 0.18, 0, y + 0.5, x + 0.26, 0.3, y + 0.6, pump)
+        ..box(x + 0.74, 0, y + 0.5, x + 0.82, 0.3, y + 0.6, pump)
+        ..box(x + 0.18, 0.3, y + 0.5, x + 0.26, 0.34, y + 0.6, const Color(0xFFFFEB3B))
+        ..box(x + 0.74, 0.3, y + 0.5, x + 0.82, 0.34, y + 0.6, const Color(0xFFFFEB3B))
         ..box(x + 0.1, 0, y + 0.1, x + 0.16, 0.5, y + 0.16, pillar)
         ..box(x + 0.84, 0, y + 0.1, x + 0.9, 0.5, y + 0.16, pillar)
         ..box(x + 0.1, 0, y + 0.84, x + 0.16, 0.5, y + 0.9, pillar)
         ..box(x + 0.84, 0, y + 0.84, x + 0.9, 0.5, y + 0.9, pillar)
-        ..box(x + 0.04, 0.5, y + 0.04, x + 0.96, 0.6, y + 0.96, const Color(0xFFE53935),
-            top: const Color(0xFFFF7043));
+        ..box(x + 0.04, 0.5, y + 0.04, x + 0.96, 0.6, y + 0.96, _red,
+            top: const Color(0xFFFF7043))
+        ..box(x + 0.2, 0.6, y + 0.44, x + 0.8, 0.63, y + 0.5, _white)
+        ..box(x + 0.93, 0, y + 0.1, x + 0.97, 0.9, y + 0.14, _grey)
+        ..box(x + 0.8, 0.9, y + 0.1, x + 1.0, 1.04, y + 0.13, _red,
+            top: const Color(0xFFFFEB3B));
       break;
     case TileType.house:
       m
         ..box(x + 0.2, 0, y + 0.25, x + 0.8, 0.42, y + 0.8, const Color(0xFFF6D7B0))
-        ..box(x + 0.44, 0, y + 0.8, x + 0.56, 0.22, y + 0.84, const Color(0xFF6D4C41))
-        ..roof(x + 0.14, y + 0.19, x + 0.86, y + 0.86, 0.42, 0.7, const Color(0xFFB23A48));
+        ..windows(x + 0.2, y + 0.25, x + 0.8, y + 0.8, 0.1, 0.36,
+            cols: 2, rows: 1, glass: _glass, lit: _warm)
+        ..box(x + 0.44, 0, y + 0.8, x + 0.56, 0.22, y + 0.84, _brown)
+        ..roof(x + 0.14, y + 0.19, x + 0.86, y + 0.86, 0.42, 0.7, const Color(0xFFB23A48))
+        ..box(x + 0.62, 0.5, y + 0.3, x + 0.7, 0.86, y + 0.38, _brick)
+        ..box(x + 0.1, 0, y + 0.84, x + 0.18, 0.12, y + 0.92, _bush)
+        ..box(x + 0.82, 0, y + 0.84, x + 0.9, 0.12, y + 0.92, _bush);
       break;
     case TileType.warehouse:
       m
-        ..box(x + 0.04, 0, y + 0.12, x + 0.96, 0.5, y + 0.9, _grey, top: const Color(0xFF6B7785))
-        ..box(x + 0.28, 0, y + 0.9, x + 0.72, 0.36, y + 0.94, _darkGrey);
+        ..box(x + 0.04, 0, y + 0.12, x + 0.96, 0.5, y + 0.9, _grey,
+            top: const Color(0xFF6B7785))
+        ..windows(x + 0.04, y + 0.12, x + 0.96, y + 0.9, 0.32, 0.44,
+            cols: 6, rows: 1, glass: _glass)
+        ..box(x + 0.18, 0, y + 0.9, x + 0.44, 0.36, y + 0.93, _darkGrey)
+        ..box(x + 0.56, 0, y + 0.9, x + 0.82, 0.36, y + 0.93, _darkGrey)
+        ..box(x + 0.2, 0.5, y + 0.3, x + 0.36, 0.54, y + 0.44, _glass)
+        ..box(x + 0.6, 0.5, y + 0.3, x + 0.76, 0.54, y + 0.44, _glass);
+      // Roller-door slats.
+      for (final dx in [0.18, 0.56]) {
+        for (var i = 0; i < 3; i++) {
+          final sy = 0.08 + i * 0.1;
+          m.box(x + dx, sy, y + 0.93, x + dx + 0.26, sy + 0.025, y + 0.94, _grey);
+        }
+      }
       break;
     case TileType.subway:
       m
         ..box(x + 0.1, 0, y + 0.14, x + 0.9, 0.32, y + 0.86, const Color(0xFF3F6E9A),
             top: const Color(0xFF2E5A80))
         ..box(x + 0.36, 0.32, y + 0.6, x + 0.64, 0.56, y + 0.86, const Color(0xFFA7D8F0))
-        ..box(x + 0.4, 0.56, y + 0.62, x + 0.6, 0.6, y + 0.84, const Color(0xFFFFD54F));
+        ..box(x + 0.4, 0.56, y + 0.62, x + 0.6, 0.6, y + 0.84, const Color(0xFFFFD54F))
+        ..box(x + 0.34, 0, y + 0.86, x + 0.66, 0.08, y + 0.95, _grey)
+        ..box(x + 0.36, 0.08, y + 0.88, x + 0.64, 0.16, y + 0.93, _grey);
+      _lamp(m, x + 0.07, y + 0.93);
       break;
     case TileType.hospital:
       m
-        ..box(x + 0.1, 0, y + 0.1, x + 0.9, 0.9, y + 0.9, _white, top: const Color(0xFFE3E8EF))
+        ..box(x + 0.1, 0, y + 0.1, x + 0.9, 0.9, y + 0.9, _white,
+            top: const Color(0xFFE3E8EF))
+        ..windows(x + 0.1, y + 0.1, x + 0.9, y + 0.9, 0.3, 0.86,
+            cols: 4, rows: 2, glass: _glass, lit: _warm)
+        ..box(x + 0.34, 0.24, y + 0.9, x + 0.66, 0.3, y + 0.99, const Color(0xFF26A69A))
+        ..box(x + 0.42, 0, y + 0.9, x + 0.58, 0.24, y + 0.94, _glassDark)
         ..box(x + 0.42, 0.9, y + 0.28, x + 0.58, 0.94, y + 0.72, _red)
         ..box(x + 0.28, 0.9, y + 0.42, x + 0.72, 0.94, y + 0.58, _red);
+      _lamp(m, x + 0.93, y + 0.93);
       break;
     case TileType.university:
       const dome = Color(0xFF3F51B5);
       m
         ..box(x + 0.1, 0, y + 0.14, x + 0.9, 0.72, y + 0.86, const Color(0xFFD8C3A5),
             top: const Color(0xFFB89F82))
+        ..windows(x + 0.1, y + 0.14, x + 0.9, y + 0.86, 0.12, 0.66,
+            cols: 5, rows: 2, glass: _glass, lit: _warm)
+        ..box(x + 0.14, 0, y + 0.86, x + 0.86, 0.05, y + 0.96, const Color(0xFFEEE6D8))
+        ..box(x + 0.2, 0.72, y + 0.84, x + 0.8, 0.78, y + 0.94, const Color(0xFFD8C3A5))
         ..prism(x + 0.5, y + 0.5, 0.24, 8, 0.72, 0.84, dome)
         ..cone(x + 0.5, y + 0.5, 0.24, 8, 0.84, 1.02, dome);
+      // Columns on the front.
+      for (final cx in [0.24, 0.4, 0.6, 0.76]) {
+        m.box(x + cx - 0.03, 0.05, y + 0.86, x + cx + 0.03, 0.72, y + 0.9, _white);
+      }
+      _lamp(m, x + 0.07, y + 0.93);
       break;
     case TileType.grass:
     case TileType.road:
@@ -237,4 +340,70 @@ LowPolyObject _vendingMachineOnTile(
     ..box(cx - 0.11, 0.1, cz + 0.09, cx + 0.11, 0.28, cz + 0.11, _glass)
     ..box(cx - 0.03, 0.36, cz - 0.02, cx + 0.03, 0.4, cz + 0.04, statusColor);
   return m.build(center: Vec3(cx, 0.2, cz), payload: cell);
+}
+
+/// A delivery truck on its road tile, turned to face the way it is driving.
+LowPolyObject buildTruckObject(sim.Truck truck, double brightness) {
+  final cx = truck.currentX - 0.5;
+  final cz = truck.currentY - 0.5;
+  var dx = truck.targetX - truck.currentX;
+  var dy = truck.targetY - truck.currentY;
+  if (truck.path.isNotEmpty && truck.pathIndex < truck.path.length) {
+    final next = truck.path[truck.pathIndex];
+    dx = next.x - truck.currentX;
+    dy = next.y - truck.currentY;
+  }
+  final alongX = dx.abs() > dy.abs();
+  final forward = (alongX ? dx : dy) < 0 ? -1.0 : 1.0;
+
+  // Local coordinates: u runs along the direction of travel, v across it.
+  double px(double u, double v) => alongX ? cx + u * forward : cx + v;
+  double pz(double u, double v) => alongX ? cz + v : cz + u * forward;
+
+  final m = LowPolyMeshBuilder(brightness: brightness);
+  void part(double u0, double u1, double v0, double v1, double y0, double y1, Color color,
+      {Color? top}) {
+    m.box(
+      math.min(px(u0, v0), px(u1, v1)),
+      y0,
+      math.min(pz(u0, v0), pz(u1, v1)),
+      math.max(px(u0, v0), px(u1, v1)),
+      y1,
+      math.max(pz(u0, v0), pz(u1, v1)),
+      color,
+      top: top,
+    );
+  }
+
+  part(-0.3, 0.08, -0.12, 0.12, 0.08, 0.36, _white, top: const Color(0xFFDCE6F0));
+  part(0.08, 0.3, -0.11, 0.11, 0.06, 0.26, const Color(0xFFD32F2F));
+  part(0.27, 0.31, -0.09, 0.09, 0.14, 0.22, _glass);
+  part(-0.22, -0.12, 0.1, 0.14, 0, 0.06, _darkGrey);
+  part(-0.22, -0.12, -0.14, -0.1, 0, 0.06, _darkGrey);
+  part(0.14, 0.24, 0.1, 0.14, 0, 0.06, _darkGrey);
+  part(0.14, 0.24, -0.14, -0.1, 0, 0.06, _darkGrey);
+  return m.build(center: Vec3(cx, 0.2, cz));
+}
+
+/// A pulsing marketing marker on a tile. It turns orange during rush hour.
+/// A larger invisible pad under it makes it easy to tap.
+List<LowPolyObject> buildMarketingMarker({
+  required int gridX,
+  required int gridY,
+  required bool rushHour,
+  required double brightness,
+}) {
+  final cx = gridX + 0.5;
+  final cz = gridY + 0.5;
+  final color = rushHour ? const Color(0xFFFB8C00) : const Color(0xFF1E88E5);
+  final sign = LowPolyMeshBuilder(brightness: brightness)
+    ..box(cx - 0.02, 0, cz - 0.02, cx + 0.02, 0.5, cz + 0.02, _darkGrey)
+    ..box(cx - 0.16, 0.5, cz - 0.16, cx + 0.16, 0.74, cz + 0.16, color,
+        top: const Color(0xFFFFFFFF));
+  final pad = LowPolyMeshBuilder(brightness: brightness)
+    ..flat(cx - 0.35, cz - 0.35, cx + 0.35, cz + 0.35, 0.01, color);
+  return [
+    sign.build(center: Vec3(cx, 0.4, cz), payload: marketingTapTarget),
+    pad.build(center: Vec3(cx, 0.01, cz), payload: marketingTapTarget, drawn: false),
+  ];
 }

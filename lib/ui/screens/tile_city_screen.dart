@@ -302,6 +302,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
   List<List<TileType>>? _scene3DGrid;
   List<sim.Machine>? _scene3DMachines;
   double? _scene3DBrightness;
+  final GlobalKey<MarketingButtonState> _marketingKey = GlobalKey<MarketingButtonState>();
 
   @override
   void initState() {
@@ -1586,9 +1587,14 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
               ),
 
             // Marketing button rendered outside InteractiveViewer to stay visible during panning.
-            // Its position is in 2D map coordinates, so it is hidden on the 3D city.
-            if (!use3D)
-              _buildMarketingButtonOverlay(context, centerOffset, tileWidth, tileHeight),
+            // On the 3D city it keeps running but draws nothing; the 3D marker takes its place.
+            _buildMarketingButtonOverlay(
+              context,
+              centerOffset,
+              tileWidth,
+              tileHeight,
+              visible: !use3D,
+            ),
           ],
         );
       },
@@ -1617,8 +1623,23 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
       _scene3DMachines = machines;
       _scene3DBrightness = brightness;
     }
+    final gameState = ref.watch(gameStateProvider);
+    final trucks = ref.watch(trucksProvider);
+    final marketingX = gameState.marketingButtonGridX;
+    final marketingY = gameState.marketingButtonGridY;
+    final dynamicObjects = <LowPolyObject>[
+      for (final truck in trucks) buildTruckObject(truck, brightness),
+      if (marketingX != null && marketingY != null)
+        ...buildMarketingMarker(
+          gridX: marketingX,
+          gridY: marketingY,
+          rushHour: gameState.isRushHour,
+          brightness: brightness,
+        ),
+      ..._pedestrianObjects3D(brightness),
+    ];
     return LowPolyView(
-      objects: [..._scene3D!, ..._pedestrianObjects3D(brightness)],
+      objects: [..._scene3D!, ...dynamicObjects],
       camera: defaultCityCamera(gridSize),
       background: isNight ? cityNightSky : cityDaySky,
       minDistance: 10,
@@ -1628,6 +1649,8 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
           _handleDebouncedBuildingTap(target.x, target.y, target.tileType);
         } else if (target is _PedestrianState) {
           _handlePedestrianTap(target);
+        } else if (identical(target, marketingTapTarget)) {
+          _marketingKey.currentState?.tap();
         }
       },
     );
@@ -2001,7 +2024,13 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
   }
 
   /// Build marketing button overlay that stays visible during panning
-  Widget _buildMarketingButtonOverlay(BuildContext context, Offset centerOffset, double tileWidth, double tileHeight) {
+  Widget _buildMarketingButtonOverlay(
+    BuildContext context,
+    Offset centerOffset,
+    double tileWidth,
+    double tileHeight, {
+    required bool visible,
+  }) {
     final gameState = ref.watch(gameStateProvider);
     
     if (gameState.marketingButtonGridX == null || gameState.marketingButtonGridY == null) {
@@ -2024,11 +2053,13 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
       left: transformedPoint.dx,
       top: transformedPoint.dy,
       child: MarketingButton(
+        key: _marketingKey,
         gridX: buttonGridX,
         gridY: buttonGridY,
         screenPosition: transformedPoint,
         tileWidth: tileWidth,
         tileHeight: tileHeight,
+        visible: visible,
       ),
     );
   }
