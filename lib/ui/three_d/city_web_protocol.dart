@@ -41,15 +41,18 @@ Map<String, Object?> lowPolyObjectJson(LowPolyObject object) {
 }
 
 /// The whole static scene: every drawn object, the figure's shape, the sky and the
-/// camera the city starts from. Sent when the city or its machines change.
+/// camera the city starts from. Sent when the city or its machines change; the page only
+/// moves the camera back to [home] when [resetCamera] is set.
 Map<String, Object?> cityScenePayload({
   required List<LowPolyObject> objects,
   required Color sky,
   required LowPolyCamera home,
   required double minDistance,
   required double maxDistance,
+  required bool resetCamera,
 }) {
   return {
+    'resetCamera': resetCamera,
     'sky': hexColour(sky),
     'minDistance': minDistance,
     'maxDistance': maxDistance,

@@ -180,8 +180,9 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
   // The static city as JSON, sent to the page when it changes.
   String? _scene3D;
   List<List<TileType>>? _scene3DGrid;
-  List<sim.Machine>? _scene3DMachines;
-  double? _scene3DBrightness;
+  // What the scene shows: the machines as drawn, and the lighting. The machines list
+  // is replaced on every simulation tick, so its identity says nothing about the scene.
+  String? _scene3DSignature;
   // Customers who walk past each machine on the pavement. Each machine has its own
   // walker, and its own record of the last time a customer bought from it.
   final Map<String, HumanPose> _passerPoses = {};
@@ -830,10 +831,9 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
     // Encoding the scene is the costly part, so reuse it until the grid, the
     // machines or the lighting change. Grid edits happen only while the map is
     // generated, and that reassigns _grid first.
-    if (_scene3D == null ||
-        !identical(_scene3DGrid, _grid) ||
-        !identical(_scene3DMachines, machines) ||
-        _scene3DBrightness != brightness) {
+    final signature = '$brightness|${_machinesSignature(machines)}';
+    final mapChanged = !identical(_scene3DGrid, _grid);
+    if (_scene3D == null || mapChanged || signature != _scene3DSignature) {
       final scene = buildCityScene(
         grid: _grid,
         roadDirections: _roadDirections,
@@ -846,10 +846,10 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
         home: defaultCityCamera(gridSize),
         minDistance: 6,
         maxDistance: 60,
+        resetCamera: mapChanged || _scene3DGrid == null,
       ));
       _scene3DGrid = _grid;
-      _scene3DMachines = machines;
-      _scene3DBrightness = brightness;
+      _scene3DSignature = signature;
     }
     final gameState = ref.watch(gameStateProvider);
     final trucks = ref.watch(trucksProvider);
@@ -879,6 +879,28 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
       background: background,
       onTap: _onCityTap,
     );
+  }
+
+  /// The parts of the machines the city draws: where each stands, what it is, and how
+  /// full its slots are. Sales change these, and nothing else on the list matters here.
+  String _machinesSignature(List<sim.Machine> machines) {
+    final out = StringBuffer();
+    for (final machine in machines) {
+      out
+        ..write(machine.id)
+        ..write(machine.zone.type.name)
+        ..write(machine.zone.x)
+        ..write(machine.zone.y)
+        ..write(machine.isBroken ? 'b' : 'w')
+        ..write(machine.currentCash > 0 ? 'c' : 'n');
+      for (final item in machine.inventory.values) {
+        out
+          ..write(item.product.name)
+          ..write(item.quantity);
+      }
+      out.write(';');
+    }
+    return out.toString();
   }
 
   /// A tap in the city, as the page reports it.

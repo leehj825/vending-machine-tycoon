@@ -299,8 +299,14 @@
     return mesh;
   }
 
+  let hasScene = false;
+
   window.city = {
     setScene(message) {
+      // Only a new map, or the first scene, moves the camera. Machines change often, and
+      // a scene resent for them must not undo the player's view.
+      const moveCamera = !hasScene || message.resetCamera;
+      hasScene = true;
       renderer.setClearColor(new THREE.Color(message.sky));
       rig = message.rig;
       minDistance = message.minDistance;
@@ -310,10 +316,13 @@
       home.yaw = message.home.yaw;
       home.pitch = message.home.pitch;
       home.distance = message.home.distance;
-      cam.target.copy(home.target);
-      cam.yaw = home.yaw;
-      cam.pitch = home.pitch;
-      cam.distance = home.distance;
+      if (moveCamera) {
+        glide = null;
+        cam.target.copy(home.target);
+        cam.yaw = home.yaw;
+        cam.pitch = home.pitch;
+        cam.distance = home.distance;
+      }
 
       disposeGroup(staticGroup);
       for (const walker of walkers.values()) {
