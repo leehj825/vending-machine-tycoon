@@ -40,7 +40,7 @@ const double _walkStride = 0.2;
 const double _runStride = 0.4;
 
 /// Scale from vexmarch's figure size (about 1.9 units tall) to a tile.
-const double _figureScale = 0.2;
+const double _figureScale = 0.13;
 
 /// How long a person keeps their walking pose after moving, so a briefly
 /// unchanged position between updates does not make them freeze.

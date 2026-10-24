@@ -856,9 +856,13 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
     const tutorialColor = Color(0xFFFFEB3B);
     const skin = Color(0xFFF1C27D);
     final objects = <LowPolyObject>[];
+    // People walk on the pavement, on the right of their heading. The road's centre is
+    // 0.4 tiles away, which leaves the body on the 0.2 wide pavement strip.
+    const walkOffset = 0.4;
     for (final pedestrian in _pedestrians) {
-      final cx = pedestrian.gridX + 0.5;
-      final cz = pedestrian.gridY + 0.5;
+      final heading = pedestrian.pose.yaw;
+      final cx = pedestrian.gridX + 0.5 - math.cos(heading) * walkOffset;
+      final cz = pedestrian.gridY + 0.5 + math.sin(heading) * walkOffset;
       final body = pedestrian == _tutorialPedestrian
           ? tutorialColor
           : bodyColors[pedestrian.personId % bodyColors.length];

@@ -60,7 +60,7 @@ Color _variant(List<Color> palette, int x, int y) =>
     palette[(x * 7 + y * 13 + x * y) % palette.length];
 
 const Color _pavement = Color(0xFFBDBDB5);
-const Color _kerb = Color(0xFFD9D4C7);
+const double _pavementWidth = 0.2;
 const Color _water = Color(0xFF4FC3F7);
 const Color _benchWood = Color(0xFF8D6E63);
 const Color _trunk = Color(0xFF7A5230);
@@ -145,49 +145,30 @@ LowPolyObject _groundTile(
   RoadDirection? road,
 ) {
   final m = LowPolyMeshBuilder(brightness: brightness);
-  // Sides of this tile that face a road, as (dx, dy) steps.
-  final roadSides = [
-    for (final step in const [(1, 0), (-1, 0), (0, 1), (0, -1)])
-      if (_isRoadAt(grid, x + step.$1, y + step.$2)) step,
-  ];
-
   if (type == TileType.road) {
-    m.flat(x + 0.0, y + 0.0, x + 1.0, y + 1.0, 0.0, _asphalt);
+    // The asphalt stops short of any side that faces grass or a building. The strip left
+    // behind is the pavement that people walk on.
+    final leftOpen = !_isRoadAt(grid, x - 1, y);
+    final rightOpen = !_isRoadAt(grid, x + 1, y);
+    final backOpen = !_isRoadAt(grid, x, y - 1);
+    final frontOpen = !_isRoadAt(grid, x, y + 1);
+    final x0 = leftOpen ? _pavementWidth : 0.0;
+    final x1 = rightOpen ? 1 - _pavementWidth : 1.0;
+    final y0 = backOpen ? _pavementWidth : 0.0;
+    final y1 = frontOpen ? 1 - _pavementWidth : 1.0;
+    m.flat(x + x0, y + y0, x + x1, y + y1, 0.0, _asphalt);
+    if (leftOpen) m.flat(x + 0.0, y + 0.0, x + _pavementWidth, y + 1.0, 0.005, _pavement);
+    if (rightOpen) m.flat(x + 1.0 - _pavementWidth, y + 0.0, x + 1.0, y + 1.0, 0.005, _pavement);
+    if (backOpen) m.flat(x + 0.0, y + 0.0, x + 1.0, y + _pavementWidth, 0.005, _pavement);
+    if (frontOpen) m.flat(x + 0.0, y + 1.0 - _pavementWidth, x + 1.0, y + 1.0, 0.005, _pavement);
     if (road == RoadDirection.vertical) {
       m.flat(x + 0.47, y + 0.1, x + 0.53, y + 0.9, 0.004, _lane);
     } else if (road == RoadDirection.horizontal) {
       m.flat(x + 0.1, y + 0.47, x + 0.9, y + 0.53, 0.004, _lane);
     }
-    // Kerbs where the road meets grass or a building.
-    for (final step in const [(1, 0), (-1, 0), (0, 1), (0, -1)]) {
-      if (_isRoadAt(grid, x + step.$1, y + step.$2)) continue;
-      const kerb = 0.1;
-      if (step.$1 == 1) {
-        m.flat(x + 1 - kerb, y + 0.0, x + 1.0, y + 1.0, 0.01, _kerb);
-      } else if (step.$1 == -1) {
-        m.flat(x + 0.0, y + 0.0, x + kerb, y + 1.0, 0.01, _kerb);
-      } else if (step.$2 == 1) {
-        m.flat(x + 0.0, y + 1 - kerb, x + 1.0, y + 1.0, 0.01, _kerb);
-      } else {
-        m.flat(x + 0.0, y + 0.0, x + 1.0, y + kerb, 0.01, _kerb);
-      }
-    }
   } else {
     final grass = Color.lerp(_grassA, _grassB, _cellNoise(x, y)) ?? _grassA;
     m.flat(x + 0.0, y + 0.0, x + 1.0, y + 1.0, 0.0, grass);
-    // A pavement strip along every side that faces a road.
-    for (final step in roadSides) {
-      const walk = 0.16;
-      if (step.$1 == 1) {
-        m.flat(x + 1 - walk, y + 0.0, x + 1.0, y + 1.0, 0.006, _pavement);
-      } else if (step.$1 == -1) {
-        m.flat(x + 0.0, y + 0.0, x + walk, y + 1.0, 0.006, _pavement);
-      } else if (step.$2 == 1) {
-        m.flat(x + 0.0, y + 1 - walk, x + 1.0, y + 1.0, 0.006, _pavement);
-      } else {
-        m.flat(x + 0.0, y + 0.0, x + 1.0, y + walk, 0.006, _pavement);
-      }
-    }
     if (type == TileType.park) {
       // Paths cross the park, with a pond and a bench on the grass.
       m
@@ -453,8 +434,8 @@ LowPolyObject _vendingMachineOnTile(
 
 /// A delivery truck on its road tile, turned to face the way it is driving.
 LowPolyObject buildTruckObject(sim.Truck truck, double brightness) {
-  final cx = truck.currentX - 0.5;
-  final cz = truck.currentY - 0.5;
+  final baseX = truck.currentX - 0.5;
+  final baseZ = truck.currentY - 0.5;
   var dx = truck.targetX - truck.currentX;
   var dy = truck.targetY - truck.currentY;
   if (truck.path.isNotEmpty && truck.pathIndex < truck.path.length) {
@@ -464,6 +445,11 @@ LowPolyObject buildTruckObject(sim.Truck truck, double brightness) {
   }
   final alongX = dx.abs() > dy.abs();
   final forward = (alongX ? dx : dy) < 0 ? -1.0 : 1.0;
+  // Drive on the right: the truck sits 0.15 to the right of its heading. Looking down on
+  // the map, the right of heading (fx, fz) is (-fz, fx).
+  const laneOffset = 0.15;
+  final cx = alongX ? baseX : baseX - laneOffset * forward;
+  final cz = alongX ? baseZ + laneOffset * forward : baseZ;
 
   // Local coordinates: u runs along the direction of travel, v across it.
   double px(double u, double v) => alongX ? cx + u * forward : cx + v;
