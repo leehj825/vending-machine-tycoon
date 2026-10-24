@@ -16,12 +16,17 @@ class HumanClip {
     required this.quats,
     required this.hipY,
     required this.hipZ,
+    this.stride = _walkStride,
   });
 
   final int frames;
   final List<double> quats;
   final List<double> hipY;
   final List<double> hipZ;
+
+  /// Distance covered by one cycle, in the city's tiles. A figure's feet keep pace with the
+  /// ground when it moves this far per cycle.
+  final double stride;
 }
 
 /// Animation state of one person, advanced each time they are drawn.
@@ -278,7 +283,8 @@ bool advancePlayerPose(HumanPose pose, double x, double z, double facing, bool r
       final fz = math.cos(facing);
       pose.dirF = ux * fx + uz * fz;
       pose.dirS = ux * fz - uz * fx;
-      pose.phase += dist / (running ? _runStride : _walkStride);
+      // The cycle length comes from the clip being played, so the feet keep pace with the ground.
+      pose.phase += dist / _clipFor(pose, true, running)!.stride;
       pose.lastMovedAt = now;
     }
   }
