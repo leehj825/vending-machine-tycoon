@@ -1,4 +1,7 @@
-name: Build and Sign Android AAB
+name: Build Release (main only)
+
+# Release builds run only on main, so they come from merged code. Other branches get debug APKs
+# from build_apk.yml.
 
 on:
   push:
@@ -8,6 +11,8 @@ on:
 
 jobs:
   build:
+    # Release builds only on main, even when started by hand from another branch.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest # (Optional: Change this to ubuntu-24.04 if you want to silence the OS notice)
 
     steps:
@@ -60,3 +65,12 @@ jobs:
         with:
           name: release-aab
           path: build/app/outputs/bundle/release/app-release.aab
+
+      - name: Build Release APK
+        run: flutter build apk --release
+
+      - name: Upload release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk

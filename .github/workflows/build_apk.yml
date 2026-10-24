@@ -1,9 +1,11 @@
-name: Build Android APK
+name: Build Debug APK
 
+# Debug builds only, for every branch except main. Release builds run on main only,
+# in build_aab.yml.
 on:
   push:
-    branches:
-      - '**'
+    branches-ignore:
+      - main
 
 jobs:
   build:
@@ -41,12 +43,3 @@ jobs:
         with:
           name: debug-apk
           path: build/app/outputs/flutter-apk/app-debug.apk
-
-      - name: Build APK
-        run: flutter build apk --release
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: release-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
