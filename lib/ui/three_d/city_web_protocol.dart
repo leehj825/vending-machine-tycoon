@@ -18,6 +18,7 @@ String hexColour(Color c) => '#${(c.toARGB32() & 0xFFFFFF).toRadixString(16).pad
 /// What a tap on this object should report, or null when it is not tappable.
 Map<String, Object?>? _pickFor(Object? payload) {
   if (payload is CityCell) return {'kind': 'cell', 'x': payload.x, 'y': payload.y};
+  if (payload is CollectTarget) return {'kind': 'collect', 'machineId': payload.machineId};
   if (identical(payload, marketingTapTarget)) return {'kind': 'marketing'};
   return null;
 }

@@ -584,6 +584,64 @@ void _facadeDetail(
   }
 }
 
+/// What a tap on a machine's cash coin collects.
+class CollectTarget {
+  const CollectTarget(this.machineId);
+
+  final String machineId;
+}
+
+/// Height markers float at over a tile of [type]: just above its roof.
+double markerHeight(TileType type) => (_bodies[type]?.$5 ?? 0.6) + 0.45;
+
+/// A downward arrow over a building that can be bought: green when the cash covers it,
+/// grey when it does not. A tap on it works like a tap on the building.
+LowPolyObject buildPurchaseMarker({
+  required int x,
+  required int y,
+  required TileType type,
+  required bool affordable,
+  required double bob,
+  required double brightness,
+}) {
+  final h = markerHeight(type) + bob;
+  final m = LowPolyMeshBuilder(brightness: brightness)
+    ..cone(x + 0.5, y + 0.5, 0.22, 6, h + 0.3, h,
+        affordable ? const Color(0xFF43A047) : const Color(0xFF9E9E9E));
+  return m.build(center: Vec3(x + 0.5, h, y + 0.5), payload: CityCell(x, y, type));
+}
+
+/// A small blue plate over a building the player has bought.
+LowPolyObject buildOwnedMarker({
+  required int x,
+  required int y,
+  required TileType type,
+  required double bob,
+  required double brightness,
+}) {
+  final h = markerHeight(type) + bob;
+  final m = LowPolyMeshBuilder(brightness: brightness)
+    ..box(x + 0.4, h, y + 0.46, x + 0.6, h + 0.06, y + 0.54, const Color(0xFF1E88E5))
+    ..box(x + 0.44, h + 0.06, y + 0.48, x + 0.56, h + 0.07, y + 0.52, const Color(0xFFFFFFFF));
+  return m.build(center: Vec3(x + 0.5, h, y + 0.5));
+}
+
+/// A gold coin floating above a machine that has cash to collect. Tapping it collects.
+LowPolyObject buildCollectCoin({
+  required String machineId,
+  required double x,
+  required double z,
+  required double height,
+  required double bob,
+  required double brightness,
+}) {
+  final h = height + bob;
+  const gold = Color(0xFFF2C94C);
+  final m = LowPolyMeshBuilder(brightness: brightness)
+    ..prism(x, z, 0.12, 12, h, h + 0.05, const Color(0xFFC9963A), top: gold);
+  return m.build(center: Vec3(x, h, z), payload: CollectTarget(machineId));
+}
+
 /// Scale from the machine model's own size (about 2 units tall) to a tile. At this
 /// size it is as tall as a person.
 const double _machineScale = 0.13;

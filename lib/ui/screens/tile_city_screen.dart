@@ -874,6 +874,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
           rushHour: gameState.isRushHour,
           brightness: brightness,
         ),
+      ..._tileMarkers(machines, brightness, ref.watch(cashProvider)),
     ];
     final frame = jsonEncode(cityFrameJson(
       walkers: [
@@ -912,6 +913,51 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
     return out.toString();
   }
 
+  /// Markers over the buildings: a green or grey arrow over each one that can be bought,
+  /// a blue plate over each one already bought, and a coin over each machine with cash.
+  /// They bob gently, so they are rebuilt every frame.
+  List<LowPolyObject> _tileMarkers(List<sim.Machine> machines, double brightness, double cash) {
+    final seconds = DateTime.now().millisecondsSinceEpoch / 1000.0;
+    final ownedAt = <String, sim.Machine>{
+      for (final machine in machines)
+        '${(machine.zone.x - 1).floor()},${(machine.zone.y - 1).floor()}': machine,
+    };
+    final markers = <LowPolyObject>[];
+    for (var y = 0; y < _grid.length; y++) {
+      for (var x = 0; x < _grid[y].length; x++) {
+        final type = _grid[y][x];
+        final zone = _tileTypeToZoneType(type);
+        if (zone == null) continue;
+        final bob = math.sin(seconds * 2.5 + x * 0.9 + y * 1.7) * 0.05;
+        final machine = ownedAt['$x,$y'];
+        if (machine == null) {
+          markers.add(buildPurchaseMarker(
+            x: x,
+            y: y,
+            type: type,
+            affordable: cash >= MachinePrices.getPrice(zone),
+            bob: bob,
+            brightness: brightness,
+          ));
+          continue;
+        }
+        markers.add(buildOwnedMarker(x: x, y: y, type: type, bob: bob, brightness: brightness));
+        if (machine.currentCash > 0) {
+          final (ax, az) = machineAnchor(_grid, x, y);
+          markers.add(buildCollectCoin(
+            machineId: machine.id,
+            x: ax,
+            z: az,
+            height: markerHeight(type) + 0.3,
+            bob: bob,
+            brightness: brightness,
+          ));
+        }
+      }
+    }
+    return markers;
+  }
+
   /// A tap in the city, as the page reports it.
   void _onCityTap(Map<String, Object?> target) {
     switch (target['kind']) {
@@ -926,6 +972,17 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
             _handlePedestrianTap(pedestrian);
             return;
           }
+        }
+      case 'collect':
+        final machineId = target['machineId']! as String;
+        final collected = ref.read(gameControllerProvider.notifier).collectMachineCash(machineId);
+        if (collected > 0) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Collected \$${collected.toStringAsFixed(2)}'),
+              duration: const Duration(seconds: 1),
+            ),
+          );
         }
       case 'marketing':
         _marketingKey.currentState?.tap();
