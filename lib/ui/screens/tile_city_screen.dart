@@ -1639,7 +1639,8 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
       ..._pedestrianObjects3D(brightness),
     ];
     return LowPolyView(
-      objects: [..._scene3D!, ...dynamicObjects],
+      objects: _scene3D!,
+      overlay: dynamicObjects,
       camera: defaultCityCamera(gridSize),
       background: isNight ? cityNightSky : cityDaySky,
       minDistance: 10,

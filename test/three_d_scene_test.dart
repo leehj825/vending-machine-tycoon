@@ -183,6 +183,33 @@ void main() {
     );
   });
 
+  testWidgets('static scene is cached and overlay redraws without errors', (tester) async {
+    final scene = _testScene();
+    final overlay = buildMarketingMarker(
+      gridX: 2,
+      gridY: 2,
+      rushHour: false,
+      brightness: 1.0,
+    );
+    Widget view(List<LowPolyObject> moving) => MaterialApp(
+          home: SizedBox(
+            width: _viewport.width,
+            height: _viewport.height,
+            child: LowPolyView(
+              objects: scene,
+              overlay: moving,
+              camera: defaultCityCamera(_size),
+              background: cityDaySky,
+            ),
+          ),
+        );
+    await tester.pumpWidget(view(overlay));
+    await tester.pump();
+    await tester.pumpWidget(view(overlay.reversed.toList()));
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('vending machine renders empty and stocked', (tester) async {
     await tester.pumpWidget(
       MaterialApp(

@@ -411,10 +411,10 @@ class LowPolyProjector {
     final z = d.dot(_forward);
     if (z < _nearPlane) return null;
     final scale = _focal / z;
-    return Offset(
-      _centerX + d.dot(_right) * scale,
-      _centerY - d.dot(_up) * scale,
-    );
+    final x = _centerX + d.dot(_right) * scale;
+    final y = _centerY - d.dot(_up) * scale;
+    if (!x.isFinite || !y.isFinite) return null;
+    return Offset(x, y);
   }
 }
 
@@ -485,81 +485,182 @@ Color _shade(Color c, double k) => Color.from(
       blue: (c.b * k).clamp(0.0, 1.0).toDouble(),
     );
 
+/// Draws objects onto [canvas]: the background first, then every drawn
+/// object in draw order. Triangles are batched into a few vertex calls.
+void _drawObjects(
+  Canvas canvas,
+  Size size,
+  List<LowPolyObject> objects,
+  LowPolyCamera camera,
+  Color background,
+) {
+  canvas.drawRect(Offset.zero & size, Paint()..color = background);
+
+  final projector = LowPolyProjector(camera, size);
+  final eye = projector.eye;
+  final positions = <Offset>[];
+  final colors = <Color>[];
+
+  void flush() {
+    if (positions.isEmpty) return;
+    final vertices = ui.Vertices(ui.VertexMode.triangles, positions, colors: colors);
+    canvas.drawVertices(vertices, BlendMode.dst, Paint());
+    positions.clear();
+    colors.clear();
+  }
+
+  for (final object in lowPolyDrawOrder(objects, projector)) {
+    if (!object.drawn) continue;
+    for (final tri in object.triangles) {
+      if (!_facesEye(tri, eye)) continue;
+      final pa = projector.project(tri.a);
+      final pb = projector.project(tri.b);
+      final pc = projector.project(tri.c);
+      if (pa == null || pb == null || pc == null) continue;
+      positions
+        ..add(pa)
+        ..add(pb)
+        ..add(pc);
+      colors
+        ..add(tri.color)
+        ..add(tri.color)
+        ..add(tri.color);
+      if (positions.length >= LowPolyPainter.maxVerticesPerBatch) flush();
+    }
+  }
+  flush();
+}
+
+/// Keeps the static part of a scene as one image, so each frame only redraws
+/// the objects that move. The image is rebuilt when the objects, camera,
+/// size, background or pixel ratio change.
+class LowPolyStaticLayer {
+  ui.Image? _image;
+  List<LowPolyObject>? _objects;
+  LowPolyCamera? _camera;
+  Size? _size;
+  Color? _background;
+  double? _pixelRatio;
+
+  /// Returns the cached image, rebuilding it first when anything has changed.
+  ui.Image? resolve({
+    required List<LowPolyObject> objects,
+    required LowPolyCamera camera,
+    required Size size,
+    required Color background,
+    required double pixelRatio,
+  }) {
+    final valid = _image != null &&
+        identical(_objects, objects) &&
+        identical(_camera, camera) &&
+        _size == size &&
+        _background == background &&
+        _pixelRatio == pixelRatio;
+    if (valid) return _image;
+
+    _image?.dispose();
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+    canvas.scale(pixelRatio);
+    _drawObjects(canvas, size, objects, camera, background);
+    final picture = recorder.endRecording();
+    _image = picture.toImageSync(
+      (size.width * pixelRatio).ceil(),
+      (size.height * pixelRatio).ceil(),
+    );
+    picture.dispose();
+
+    _objects = objects;
+    _camera = camera;
+    _size = size;
+    _background = background;
+    _pixelRatio = pixelRatio;
+    return _image;
+  }
+
+  void dispose() {
+    _image?.dispose();
+    _image = null;
+    _objects = null;
+  }
+}
+
 /// Paints lowpoly objects with [camera]. The background is painted first.
+///
+/// [objects] is the static scene and can be cached in [layer]. [overlay]
+/// holds the moving objects, which are drawn on top of the scene each frame.
 class LowPolyPainter extends CustomPainter {
   LowPolyPainter({
     required this.objects,
+    required this.overlay,
     required this.camera,
     required this.background,
+    required this.layer,
+    required this.pixelRatio,
   });
 
   final List<LowPolyObject> objects;
+  final List<LowPolyObject> overlay;
   final LowPolyCamera camera;
   final Color background;
+  final LowPolyStaticLayer? layer;
+  final double pixelRatio;
 
-  /// Vertices per draw call. Keeps each batch well below GPU limits.
-  static const int _maxVerticesPerBatch = 60000;
+  /// Vertices per draw call. Kept well below GPU buffer limits.
+  static const int maxVerticesPerBatch = 30000;
 
   @override
   void paint(Canvas canvas, Size size) {
-    canvas.drawRect(Offset.zero & size, Paint()..color = background);
-
-    final projector = LowPolyProjector(camera, size);
-    final eye = projector.eye;
-    final positions = <Offset>[];
-    final colors = <Color>[];
-
-    void flush() {
-      if (positions.isEmpty) return;
-      final vertices = ui.Vertices(ui.VertexMode.triangles, positions, colors: colors);
-      canvas.drawVertices(vertices, BlendMode.dst, Paint());
-      positions.clear();
-      colors.clear();
+    final cached = layer?.resolve(
+      objects: objects,
+      camera: camera,
+      size: size,
+      background: background,
+      pixelRatio: pixelRatio,
+    );
+    if (cached != null) {
+      canvas.drawImageRect(
+        cached,
+        Rect.fromLTWH(0, 0, cached.width.toDouble(), cached.height.toDouble()),
+        Offset.zero & size,
+        Paint(),
+      );
+    } else {
+      _drawObjects(canvas, size, objects, camera, background);
     }
-
-    for (final object in lowPolyDrawOrder(objects, projector)) {
-      if (!object.drawn) continue;
-      for (final tri in object.triangles) {
-        if (!_facesEye(tri, eye)) continue;
-        final pa = projector.project(tri.a);
-        final pb = projector.project(tri.b);
-        final pc = projector.project(tri.c);
-        if (pa == null || pb == null || pc == null) continue;
-        positions
-          ..add(pa)
-          ..add(pb)
-          ..add(pc);
-        colors
-          ..add(tri.color)
-          ..add(tri.color)
-          ..add(tri.color);
-        if (positions.length >= _maxVerticesPerBatch) flush();
-      }
+    if (overlay.isNotEmpty) {
+      _drawObjects(canvas, size, overlay, camera, Colors.transparent);
     }
-    flush();
   }
 
   @override
   bool shouldRepaint(LowPolyPainter oldDelegate) =>
       !identical(oldDelegate.objects, objects) ||
+      !identical(oldDelegate.overlay, overlay) ||
       !identical(oldDelegate.camera, camera) ||
-      oldDelegate.background != background;
+      oldDelegate.background != background ||
+      oldDelegate.pixelRatio != pixelRatio;
 }
 
 /// Interactive lowpoly view. One finger orbits, a pinch or the scroll wheel
 /// zooms, and a short tap reports the payload under the finger.
+///
+/// [objects] is the static scene. [overlay] holds the moving objects, which
+/// change often and are drawn on top of the scene.
 class LowPolyView extends StatefulWidget {
   const LowPolyView({
     super.key,
     required this.objects,
     required this.camera,
     required this.background,
+    this.overlay = const [],
     this.minDistance = 4,
     this.maxDistance = 60,
     this.onTapTarget,
   });
 
   final List<LowPolyObject> objects;
+  final List<LowPolyObject> overlay;
   final LowPolyCamera camera;
   final Color background;
   final double minDistance;
@@ -578,10 +679,17 @@ class _LowPolyViewState extends State<LowPolyView> {
 
   late LowPolyCamera _camera = widget.camera;
   final Map<int, Offset> _pointers = {};
+  final LowPolyStaticLayer _layer = LowPolyStaticLayer();
   Offset? _downAt;
   DateTime? _downTime;
   bool _tapCandidate = false;
   double? _pinchSpan;
+
+  @override
+  void dispose() {
+    _layer.dispose();
+    super.dispose();
+  }
 
   double? _span() {
     if (_pointers.length < 2) return null;
@@ -666,7 +774,7 @@ class _LowPolyViewState extends State<LowPolyView> {
     final size = box?.size;
     if (size == null) return;
     final target = lowPolyPick(
-      objects: widget.objects,
+      objects: [...widget.overlay, ...widget.objects],
       camera: _camera,
       size: size,
       at: at,
@@ -676,6 +784,9 @@ class _LowPolyViewState extends State<LowPolyView> {
 
   @override
   Widget build(BuildContext context) {
+    // While a finger is moving the camera, the cached image would be stale every
+    // frame, so draw the scene directly until the gesture ends.
+    final interacting = _pointers.isNotEmpty;
     return Listener(
       behavior: HitTestBehavior.opaque,
       onPointerDown: _onPointerDown,
@@ -686,8 +797,11 @@ class _LowPolyViewState extends State<LowPolyView> {
       child: CustomPaint(
         painter: LowPolyPainter(
           objects: widget.objects,
+          overlay: widget.overlay,
           camera: _camera,
           background: widget.background,
+          layer: interacting ? null : _layer,
+          pixelRatio: MediaQuery.devicePixelRatioOf(context),
         ),
         child: const SizedBox.expand(),
       ),
