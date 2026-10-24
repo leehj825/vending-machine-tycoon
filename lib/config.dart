@@ -423,6 +423,9 @@ class AppConfig {
   /// Machine status popup dialog dimensions (relative to screen)
   static const double machineStatusDialogWidthFactor = 0.9; // 90% of screen width
   static const double machineStatusDialogHeightFactor = 0.8; // 80% of screen height
+  /// Widest a machine dialog may be, as a share of screen height. Landscape screens are short,
+  /// so this keeps the dialog from running off the bottom.
+  static const double machineStatusDialogLandscapeHeightFactor = 0.6;
   static const double machineStatusDialogInsetPaddingFactor = 0.04; // Inset padding relative to screen
   
   /// Machine status popup sizing (relative to dialog width) - No min/max to avoid small screen restrictions

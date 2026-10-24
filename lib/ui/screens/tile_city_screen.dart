@@ -2396,7 +2396,10 @@ class _MachineViewPanel extends ConsumerWidget {
 
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
-    final panelMaxWidth = screenWidth * AppConfig.machineStatusDialogWidthFactor;
+    final panelMaxWidth = math.min(
+      screenWidth * AppConfig.machineStatusDialogWidthFactor,
+      screenHeight * AppConfig.machineStatusDialogLandscapeHeightFactor,
+    );
     final padding = panelMaxWidth * AppConfig.machineStatusDialogPaddingFactor;
 
     return Container(
@@ -3079,7 +3082,12 @@ class _MachinePurchaseDialog extends ConsumerWidget {
     // Calculate the actual dialog width
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
-    final dialogMaxWidth = screenWidth * AppConfig.machineStatusDialogWidthFactor;
+    // In landscape the screen is short, so the width also follows the height. In portrait
+    // the width factor is the smaller of the two.
+    final dialogMaxWidth = math.min(
+      screenWidth * AppConfig.machineStatusDialogWidthFactor,
+      screenHeight * AppConfig.machineStatusDialogLandscapeHeightFactor,
+    );
     
     return Dialog(
       backgroundColor: Colors.transparent,
