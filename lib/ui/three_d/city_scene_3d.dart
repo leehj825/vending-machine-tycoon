@@ -388,14 +388,19 @@ List<LowPolyObject> _buildingObjects(
       _lamp(m, x + 0.93, y + 0.93);
       break;
     case TileType.gym:
+      // A wide brick hall with rooftop fans, and a tall steel front tower with a red sign.
+      const hall = Color(0xFFC0543A);
+      const steel = Color(0xFF37474F);
       m
-        ..box(x + 0.08, 0, y + 0.1, x + 0.92, 0.7, y + 0.9, _brick, top: const Color(0xFF6B7280))
-        ..windows(x + 0.08, y + 0.1, x + 0.92, y + 0.9, 0.14, 0.58,
-            cols: 4, rows: 1, glass: _glass, frame: _trim, lit: _warm)
-        ..box(x + 0.44, 0, y + 0.9, x + 0.56, 0.3, y + 0.94, _glassDark)
-        ..box(x + 0.25, 0.7, y + 0.84, x + 0.75, 0.8, y + 0.92, _red)
-        ..box(x + 0.3, 0.74, y + 0.92, x + 0.7, 0.76, y + 0.935, _white)
-        ..box(x + 0.35, 0.7, y + 0.35, x + 0.65, 0.8, y + 0.65, _darkGrey);
+        ..box(x + 0.06, 0, y + 0.12, x + 0.94, 0.5, y + 0.9, hall, top: const Color(0xFF6B7280))
+        ..windows(x + 0.06, y + 0.12, x + 0.94, y + 0.9, 0.12, 0.34,
+            cols: 5, rows: 1, glass: _glass, frame: _trim, lit: _warm)
+        ..box(x + 0.3, 0, y + 0.62, x + 0.7, 0.86, y + 0.92, steel, top: const Color(0xFF263238))
+        ..box(x + 0.36, 0.2, y + 0.92, x + 0.64, 0.7, y + 0.94, _glass)
+        ..box(x + 0.3, 0.72, y + 0.6, x + 0.7, 0.84, y + 0.94, _red)
+        ..box(x + 0.4, 0.76, y + 0.94, x + 0.6, 0.8, y + 0.96, _white)
+        ..prism(x + 0.25, y + 0.35, 0.1, 6, 0.5, 0.62, const Color(0xFF90A4AE))
+        ..prism(x + 0.7, y + 0.35, 0.1, 6, 0.5, 0.62, const Color(0xFF90A4AE));
       _lamp(m, x + 0.93, y + 0.93);
       break;
     case TileType.office:
@@ -412,15 +417,22 @@ List<LowPolyObject> _buildingObjects(
       _lamp(m, x + 0.93, y + 0.93);
       break;
     case TileType.school:
+      // A two-storey wing with a clock tower at the back, a flagpole, and a sign over the door.
+      const cream = Color(0xFFF2D6A2);
+      const creamTop = Color(0xFFE0BE85);
+      const tower = Color(0xFFD9B77E);
       m
-        ..box(x + 0.1, 0, y + 0.12, x + 0.9, 0.5, y + 0.88, const Color(0xFFF4E3B5))
-        ..windows(x + 0.1, y + 0.12, x + 0.9, y + 0.88, 0.14, 0.44,
-            cols: 4, rows: 1, glass: _glass, frame: _trim, lit: _warm)
-        ..box(x + 0.42, 0, y + 0.88, x + 0.58, 0.24, y + 0.93, _brown)
-        ..box(x + 0.45, 0.3, y + 0.88, x + 0.55, 0.4, y + 0.92, _white)
-        ..roof(x + 0.08, y + 0.1, x + 0.92, y + 0.9, 0.5, 0.8, const Color(0xFFC0392B))
-        ..box(x + 0.88, 0, y + 0.95, x + 0.92, 0.9, y + 0.99, _grey)
-        ..box(x + 0.92, 0.72, y + 0.96, x + 0.99, 0.9, y + 0.97, _red);
+        ..box(x + 0.08, 0, y + 0.22, x + 0.92, 0.46, y + 0.88, cream, top: creamTop)
+        ..windows(x + 0.08, y + 0.22, x + 0.92, y + 0.88, 0.1, 0.34,
+            cols: 6, rows: 1, glass: _glass, frame: _trim, lit: _warm)
+        ..box(x + 0.38, 0, y + 0.08, x + 0.62, 0.8, y + 0.32, tower, top: creamTop)
+        ..windows(x + 0.38, y + 0.08, x + 0.62, y + 0.32, 0.5, 0.2,
+            cols: 1, rows: 1, glass: _glass, frame: _trim)
+        ..roof(x + 0.35, y + 0.05, x + 0.65, y + 0.35, 0.8, 1.0, const Color(0xFFC0392B))
+        ..box(x + 0.44, 0, y + 0.88, x + 0.56, 0.26, y + 0.93, _brown)
+        ..box(x + 0.34, 0.28, y + 0.88, x + 0.66, 0.36, y + 0.93, const Color(0xFFFFD54F))
+        ..box(x + 0.2, 0.46, y + 0.5, x + 0.23, 0.9, y + 0.53, _grey)
+        ..box(x + 0.23, 0.78, y + 0.5, x + 0.36, 0.86, y + 0.53, _red);
       _lamp(m, x + 0.07, y + 0.93);
       break;
     case TileType.gasStation:
@@ -475,13 +487,18 @@ List<LowPolyObject> _buildingObjects(
       }
       break;
     case TileType.subway:
+      // A stair entrance with a canopy, and a tall roundel sign on a pole.
+      const blue = Color(0xFF1565C0);
       m
-        ..box(x + 0.1, 0, y + 0.14, x + 0.9, 0.32, y + 0.86, const Color(0xFF3F6E9A),
-            top: const Color(0xFF2E5A80))
-        ..box(x + 0.36, 0.32, y + 0.6, x + 0.64, 0.56, y + 0.86, const Color(0xFFA7D8F0))
-        ..box(x + 0.4, 0.56, y + 0.62, x + 0.6, 0.6, y + 0.84, const Color(0xFFFFD54F))
-        ..box(x + 0.34, 0, y + 0.86, x + 0.66, 0.08, y + 0.95, _grey)
-        ..box(x + 0.36, 0.08, y + 0.88, x + 0.64, 0.16, y + 0.93, _grey);
+        ..box(x + 0.1, 0, y + 0.1, x + 0.9, 0.04, y + 0.9, const Color(0xFFBDBDB5))
+        ..box(x + 0.32, 0, y + 0.3, x + 0.68, 0.3, y + 0.7, const Color(0xFF2E5A80),
+            top: const Color(0xFF1F3F5C))
+        ..box(x + 0.36, 0.04, y + 0.66, x + 0.64, 0.1, y + 0.72, const Color(0xFF263238))
+        ..box(x + 0.4, 0.1, y + 0.7, x + 0.6, 0.16, y + 0.76, const Color(0xFF263238))
+        ..box(x + 0.28, 0.3, y + 0.26, x + 0.72, 0.34, y + 0.74, _grey, top: const Color(0xFF9AA5B1))
+        ..box(x + 0.7, 0, y + 0.5, x + 0.74, 1.05, y + 0.54, _darkGrey)
+        ..prism(x + 0.72, y + 0.52, 0.14, 14, 1.0, 1.12, const Color(0xFFE53935))
+        ..box(x + 0.56, 1.04, y + 0.5, x + 0.88, 1.08, y + 0.56, blue);
       _lamp(m, x + 0.07, y + 0.93);
       break;
     case TileType.hospital:
@@ -497,19 +514,23 @@ List<LowPolyObject> _buildingObjects(
       _lamp(m, x + 0.93, y + 0.93);
       break;
     case TileType.university:
+      // Limestone block with a columned portico, a pediment, and a dome on the drum.
+      const stone = Color(0xFFD8C3A5);
+      const stoneTop = Color(0xFFB89F82);
       const dome = Color(0xFF3F51B5);
       m
-        ..box(x + 0.1, 0, y + 0.14, x + 0.9, 0.72, y + 0.86, const Color(0xFFD8C3A5),
-            top: const Color(0xFFB89F82))
-        ..windows(x + 0.1, y + 0.14, x + 0.9, y + 0.86, 0.12, 0.66,
-            cols: 5, rows: 2, glass: _glass, frame: _trim, lit: _warm)
-        ..box(x + 0.14, 0, y + 0.86, x + 0.86, 0.05, y + 0.96, const Color(0xFFEEE6D8))
-        ..box(x + 0.2, 0.72, y + 0.84, x + 0.8, 0.78, y + 0.94, const Color(0xFFD8C3A5))
-        ..prism(x + 0.5, y + 0.5, 0.24, 8, 0.72, 0.84, dome)
-        ..cone(x + 0.5, y + 0.5, 0.24, 8, 0.84, 1.02, dome);
-      // Columns on the front.
-      for (final cx in [0.24, 0.4, 0.6, 0.76]) {
-        m.box(x + cx - 0.03, 0.05, y + 0.86, x + cx + 0.03, 0.72, y + 0.9, _white);
+        ..box(x + 0.1, 0, y + 0.16, x + 0.9, 0.7, y + 0.8, stone, top: stoneTop)
+        ..windows(x + 0.1, y + 0.16, x + 0.9, y + 0.8, 0.12, 0.5,
+            cols: 6, rows: 2, glass: _glass, frame: _trim, lit: _warm)
+        ..box(x + 0.22, 0, y + 0.8, x + 0.78, 0.06, y + 0.95, const Color(0xFFEEE6D8))
+        ..box(x + 0.24, 0.6, y + 0.78, x + 0.76, 0.68, y + 0.92, const Color(0xFFEEE6D8))
+        ..roof(x + 0.22, y + 0.76, x + 0.78, y + 0.92, 0.68, 0.8, const Color(0xFFE8DCC8))
+        ..box(x + 0.36, 0.7, y + 0.36, x + 0.64, 0.82, y + 0.64, stone, top: stoneTop)
+        ..prism(x + 0.5, y + 0.5, 0.2, 10, 0.82, 0.92, dome)
+        ..cone(x + 0.5, y + 0.5, 0.2, 10, 0.92, 1.08, dome);
+      // Columns across the portico.
+      for (final cx in [0.27, 0.4, 0.6, 0.73]) {
+        m.box(x + cx - 0.03, 0.06, y + 0.82, x + cx + 0.03, 0.6, y + 0.88, _white);
       }
       _lamp(m, x + 0.07, y + 0.93);
       break;
