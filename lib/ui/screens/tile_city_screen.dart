@@ -21,6 +21,7 @@ import '../widgets/machine_interior_dialog.dart';
 import '../widgets/marketing_button.dart';
 import '../three_d/city_scene_3d.dart';
 import '../three_d/city_web_protocol.dart';
+import '../three_d/people_look.dart';
 import '../three_d/city_webview.dart';
 import '../three_d/lowpoly_engine.dart';
 import '../theme/vex_theme.dart';
@@ -955,37 +956,32 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
 
   /// Walkers on the pavement, as frame entries. A tap on one is found by its key.
   List<Map<String, Object?>> _pedestrianWalkers(double brightness) {
-    const bodyColors = [
-      Color(0xFF3949AB),
-      Color(0xFFD81B60),
-      Color(0xFF43A047),
-      Color(0xFFFB8C00),
-      Color(0xFF8E24AA),
-    ];
-    const tutorialColor = Color(0xFFFFEB3B);
+    const tutorialShirt = Color(0xFFFFEB3B);
     final now = DateTime.now();
     final walkers = <Map<String, Object?>>[];
     for (final pedestrian in _pedestrians) {
-      // Heading comes from the walk along the tile centres. The side offset is added only
-      // for drawing; using the drawn spot would feed the offset back into the heading.
-      final centreX = pedestrian.gridX + 0.5;
-      final centreZ = pedestrian.gridY + 0.5;
-      final cx = centreX + pedestrian.offsetX;
-      final cz = centreZ + pedestrian.offsetZ;
-      final body = pedestrian == _tutorialPedestrian
-          ? tutorialColor
-          : bodyColors[pedestrian.personId % bodyColors.length];
+      final cx = pedestrian.gridX + 0.5 + pedestrian.offsetX;
+      final cz = pedestrian.gridY + 0.5 + pedestrian.offsetZ;
+      final look = personLook(pedestrian.personId);
+      // The tutorial walker is yellow, so it is easy to find.
+      final isTutorial = pedestrian == _tutorialPedestrian;
       // Walks while moving, and runs once a tap sends them to a machine.
       final running = pedestrian.isHeadingToShop;
-      final moving = advanceHumanPose(pedestrian.pose, centreX, centreZ, running, now);
+      final moving = advanceHumanPose(pedestrian.pose, cx, cz, running, now);
       walkers.add(walkerJson(
         key: 'p${pedestrian.personId}',
         x: cx,
         z: cz,
         yaw: pedestrian.pose.yaw,
         scale: _walkerScale,
-        shirt: body,
-        cap: const Color(0xFFB79A52),
+        look: PersonLook(
+          shirt: isTutorial ? tutorialShirt : look.shirt,
+          pants: look.pants,
+          skin: look.skin,
+          hair: look.hair,
+          hat: look.hat,
+          bag: look.bag,
+        ),
         brightness: brightness,
         bones: humanBoneValues(pedestrian.pose, running, moving),
       ));
@@ -1112,10 +1108,12 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
     final (ax, az) = machineAnchor(_grid, gx, gy);
     final front = frontTile(_grid, gx, gy);
     final yaw = front == null ? 0.0 : math.atan2((front.$1 - gx).toDouble(), (front.$2 - gy).toDouble());
-    _mapController.focusOn(Vec3(ax, 0.3, az), distance: 1.8, pitch: 0.34, yaw: yaw);
+    // A steep view keeps the camera over the road. A lower one lands the camera inside the
+    // building across the road, which blocks the machine.
+    _mapController.focusOn(Vec3(ax, 0.3, az), distance: 1.3, pitch: 0.85, yaw: yaw);
     setState(() {
       _openMachineId = machine.id;
-      _machinePanelMinimized = false;
+      _machinePanelMinimized = true;
     });
   }
 

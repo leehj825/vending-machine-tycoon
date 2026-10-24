@@ -184,6 +184,7 @@ Color _roleColor(String role, Color shirt, Color cap) => switch (role) {
       'skin' => _skin,
       'pants' => _pants,
       'boot' => _boot,
+      'bag' => const Color(0xFF3E2723),
       _ => _sleeve,
     };
 
@@ -200,6 +201,8 @@ List<_Part> _personParts() {
     _Part(1, const Vec3(0, 1.3, 0), const Vec3(0.25, 0.3, 0.135), 'shirt'),
     _Part(_head, const Vec3(0, 1.78, 0), const Vec3(0.105, 0.115, 0.105), 'skin'),
     _Part(_head, const Vec3(0, 1.9, -0.01), const Vec3(0.12, 0.04, 0.12), 'cap'),
+    // A backpack on the back of the torso.
+    _Part(1, const Vec3(0, 1.3, -0.19), const Vec3(0.2, 0.24, 0.055), 'bag'),
   ];
   for (final side in [
     (_shoulderL, _elbowL, _hipL, _kneeL),

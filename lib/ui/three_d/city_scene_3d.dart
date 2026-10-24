@@ -526,10 +526,41 @@ List<LowPolyObject> _buildingObjects(
       ..box(x + bx0 - 0.02, top, y + bz1, x + bx1 + 0.02, top + 0.04, y + bz1 + 0.02, _trim)
       ..box(x + bx0 - 0.02, top, y + bz0, x + bx0, top + 0.04, y + bz1, _trim)
       ..box(x + bx1, top, y + bz0, x + bx1 + 0.02, top + 0.04, y + bz1, _trim);
+    _facadeDetail(m, x, y, type, body);
   }
   return [
     m.build(center: Vec3(x + 0.5, 0.5, y + 0.5), payload: cell),
   ];
+}
+
+/// Details common to every building: pillars at the corners, a rooftop unit on each
+/// roof, and an antenna on the taller ones. The unit's place varies by tile, so the
+/// roofs do not all look the same.
+void _facadeDetail(
+  LowPolyMeshBuilder m,
+  int x,
+  int y,
+  TileType type,
+  (double, double, double, double, double) body,
+) {
+  final (bx0, bz0, bx1, bz1, top) = body;
+  const pillar = Color(0xFFD7DCE1);
+  // Corner pillars stand just proud of the walls, from the plinth to the cornice.
+  for (final (px, pz) in [(bx0, bz0), (bx1, bz0), (bx0, bz1), (bx1, bz1)]) {
+    m.box(x + px - 0.03, 0.06, y + pz - 0.03, x + px + 0.03, top, y + pz + 0.03, pillar);
+  }
+  // A rooftop unit, set back from the front edge.
+  final unitX = bx0 + (bx1 - bx0) * (0.2 + ((x * 3 + y * 5) % 4) * 0.12);
+  final unitZ = bz0 + (bz1 - bz0) * 0.3;
+  m.box(x + unitX, top + 0.04, y + unitZ, x + unitX + 0.16, top + 0.13, y + unitZ + 0.13, _darkGrey);
+  if (top >= 0.9) {
+    // Taller buildings carry an antenna with a red warning light.
+    final ax = x + (bx0 + bx1) / 2;
+    final az = y + (bz0 + bz1) / 2;
+    m
+      ..box(ax - 0.015, top + 0.04, az - 0.015, ax + 0.015, top + 0.4, az + 0.015, _grey)
+      ..box(ax - 0.03, top + 0.4, az - 0.03, ax + 0.03, top + 0.43, az + 0.03, _red);
+  }
 }
 
 /// Scale from the machine model's own size (about 2 units tall) to a tile. At this

@@ -13,10 +13,7 @@
   const GLIDE_MS = 450;
   const ORBIT_YAW = 0.008; // radians per pixel
   const ORBIT_PITCH = 0.006;
-  const FIGURE_SKIN = '#E2B88E';
-  const FIGURE_PANTS = '#4B4036';
   const FIGURE_BOOT = '#2E241C';
-  const FIGURE_SLEEVE = '#FFFFFF';
 
   const host = document.getElementById('host');
   const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -234,17 +231,20 @@
     const colour = new THREE.BufferAttribute(new Float32Array(count * 3), 3);
     geometry.setAttribute('position', position);
     geometry.setAttribute('color', colour);
-    const shirt = colourOf(message.shirt);
-    const cap = colourOf(message.cap);
-    const fixed = {
-      skin: colourOf(FIGURE_SKIN),
-      pants: colourOf(FIGURE_PANTS),
+    // Each role takes its colour from the person. A hat, or bare hair, sits on the head.
+    // A missing backpack is drawn in the shirt colour, so it reads as part of the back.
+    const colours = {
+      shirt: colourOf(message.shirt),
+      sleeve: colourOf(message.shirt),
+      pants: colourOf(message.pants),
+      skin: colourOf(message.skin),
+      cap: colourOf(message.hat || message.hair),
+      bag: colourOf(message.bag || message.shirt),
       boot: colourOf(FIGURE_BOOT),
-      sleeve: colourOf(FIGURE_SLEEVE),
     };
     let v = 0;
     for (const part of parts) {
-      const c = part.role === 'shirt' ? shirt : part.role === 'cap' ? cap : fixed[part.role];
+      const c = colours[part.role];
       for (let i = 0; i < 36; i++) {
         colour.setXYZ(v + i, c.r, c.g, c.b);
       }

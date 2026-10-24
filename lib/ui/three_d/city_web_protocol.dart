@@ -2,6 +2,7 @@ import 'dart:ui' show Color;
 
 import 'city_scene_3d.dart';
 import 'human_rig.dart';
+import 'people_look.dart';
 import 'lowpoly_engine.dart';
 
 /// The JSON the city page draws. Geometry comes from the same Dart builders as before,
@@ -77,8 +78,7 @@ Map<String, Object?> walkerJson({
   required double z,
   required double yaw,
   required double scale,
-  required Color shirt,
-  required Color cap,
+  required PersonLook look,
   required double brightness,
   required List<double> bones,
 }) {
@@ -88,8 +88,12 @@ Map<String, Object?> walkerJson({
     'z': _round(z),
     'yaw': _round(yaw),
     'scale': scale,
-    'shirt': hexColour(shirt),
-    'cap': hexColour(cap),
+    'shirt': hexColour(look.shirt),
+    'pants': hexColour(look.pants),
+    'skin': hexColour(look.skin),
+    'hair': hexColour(look.hair),
+    'hat': look.hat == null ? null : hexColour(look.hat!),
+    'bag': look.bag == null ? null : hexColour(look.bag!),
     'brightness': brightness,
     'bones': [for (final v in bones) _round(v)],
   };
