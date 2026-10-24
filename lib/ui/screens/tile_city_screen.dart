@@ -2378,7 +2378,7 @@ class _MachineViewPanel extends ConsumerWidget {
               child: SingleChildScrollView(
                 child: Padding(
                   padding: EdgeInsets.all(padding),
-                  child: _MachineStatusSection(machine: machine, dialogWidth: panelMaxWidth),
+                  child: _MachineStatusSection(machine: machine, dialogWidth: panelMaxWidth, onClose: onClose),
                 ),
               ),
             ),
@@ -2391,10 +2391,12 @@ class _MachineViewPanel extends ConsumerWidget {
 class _MachineStatusSection extends ConsumerWidget {
   final sim.Machine machine;
   final double dialogWidth;
+  final VoidCallback? onClose;
 
   const _MachineStatusSection({
     required this.machine,
     required this.dialogWidth,
+    this.onClose,
   });
 
   double _getStockLevel(sim.Machine machine) {
@@ -2728,13 +2730,14 @@ class _MachineStatusSection extends ConsumerWidget {
           width: double.infinity,
           child: ElevatedButton.icon(
             onPressed: () {
-              // Close current dialog and open interior dialog
-              Navigator.of(context).pop();
+              // The panel is part of the city screen, not a route, so it must not be popped.
+              // Open the interior dialog, then close the panel through the city's own handler.
               showDialog(
                 context: context,
                 barrierColor: Colors.black.withValues(alpha: 0.7),
                 builder: (context) => MachineInteriorDialog(machine: machine),
               );
+              onClose?.call();
             },
             icon: Icon(
               Icons.open_in_new,
