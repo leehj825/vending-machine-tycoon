@@ -44,12 +44,12 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
 
   Future<void> _loadGame(BuildContext context, WidgetRef ref) async {
     final slots = await SaveLoadService.getSaveSlots();
-    
+
     if (!context.mounted) return;
-    
+
     // Check if any slot has a save
     final hasAnySave = slots.any((slot) => slot.gameState != null);
-    
+
     if (!hasAnySave) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -60,7 +60,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
       );
       return;
     }
-    
+
     // Show load dialog
     showDialog(
       context: context,
@@ -69,12 +69,12 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
         onLoad: (slotIndex) {
           // Close dialog first
           Navigator.of(dialogContext).pop();
-          
+
           // Schedule load and navigation after current frame
           SchedulerBinding.instance.addPostFrameCallback((_) async {
             try {
               final savedState = await SaveLoadService.loadGame(slotIndex);
-              
+
               if (savedState == null) {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -89,8 +89,10 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
               }
 
               // Load the game state into the controller
-              ref.read(gameControllerProvider.notifier).loadGameState(savedState);
-              
+              ref
+                  .read(gameControllerProvider.notifier)
+                  .loadGameState(savedState);
+
               // Start simulation after loading
               ref.read(gameControllerProvider.notifier).startSimulation();
 
@@ -110,7 +112,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                       ),
                       (route) => false, // Remove all previous routes
                     );
-                    
+
                     // Show success message after navigation
                     Future.delayed(const Duration(milliseconds: 300), () {
                       if (context.mounted) {
@@ -156,9 +158,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
     // Navigate to main game screen
     if (context.mounted) {
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (context) => const MainScreen(),
-        ),
+        MaterialPageRoute(builder: (context) => const MainScreen()),
       );
     }
   }
@@ -172,7 +172,10 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
           SafeArea(
             child: Center(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 16,
+                ),
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 420),
                   child: Column(
@@ -183,7 +186,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                         'VENDING',
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          color: VexColors.gold,
+                          color: VexDarkColors.gold,
                           fontSize: 40,
                           fontWeight: FontWeight.w800,
                           letterSpacing: 8,
@@ -193,7 +196,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                         'TYCOON',
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          color: VexColors.cream,
+                          color: VexDarkColors.cream,
                           fontSize: 28,
                           fontWeight: FontWeight.w700,
                           letterSpacing: 10,
@@ -203,10 +206,14 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                       const Text(
                         'Stock the machines. Win the city. Keep the change.',
                         textAlign: TextAlign.center,
-                        style: TextStyle(color: VexColors.muted, fontSize: 14),
+                        style: TextStyle(
+                          color: VexDarkColors.muted,
+                          fontSize: 14,
+                        ),
                       ),
                       const SizedBox(height: 36),
                       VexButton(
+                        dark: true,
                         label: 'Start game',
                         icon: Icons.play_arrow,
                         primary: true,
@@ -219,15 +226,19 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                         builder: (context, snapshot) {
                           final hasSave = snapshot.data ?? false;
                           return VexButton(
+                            dark: true,
                             label: 'Load game',
                             icon: Icons.folder_open,
                             expand: true,
-                            onPressed: hasSave ? () => _loadGame(context, ref) : null,
+                            onPressed: hasSave
+                                ? () => _loadGame(context, ref)
+                                : null,
                           );
                         },
                       ),
                       const SizedBox(height: 10),
                       VexButton(
+                        dark: true,
                         label: 'Options',
                         icon: Icons.tune,
                         expand: true,
@@ -241,6 +252,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                       ),
                       const SizedBox(height: 10),
                       VexButton(
+                        dark: true,
                         label: 'Credits',
                         icon: Icons.info_outline,
                         expand: true,
@@ -276,7 +288,7 @@ class _MenuBackdrop extends StatelessWidget {
         gradient: RadialGradient(
           center: Alignment(0, -0.4),
           radius: 1.2,
-          colors: [Color(0xFF1E1620), VexColors.ink],
+          colors: [Color(0xFF1E1620), VexDarkColors.ink],
         ),
       ),
       child: CustomPaint(painter: _GridPainter()),
@@ -308,10 +320,7 @@ class _LoadGameDialog extends StatelessWidget {
   final List<SaveSlot> slots;
   final void Function(int slotIndex) onLoad;
 
-  const _LoadGameDialog({
-    required this.slots,
-    required this.onLoad,
-  });
+  const _LoadGameDialog({required this.slots, required this.onLoad});
 
   @override
   Widget build(BuildContext context) {
@@ -326,18 +335,22 @@ class _LoadGameDialog extends StatelessWidget {
               final slot = slots[index];
               final hasSave = slot.gameState != null;
               final displayName = slot.name.isEmpty ? 'Empty' : slot.name;
-              
+
               return ListTile(
                 title: Text('Slot ${index + 1}: $displayName'),
-                subtitle: hasSave 
-                    ? Text('Day ${slot.gameState!.dayCount}, \$${slot.gameState!.cash.toStringAsFixed(2)}')
+                subtitle: hasSave
+                    ? Text(
+                        'Day ${slot.gameState!.dayCount}, \$${slot.gameState!.cash.toStringAsFixed(2)}',
+                      )
                     : const Text('No save data'),
                 enabled: hasSave,
-                onTap: hasSave ? () {
-                  // Close dialog first, then trigger load
-                  Navigator.of(context).pop();
-                  onLoad(index);
-                } : null,
+                onTap: hasSave
+                    ? () {
+                        // Close dialog first, then trigger load
+                        Navigator.of(context).pop();
+                        onLoad(index);
+                      }
+                    : null,
               );
             }),
           ],

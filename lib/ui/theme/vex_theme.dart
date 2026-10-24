@@ -19,6 +19,22 @@ class VexColors {
   static const Color line = Color(0x1F000000);
 }
 
+/// The dark palette the app used before the light theme. The intro menu keeps it.
+class VexDarkColors {
+  VexDarkColors._();
+
+  static const Color ink = Color(0xFF07060A);
+  static const Color panel = Color(0xF20C0A0E);
+  static const Color panelSoft = Color(0xFF1C1620);
+  static const Color card = Color(0xFF14101A);
+  static const Color gold = Color(0xFFF2D27A);
+  static const Color goldDeep = Color(0xFFC9963A);
+  static const Color cream = Color(0xFFEEE6D6);
+  static const Color muted = Color(0xDDEEE6D6);
+  static const Color border = Color(0x66F2D27A);
+  static const Color line = Color(0x26FFE6BE);
+}
+
 /// The app theme: white surfaces, dark text, and amber for emphasis.
 class VexTheme {
   VexTheme._();

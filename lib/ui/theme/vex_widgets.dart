@@ -41,6 +41,7 @@ class VexButton extends StatelessWidget {
     this.primary = false,
     this.expand = false,
     this.compact = false,
+    this.dark = false,
   });
 
   final String label;
@@ -50,10 +51,18 @@ class VexButton extends StatelessWidget {
   final bool expand;
   final bool compact;
 
+  /// Uses the dark palette, for the intro menu.
+  final bool dark;
+
   @override
   Widget build(BuildContext context) {
     final enabled = onPressed != null;
-    final foreground = primary ? const Color(0xFF1A1008) : VexColors.cream;
+    final cream = dark ? VexDarkColors.cream : VexColors.cream;
+    final gold = dark ? VexDarkColors.gold : VexColors.gold;
+    final goldDeep = dark ? VexDarkColors.goldDeep : VexColors.goldDeep;
+    final panelSoft = dark ? VexDarkColors.panelSoft : VexColors.panelSoft;
+    final border = dark ? VexDarkColors.border : VexColors.border;
+    final foreground = primary ? const Color(0xFF1A1008) : cream;
     final content = Row(
       mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.center,
@@ -92,15 +101,15 @@ class VexButton extends StatelessWidget {
             ),
             decoration: BoxDecoration(
               gradient: primary
-                  ? const LinearGradient(
+                  ? LinearGradient(
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
-                      colors: [VexColors.gold, VexColors.goldDeep],
+                      colors: [gold, goldDeep],
                     )
                   : null,
-              color: primary ? null : VexColors.panelSoft,
+              color: primary ? null : panelSoft,
               border: Border.all(
-                color: primary ? Colors.transparent : VexColors.border,
+                color: primary ? Colors.transparent : border,
               ),
               borderRadius: BorderRadius.circular(4),
             ),

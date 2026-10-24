@@ -607,7 +607,7 @@ LowPolyObject buildPurchaseMarker({
   final h = markerHeight(type) + bob;
   final m = LowPolyMeshBuilder(brightness: brightness)
     ..cone(x + 0.5, y + 0.5, 0.22, 6, h + 0.3, h,
-        affordable ? const Color(0xFF43A047) : const Color(0xFF9E9E9E));
+        affordable ? const Color(0xFF43A047) : const Color(0xFFFFC107));
   return m.build(center: Vec3(x + 0.5, h, y + 0.5), payload: CityCell(x, y, type));
 }
 
