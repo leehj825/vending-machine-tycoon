@@ -168,13 +168,24 @@ List<_Affine> _poseBones(HumanClip? clip, double phase) {
 
 /// One box of a person, in the rest pose, hung on one bone.
 class _Part {
-  const _Part(this.bone, this.center, this.half, this.color);
+  const _Part(this.bone, this.center, this.half, this.role);
 
   final int bone;
   final Vec3 center;
   final Vec3 half;
-  final Color color;
+  /// Which colour the part takes: shirt, cap, or one of the fixed roles in [_roleColor].
+  final String role;
 }
+
+/// Colour of each fixed part role. Shirt and cap come from the person.
+Color _roleColor(String role, Color shirt, Color cap) => switch (role) {
+      'shirt' => shirt,
+      'cap' => cap,
+      'skin' => _skin,
+      'pants' => _pants,
+      'boot' => _boot,
+      _ => _sleeve,
+    };
 
 const Color _skin = Color(0xFFE2B88E);
 const Color _pants = Color(0xFF4B4036);
@@ -183,12 +194,12 @@ const Color _sleeve = Color(0xFFFFFFFF);
 
 /// The body every person shares, as vexmarch's civilian figure: legs, torso
 /// in the shirt colour, arms, head and cap.
-List<_Part> _personParts(Color shirt, Color cap) {
+List<_Part> _personParts() {
   final parts = <_Part>[
-    _Part(_hips, _rest[_hips], const Vec3(0.19, 0.1, 0.11), _pants),
-    _Part(1, const Vec3(0, 1.3, 0), const Vec3(0.25, 0.3, 0.135), shirt),
-    _Part(_head, const Vec3(0, 1.78, 0), const Vec3(0.105, 0.115, 0.105), _skin),
-    _Part(_head, const Vec3(0, 1.9, -0.01), const Vec3(0.12, 0.04, 0.12), cap),
+    _Part(_hips, _rest[_hips], const Vec3(0.19, 0.1, 0.11), 'pants'),
+    _Part(1, const Vec3(0, 1.3, 0), const Vec3(0.25, 0.3, 0.135), 'shirt'),
+    _Part(_head, const Vec3(0, 1.78, 0), const Vec3(0.105, 0.115, 0.105), 'skin'),
+    _Part(_head, const Vec3(0, 1.9, -0.01), const Vec3(0.12, 0.04, 0.12), 'cap'),
   ];
   for (final side in [
     (_shoulderL, _elbowL, _hipL, _kneeL),
@@ -198,15 +209,64 @@ List<_Part> _personParts(Color shirt, Color cap) {
     final sx = _rest[shoulder].x;
     final hx = _rest[hip].x;
     parts.addAll([
-      _Part(shoulder, Vec3(sx, 1.39, 0), const Vec3(0.07, 0.155, 0.07), _sleeve),
-      _Part(elbow, Vec3(sx, 1.05, 0), const Vec3(0.0575, 0.19, 0.0575), _skin),
-      _Part(hip, Vec3(hx, 0.64, 0), const Vec3(0.09, 0.23, 0.1), _pants),
-      _Part(knee, Vec3(hx, 0.2, 0), const Vec3(0.0775, 0.21, 0.085), _pants),
-      _Part(knee, Vec3(hx, 0.04, 0.045), const Vec3(0.085, 0.05, 0.14), _boot),
+      _Part(shoulder, Vec3(sx, 1.39, 0), const Vec3(0.07, 0.155, 0.07), 'sleeve'),
+      _Part(elbow, Vec3(sx, 1.05, 0), const Vec3(0.0575, 0.19, 0.0575), 'skin'),
+      _Part(hip, Vec3(hx, 0.64, 0), const Vec3(0.09, 0.23, 0.1), 'pants'),
+      _Part(knee, Vec3(hx, 0.2, 0), const Vec3(0.0775, 0.21, 0.085), 'pants'),
+      _Part(knee, Vec3(hx, 0.04, 0.045), const Vec3(0.085, 0.05, 0.14), 'boot'),
     ]);
   }
   return parts;
 }
+
+/// Turns a person toward where they are moving and advances their walk cycle. Returns
+/// whether they are moving now. A person who has not moved recently stands still.
+bool advanceHumanPose(HumanPose pose, double x, double z, bool running, DateTime now) {
+  final lastX = pose.lastX;
+  final lastZ = pose.lastY;
+  if (lastX != null && lastZ != null) {
+    final dx = x - lastX;
+    final dz = z - lastZ;
+    final dist = math.sqrt(dx * dx + dz * dz);
+    if (dist > 0.0005) {
+      pose.yaw = math.atan2(dx, dz);
+      pose.phase += dist / (running ? _runStride : _walkStride);
+      pose.lastMovedAt = now;
+    }
+  }
+  pose.lastX = x;
+  pose.lastY = z;
+  return pose.lastMovedAt != null && now.difference(pose.lastMovedAt!) < _movingHold;
+}
+
+HumanClip? _clipFor(bool moving, bool running) =>
+    moving ? (running ? humanRunClip : humanWalkClip) : null;
+
+/// The 13 bone transforms of a person for the pose, as 12 numbers each: the row-major
+/// rotation followed by the translation. Bones are in the figure's own space.
+List<double> humanBoneValues(HumanPose pose, bool running, bool moving) {
+  final out = <double>[];
+  for (final bone in _poseBones(_clipFor(moving, running), pose.phase)) {
+    out.addAll(bone.r);
+    out.addAll([bone.t.x, bone.t.y, bone.t.z]);
+  }
+  return out;
+}
+
+/// The figure's shape, once: the rest position of each bone, and every box with the
+/// bone it hangs on and its role. The city draws people from this and [humanBoneValues].
+Map<String, Object?> humanRigTable() => {
+      'rest': [for (final r in _rest) [r.x, r.y, r.z]],
+      'parts': [
+        for (final part in _personParts())
+          {
+            'bone': part.bone,
+            'c': [part.center.x, part.center.y, part.center.z],
+            'h': [part.half.x, part.half.y, part.half.z],
+            'role': part.role,
+          },
+      ],
+    };
 
 /// Builds one person, posed by the walk or run clip, and facing the way
 /// they are moving. A person who has not moved recently stands still.
@@ -224,25 +284,8 @@ LowPolyObject buildHumanObject({
   Object? payload,
   double scale = _figureScale,
 }) {
-  final now = DateTime.now();
-  final lastX = pose.lastX;
-  final lastZ = pose.lastY;
-  if (lastX != null && lastZ != null) {
-    final dx = x - lastX;
-    final dz = z - lastZ;
-    final dist = math.sqrt(dx * dx + dz * dz);
-    if (dist > 0.0005) {
-      pose.yaw = math.atan2(dx, dz);
-      pose.phase += dist / (running ? _runStride : _walkStride);
-      pose.lastMovedAt = now;
-    }
-  }
-  pose.lastX = x;
-  pose.lastY = z;
-  final moving = pose.lastMovedAt != null &&
-      now.difference(pose.lastMovedAt!) < _movingHold;
-  final clip = moving ? (running ? humanRunClip : humanWalkClip) : null;
-  final world = _poseBones(clip, pose.phase);
+  final moving = advanceHumanPose(pose, x, z, running, DateTime.now());
+  final world = _poseBones(_clipFor(moving, running), pose.phase);
 
   final cosYaw = math.cos(pose.yaw);
   final sinYaw = math.sin(pose.yaw);
@@ -258,7 +301,7 @@ LowPolyObject buildHumanObject({
   }
 
   final m = LowPolyMeshBuilder(brightness: brightness);
-  for (final part in _personParts(shirt, cap)) {
+  for (final part in _personParts()) {
     final bone = world[part.bone];
     final rest = _rest[part.bone];
     final corners = List<Vec3>.filled(8, const Vec3(0, 0, 0));
@@ -293,7 +336,7 @@ LowPolyObject buildHumanObject({
         (a.y + b.y + c.y + d.y) / 4,
         (a.z + b.z + c.z + d.z) / 4,
       );
-      m.quad(a, b, c, d, face - centre, part.color);
+      m.quad(a, b, c, d, face - centre, _roleColor(part.role, shirt, cap));
     }
   }
   return m.build(center: Vec3(x, 0.2, z), payload: payload);

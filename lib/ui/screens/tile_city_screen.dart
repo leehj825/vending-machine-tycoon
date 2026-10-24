@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:async';
 import 'package:flutter/material.dart';
@@ -19,6 +20,8 @@ import '../utils/screen_utils.dart';
 import '../widgets/machine_interior_dialog.dart';
 import '../widgets/marketing_button.dart';
 import '../three_d/city_scene_3d.dart';
+import '../three_d/city_web_protocol.dart';
+import '../three_d/city_webview.dart';
 import '../three_d/lowpoly_engine.dart';
 import '../theme/vex_theme.dart';
 import '../theme/vex_widgets.dart';
@@ -53,6 +56,9 @@ enum BuildingOrientation {
 }
 
 /// Pedestrian state class for tile city screen
+/// Scale from the figure's own size to a tile: a person is about a machine's height.
+const double _walkerScale = 0.13;
+
 class _PedestrianState {
   final int personId; // 0-9
   double gridX;
@@ -167,11 +173,12 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
 
   // The city draws as a 3D lowpoly scene by default. The 2D isometric map stays
   // available through the toggle in the top-right corner.
-  final LowPolyController _mapController = LowPolyController();
+  final CityWebController _mapController = CityWebController();
   // The machine whose details panel is open over the map, and whether it is minimized.
   String? _openMachineId;
   bool _machinePanelMinimized = false;
-  List<LowPolyObject>? _scene3D;
+  // The static city as JSON, sent to the page when it changes.
+  String? _scene3D;
   List<List<TileType>>? _scene3DGrid;
   List<sim.Machine>? _scene3DMachines;
   double? _scene3DBrightness;
@@ -819,19 +826,27 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
   Widget _build3DCity(bool isNight) {
     final machines = ref.watch(machinesProvider);
     final brightness = isNight ? cityNightBrightness : 1.0;
-    // Rebuilding the scene is the costly part, so reuse it until the grid,
-    // the machines or the lighting change. Grid edits happen only while the
-    // map is generated, and that reassigns _grid first.
+    final background = isNight ? cityNightSky : cityDaySky;
+    // Encoding the scene is the costly part, so reuse it until the grid, the
+    // machines or the lighting change. Grid edits happen only while the map is
+    // generated, and that reassigns _grid first.
     if (_scene3D == null ||
         !identical(_scene3DGrid, _grid) ||
         !identical(_scene3DMachines, machines) ||
         _scene3DBrightness != brightness) {
-      _scene3D = buildCityScene(
+      final scene = buildCityScene(
         grid: _grid,
         roadDirections: _roadDirections,
         machines: machines,
         brightness: brightness,
       );
+      _scene3D = jsonEncode(cityScenePayload(
+        objects: scene,
+        sky: background,
+        home: defaultCityCamera(gridSize),
+        minDistance: 6,
+        maxDistance: 60,
+      ));
       _scene3DGrid = _grid;
       _scene3DMachines = machines;
       _scene3DBrightness = brightness;
@@ -840,7 +855,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
     final trucks = ref.watch(trucksProvider);
     final marketingX = gameState.marketingButtonGridX;
     final marketingY = gameState.marketingButtonGridY;
-    final dynamicObjects = <LowPolyObject>[
+    final soups = <LowPolyObject>[
       for (final truck in trucks) buildTruckObject(truck, brightness),
       if (marketingX != null && marketingY != null)
         ...buildMarketingMarker(
@@ -849,27 +864,41 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
           rushHour: gameState.isRushHour,
           brightness: brightness,
         ),
-      ..._pedestrianObjects3D(brightness),
-      ..._passersObjects3D(machines, brightness),
     ];
-    return LowPolyView(
-      objects: _scene3D!,
-      overlay: dynamicObjects,
-      camera: defaultCityCamera(gridSize),
-      background: isNight ? cityNightSky : cityDaySky,
-      minDistance: 6,
-      maxDistance: 60,
+    final frame = jsonEncode(cityFrameJson(
+      walkers: [
+        ..._pedestrianWalkers(brightness),
+        ..._passerWalkers(machines, brightness),
+      ],
+      soups: soups,
+    ));
+    return CityWebView(
+      scene: _scene3D!,
+      frame: frame,
       controller: _mapController,
-      onTapTarget: (target) {
-        if (target is CityCell) {
-          _handleDebouncedBuildingTap(target.x, target.y, target.tileType);
-        } else if (target is _PedestrianState) {
-          _handlePedestrianTap(target);
-        } else if (identical(target, marketingTapTarget)) {
-          _marketingKey.currentState?.tap();
-        }
-      },
+      background: background,
+      onTap: _onCityTap,
     );
+  }
+
+  /// A tap in the city, as the page reports it.
+  void _onCityTap(Map<String, Object?> target) {
+    switch (target['kind']) {
+      case 'cell':
+        final x = target['x']! as int;
+        final y = target['y']! as int;
+        _handleDebouncedBuildingTap(x, y, _grid[y][x]);
+      case 'pedestrian':
+        final key = target['key']! as String;
+        for (final pedestrian in _pedestrians) {
+          if ('p${pedestrian.personId}' == key) {
+            _handlePedestrianTap(pedestrian);
+            return;
+          }
+        }
+      case 'marketing':
+        _marketingKey.currentState?.tap();
+    }
   }
 
   // A passer-by walks past each machine every 14 seconds, for 3.5 of them. The customer
@@ -926,7 +955,9 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
 
   /// Walkers on the pavement in front of each machine. They are only drawn while they
   /// walk past, and they are rebuilt every update, like the pedestrians.
-  List<LowPolyObject> _passersObjects3D(List<sim.Machine> machines, double brightness) {
+  /// Walkers on the pavement in front of each machine, as frame entries. They are only
+  /// listed while they walk past, and they are rebuilt every update, like the pedestrians.
+  List<Map<String, Object?>> _passerWalkers(List<sim.Machine> machines, double brightness) {
     const shirts = [
       Color(0xFF00838F),
       Color(0xFF6A1B9A),
@@ -934,7 +965,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
       Color(0xFF2E7D32),
     ];
     final now = DateTime.now();
-    final objects = <LowPolyObject>[];
+    final walkers = <Map<String, Object?>>[];
     for (var i = 0; i < machines.length; i++) {
       final machine = machines[i];
       final pose = _passerPoses.putIfAbsent(machine.id, HumanPose.new);
@@ -953,24 +984,26 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
       // they do not pop into view.
       final edge = math.min(progress, 1 - progress);
       final grow = (edge / 0.1).clamp(0.05, 1.0).toDouble();
-      objects.add(buildHumanObject(
-        x: walk.x0 + (walk.x1 - walk.x0) * progress,
-        z: walk.z0 + (walk.z1 - walk.z0) * progress,
-        pose: pose,
-        running: false,
+      final x = walk.x0 + (walk.x1 - walk.x0) * progress;
+      final z = walk.z0 + (walk.z1 - walk.z0) * progress;
+      final moving = advanceHumanPose(pose, x, z, false, now);
+      walkers.add(walkerJson(
+        key: 'x${machine.id}',
+        x: x,
+        z: z,
+        yaw: pose.yaw,
+        scale: _walkerScale * grow,
         shirt: shirts[i % shirts.length],
         cap: const Color(0xFF5D4037),
         brightness: brightness,
-        scale: 0.13 * grow,
+        bones: humanBoneValues(pose, false, moving),
       ));
     }
-    return objects;
+    return walkers;
   }
 
-  /// Lowpoly walkers, plus an invisible pad under each one so a finger can
-  /// hit a figure that is only a few pixels wide. They move every update, so
-  /// they are rebuilt each time and kept apart from the cached city scene.
-  List<LowPolyObject> _pedestrianObjects3D(double brightness) {
+  /// Walkers on the pavement, as frame entries. A tap on one is found by its key.
+  List<Map<String, Object?>> _pedestrianWalkers(double brightness) {
     const bodyColors = [
       Color(0xFF3949AB),
       Color(0xFFD81B60),
@@ -979,8 +1012,8 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
       Color(0xFF8E24AA),
     ];
     const tutorialColor = Color(0xFFFFEB3B);
-    const skin = Color(0xFFF1C27D);
-    final objects = <LowPolyObject>[];
+    final now = DateTime.now();
+    final walkers = <Map<String, Object?>>[];
     for (final pedestrian in _pedestrians) {
       final cx = pedestrian.gridX + 0.5 + pedestrian.offsetX;
       final cz = pedestrian.gridY + 0.5 + pedestrian.offsetZ;
@@ -988,22 +1021,21 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
           ? tutorialColor
           : bodyColors[pedestrian.personId % bodyColors.length];
       // Walks while moving, and runs once a tap sends them to a machine.
-      objects.add(buildHumanObject(
+      final running = pedestrian.isHeadingToShop;
+      final moving = advanceHumanPose(pedestrian.pose, cx, cz, running, now);
+      walkers.add(walkerJson(
+        key: 'p${pedestrian.personId}',
         x: cx,
         z: cz,
-        pose: pedestrian.pose,
-        running: pedestrian.isHeadingToShop,
+        yaw: pedestrian.pose.yaw,
+        scale: _walkerScale,
         shirt: body,
         cap: const Color(0xFFB79A52),
         brightness: brightness,
-        payload: pedestrian,
+        bones: humanBoneValues(pedestrian.pose, running, moving),
       ));
-
-      final pad = LowPolyMeshBuilder(brightness: brightness)
-        ..flat(cx - 0.3, cz - 0.3, cx + 0.3, cz + 0.3, 0.01, skin);
-      objects.add(pad.build(center: Vec3(cx, 0.01, cz), payload: pedestrian, drawn: false));
     }
-    return objects;
+    return walkers;
   }
 
   void _handleDebouncedBuildingTap(int x, int y, TileType tileType) {
