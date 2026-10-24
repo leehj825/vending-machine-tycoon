@@ -164,6 +164,9 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
   // The city draws as a 3D lowpoly scene by default. The 2D isometric map stays
   // available through the toggle in the top-right corner.
   final LowPolyController _mapController = LowPolyController();
+  // The machine whose details panel is open over the map, and whether it is minimized.
+  String? _openMachineId;
+  bool _machinePanelMinimized = false;
   List<LowPolyObject>? _scene3D;
   List<List<TileType>>? _scene3DGrid;
   List<sim.Machine>? _scene3DMachines;
@@ -720,6 +723,24 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
         // and without it the whole city collapses to nothing.
         SizedBox.expand(child: _build3DCity(isNight)),
 
+        // Machine details over the bottom of the map. The map stays visible and usable
+        // around it, and the panel can be minimized to its header.
+        if (_openMachineId != null)
+          Positioned(
+            left: 8,
+            right: 8,
+            bottom: 8,
+            child: Center(
+              child: _MachineViewPanel(
+                machineId: _openMachineId!,
+                minimized: _machinePanelMinimized,
+                onToggleMinimized: () =>
+                    setState(() => _machinePanelMinimized = !_machinePanelMinimized),
+                onClose: _closeMachineView,
+              ),
+            ),
+          ),
+
         // Rain overlay (full screen)
         if (weather == WeatherType.rainy || weather == WeatherType.stormy)
           Positioned.fill(
@@ -1109,20 +1130,21 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
     );
   }
 
-  void _showMachineView(BuildContext context, sim.Machine machine) {
-    final machineId = machine.id;
+  void _showMachineView(sim.Machine machine) {
     // Glide the 3D camera to the machine's tile, so the machine is in front of the
-    // building, then open its details over that view. The overview comes back on close.
+    // building, then open its details beside that view. The overview comes back on close.
     final gx = math.min(math.max((machine.zone.x - 1).floor(), 0), gridSize - 1);
     final gy = math.min(math.max((machine.zone.y - 1).floor(), 0), gridSize - 1);
     _mapController.focusOn(Vec3(gx + 0.8, 0.3, gy + 0.95), distance: 3.0, pitch: 0.38);
-    showDialog(
-      context: context,
-      barrierColor: Colors.black.withValues(alpha: 0.35),
-      builder: (context) => _MachineViewDialog(
-        machineId: machineId,
-      ),
-    ).then((_) => _mapController.reset());
+    setState(() {
+      _openMachineId = machine.id;
+      _machinePanelMinimized = false;
+    });
+  }
+
+  void _closeMachineView() {
+    setState(() => _openMachineId = null);
+    _mapController.reset();
   }
 
   void _showMachinePurchaseDialog(BuildContext context, ZoneType zoneType, double zoneX, double zoneY) {
@@ -1147,7 +1169,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
                 final machine = machines.firstWhere(
                   (m) => (m.zone.x - zoneX).abs() < 0.1 && (m.zone.y - zoneY).abs() < 0.1,
                 );
-                _showMachineView(context, machine);
+                _showMachineView(machine);
               } catch (e) {
                 // Machine not found yet, just close
               }
@@ -2167,7 +2189,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
         // icon rendered above the machine instead (see _buildGameMachine),
         // so the building tap stays predictable regardless of cash state.
         if (context.mounted) {
-          _showMachineView(context, existingMachine);
+          _showMachineView(existingMachine);
         }
       } else {
         // Machine doesn't exist - show purchase dialog. Purchases are gated
@@ -2270,77 +2292,64 @@ void sellToCustomer(WidgetRef ref, String machineId, bool isSpecial) {
 }
 
 
-class _MachineViewDialog extends ConsumerWidget {
+/// Details of one machine, shown as a panel over the map. Minimized, it shows only its
+/// header, so the zoomed-in machine stays in view.
+class _MachineViewPanel extends ConsumerWidget {
   final String machineId;
+  final bool minimized;
+  final VoidCallback onToggleMinimized;
+  final VoidCallback onClose;
 
-  const _MachineViewDialog({
+  const _MachineViewPanel({
     required this.machineId,
+    required this.minimized,
+    required this.onToggleMinimized,
+    required this.onClose,
   });
-
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final machines = ref.watch(machinesProvider);
-    
-    sim.Machine? machine;
-    try {
-      machine = machines.firstWhere((m) => m.id == machineId);
-    } catch (e) {
-      return Dialog(
-        backgroundColor: Colors.transparent,
-        child: Container(
-          padding: EdgeInsets.all(20),
-          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
-          child: const Text('Machine not found', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-        ),
-      );
-    }
-    
+    final matches = machines.where((m) => m.id == machineId);
+    if (matches.isEmpty) return const SizedBox.shrink();
+    final machine = matches.first;
+
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
-    final dialogMaxWidth = screenWidth * AppConfig.machineStatusDialogWidthFactor;
-    
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      insetPadding: EdgeInsets.all(
-        ScreenUtils.relativeSize(context, AppConfig.machineStatusDialogInsetPaddingFactor),
+    final panelMaxWidth = screenWidth * AppConfig.machineStatusDialogWidthFactor;
+    final padding = panelMaxWidth * AppConfig.machineStatusDialogPaddingFactor;
+
+    return Container(
+      constraints: BoxConstraints(
+        maxWidth: panelMaxWidth,
+        // Open, the panel takes at most part of the screen, so the map stays visible above it.
+        maxHeight: minimized ? double.infinity : screenHeight * 0.42,
       ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final dialogWidth = constraints.maxWidth;
-          final imageHeight = dialogWidth * AppConfig.machineStatusDialogImageHeightFactor;
-          final borderRadius = dialogWidth * AppConfig.machineStatusDialogBorderRadiusFactor;
-          final padding = dialogWidth * AppConfig.machineStatusDialogPaddingFactor;
-          
-          return Container(
-            constraints: BoxConstraints(
-              maxWidth: dialogMaxWidth,
-              maxHeight: screenHeight * AppConfig.machineStatusDialogHeightFactor,
-            ),
-            decoration: BoxDecoration(
-              color: VexColors.panel,
-              borderRadius: BorderRadius.circular(borderRadius),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _MachineHeader(
-                  machine: machine!,
-                  padding: padding,
-                  onClose: () => Navigator.of(context).pop(),
+      decoration: BoxDecoration(
+        color: VexColors.panel,
+        borderRadius: BorderRadius.circular(panelMaxWidth * AppConfig.machineStatusDialogBorderRadiusFactor),
+        boxShadow: const [BoxShadow(color: Colors.black38, blurRadius: 12)],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _MachineHeader(
+            machine: machine,
+            padding: padding,
+            minimized: minimized,
+            onToggleMinimized: onToggleMinimized,
+            onClose: onClose,
+          ),
+          if (!minimized)
+            Flexible(
+              child: SingleChildScrollView(
+                child: Padding(
+                  padding: EdgeInsets.all(padding),
+                  child: _MachineStatusSection(machine: machine, dialogWidth: panelMaxWidth),
                 ),
-                Flexible(
-                  child: SingleChildScrollView(
-                    child: Padding(
-                      padding: EdgeInsets.all(padding),
-                      child: _MachineStatusSection(machine: machine!, dialogWidth: dialogWidth),
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
-          );
-        },
+        ],
       ),
     );
   }
@@ -3251,11 +3260,15 @@ class _MachineHeader extends StatelessWidget {
   const _MachineHeader({
     required this.machine,
     required this.padding,
+    required this.minimized,
+    required this.onToggleMinimized,
     required this.onClose,
   });
 
   final sim.Machine machine;
   final double padding;
+  final bool minimized;
+  final VoidCallback onToggleMinimized;
   final VoidCallback onClose;
 
   @override
@@ -3292,6 +3305,15 @@ class _MachineHeader extends StatelessWidget {
             ),
           ),
           IconButton(
+            tooltip: minimized ? 'Expand' : 'Minimize',
+            icon: Icon(
+              minimized ? Icons.expand_less : Icons.expand_more,
+              color: VexColors.cream,
+            ),
+            onPressed: onToggleMinimized,
+          ),
+          IconButton(
+            tooltip: 'Close',
             icon: const Icon(Icons.close, color: VexColors.cream),
             onPressed: onClose,
           ),
