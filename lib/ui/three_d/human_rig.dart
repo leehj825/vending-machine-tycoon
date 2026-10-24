@@ -221,6 +221,7 @@ LowPolyObject buildHumanObject({
   required Color cap,
   required double brightness,
   Object? payload,
+  double scale = _figureScale,
 }) {
   final now = DateTime.now();
   final lastX = pose.lastX;
@@ -246,11 +247,11 @@ LowPolyObject buildHumanObject({
   final sinYaw = math.sin(pose.yaw);
   // Figure space to world: scale, turn to face the direction, then move to (x, z).
   Vec3 toWorld(Vec3 p) {
-    final sx = p.x * _figureScale;
-    final sz = p.z * _figureScale;
+    final sx = p.x * scale;
+    final sz = p.z * scale;
     return Vec3(
       x + sx * cosYaw + sz * sinYaw,
-      p.y * _figureScale,
+      p.y * scale,
       z - sx * sinYaw + sz * cosYaw,
     );
   }

@@ -1,30 +1,29 @@
 import 'dart:math' as math;
 import 'dart:async';
-import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:vector_math/vector_math_64.dart' hide Colors;
 import '../../state/providers.dart';
 import '../../state/selectors.dart';
 import '../../state/city_map_state.dart';
 import '../../simulation/models/zone.dart';
-import '../../simulation/models/truck.dart' as sim;
 import '../../simulation/models/machine.dart' as sim;
 import '../../simulation/models/product.dart';
 import '../../simulation/models/weather.dart';
 import '../../simulation/models/pricing.dart';
 import '../../config.dart';
-import '../../services/sound_service.dart';
 import '../theme/zone_ui.dart';
 import '../utils/screen_utils.dart';
 import '../widgets/machine_interior_dialog.dart';
 import '../widgets/marketing_button.dart';
 import '../three_d/city_scene_3d.dart';
 import '../three_d/lowpoly_engine.dart';
-import '../three_d/vending_machine_3d.dart';
+import '../theme/vex_theme.dart';
+import '../theme/vex_widgets.dart';
 import '../three_d/human_rig.dart';
+import '../three_d/vending_machine_3d.dart';
+import '../three_d/vending_machine_stage.dart';
 
 enum TileType {
   grass,
@@ -110,164 +109,32 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
   static const int gridSize = 15; // Using AppConfig.cityGridSize value
   
   // Tile dimensions will be calculated relative to screen size
-  double _getTileWidth(BuildContext context) {
-    return ScreenUtils.relativeSizeClamped(
-      context,
-      0.15, // 15% of smaller dimension
-      min: 48.0,
-      max: 96.0,
-    );
-  }
   
-  double _getTileHeight(BuildContext context) {
-    return ScreenUtils.relativeSizeClamped(
-      context,
-      0.075, // 7.5% of smaller dimension (half of width for isometric)
-      min: 24.0,
-      max: 48.0,
-    );
-  }
   
   // Road tile dimensions (scaled relative to regular tiles)
   // These multipliers scale road tiles proportionally with regular tiles
-  double _getRoadTileWidth(BuildContext context) {
-    final regularWidth = _getTileWidth(context);
-    return regularWidth * 0.70; // 47% of regular tile width (adjust multiplier to change road tile width)
-  }
   
-  double _getRoadTileHeight(BuildContext context) {
-    final regularHeight = _getTileHeight(context);
-    return regularHeight * 0.93; // 93% of regular tile height (adjust multiplier to change road tile height)
-  }
   
   // Road tile position offsets (adjust to shift road tiles)
   // Made density-independent by using relative sizing
-  double _getRoadTileOffsetX(BuildContext context) {
-    // Calculate offset relative to tile width for density independence
-    // Adjust the multiplier to shift road tiles horizontally
-    // Positive = move right, Negative = move left
-    // Use the road tile width so the offset scales with road sprite size.
-    final tileWidth = _getRoadTileWidth(context);
-    return tileWidth * AppConfig.roadHorizontalOffsetFactor; // configurable offset
-  }
   
-  double _getRoadTileOffsetY(BuildContext context) {
-    // Calculate offset relative to tile height for density independence
-    // Adjust the multiplier to shift road tiles vertically
-    // Positive = move down, Negative = move up
-    // Use the road tile height (not the regular tile height) so the
-    // offset scales correctly with the road sprite size.
-    final tileHeight = _getRoadTileHeight(context);
-    return tileHeight * AppConfig.roadVerticalOffsetFactor; // configurable offset
-  }
   
-  double _getBuildingImageHeight(BuildContext context) {
-    return ScreenUtils.relativeSizeClamped(
-      context,
-      0.18, // 18% of smaller dimension
-      min: 50.0,
-      max: 100.0,
-    );
-  }
   
-  static const double tileSpacingFactor = AppConfig.tileSpacingFactor;
-  static const double horizontalSpacingFactor = AppConfig.horizontalSpacingFactor;
   
-  static const double buildingScale = AppConfig.buildingScale;
-  static const double schoolScale = AppConfig.schoolScale;
   
-  static const double gasStationScale = AppConfig.gasStationScale;
-  static const double parkScale = AppConfig.parkScale;
-  static const double houseScale = AppConfig.houseScale;
-  static const double warehouseScale = AppConfig.warehouseScale;
-  static const double subwayScale = AppConfig.subwayScale;
-  static const double universityScale = AppConfig.universityScale;
-  static const double hospitalScale = AppConfig.hospitalScale;
   
-  static const double schoolVerticalOffset = AppConfig.schoolVerticalOffset;
-  static const double subwayVerticalOffset = AppConfig.subwayVerticalOffset;
-  static const double hospitalVerticalOffset = AppConfig.hospitalVerticalOffset;
-  static const double universityVerticalOffset = AppConfig.universityVerticalOffset;
-  static const double gasStationVerticalOffset = AppConfig.gasStationVerticalOffset;
-  static const double houseVerticalOffset = AppConfig.houseVerticalOffset;
-  static const double parkVerticalOffset = AppConfig.parkVerticalOffset;
-  static const double buildingVerticalOffset = AppConfig.buildingVerticalOffset;
   // Horizontal offsets (relative size multipliers)
-  static const double buildingHorizontalOffset = AppConfig.buildingHorizontalOffset;
-  static const double schoolHorizontalOffset = AppConfig.schoolHorizontalOffset;
-  static const double gasStationHorizontalOffset = AppConfig.gasStationHorizontalOffset;
-  static const double parkHorizontalOffset = AppConfig.parkHorizontalOffset;
-  static const double houseHorizontalOffset = AppConfig.houseHorizontalOffset;
-  static const double warehouseHorizontalOffset = AppConfig.warehouseHorizontalOffset;
-  static const double subwayHorizontalOffset = AppConfig.subwayHorizontalOffset;
-  static const double universityHorizontalOffset = AppConfig.universityHorizontalOffset;
-  static const double hospitalHorizontalOffset = AppConfig.hospitalHorizontalOffset;
   
-  double _getWarehouseVerticalOffset(BuildContext context) {
-    return ScreenUtils.relativeSize(context, 0.007);
-  }
 
-  double _getWarehouseHorizontalOffset(BuildContext context) {
-    return ScreenUtils.relativeSize(context, warehouseHorizontalOffset);
-  }
 
-  double _getSpecialBuildingVerticalOffset(BuildContext context, TileType tileType) {
-    // Each building type has its own vertical offset
-    switch (tileType) {
-      case TileType.school:
-        return ScreenUtils.relativeSize(context, schoolVerticalOffset);
-      case TileType.subway:
-        return ScreenUtils.relativeSize(context, subwayVerticalOffset);
-      case TileType.hospital:
-        return ScreenUtils.relativeSize(context, hospitalVerticalOffset);
-      case TileType.gasStation:
-        return ScreenUtils.relativeSize(context, gasStationVerticalOffset);
-      case TileType.park:
-        return ScreenUtils.relativeSize(context, parkVerticalOffset);
-      case TileType.house:
-        return ScreenUtils.relativeSize(context, houseVerticalOffset);
-      case TileType.university:
-        return ScreenUtils.relativeSize(context, universityVerticalOffset);
-      default:
-        return ScreenUtils.relativeSize(context, buildingVerticalOffset);
-    }
-  }
 
-  double _getSpecialBuildingHorizontalOffset(BuildContext context, TileType tileType) {
-    // Each building type has its own horizontal offset
-    switch (tileType) {
-      case TileType.school:
-        return ScreenUtils.relativeSize(context, schoolHorizontalOffset);
-      case TileType.subway:
-        return ScreenUtils.relativeSize(context, subwayHorizontalOffset);
-      case TileType.hospital:
-        return ScreenUtils.relativeSize(context, hospitalHorizontalOffset);
-      case TileType.university:
-        return ScreenUtils.relativeSize(context, universityHorizontalOffset);
-      case TileType.gasStation:
-        return ScreenUtils.relativeSize(context, gasStationHorizontalOffset);
-      case TileType.park:
-        return ScreenUtils.relativeSize(context, parkHorizontalOffset);
-      case TileType.house:
-        return ScreenUtils.relativeSize(context, houseHorizontalOffset);
-      case TileType.warehouse:
-        return ScreenUtils.relativeSize(context, warehouseHorizontalOffset);
-      default:
-        return ScreenUtils.relativeSize(context, buildingHorizontalOffset);
-    }
-  }
   
-  static const int minBlockSize = AppConfig.minBlockSize;
-  static const int maxBlockSize = AppConfig.maxBlockSize;
-  static const double stopProbability = 0.3; // Chance to stop splitting early (creates large grass areas for buildings)
   
   late List<List<TileType>> _grid;
   late List<List<RoadDirection?>> _roadDirections;
   late List<List<BuildingOrientation?>> _buildingOrientations;
   
   // Sprite sheet for road tiles
-  ui.Image? _roadTilesSpriteSheet;
-  bool _isLoadingSpriteSheet = false;
   
   int? _warehouseX;
   int? _warehouseY;
@@ -286,10 +153,6 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
   AnimationController? _tutorialBlinkController;
   
   // Draggable message position (null = use default position)
-  Offset? _messagePosition;
-  Offset? _messageDragStartPosition; // Position when drag started
-  Offset _messageDragAccumulatedDelta = Offset.zero; // Accumulated delta during current drag
-  bool _previousRushHourState = false; // Track previous rush hour state to detect transitions
   
   // Pedestrian management
   final List<_PedestrianState> _pedestrians = [];
@@ -299,7 +162,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
 
   // The city draws as a 3D lowpoly scene by default. The 2D isometric map stays
   // available through the toggle in the top-right corner.
-  bool _use3DMap = true;
+  final LowPolyController _mapController = LowPolyController();
   List<LowPolyObject>? _scene3D;
   List<List<TileType>>? _scene3DGrid;
   List<sim.Machine>? _scene3DMachines;
@@ -316,7 +179,6 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
     _transformationController.addListener(_onTransformationChanged);
     
     // Load road tiles sprite sheet
-    _loadRoadTilesSpriteSheet();
     
     // Initialize map immediately - check if map state exists in saved game, otherwise generate new map
     final gameState = ref.read(gameControllerProvider);
@@ -784,151 +646,8 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
     // Remaining spots: Leave as Grass (TileType.grass) - already set
   }
 
-  void _generateRoadGrid() {
-    final random = math.Random();
-
-    // 1. Clear Grid
-      for (int y = 0; y < gridSize; y++) {
-      for (int x = 0; x < gridSize; x++) {
-        _grid[y][x] = TileType.grass;
-      }
-    }
-
-    // 2. Recursive Division (Main Network)
-    // Start with the full map area
-    _splitRect(0, 0, gridSize, gridSize, random);
-
-    // 3. Smart Exits (Connect Borders to Network with Guaranteed Connectivity)
-    // Add 1-2 exits on the West (Left) and South (Bottom) edges
-    final numExits = 2; 
-    
-    // West Exits (Connect Left -> Right)
-    for (int i = 0; i < numExits; i++) {
-      int exitY = 2 + random.nextInt(gridSize - 4); // Avoid corners
-      
-      // Find the nearest existing road to connect to
-      int nearestRoadX = -1;
-      int minDistance = gridSize;
-      for (int x = 1; x < gridSize; x++) {
-        if (_grid[exitY][x] == TileType.road) {
-          int distance = x;
-          if (distance < minDistance) {
-            minDistance = distance;
-            nearestRoadX = x;
-          }
-        }
-      }
-      
-      // Draw road from x=0 inwards until we hit the nearest road
-      final targetX = nearestRoadX > 0 ? nearestRoadX : gridSize ~/ 2; // Fallback to center if no road found
-      for (int x = 0; x <= targetX; x++) {
-        _grid[exitY][x] = TileType.road;
-      }
-    }
-
-    // South Exits (Connect Bottom -> Top)
-    for (int i = 0; i < numExits; i++) {
-      int exitX = 2 + random.nextInt(gridSize - 4); // Avoid corners
-      
-      // Find the nearest existing road to connect to
-      int nearestRoadY = -1;
-      int minDistance = gridSize;
-      for (int y = 0; y < gridSize - 1; y++) {
-        if (_grid[y][exitX] == TileType.road) {
-          int distance = (gridSize - 1) - y;
-          if (distance < minDistance) {
-            minDistance = distance;
-            nearestRoadY = y;
-          }
-        }
-      }
-      
-      // Draw road from y=gridSize-1 upwards until we hit the nearest road
-      final targetY = nearestRoadY >= 0 ? nearestRoadY : gridSize ~/ 2; // Fallback to center if no road found
-      for (int y = gridSize - 1; y >= targetY; y--) {
-        _grid[y][exitX] = TileType.road;
-      }
-    }
-
-    // 4. Update Bitmasks
-    _updateRoadDirections();
-  }
-
-  void _splitRect(int x, int y, int width, int height, math.Random random) {
-    // Stop if block is too small
-    if (width <= minBlockSize * 2 || height <= minBlockSize * 2) return;
-    
-    // Chance to stop early (creates large city blocks/parks)
-    if (random.nextDouble() < stopProbability) return;
-
-    // Determine split direction (favor splitting the longer dimension)
-    bool splitVertically = width > height;
-    if (width == height) splitVertically = random.nextBool();
-
-    if (splitVertically) {
-      // Split Vertically (Draw Vertical Line)
-      // Pick split point with padding
-      final splitX = x + minBlockSize + random.nextInt(width - 2 * minBlockSize);
-      
-      // Draw the road
-      for (int i = y; i < y + height; i++) {
-        _grid[i][splitX] = TileType.road;
-      }
-      
-      // Recurse Left and Right
-      _splitRect(x, y, splitX - x, height, random);
-      _splitRect(splitX + 1, y, width - (splitX + 1 - x), height, random);
-    } else {
-      // Split Horizontally (Draw Horizontal Line)
-      final splitY = y + minBlockSize + random.nextInt(height - 2 * minBlockSize);
-      
-      // Draw the road
-      for (int i = x; i < x + width; i++) {
-        _grid[splitY][i] = TileType.road;
-      }
-      
-      // Recurse Top and Bottom
-      _splitRect(x, y, width, splitY - y, random);
-      _splitRect(x, splitY + 1, width, height - (splitY + 1 - y), random);
-    }
-  }
   
-  /// Count the number of road neighbors (N, E, S, W)
-  int _countRoadNeighbors(int x, int y) {
-    int count = 0;
-    if (y > 0 && _grid[y - 1][x] == TileType.road) count++;
-    if (x < gridSize - 1 && _grid[y][x + 1] == TileType.road) count++;
-    if (y < gridSize - 1 && _grid[y + 1][x] == TileType.road) count++;
-    if (x > 0 && _grid[y][x - 1] == TileType.road) count++;
-    return count;
-  }
   
-  /// Check if a tile is at the end of a road (has exactly 1 road neighbor)
-  bool _isRoadEnd(int x, int y) {
-    if (_grid[y][x] != TileType.road) return false;
-    return _countRoadNeighbors(x, y) == 1;
-  }
-
-  void _placeWarehouse() {
-    final random = math.Random();
-    final validSpots = <List<int>>[];
-    
-    for (int y = 0; y < gridSize; y++) {
-      for (int x = 0; x < gridSize; x++) {
-        if (_grid[y][x] == TileType.grass && _isTileAdjacentToRoad(x, y)) {
-          validSpots.add([x, y]);
-        }
-      }
-    }
-    
-    if (validSpots.isNotEmpty) {
-      final spot = validSpots[random.nextInt(validSpots.length)];
-      _warehouseX = spot[0];
-      _warehouseY = spot[1];
-      _grid[spot[1]][spot[0]] = TileType.warehouse;
-      _updateWarehouseRoadPosition();
-    }
-  }
 
   void _updateWarehouseRoadPosition() {
     if (_warehouseX == null || _warehouseY == null) return;
@@ -967,33 +686,6 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
     }
   }
 
-  /// Load the road tiles sprite sheet image
-  Future<void> _loadRoadTilesSpriteSheet() async {
-    if (_isLoadingSpriteSheet) return;
-    _isLoadingSpriteSheet = true;
-    
-    try {
-      final ByteData data = await rootBundle.load('assets/images/tiles/road_tiles_all.png');
-      final Uint8List bytes = data.buffer.asUint8List();
-      final ui.Codec codec = await ui.instantiateImageCodec(bytes);
-      final ui.FrameInfo frameInfo = await codec.getNextFrame();
-      
-      if (mounted) {
-        setState(() {
-          _roadTilesSpriteSheet = frameInfo.image;
-          _isLoadingSpriteSheet = false;
-        });
-      }
-    } catch (e) {
-      print('Error loading road tiles sprite sheet: $e');
-      if (mounted) {
-        setState(() {
-          _isLoadingSpriteSheet = false;
-        });
-      }
-    }
-  }
-
   void _updateRoadDirections() {
     for (int y = 0; y < gridSize; y++) {
       for (int x = 0; x < gridSize; x++) {
@@ -1004,84 +696,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
     }
   }
 
-  /// Calculate neighbor bitmask for road tile with safe boundary checks
-  /// North (Y-1): Bit 1, East (X+1): Bit 2, South (Y+1): Bit 4, West (X-1): Bit 8
-  int _calculateRoadMask(int x, int y) {
-    int mask = 0;
-    // Safe boundary checks to prevent "Elbow in T-Junction" bugs
-    if (y > 0 && _grid[y - 1][x] == TileType.road) mask |= 1; // North
-    if (x < gridSize - 1 && _grid[y][x + 1] == TileType.road) mask |= 2; // East
-    if (y < gridSize - 1 && _grid[y + 1][x] == TileType.road) mask |= 4; // South
-    if (x > 0 && _grid[y][x - 1] == TileType.road) mask |= 8; // West
-    return mask;
-  }
 
-  /// Get road tile index (row, col) and flip info from sprite sheet based on neighbor connections
-  /// Uses strict auto-tiling algorithm with bitmasking - NO vertical flipping, horizontal flipping only
-  /// Returns (row, col, flipHorizontal, flipVertical) where row and col are 0-indexed
-  /// Note: flipVertical is ignored by RoadTilePainter - only horizontal flipping is used
-  ({int row, int col, bool flipHorizontal, bool flipVertical}) _getRoadTileIndex(int x, int y) {
-    final mask = _calculateRoadMask(x, y);
-    
-    // Exact lookup table matching road_tiles_all.png sprite sheet
-    // R0, C0: Elbow SE (Sharp), R0, C1: T-Junction SEN (Right), R0, C2: Elbow SW, R0, C3: Elbow SE (Rounded)
-    // R1, C0: T-Junction WNE (Up), R1, C1: Straight V, R1, C2: Straight H, R1, C3: Cross
-    switch (mask) {
-      // Straight Roads
-      case 5: // S+N (South + North) - Straight V
-        return (row: 1, col: 1, flipHorizontal: false, flipVertical: false);
-      
-      case 10: // W+E (West + East) - Straight H
-        return (row: 1, col: 2, flipHorizontal: false, flipVertical: false);
-      
-      // Dead Ends - Map to respective Straight orientation
-      case 0: // No connections
-      case 1: // N only
-      case 4: // S only
-        return (row: 1, col: 1, flipHorizontal: false, flipVertical: false); // Straight V
-      
-      case 2: // E only
-      case 8: // W only
-        return (row: 1, col: 2, flipHorizontal: false, flipVertical: false); // Straight H
-      
-      // Corners
-      case 6: // S+E (South + East) - Sharp Elbow SE - Row 0, Col 0
-        return (row: 0, col: 0, flipHorizontal: false, flipVertical: false);
-      
-      case 12: // S+W (South + West) - Elbow SW
-        return (row: 0, col: 2, flipHorizontal: false, flipVertical: false);
-      
-      // North Corners (No Vertical Flip allowed - Use flipped South corners)
-      case 3: // N+E (North + East) - Use Elbow SW (Row 0, Col 2) flipped horizontally
-        return (row: 0, col: 2, flipHorizontal: true, flipVertical: false);
-      
-      case 9: // N+W (North + West) - Rounded Elbow SE - Row 0, Col 3
-        return (row: 0, col: 3, flipHorizontal: false, flipVertical: false);
-      
-      // T-Junctions (NEVER fall back to elbows)
-      case 7: // S+E+N (South + East + North) - T-Junction SEN (Right) - NO FLIP
-        return (row: 0, col: 1, flipHorizontal: false, flipVertical: false);
-      
-      case 11: // W+N+E (West + North + East) - T-Junction WNE (Up) - NO FLIP
-        return (row: 1, col: 0, flipHorizontal: false, flipVertical: false);
-      
-      case 13: // N+W+S (North + West + South) - T-Junction SEN with FLIP HORIZONTAL (Left)
-        // SEN (Right) flipped horizontally -> S stays S, N stays N, E becomes W. Result: S+W+N. Correct.
-        return (row: 0, col: 1, flipHorizontal: true, flipVertical: false);
-      
-      case 14: // S+W+E (South + West + East) - T-Junction SEN with FLIP HORIZONTAL (Down)
-        // Use T-Junction SEN (Row 0, Col 1) flipped horizontally to create Down-pointing T
-        return (row: 0, col: 1, flipHorizontal: true, flipVertical: false);
-      
-      // Intersection
-      case 15: // All 4 directions - Cross
-        return (row: 1, col: 3, flipHorizontal: false, flipVertical: false);
-      
-      // Fallback
-      default:
-        return (row: 1, col: 1, flipHorizontal: false, flipVertical: false); // Straight V
-    }
-  }
 
   RoadDirection _getRoadDirection(int x, int y) {
     final bool hasNorth = y > 0 && _grid[y - 1][x] == TileType.road;
@@ -1106,266 +721,15 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
     return RoadDirection.intersection;
   }
 
-  void _placeBuildingBlocks() {
-    final random = math.Random();
-    final buildingTypes = [
-      TileType.shop, TileType.gym, TileType.office, TileType.school,
-      TileType.gasStation, TileType.park, TileType.house,
-      TileType.subway, TileType.hospital, TileType.university,
-    ];
 
-    final buildingCounts = <TileType, int>{
-      TileType.shop: 0, TileType.gym: 0, TileType.office: 0, TileType.school: 0,
-      TileType.gasStation: 0, TileType.park: 0, TileType.house: 0,
-      TileType.subway: 0, TileType.hospital: 0, TileType.university: 0,
-    };
-    
-    final maxBuildingCounts = <TileType, int>{
-      TileType.shop: 4, TileType.gym: 4, TileType.office: 4, TileType.school: 4,
-      TileType.gasStation: 4, TileType.park: 6, TileType.house: 6,
-      TileType.subway: 4, TileType.hospital: 4, TileType.university: 4,
-    };
-
-    final validBlocks = <Map<String, dynamic>>[];
-    
-    for (int startY = 0; startY < gridSize; startY++) {
-      for (int startX = 0; startX < gridSize; startX++) {
-        for (int blockWidth = minBlockSize; blockWidth <= maxBlockSize; blockWidth++) {
-          for (int blockHeight = minBlockSize; blockHeight <= maxBlockSize; blockHeight++) {
-            if (blockWidth == 3 && blockHeight == 3) continue;
-            if (_canPlaceBlock(startX, startY, blockWidth, blockHeight)) {
-              validBlocks.add({
-                'x': startX, 'y': startY, 'width': blockWidth, 'height': blockHeight,
-              });
-            }
-          }
-        }
-      }
-    }
-
-    validBlocks.sort((a, b) {
-      final aHasBuildings = _blockHasBuildings(a['x'] as int, a['y'] as int, a['width'] as int, a['height'] as int);
-      final bHasBuildings = _blockHasBuildings(b['x'] as int, b['y'] as int, b['width'] as int, b['height'] as int);
-      if (aHasBuildings != bHasBuildings) return aHasBuildings ? 1 : -1;
-      return 0;
-    });
-    
-    final emptyBlocks = validBlocks.where((b) => !_blockHasBuildings(b['x'] as int, b['y'] as int, b['width'] as int, b['height'] as int)).toList();
-    final blocksWithBuildings = validBlocks.where((b) => _blockHasBuildings(b['x'] as int, b['y'] as int, b['width'] as int, b['height'] as int)).toList();
-    emptyBlocks.shuffle(random);
-    blocksWithBuildings.shuffle(random);
-    final sortedBlocks = [...emptyBlocks, ...blocksWithBuildings];
-    
-    final placedTiles = <String>{};
-    
-    for (final block in sortedBlocks) {
-      final startX = block['x'] as int;
-      final startY = block['y'] as int;
-      final blockWidth = block['width'] as int;
-      final blockHeight = block['height'] as int;
-      
-      bool overlaps = false;
-      for (int by = startY; by < startY + blockHeight && !overlaps; by++) {
-        for (int bx = startX; bx < startX + blockWidth && !overlaps; bx++) {
-          if (placedTiles.contains('$bx,$by')) overlaps = true;
-        }
-      }
-      
-      if (overlaps) continue;
-      
-      final blockBuildingTypes = <TileType>{};
-      final blockTiles = <List<int>>[];
-      for (int by = startY; by < startY + blockHeight && by < gridSize; by++) {
-        for (int bx = startX; bx < startX + blockWidth && bx < gridSize; bx++) {
-          blockTiles.add([bx, by]);
-        }
-      }
-      
-      blockTiles.sort((a, b) {
-        final aAdjacent = _isTileAdjacentToBuilding(a[0], a[1], placedTiles);
-        final bAdjacent = _isTileAdjacentToBuilding(b[0], b[1], placedTiles);
-        if (aAdjacent != bAdjacent) return aAdjacent ? 1 : -1;
-        return 0;
-      });
-      
-      final maxBuildingsPerBlock = 2;
-      final numBuildings = math.min(math.min(blockTiles.length, maxBuildingsPerBlock), buildingTypes.length);
-      
-      final priorityTypes = [
-        TileType.gasStation, TileType.park, TileType.house,
-        TileType.shop, TileType.gym, TileType.office, TileType.school,
-        TileType.subway, TileType.hospital, TileType.university,
-      ];
-      
-      for (int i = 0; i < numBuildings && i < blockTiles.length; i++) {
-        final tile = blockTiles[i];
-        final bx = tile[0];
-        final by = tile[1];
-        
-        if (!_isTileAdjacentToRoad(bx, by)) continue;
-        
-        // Skip if this tile is at the end of a road (only place buildings on the sides)
-        if (_isTileAtRoadEnd(bx, by)) continue;
-        
-        final availableTypes = buildingTypes.where((type) => 
-          !blockBuildingTypes.contains(type) && buildingCounts[type]! < maxBuildingCounts[type]!
-        ).toList();
-        
-        if (availableTypes.isEmpty) break;
-        
-        final housesAndParks = availableTypes.where((type) => 
-          (type == TileType.house || type == TileType.park) && buildingCounts[type]! < maxBuildingCounts[type]!
-        ).toList();
-        
-        final priorityAvailable = housesAndParks.isNotEmpty 
-            ? housesAndParks
-            : availableTypes.where((type) => 
-                priorityTypes.contains(type) && buildingCounts[type]! < maxBuildingCounts[type]!
-              ).toList();
-        
-        final buildingType = priorityAvailable.isNotEmpty 
-            ? priorityAvailable[random.nextInt(priorityAvailable.length)]
-            : availableTypes[random.nextInt(availableTypes.length)];
-        
-        buildingCounts[buildingType] = buildingCounts[buildingType]! + 1;
-        blockBuildingTypes.add(buildingType);
-        
-        _grid[by][bx] = buildingType;
-        _buildingOrientations[by][bx] = BuildingOrientation.normal;
-        placedTiles.add('$bx,$by');
-      }
-    }
-  }
-
-  bool _canPlaceBlock(int startX, int startY, int width, int height) {
-    if (startX + width > gridSize || startY + height > gridSize) return false;
-    
-    for (int y = startY; y < startY + height; y++) {
-      for (int x = startX; x < startX + width; x++) {
-        if (_grid[y][x] != TileType.grass) return false;
-      }
-    }
-    
-    bool adjacentToRoad = false;
-    
-    if (startY > 0) {
-      for (int x = startX; x < startX + width; x++) {
-        if (_grid[startY - 1][x] == TileType.road) { adjacentToRoad = true; break; }
-      }
-    }
-    if (!adjacentToRoad && startY + height < gridSize) {
-      for (int x = startX; x < startX + width; x++) {
-        if (_grid[startY + height][x] == TileType.road) { adjacentToRoad = true; break; }
-      }
-    }
-    if (!adjacentToRoad && startX > 0) {
-      for (int y = startY; y < startY + height; y++) {
-        if (_grid[y][startX - 1] == TileType.road) { adjacentToRoad = true; break; }
-      }
-    }
-    if (!adjacentToRoad && startX + width < gridSize) {
-      for (int y = startY; y < startY + height; y++) {
-        if (_grid[y][startX + width] == TileType.road) { adjacentToRoad = true; break; }
-      }
-    }
-    
-    return adjacentToRoad;
-  }
-
-  bool _isTileAdjacentToRoad(int x, int y) {
-    if (x > 0 && _grid[y][x - 1] == TileType.road) return true;
-    if (x < gridSize - 1 && _grid[y][x + 1] == TileType.road) return true;
-    if (y > 0 && _grid[y - 1][x] == TileType.road) return true;
-    if (y < gridSize - 1 && _grid[y + 1][x] == TileType.road) return true;
-    return false;
-  }
   
-  /// Check if a tile is adjacent to a road end (building should not be placed here)
-  bool _isTileAtRoadEnd(int x, int y) {
-    // Check all 4 adjacent tiles - if any is a road end, this tile is at a road end
-    if (x > 0 && _isRoadEnd(x - 1, y)) return true;
-    if (x < gridSize - 1 && _isRoadEnd(x + 1, y)) return true;
-    if (y > 0 && _isRoadEnd(x, y - 1)) return true;
-    if (y < gridSize - 1 && _isRoadEnd(x, y + 1)) return true;
-    return false;
-  }
 
-  bool _blockHasBuildings(int startX, int startY, int width, int height) {
-    for (int y = startY; y < startY + height && y < gridSize; y++) {
-      for (int x = startX; x < startX + width && x < gridSize; x++) {
-        if (_isBuilding(_grid[y][x])) return true;
-      }
-    }
-    return false;
-  }
 
-  bool _isTileAdjacentToBuilding(int x, int y, Set<String> placedTiles) {
-    if (x > 0 && placedTiles.contains('${x - 1},$y')) return true;
-    if (x < gridSize - 1 && placedTiles.contains('${x + 1},$y')) return true;
-    if (y > 0 && placedTiles.contains('$x,${y - 1}')) return true;
-    if (y < gridSize - 1 && placedTiles.contains('$x,${y + 1}')) return true;
-    return false;
-  }
 
-  Offset _gridToScreen(BuildContext context, int gridX, int gridY) {
-    final tileWidth = _getTileWidth(context);
-    final tileHeight = _getTileHeight(context);
-    final screenX = (gridX - gridY) * (tileWidth / 2) * horizontalSpacingFactor;
-    final screenY = (gridX + gridY) * (tileHeight / 2) * tileSpacingFactor;
-    return Offset(screenX, screenY);
-  }
 
-  Offset _gridToScreenDouble(BuildContext context, double gridX, double gridY) {
-    final tileWidth = _getTileWidth(context);
-    final tileHeight = _getTileHeight(context);
-    final screenX = (gridX - gridY) * (tileWidth / 2) * horizontalSpacingFactor;
-    final screenY = (gridX + gridY) * (tileHeight / 2) * tileSpacingFactor;
-    return Offset(screenX, screenY);
-  }
 
-  String _getTileAssetPath(TileType tileType, RoadDirection? roadDir) {
-    switch (tileType) {
-      case TileType.grass: return 'assets/images/tiles/grass.png';
-      case TileType.road:
-        return roadDir == RoadDirection.intersection 
-          ? 'assets/images/tiles/road_4way.png' 
-          : 'assets/images/tiles/road_2way.png';
-      case TileType.shop: return 'assets/images/tiles/shop.png';
-      case TileType.gym: return 'assets/images/tiles/gym.png';
-      case TileType.office: return 'assets/images/tiles/office.png';
-      case TileType.school: return 'assets/images/tiles/school.png';
-      case TileType.gasStation: return 'assets/images/tiles/gas_station.png';
-      case TileType.park: return 'assets/images/tiles/park.png';
-      case TileType.house: return 'assets/images/tiles/house.png';
-      case TileType.warehouse: return 'assets/images/tiles/warehouse.png';
-      case TileType.subway: return 'assets/images/tiles/subway.png';
-      case TileType.hospital: return 'assets/images/tiles/hospital.png';
-      case TileType.university: return 'assets/images/tiles/university.png';
-    }
-  }
 
-  bool _isBuilding(TileType tileType) {
-    return tileType == TileType.shop || tileType == TileType.gym ||
-        tileType == TileType.office || tileType == TileType.school ||
-        tileType == TileType.gasStation || tileType == TileType.park ||
-        tileType == TileType.house || tileType == TileType.warehouse ||
-        tileType == TileType.subway || tileType == TileType.hospital ||
-        tileType == TileType.university;
-  }
 
-  double _getBuildingScale(TileType tileType) {
-    switch (tileType) {
-      case TileType.school: return schoolScale;
-      case TileType.gasStation: return gasStationScale;
-      case TileType.park: return parkScale;
-      case TileType.house: return houseScale;
-      case TileType.warehouse: return warehouseScale;
-      case TileType.subway: return subwayScale;
-      case TileType.university: return universityScale;
-      case TileType.hospital: return hospitalScale;
-      default: return buildingScale;
-    }
-  }
 
   bool _hasShownGameOver = false; // Track if we've already shown the game over dialog
 
@@ -1373,10 +737,10 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
   Widget build(BuildContext context) {
     // Watch machines provider to ensure rebuild when machines change
     ref.watch(machinesProvider);
-    
+
     // Watch game state for game over condition
     final gameState = ref.watch(gameStateProvider);
-    
+
     // Show game over dialog when game over flag is set
     if (gameState.isGameOver && !_hasShownGameOver) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -1384,224 +748,82 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
         _showGameOverDialog(context);
       });
     }
-    
-    // Get tile dimensions for this context
-    final tileWidth = _getTileWidth(context);
-    final tileHeight = _getTileHeight(context);
-    final buildingImageHeight = _getBuildingImageHeight(context);
-    
-    // 1. Calculate the map's bounding box
-    double minX = double.infinity;
-    double maxX = double.negativeInfinity;
-    double minY = double.infinity;
-    double maxY = double.negativeInfinity;
-    
-    for (int y = 0; y < gridSize; y++) {
-      for (int x = 0; x < gridSize; x++) {
-        final screenPos = _gridToScreen(context, x, y);
-        minX = math.min(minX, screenPos.dx);
-        maxX = math.max(maxX, screenPos.dx + tileWidth);
-        minY = math.min(minY, screenPos.dy);
-        maxY = math.max(maxY, screenPos.dy + tileHeight);
-        
-        if (_isBuilding(_grid[y][x])) {
-          final buildingTop = screenPos.dy - (buildingImageHeight - tileHeight);
-          minY = math.min(minY, buildingTop);
-        }
-      }
-    }
-    
-    // Add generous padding for the map canvas to ensure no clipping during pans/scales
-    // Calculate padding relative to map dimensions
-    final initialMapWidth = maxX - minX;
-    final initialMapHeight = maxY - minY;
-    final sidePadding = initialMapWidth * AppConfig.mapSidePaddingFactor;
-    final topPadding = initialMapHeight * AppConfig.mapTopPaddingFactor;
-    final bottomPadding = initialMapHeight * AppConfig.mapBottomPaddingFactor;
-    
-    minX -= sidePadding;
-    maxX += sidePadding;
-    minY -= topPadding;
-    maxY += bottomPadding;
-    
-    final mapWidth = maxX - minX;
-    final mapHeight = maxY - minY;
-    
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final viewportWidth = constraints.maxWidth;
-        final viewportHeight = constraints.maxHeight;
-        
-        // 2. Determine the container size for InteractiveViewer
-        // Force the container to be AT LEAST the size of the viewport.
-        // This allows us to position the map at the bottom of the viewport.
-        final containerWidth = math.max(viewportWidth, mapWidth);
-        final containerHeight = math.max(viewportHeight, mapHeight);
 
-        // 3. Calculate Offsets to position tiles
-        // Horizontal: Center in the container
-        final offsetX = (containerWidth - mapWidth) / 2 - minX;
-        
-        // Vertical: Bottom Align in the container
-        // We want the bottom visual edge (maxY) to be 'targetBottomGap' from container bottom.
-        final double targetBottomGap = mapHeight * AppConfig.mapTargetBottomGapFactor; 
-        // Logic: containerHeight - targetBottomGap = New Visual Bottom Position
-        // Visual Bottom Position = (maxY + dy)
-        // dy = containerHeight - targetBottomGap - maxY
-        final offsetY = containerHeight - targetBottomGap - maxY;
-        
-        final centerOffset = Offset(offsetX, offsetY);
+    final isNight = gameState.hourOfDay < 6 || gameState.hourOfDay >= 20;
+    final weather = gameState.weather;
 
-        // Calculate initial scale to zoom in for better visibility
-        final initialScale = AppConfig.initialMapZoom;
-        
-        // Calculate center of the map in container coordinates
-        final mapCenterX = offsetX + (minX + maxX) / 2;
-        final mapCenterY = offsetY + (minY + maxY) / 2;
-        
-        // Calculate initial translation to center the viewport on the map center
-        // After scaling, we need to adjust translation to keep the center point in view
-        final initialTranslationX = viewportWidth / 2 - mapCenterX * initialScale;
-        final initialTranslationY = viewportHeight / 2 - mapCenterY * initialScale;
-        
-        // Set initial transformation if not already set (only on first build)
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (_transformationController.value.isIdentity()) {
-            _transformationController.value = Matrix4.identity()
-              ..translate(initialTranslationX, initialTranslationY)
-              ..scale(initialScale);
-          }
-        });
-        
-        final components = _buildMapComponents(context, centerOffset, tileWidth, tileHeight, buildingImageHeight);
-        
-        // Night overlay (darken the map)
-        final isNight = gameState.hourOfDay < 6 || gameState.hourOfDay >= 20;
-        final weather = gameState.weather;
+    return Stack(
+      children: [
+        // Not Positioned: a Stack needs one unpositioned child to size itself,
+        // and without it the whole city collapses to nothing.
+        SizedBox.expand(child: _build3DCity(isNight)),
 
-        final use3D = _use3DMap;
-
-        return Stack(
-          children: [
-            if (use3D)
-              // Not Positioned: a Stack needs one unpositioned child to size itself,
-              // and without it the whole city collapses to nothing.
-              SizedBox.expand(child: _build3DCity(isNight))
-            else
-            InteractiveViewer(
-              transformationController: _transformationController,
-              boundaryMargin: EdgeInsets.all(ScreenUtils.relativeSize(context, 0.2)),
-              minScale: 0.3,
-              maxScale: 3.0,
-              // *** CRITICAL FIX: ***
-              // constrained: false allows the child to be its natural size (containerWidth/Height)
-              // rather than forcing it to the viewport size. This ensures elements outside the
-              // initial screen bounds are still part of the hit-test area.
-              constrained: false,
-              child: SizedBox(
-                width: containerWidth,
-                height: containerHeight,
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    // Render tiles. During night we brighten the tile layer slightly
-                    // so building details/light dots remain visible while the overall
-                    // city gets a dark overlay applied below.
-                    if (isNight)
-                      Positioned.fill(
-                        child: ColorFiltered(
-                          colorFilter: const ColorFilter.matrix(<double>[
-                            1.15, 0, 0, 0, 0, // R
-                            0, 1.15, 0, 0, 0, // G
-                            0, 0, 1.15, 0, 0, // B
-                            0, 0, 0, 1, 0,    // A
-                          ]),
-                          child: Stack(
-                            clipBehavior: Clip.none,
-                            children: List<Widget>.from(components['tiles']!),
-                          ),
-                        ),
-                      )
-                    else ...components['tiles']!,
-
-                    // Night overlay on top of tiles but below buttons/UI
-                    if (isNight)
-                      Positioned.fill(
-                        child: IgnorePointer(
-                          child: Container(
-                            color: const Color(0xFF051020).withOpacity(0.5),
-                          ),
-                        ),
-                      ),
-
-                    // Buttons on top (hidden during panning)
-                    if (!_isPanning) ...components['buttons']!,
-                    // Tutorial message overlay
-                    if (_showPedestrianTutorial && _tutorialPedestrian != null)
-                      _buildTutorialMessage(context, _tutorialPedestrian!, centerOffset, tileWidth, tileHeight),
-                  ],
+        // Rain overlay (full screen)
+        if (weather == WeatherType.rainy || weather == WeatherType.stormy)
+          Positioned.fill(
+            child: IgnorePointer(
+              child: CustomPaint(
+                painter: RainPainter(
+                  intensity: weather == WeatherType.stormy ? 1.0 : 0.5,
+                  time: DateTime.now().millisecondsSinceEpoch.toDouble(),
                 ),
               ),
             ),
+          ),
 
-            // Rain overlay (full screen, ignores transformation)
-            if (weather == WeatherType.rainy || weather == WeatherType.stormy)
-              Positioned.fill(
-                child: IgnorePointer(
-                  child: CustomPaint(
-                    painter: RainPainter(
-                      intensity: weather == WeatherType.stormy ? 1.0 : 0.5,
-                      time: DateTime.now().millisecondsSinceEpoch.toDouble(),
-                    ),
-                  ),
+        // Tutorial hint: tap a pedestrian to make them buy
+        if (_showPedestrianTutorial)
+          Positioned(
+            left: 16,
+            right: 16,
+            bottom: 12,
+            child: IgnorePointer(
+              child: VexPanel(
+                borderColor: VexColors.gold,
+                child: const Text(
+                  'Tap pedestrians to make them buy items!',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: VexColors.gold, fontSize: 15, fontWeight: FontWeight.w700),
                 ),
               ),
-
-            // Switches between the 3D lowpoly city and the 2D isometric map
-            Positioned(
-              top: ScreenUtils.relativeSize(context, 0.01),
-              right: ScreenUtils.relativeSize(context, 0.02),
-              child: IconButton.filledTonal(
-                tooltip: use3D ? 'Show 2D map' : 'Show 3D map',
-                icon: Icon(use3D ? Icons.map_outlined : Icons.view_in_ar),
-                onPressed: () => setState(() => _use3DMap = !_use3DMap),
-              ),
             ),
+          ),
 
-            // Tutorial hint for the 3D city. The 2D map draws its message beside the pedestrian.
-            if (use3D && _showPedestrianTutorial)
-              Positioned(
-                left: 16,
-                right: 16,
-                bottom: 12,
-                child: IgnorePointer(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF2E7D32),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Text(
-                      'Tap pedestrians to make them buy items!',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ),
-              ),
-
-            // Marketing button rendered outside InteractiveViewer to stay visible during panning.
-            // On the 3D city it keeps running but draws nothing; the 3D marker takes its place.
-            _buildMarketingButtonOverlay(
-              context,
-              centerOffset,
-              tileWidth,
-              tileHeight,
-              visible: !use3D,
+        // Camera controls on the right
+        Positioned(
+          right: 10,
+          top: 0,
+          bottom: 0,
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                VexIconButton(icon: Icons.add, tooltip: 'Zoom in', onPressed: () => _mapController.zoomBy(0.75)),
+                const SizedBox(height: 6),
+                VexIconButton(icon: Icons.remove, tooltip: 'Zoom out', onPressed: () => _mapController.zoomBy(1.35)),
+                const SizedBox(height: 6),
+                VexIconButton(icon: Icons.center_focus_strong, tooltip: 'Reset view', onPressed: _mapController.reset),
+              ],
             ),
-          ],
-        );
-      },
+          ),
+        ),
+
+        // The marketing button keeps its timers here, and the 3D marker shows it.
+        if (gameState.marketingButtonGridX != null && gameState.marketingButtonGridY != null)
+          Positioned(
+            left: 0,
+            top: 0,
+            child: MarketingButton(
+              key: _marketingKey,
+              gridX: gameState.marketingButtonGridX!,
+              gridY: gameState.marketingButtonGridY!,
+              screenPosition: Offset.zero,
+              tileWidth: 0,
+              tileHeight: 0,
+              visible: false,
+            ),
+          ),
+      ],
     );
   }
 
@@ -1647,8 +869,9 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
       overlay: dynamicObjects,
       camera: defaultCityCamera(gridSize),
       background: isNight ? cityNightSky : cityDaySky,
-      minDistance: 10,
-      maxDistance: 40,
+      minDistance: 6,
+      maxDistance: 60,
+      controller: _mapController,
       onTapTarget: (target) {
         if (target is CityCell) {
           _handleDebouncedBuildingTap(target.x, target.y, target.tileType);
@@ -1700,501 +923,6 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
     return objects;
   }
 
-  Map<String, List<Widget>> _buildMapComponents(BuildContext context, Offset centerOffset, double tileWidth, double tileHeight, double buildingImageHeight) {
-    final warehouseVerticalOffset = _getWarehouseVerticalOffset(context);
-    
-    // Three-Layer Rendering System:
-    // Layer 1: Ground tiles (Grass/Road) - rendered first, sorted by depth, cached to prevent re-rendering
-    //   - Grass tiles rendered under buildings and for empty grass spots
-    //   - Road tiles rendered where roads exist
-    //   - Both sorted by depth (x + y) so deeper tiles render first
-    // Layer 2: Objects (Buildings, Pedestrians, Trucks, Machines) - sorted by depth
-    final groundTileItems = <Map<String, dynamic>>[];
-    final objectItems = <Map<String, dynamic>>[];
-    
-    // Collect all ground tiles with depth information for sorting
-    for (int y = 0; y < gridSize; y++) {
-      for (int x = 0; x < gridSize; x++) {
-        final screenPos = _gridToScreen(context, x, y);
-        final tileType = _grid[y][x];
-        final depth = x + y;
-        
-        // Render grass under buildings (not under roads)
-        if (tileType != TileType.road && tileType != TileType.grass) {
-          final grassWidget = _buildSingleTileWidget(
-            context, x, y, TileType.grass, null, _buildingOrientations[y][x],
-          screenPos.dx + centerOffset.dx, screenPos.dy + centerOffset.dy,
-          tileWidth, tileHeight, buildingImageHeight, warehouseVerticalOffset
-        );
-          groundTileItems.add({
-            'depth': depth,
-            'y': y,
-            'widget': grassWidget,
-          });
-        }
-        
-        // Render grass for empty grass spots
-        if (tileType == TileType.grass) {
-          final grassWidget = _buildSingleTileWidget(
-            context, x, y, TileType.grass, null, _buildingOrientations[y][x],
-            screenPos.dx + centerOffset.dx, screenPos.dy + centerOffset.dy,
-            tileWidth, tileHeight, buildingImageHeight, warehouseVerticalOffset
-          );
-          groundTileItems.add({
-            'depth': depth,
-            'y': y,
-            'widget': grassWidget,
-          });
-        }
-        
-        // Render roads
-        if (tileType == TileType.road) {
-          final roadWidget = _buildSingleTileWidget(
-            context, x, y, TileType.road, _roadDirections[y][x], _buildingOrientations[y][x],
-            screenPos.dx + centerOffset.dx, screenPos.dy + centerOffset.dy,
-            tileWidth, tileHeight, buildingImageHeight, warehouseVerticalOffset
-          );
-          groundTileItems.add({
-            'depth': depth,
-            'y': y,
-            'widget': roadWidget,
-          });
-        }
-      }
-    }
-    
-    // Sort ground tiles by depth (deeper tiles render first/behind)
-    groundTileItems.sort((a, b) {
-      final depthA = (a['depth'] as int?) ?? 0;
-      final depthB = (b['depth'] as int?) ?? 0;
-      if (depthA != depthB) return depthA.compareTo(depthB);
-      // Secondary sort by Y coordinate
-      final yA = (a['y'] as int?) ?? 0;
-      final yB = (b['y'] as int?) ?? 0;
-      return yA.compareTo(yB);
-    });
-    
-    // Build ground tiles list from sorted items
-    final groundTiles = groundTileItems.map((item) => item['widget'] as Widget).toList();
-    
-    // 4. Fourth pass: Render buildings on top of grass
-    for (int y = 0; y < gridSize; y++) {
-      for (int x = 0; x < gridSize; x++) {
-        final screenPos = _gridToScreen(context, x, y);
-        final tileType = _grid[y][x];
-        
-        // Only render buildings (not grass or road)
-        if (tileType != TileType.grass && tileType != TileType.road) {
-          final buildingWidget = _buildSingleTileWidget(
-            context, x, y, tileType, _roadDirections[y][x], _buildingOrientations[y][x],
-            screenPos.dx + centerOffset.dx, screenPos.dy + centerOffset.dy,
-            tileWidth, tileHeight, buildingImageHeight, warehouseVerticalOffset
-          );
-          objectItems.add({
-            'type': 'building',
-            'depth': x + y,
-            'y': y,
-            'priority': 3, // Buildings have Priority 3 (drawn last at same depth)
-            'widget': buildingWidget,
-          });
-        }
-      }
-    }
-    
-    // 2. Add all pedestrians to objectItems
-    for (final pedestrian in _pedestrians) {
-      // Use .round() to assign pedestrian to the visual tile they are closest to
-      final gridX = pedestrian.gridX.round();
-      final gridY = pedestrian.gridY.round();
-      final depth = gridX + gridY;
-      
-      // Build the pedestrian widget
-      final pedestrianWidget = _buildPedestrian(context, pedestrian, centerOffset, tileWidth, tileHeight);
-      
-      objectItems.add({
-        'type': 'pedestrian',
-        'depth': depth,
-        'y': gridY,
-        'priority': 1, // Pedestrians/Trucks have Priority 1
-        'widget': pedestrianWidget,
-      });
-    }
-    
-    // 3. Add all trucks to objectItems
-    final gameTrucks = ref.watch(trucksProvider);
-    for (final truck in gameTrucks) {
-      // Convert from 1-based zone coordinates to 0-based grid coordinates
-      final gridX = (truck.currentX - 1.0).round();
-      final gridY = (truck.currentY - 1.0).round();
-      final depth = gridX + gridY;
-      
-      // Build the truck widget
-      final truckWidget = _buildGameTruck(context, truck, centerOffset, tileWidth, tileHeight);
-      
-      objectItems.add({
-        'type': 'truck',
-        'depth': depth,
-        'y': gridY,
-        'priority': 1, // Pedestrians/Trucks have Priority 1
-        'widget': truckWidget,
-      });
-    }
-    
-    // 4. Machines are rendered separately after all objects to always appear in front
-    // (Don't add machines to objectItems - they'll be added to tiles list separately)
-    
-    // 5. Sort objectItems using Painter's Algorithm
-    objectItems.sort((a, b) {
-      // Primary sort: Depth (x + y) - Ascending (lower depth draws first/behind)
-      final depthA = (a['depth'] as int?) ?? 0;
-      final depthB = (b['depth'] as int?) ?? 0;
-      if (depthA != depthB) return depthA.compareTo(depthB);
-      
-      // Secondary sort: Y coordinate - Ascending (higher up on grid draws first/behind)
-      final yA = (a['y'] as int?) ?? 0;
-      final yB = (b['y'] as int?) ?? 0;
-      if (yA != yB) return yA.compareTo(yB);
-      
-      // Tertiary sort: Priority - Ascending
-      // Priority order: 1 (Pedestrians/Trucks) < 3 (Buildings)
-      // Note: Machines are rendered separately after all objects, so they always appear on top
-      final priorityA = (a['priority'] as int?) ?? 0;
-      final priorityB = (b['priority'] as int?) ?? 0;
-      return priorityA.compareTo(priorityB);
-    });
-    
-    // 6. Build objects list from sorted objectItems
-    final objects = <Widget>[];
-    for (final item in objectItems) {
-      objects.add(item['widget'] as Widget);
-    }
-    
-    // 7. Add machines separately - always render on top of everything
-    final gameMachines = ref.watch(machinesProvider);
-    final machineWidgets = <Widget>[];
-    for (final machine in gameMachines) {
-      final machineWidget = _buildGameMachine(context, machine, centerOffset, tileWidth, tileHeight);
-      machineWidgets.add(machineWidget);
-    }
-    
-    // 8. Wrap ground tiles in RepaintBoundary to prevent re-rendering when buildings change
-    // Ground tiles render first (behind), then objects, then machines (always on top)
-    final cachedGroundLayer = RepaintBoundary(
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: groundTiles,
-      ),
-    );
-    final tiles = <Widget>[cachedGroundLayer, ...objects, ...machineWidgets];
-    
-    // 7. Build purchase buttons (separate from depth sorting, rendered on top)
-    final buttons = <Widget>[];
-    for (int y = 0; y < gridSize; y++) {
-      for (int x = 0; x < gridSize; x++) {
-        final tileType = _grid[y][x];
-        if (_isBuilding(tileType) && tileType != TileType.warehouse && _shouldShowPurchaseButton(x, y, tileType)) {
-          final screenPos = _gridToScreen(context, x, y);
-          final posX = screenPos.dx + centerOffset.dx;
-          final posY = screenPos.dy + centerOffset.dy;
-          
-          final buttonSize = ScreenUtils.relativeSizeClamped(context, 0.03);
-          
-          final buttonTop = posY;
-          final buttonLeft = posX + (tileWidth / 2) - (buttonSize / 2);
-          
-          buttons.add(
-            Positioned(
-              left: buttonLeft,
-              top: buttonTop,
-              width: buttonSize,
-              height: buttonSize,
-              child: _PurchaseButton(
-                size: buttonSize,
-                onTap: () => _handleDebouncedBuildingTap(x, y, tileType),
-              ),
-            ),
-          );
-        }
-      }
-    }
-
-    // Marketing button will be rendered separately outside InteractiveViewer to stay visible during panning
-    // (moved to outer Stack in _buildMapView)
-    
-    // Add instruction message to buttons (only when not in rush hour)
-    final gameState = ref.watch(gameStateProvider);
-    
-    // Reset message position when rush hour ends (transitions from true to false)
-    if (_previousRushHourState && !gameState.isRushHour) {
-      _messagePosition = null; // Reset to default position above button
-    }
-    _previousRushHourState = gameState.isRushHour;
-    
-    if (gameState.marketingButtonGridX != null && 
-        gameState.marketingButtonGridY != null &&
-        !gameState.isRushHour) {
-      final buttonGridX = gameState.marketingButtonGridX!;
-      final buttonGridY = gameState.marketingButtonGridY!;
-      final screenPos = _gridToScreen(context, buttonGridX, buttonGridY);
-      final positionedX = screenPos.dx + centerOffset.dx;
-      final positionedY = screenPos.dy + centerOffset.dy;
-      
-      // Calculate default position above the button
-      final defaultMessageOffsetX = positionedX - tileWidth * 0.5;
-      final defaultMessageOffsetY = positionedY - tileHeight * 1.0; // Lower above button
-      
-      // Use stored position if available, otherwise use default
-      final messageOffsetX = _messagePosition?.dx ?? defaultMessageOffsetX;
-      final messageOffsetY = _messagePosition?.dy ?? defaultMessageOffsetY;
-      
-      buttons.add(
-        Positioned(
-          left: messageOffsetX,
-          top: messageOffsetY,
-          child: GestureDetector(
-            onPanStart: (details) {
-              // Store the current position when drag starts and reset accumulated delta
-              _messageDragStartPosition = _messagePosition ?? Offset(defaultMessageOffsetX, defaultMessageOffsetY);
-              _messageDragAccumulatedDelta = Offset.zero;
-            },
-            onPanUpdate: (details) {
-              setState(() {
-                // Accumulate delta and update position
-                  _messageDragAccumulatedDelta += details.delta;
-                  if (_messageDragStartPosition != null) {
-                    _messagePosition = Offset(
-                      _messageDragStartPosition!.dx + _messageDragAccumulatedDelta.dx,
-                      _messageDragStartPosition!.dy + _messageDragAccumulatedDelta.dy,
-                    );
-                  }
-                });
-              },
-              onPanEnd: (details) {
-                // Clear drag start position
-                _messageDragStartPosition = null;
-                _messageDragAccumulatedDelta = Offset.zero;
-              },
-              child: Container(
-                constraints: BoxConstraints(
-                  maxWidth: tileWidth * 3.0, // Smaller width
-                ),
-                padding: EdgeInsets.symmetric(
-                  horizontal: ScreenUtils.relativeSize(context, 0.01),
-                  vertical: ScreenUtils.relativeSize(context, 0.005),
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade700.withValues(alpha: 0.95),
-                  borderRadius: BorderRadius.circular(ScreenUtils.relativeSize(context, AppConfig.borderRadiusFactorSmall)),
-                  border: Border.all(
-                    color: Colors.white,
-                    width: ScreenUtils.relativeSize(context, AppConfig.borderWidthFactorSmall * 1.5),
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.4),
-                      blurRadius: 6,
-                      spreadRadius: 1,
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.touch_app,
-                      color: Colors.white,
-                      size: ScreenUtils.relativeSize(context, 0.025), // Smaller icon
-                    ),
-                    SizedBox(width: ScreenUtils.relativeSize(context, 0.005)),
-                    Flexible(
-                      child: Text(
-                        'Keep pressing to rush selling!',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: ScreenUtils.relativeFontSize(context, 0.018, // Smaller font
-                            min: ScreenUtils.getSmallerDimension(context) * 0.014),
-                          fontWeight: FontWeight.bold,
-                          shadows: [
-                            Shadow(
-                              color: Colors.black.withValues(alpha: 0.6),
-                              blurRadius: 2,
-                            ),
-                          ],
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        );
-      }
-
-    return {'tiles': tiles, 'buttons': buttons};
-  }
-
-  /// Build marketing button overlay that stays visible during panning
-  Widget _buildMarketingButtonOverlay(
-    BuildContext context,
-    Offset centerOffset,
-    double tileWidth,
-    double tileHeight, {
-    required bool visible,
-  }) {
-    final gameState = ref.watch(gameStateProvider);
-    
-    if (gameState.marketingButtonGridX == null || gameState.marketingButtonGridY == null) {
-      return const SizedBox.shrink();
-    }
-    
-    final buttonGridX = gameState.marketingButtonGridX!;
-    final buttonGridY = gameState.marketingButtonGridY!;
-    
-    // Calculate base position in grid coordinates
-    final screenPos = _gridToScreen(context, buttonGridX, buttonGridY);
-    final baseX = screenPos.dx + centerOffset.dx;
-    final baseY = screenPos.dy + centerOffset.dy;
-    
-    // Apply transformation to get screen position
-    final matrix = _transformationController.value;
-    final transformedPoint = MatrixUtils.transformPoint(matrix, Offset(baseX, baseY));
-    
-    return Positioned(
-      left: transformedPoint.dx,
-      top: transformedPoint.dy,
-      child: MarketingButton(
-        key: _marketingKey,
-        gridX: buttonGridX,
-        gridY: buttonGridY,
-        screenPosition: transformedPoint,
-        tileWidth: tileWidth,
-        tileHeight: tileHeight,
-        visible: visible,
-      ),
-    );
-  }
-
-  Widget _buildSingleTileWidget(
-    BuildContext context, int x, int y, TileType tileType, 
-    RoadDirection? roadDir, BuildingOrientation? orientation,
-    double posX, double posY, double tileWidth, double tileHeight, 
-    double buildingImageHeight, double warehouseOffset
-  ) {
-    if (tileType == TileType.warehouse) {
-      final scale = warehouseScale;
-      final w = tileWidth * scale;
-      final h = buildingImageHeight * scale;
-      return Positioned(
-        left: posX + (tileWidth - w) / 2 + _getWarehouseHorizontalOffset(context),
-        top: posY - (h - tileHeight) - warehouseOffset,
-        width: w, height: h,
-        child: _buildGroundTile(tileType, roadDir, x, y, context: context),
-      );
-    } 
-    
-    if (!_isBuilding(tileType)) {
-      // Use road tile dimensions for roads, regular dimensions for other tiles
-      final width = tileType == TileType.road ? _getRoadTileWidth(context) : tileWidth;
-      final height = tileType == TileType.road ? _getRoadTileHeight(context) : tileHeight;
-      // Apply position offsets for road tiles
-      final offsetX = tileType == TileType.road ? _getRoadTileOffsetX(context) : 0.0;
-      final offsetY = tileType == TileType.road ? _getRoadTileOffsetY(context) : 0.0;
-      return Positioned(
-        left: posX + offsetX, top: posY + offsetY, width: width, height: height,
-        child: _buildGroundTile(tileType, roadDir, x, y, context: context),
-      );
-    }
-    
-    // It's a building
-    final scale = _getBuildingScale(tileType);
-    final w = tileWidth * scale;
-    final h = buildingImageHeight * scale;
-    final verticalOffset = _getSpecialBuildingVerticalOffset(context, tileType);
-    
-    // Calculate building bounds for debug overlay
-    final horizontalOffset = _getSpecialBuildingHorizontalOffset(context, tileType);
-    final buildingLeft = posX + (tileWidth - w) / 2 + horizontalOffset;
-    final buildingTop = posY - (h - tileHeight*0.95) - verticalOffset;
-    
-    // Calculate reduced clickable area: half width (centered) and 35% height (middle-upper, between previous bottom and current top)
-    final clickableWidth = w * 0.5;
-    final clickableHeight = h * 0.35; // Reduced by 30% from 0.5 (0.5 * 0.7 = 0.35)
-    final clickableLeft = buildingLeft + (w - clickableWidth) / 2; // Center horizontally
-    // Position at middle-upper area: around 25% from top (between bottom 35% and top 0%)
-    final clickableTop = buildingTop + h * 0.25; // Middle-upper portion
-    
-    // Night lights
-    final gameState = ref.watch(gameStateProvider);
-    final isNight = gameState.hourOfDay < 6 || gameState.hourOfDay >= 20;
-
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        // The building itself (full size, no interaction)
-        Positioned(
-          left: buildingLeft,
-          top: buildingTop,
-          width: w, height: h,
-          child: Stack(
-            children: [
-              _buildBuildingTile(tileType, orientation),
-              if (isNight)
-                _buildBuildingLights(w, h, x * 100 + y), // Pass seed for consistent random lights
-            ],
-          ),
-        ),
-        // Reduced clickable area (half width centered, half height bottom)
-        Positioned(
-          left: clickableLeft,
-          top: clickableTop,
-          width: clickableWidth,
-          height: clickableHeight,
-          child: GestureDetector(
-            onTap: () => _handleDebouncedBuildingTap(x, y, tileType),
-            behavior: HitTestBehavior.opaque,
-            child: Container(color: Colors.transparent),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildBuildingLights(double width, double height, int seed) {
-    // Deterministic random based on seed
-    final random = math.Random(seed);
-    final numLights = 2 + random.nextInt(3); // 2-4 lights
-
-    return Stack(
-      children: List.generate(numLights, (index) {
-        final lightSize = width * 0.05;
-        final left = width * (0.2 + random.nextDouble() * 0.6);
-        final top = height * (0.3 + random.nextDouble() * 0.4);
-
-        return Positioned(
-          left: left,
-          top: top,
-          child: Container(
-            width: lightSize,
-            height: lightSize,
-            decoration: BoxDecoration(
-              color: Colors.amber.withOpacity(0.8),
-              shape: BoxShape.rectangle,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.amber.withOpacity(0.6),
-                  blurRadius: lightSize * 2,
-                  spreadRadius: lightSize,
-                ),
-              ],
-            ),
-          ),
-        );
-      }),
-    );
-  }
-
   void _handleDebouncedBuildingTap(int x, int y, TileType tileType) {
     final now = DateTime.now();
     final key = '$x,$y';
@@ -2204,203 +932,6 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
     _lastTapTime = now;
     _lastTappedButton = key;
     _handleBuildingTap(x, y, tileType);
-  }
-
-  Widget _buildGameMachine(BuildContext context, sim.Machine machine, Offset centerOffset, double tileWidth, double tileHeight) {
-    // Convert zone coordinates to grid coordinates
-    // Zone coordinates are (gridX + 1.5), so zoneX - 1.0 = gridX + 0.5
-    // Use floor() instead of round() to avoid rounding 0.5 up to the wrong tile
-    final gridPos = _zoneToGrid(machine.zone.x, machine.zone.y);
-    final gridX = gridPos.dx.floor();
-    final gridY = gridPos.dy.floor();
-    
-    // Use integer grid coordinates to get exact tile position (same as building tiles)
-    final pos = _gridToScreen(context, gridX, gridY);
-    final positionedX = pos.dx + centerOffset.dx;
-    final positionedY = pos.dy + centerOffset.dy;
-    
-    // Make machine button smaller
-    final double machineSize = tileWidth * 0.2;
-    
-    // Position machine button at bottom center of building tile (not on road)
-    // Use similar centering pattern as message: center horizontally on tile
-    final left = positionedX + (tileWidth - machineSize) / 2; // Center horizontally on tile
-    final top = positionedY + machineSize / 4; // Bottom center of building tile
-
-    Color machineColor;
-    switch (machine.zone.type) {
-      case ZoneType.shop: machineColor = Colors.blue; break;
-      case ZoneType.school: machineColor = Colors.purple; break;
-      case ZoneType.gym: machineColor = Colors.red; break;
-      case ZoneType.office: machineColor = Colors.orange; break;
-      case ZoneType.subway: machineColor = Colors.blueGrey; break;
-      case ZoneType.hospital: machineColor = Colors.red; break;
-      case ZoneType.university: machineColor = Colors.indigo; break;
-    }
-
-    final machineId = machine.id;
-
-    // Determine status indicators - positioned at center of tile
-    Widget? statusIndicator;
-    final indicatorSize = tileWidth * 0.15; // Larger indicator for better visibility
-    if (machine.isBroken) {
-      statusIndicator = Container(
-        width: indicatorSize*2,
-        height: indicatorSize*2,
-        decoration: BoxDecoration(
-          color: Colors.red,
-          shape: BoxShape.circle,
-          border: Border.all(color: Colors.white, width: 2),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.4),
-              blurRadius: 4,
-              spreadRadius: 1,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Icon(
-          Icons.build,
-          color: Colors.white,
-          size: indicatorSize * 1.2,
-        ),
-      );
-    } else if (machine.totalInventory == 0) {
-      statusIndicator = Container(
-        width: indicatorSize*2,
-        height: indicatorSize*2,
-        decoration: BoxDecoration(
-          color: Colors.red,
-          shape: BoxShape.circle,
-          border: Border.all(color: Colors.white, width: 2),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.4),
-              blurRadius: 4,
-              spreadRadius: 1,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Icon(
-          Icons.close,
-          color: Colors.white,
-          size: indicatorSize * 1.2,
-        ),
-      );
-    } else if (machine.totalInventory < 10) { // Low stock threshold
-      statusIndicator = Container(
-        width: indicatorSize*2,
-        height: indicatorSize*2,
-        decoration: BoxDecoration(
-          color: Colors.amber,
-          shape: BoxShape.circle,
-          border: Border.all(color: Colors.white, width: 2),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.4),
-              blurRadius: 4,
-              spreadRadius: 1,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Icon(
-          Icons.priority_high,
-          color: Colors.black,
-          size: indicatorSize * 1.2,
-        ),
-      );
-    }
-
-    // Floating money icon: only shown once the machine has cash waiting.
-    // Sits close to the building's own top, well below where the status
-    // indicator (and a neighboring tile's "+" purchase marker, in the row
-    // above) live - only stacked higher, above the status indicator's own
-    // slot, on the rare tile where both are showing at once, so the two
-    // never overlap each other. Tapping it collects instantly, without
-    // opening any dialog - tapping the building itself always opens the
-    // status popup instead (see _handleBuildingTap).
-    final moneyIconSize = tileWidth * 0.16;
-    final hasCashWaiting = machine.currentCash > 0;
-    final moneyIconTop = statusIndicator != null
-        ? positionedY - (indicatorSize * 2.0) - (moneyIconSize * 0.3) - (tileHeight * 0.01)
-        : positionedY - (indicatorSize * 1.0);
-
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        // Status indicator at center of tile
-        if (statusIndicator != null)
-          Positioned(
-            left: positionedX + (tileWidth / 2) - (indicatorSize),
-            top: positionedY - (indicatorSize *2.0),
-            child: statusIndicator,
-          ),
-        if (hasCashWaiting)
-          Positioned(
-            left: positionedX + (tileWidth / 2) - (moneyIconSize / 2),
-            top: moneyIconTop,
-            width: moneyIconSize,
-            height: moneyIconSize,
-            child: _CashCollectButton(
-              size: moneyIconSize,
-              onTap: () => _collectMachineCashFromMap(machine),
-            ),
-          ),
-        // Machine button at bottom center of tile
-        Positioned(
-          left: left,
-          top: top,
-          width: machineSize,
-          height: machineSize,
-          child: GestureDetector(
-            onTap: () {
-              final machines = ref.read(machinesProvider);
-              final currentMachine = machines.firstWhere(
-                (m) => m.id == machineId,
-                orElse: () => machine,
-              );
-              _showMachineView(context, currentMachine);
-            },
-            child: Container(
-              decoration: BoxDecoration(
-                color: machineColor,
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white, width: ScreenUtils.relativeSize(context, 0.002)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black26,
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Center(
-                child: Icon(
-                  Icons.search,
-                  color: Colors.white,
-                  size: machineSize * 0.6,
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  String _getViewImagePath(ZoneType zoneType) {
-    switch (zoneType) {
-      case ZoneType.shop: return 'assets/images/views/shop_view.png';
-      case ZoneType.school: return 'assets/images/views/school_view.png';
-      case ZoneType.gym: return 'assets/images/views/gym_view.png';
-      case ZoneType.office: return 'assets/images/views/office_view.png';
-      case ZoneType.subway: return 'assets/images/views/subway_view.png';
-      case ZoneType.hospital: return 'assets/images/views/hospital_view.png';
-      case ZoneType.university: return 'assets/images/views/university_view.png';
-    }
   }
 
   /// Show game over dialog when player goes bankrupt
@@ -2503,20 +1034,16 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
 
   void _showMachineView(BuildContext context, sim.Machine machine) {
     final machineId = machine.id;
-    final imagePath = _getViewImagePath(machine.zone.type);
-    
     showDialog(
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.7),
       builder: (context) => _MachineViewDialog(
         machineId: machineId,
-        imagePath: imagePath,
       ),
     );
   }
 
   void _showMachinePurchaseDialog(BuildContext context, ZoneType zoneType, double zoneX, double zoneY) {
-    final imagePath = _getViewImagePath(zoneType);
     final price = MachinePrices.getPrice(zoneType);
     
     showDialog(
@@ -2526,7 +1053,6 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
         zoneType: zoneType,
         zoneX: zoneX,
         zoneY: zoneY,
-        imagePath: imagePath,
         price: price,
         onPurchased: () {
           // After purchase, close purchase dialog and show machine status
@@ -2550,98 +1076,6 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
     );
   }
 
-  Offset _zoneToGrid(double zoneX, double zoneY) {
-    final gridX = (zoneX - 1.0).clamp(0.0, (gridSize - 1).toDouble());
-    final gridY = (zoneY - 1.0).clamp(0.0, (gridSize - 1).toDouble());
-    return Offset(gridX, gridY);
-  }
-
-  Widget _buildGameTruck(BuildContext context, sim.Truck truck, Offset centerOffset, double tileWidth, double tileHeight) {
-    final gridPos = _zoneToGrid(truck.currentX, truck.currentY);
-    final pos = _gridToScreenDouble(context, gridPos.dx, gridPos.dy);
-    final positionedX = pos.dx + centerOffset.dx;
-    final positionedY = pos.dy + centerOffset.dy;
-    
-    final double truckSize = tileWidth * 0.4; 
-    final left = positionedX + (tileWidth - truckSize) / 2;
-    final top = positionedY + (tileHeight / 2) - truckSize/1.2;
-
-    String asset = 'assets/images/tiles/truck_front.png';
-    bool flip = false;
-    
-    double dx = 0.0;
-    double dy = 0.0;
-    
-    if (truck.path.isNotEmpty && truck.pathIndex < truck.path.length) {
-      final nextWaypoint = truck.path[truck.pathIndex];
-      dx = nextWaypoint.x - truck.currentX;
-      dy = nextWaypoint.y - truck.currentY;
-    } else {
-      dx = truck.targetX - truck.currentX;
-      dy = truck.targetY - truck.currentY;
-    }
-    
-    if (dx.abs() > 0.01 || dy.abs() > 0.01) {
-      if (dx.abs() > dy.abs()) {
-        if (dx > 0) {
-          asset = 'assets/images/tiles/truck_front.png';
-          flip = true;
-        } else {
-          asset = 'assets/images/tiles/truck_back.png';
-          flip = false;
-        }
-      } else {
-        if (dy > 0) {
-          asset = 'assets/images/tiles/truck_front.png';
-          flip = false;
-        } else {
-          asset = 'assets/images/tiles/truck_back.png';
-          flip = true;
-        }
-      }
-    }
-
-    Widget img = Image.asset(
-      asset,
-      fit: BoxFit.contain,
-      alignment: Alignment.bottomCenter,
-      errorBuilder: (context, error, stackTrace) {
-        return Container(
-          color: Colors.blue.shade300,
-          alignment: Alignment.bottomCenter,
-          child: Text(
-            'T',
-            style: TextStyle(
-              fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
-              color: Colors.white,
-            ),
-          ),
-        );
-      },
-    );
-
-    if (flip) {
-      return Positioned(
-        left: left,
-        top: top,
-        width: truckSize,
-        height: truckSize,
-        child: Transform(
-          alignment: Alignment.center, 
-          transform: Matrix4.identity()..scale(-1.0, 1.0), 
-          child: img
-        ),
-      );
-    }
-    
-    return Positioned(
-      left: left,
-      top: top,
-      width: truckSize,
-      height: truckSize,
-      child: img,
-    );
-  }
 
   // --- PEDESTRIAN MANAGEMENT ---
   
@@ -3407,171 +1841,6 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
     return positions.first;
   }
   
-  /// Build pedestrian widget with animation
-  Widget _buildPedestrian(BuildContext context, _PedestrianState pedestrian, Offset centerOffset, double tileWidth, double tileHeight) {
-    final pos = _gridToScreenDouble(context, pedestrian.gridX, pedestrian.gridY);
-    final positionedX = pos.dx + centerOffset.dx;
-    final positionedY = pos.dy + centerOffset.dy;
-    
-    final double pedestrianSize = tileWidth * 0.3;
-    
-    // Position on sidewalk (edge of tile) - offset to the right side of the tile
-    // Use 75% of tile width to position on the right edge (sidewalk)
-    final sidewalkOffset = tileWidth * 0.75; // Position on right edge of tile
-    final left = positionedX + sidewalkOffset - pedestrianSize / 2;
-    final top = positionedY + (tileHeight / 2) - pedestrianSize / 1.2;
-    
-    // Calculate jump animation offset (jump lasts for 5 steps)
-    double jumpOffset = 0.0;
-    if (pedestrian.jumpStartStep != null && pedestrian.isHeadingToShop) {
-      final jumpSteps = pedestrian.stepsWalked - pedestrian.jumpStartStep!;
-      if (jumpSteps < 5) {
-        // Jump animation: goes up then down (parabolic curve)
-        final progress = jumpSteps / 5.0; // 0.0 to 1.0
-        // Parabolic jump: up to peak at 0.5, then down
-        final jumpHeight = -pedestrianSize * 0.3; // Jump up 30% of pedestrian size
-        if (progress < 0.5) {
-          // Going up
-          jumpOffset = jumpHeight * (progress * 2.0);
-        } else {
-          // Coming down
-          jumpOffset = jumpHeight * (2.0 - progress * 2.0);
-        }
-      } else {
-        // Jump animation finished, clear it
-        pedestrian.jumpStartStep = null;
-      }
-    }
-    
-    return Positioned(
-      left: left,
-      top: top,
-      width: pedestrianSize,
-      height: pedestrianSize,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () => _handlePedestrianTap(pedestrian),
-          customBorder: CircleBorder(),
-          borderRadius: BorderRadius.circular(pedestrianSize / 2),
-          child: Container(
-            width: pedestrianSize,
-            height: pedestrianSize,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.transparent,
-            ),
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Transform.translate(
-                  offset: Offset(0, jumpOffset),
-                  child: _AnimatedPedestrian(
-                    personId: pedestrian.personId,
-                    direction: pedestrian.direction,
-                    flipHorizontal: pedestrian.flipHorizontal,
-                  ),
-                ),
-                // Tutorial: Blinking green circle for highlighted pedestrian
-                if (_showPedestrianTutorial && _tutorialPedestrian == pedestrian && _tutorialBlinkController != null)
-                  Positioned.fill(
-                    child: IgnorePointer(
-                      child: AnimatedBuilder(
-                        animation: _tutorialBlinkController!,
-                        builder: (context, child) {
-                          return Container(
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: Colors.green.withOpacity(0.3 + (_tutorialBlinkController!.value * 0.7)),
-                                width: 3.0,
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Build tutorial message overlay for highlighted pedestrian
-  Widget _buildTutorialMessage(BuildContext context, _PedestrianState pedestrian, Offset centerOffset, double tileWidth, double tileHeight) {
-    final pos = _gridToScreenDouble(context, pedestrian.gridX, pedestrian.gridY);
-    final positionedX = pos.dx + centerOffset.dx;
-    final positionedY = pos.dy + centerOffset.dy;
-    
-    final double pedestrianSize = tileWidth * 0.3;
-    final sidewalkOffset = tileWidth * 0.75;
-    final pedestrianLeft = positionedX + sidewalkOffset - pedestrianSize / 2;
-    final pedestrianTop = positionedY + (tileHeight / 2) - pedestrianSize / 1.2;
-    
-    // Position message above the pedestrian (higher offset for Android compatibility)
-    final messageTop = pedestrianTop - tileHeight * 1.5;
-    final messageLeft = pedestrianLeft + pedestrianSize / 2;
-    
-    return Positioned(
-      left: messageLeft - tileWidth * 1.5, // Center the message
-      top: messageTop,
-      width: tileWidth * 3.0,
-      child: IgnorePointer(
-        child: Container(
-          padding: EdgeInsets.symmetric(
-            horizontal: ScreenUtils.relativeSize(context, 0.015),
-            vertical: ScreenUtils.relativeSize(context, 0.008),
-          ),
-          decoration: BoxDecoration(
-            color: Colors.green.shade700.withValues(alpha: 0.95),
-            borderRadius: BorderRadius.circular(ScreenUtils.relativeSize(context, AppConfig.borderRadiusFactorSmall)),
-            border: Border.all(
-              color: Colors.white,
-              width: ScreenUtils.relativeSize(context, AppConfig.borderWidthFactorSmall * 1.5),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.4),
-                blurRadius: 6,
-                spreadRadius: 1,
-              ),
-            ],
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.touch_app,
-                color: Colors.white,
-                size: ScreenUtils.relativeSize(context, 0.025),
-              ),
-              SizedBox(width: ScreenUtils.relativeSize(context, 0.005)),
-              Flexible(
-                child: Text(
-                  'Tap pedestrians to make them buy items!',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: ScreenUtils.relativeFontSize(context, 0.018),
-                    fontWeight: FontWeight.bold,
-                    shadows: [
-                      Shadow(
-                        color: Colors.black.withValues(alpha: 0.6),
-                        blurRadius: 2,
-                      ),
-                    ],
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 
   /// Handle pedestrian tap - force pedestrian to walk to nearest machine and buy
   void _handlePedestrianTap(_PedestrianState pedestrian) {
@@ -3781,26 +2050,6 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
     return ((a.x - b.x).abs() + (a.y - b.y).abs()).toDouble();
   }
 
-  /// Quick-collect a machine's waiting cash straight from the map, without
-  /// opening any dialog. Triggered by tapping the floating money icon that
-  /// appears above a machine once it has cash - tapping the building itself
-  /// still always opens the status popup (see _handleBuildingTap).
-  void _collectMachineCashFromMap(sim.Machine machine) {
-    final controller = ref.read(gameControllerProvider.notifier);
-    final collected = controller.collectMachineCash(machine.id);
-    if (collected <= 0) return;
-
-    SoundService().playCoinCollectSound();
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('💰 Collected \$${collected.toStringAsFixed(2)} from ${machine.name}'),
-          duration: AppConfig.snackbarDurationShort,
-          backgroundColor: Colors.green.shade700,
-        ),
-      );
-    }
-  }
 
   void _handleBuildingTap(int gridX, int gridY, TileType tileType) {
     try {
@@ -3860,20 +2109,6 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
     }
   }
 
-  bool _shouldShowPurchaseButton(int gridX, int gridY, TileType tileType) {
-    final zoneX = (gridX + 1).toDouble() + 0.5;
-    final zoneY = (gridY + 1).toDouble() + 0.5;
-
-    final zoneType = _tileTypeToZoneType(tileType);
-    if (zoneType == null) return false;
-
-    final machines = ref.watch(machinesProvider);
-    final hasExistingMachine = machines.any(
-      (m) => (m.zone.x - zoneX).abs() < 0.1 && (m.zone.y - zoneY).abs() < 0.1,
-    );
-
-    return !hasExistingMachine;
-  }
 
   ZoneType? _tileTypeToZoneType(TileType tileType) {
     switch (tileType) {
@@ -3888,135 +2123,14 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
     }
   }
 
-  Widget _buildGroundTile(TileType tileType, RoadDirection? roadDir, int x, int y, {BuildContext? context}) {
-    // For roads, use sprite sheet if available
-    if (tileType == TileType.road && _roadTilesSpriteSheet != null && context != null) {
-      // Get the tile index and flip info based on neighbor connections
-      final tileInfo = _getRoadTileIndex(x, y);
-      final roadWidth = _getRoadTileWidth(context);
-      final roadHeight = _getRoadTileHeight(context);
-      return CustomPaint(
-        painter: RoadTilePainter(
-          spriteSheet: _roadTilesSpriteSheet!,
-          row: tileInfo.row,
-          col: tileInfo.col,
-          flipHorizontal: tileInfo.flipHorizontal,
-          flipVertical: tileInfo.flipVertical,
-        ),
-        size: Size(roadWidth, roadHeight),
-      );
-    }
-    
-    // For non-roads or when sprite sheet not loaded, use old method
-    final isRoad = tileType == TileType.road;
-    final needsFlip = isRoad && roadDir == RoadDirection.vertical;
 
-    Widget imageWidget = Image.asset(
-      _getTileAssetPath(tileType, roadDir),
-      fit: BoxFit.contain,
-      alignment: Alignment.bottomCenter,
-      errorBuilder: (context, error, stackTrace) {
-        return Container(
-          color: _getFallbackColor(tileType),
-          alignment: Alignment.bottomCenter,
-          child: Text(
-            _getTileLabel(tileType),
-            style: TextStyle(
-            fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorTiny),
-          ),
-          ),
-        );
-      },
-    );
-
-    if (needsFlip) {
-      return Transform(
-        alignment: Alignment.bottomCenter,
-        transform: Matrix4.identity()..scale(-1.0, 1.0),
-        child: imageWidget,
-      );
-    }
-
-    return imageWidget;
-  }
-
-  Widget _buildBuildingTile(TileType tileType, BuildingOrientation? orientation) {
-    Widget imageWidget = Image.asset(
-      _getTileAssetPath(tileType, null),
-      fit: BoxFit.contain,
-      alignment: Alignment.bottomCenter,
-      errorBuilder: (context, error, stackTrace) {
-        return Container(
-          color: _getFallbackColor(tileType),
-          alignment: Alignment.bottomCenter,
-          child: Padding(
-            padding: EdgeInsets.only(bottom: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall)),
-            child: Text(
-              _getTileLabel(tileType),
-              style: TextStyle(
-              fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorTiny),
-            ),
-            ),
-          ),
-        );
-      },
-    );
-
-    if (orientation == BuildingOrientation.flippedHorizontal) {
-      return Transform(
-        alignment: Alignment.bottomCenter,
-        transform: Matrix4.identity()..scaleByVector3(Vector3(-1.0, 1.0, 1.0)),
-        child: imageWidget,
-      );
-    }
-
-    return imageWidget;
-  }
-
-  Color _getFallbackColor(TileType tileType) {
-    switch (tileType) {
-      case TileType.grass: return Colors.green.shade300;
-      case TileType.road: return Colors.grey.shade600;
-      case TileType.shop: return Colors.blue.shade300;
-      case TileType.gym: return Colors.red.shade300;
-      case TileType.office: return Colors.orange.shade300;
-      case TileType.school: return Colors.purple.shade300;
-      case TileType.gasStation: return Colors.yellow.shade300;
-      case TileType.park: return Colors.green.shade400;
-      case TileType.house: return Colors.brown.shade300;
-      case TileType.warehouse: return Colors.grey.shade400;
-      case TileType.subway: return Colors.blueGrey.shade300;
-      case TileType.hospital: return Colors.white;
-      case TileType.university: return Colors.indigo.shade300;
-    }
-  }
-
-  String _getTileLabel(TileType tileType) {
-    switch (tileType) {
-      case TileType.grass: return 'G';
-      case TileType.road: return 'R';
-      case TileType.shop: return 'S';
-      case TileType.gym: return 'G';
-      case TileType.office: return 'O';
-      case TileType.school: return 'Sc';
-      case TileType.gasStation: return 'GS';
-      case TileType.park: return 'P';
-      case TileType.house: return 'H';
-      case TileType.warehouse: return 'W';
-      case TileType.subway: return 'Sub';
-      case TileType.hospital: return 'Hos';
-      case TileType.university: return 'Uni';
-    }
-  }
 }
 
 class _MachineViewDialog extends ConsumerWidget {
   final String machineId;
-  final String imagePath;
 
   const _MachineViewDialog({
     required this.machineId,
-    required this.imagePath,
   });
 
   /// Handles the logic when a customer makes a purchase
@@ -4126,40 +2240,11 @@ class _MachineViewDialog extends ConsumerWidget {
               children: [
                 Stack(
                   children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.only(
-                        topLeft: Radius.circular(borderRadius),
-                        topRight: Radius.circular(borderRadius),
-                      ),
-                      child: Image.asset(
-                        imagePath,
-                        fit: BoxFit.cover,
-                        width: double.infinity,
-                        height: imageHeight,
-                        errorBuilder: (context, error, stackTrace) => Container(
-                          width: double.infinity, 
-                          height: imageHeight, 
-                          color: Colors.grey[800]
-                        ),
-                      ),
+                    VendingMachineStage(
+                      machine: machine!,
+                      height: imageHeight,
+                      onPurchase: (isSpecial) => _handlePurchase(ref, isSpecial),
                     ),
-                    // Animated person at machine overlay
-                    if (machine != null)
-                      Positioned(
-                        bottom: imageHeight * -0.15, 
-                        left: 0, 
-                        child: SizedBox(
-                          width: dialogWidth, 
-                          height: imageHeight * 1.0, 
-                          child: _AnimatedPersonMachine(
-                            zoneType: machine.zone.type,
-                            machineId: machine.id,
-                            dialogWidth: dialogWidth,
-                            imageHeight: imageHeight,
-                            onPurchase: (isSpecial) => _handlePurchase(ref, isSpecial), // Pass callback
-                          ),
-                        ),
-                      ),
                     Positioned(
                       top: padding * AppConfig.machineStatusDialogHeaderImageTopPaddingFactor,
                       right: padding * AppConfig.machineStatusDialogHeaderImageTopPaddingFactor,
@@ -4221,8 +2306,6 @@ class _MachineStatusSection extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        VendingMachine3DView(machine: machine, height: dialogWidth * 0.75),
-        const SizedBox(height: 16),
         Row(
           children: [
             Container(
@@ -4793,7 +2876,6 @@ class _MachinePurchaseDialog extends ConsumerWidget {
   final ZoneType zoneType;
   final double zoneX;
   final double zoneY;
-  final String imagePath;
   final double price;
   final VoidCallback onPurchased;
 
@@ -4801,7 +2883,6 @@ class _MachinePurchaseDialog extends ConsumerWidget {
     required this.zoneType,
     required this.zoneX,
     required this.zoneY,
-    required this.imagePath,
     required this.price,
     required this.onPurchased,
   });
@@ -4867,27 +2948,10 @@ class _MachinePurchaseDialog extends ConsumerWidget {
                         topLeft: Radius.circular(borderRadius),
                         topRight: Radius.circular(borderRadius),
                       ),
-                      child: Image.asset(
-                        imagePath,
-                        fit: BoxFit.cover,
-                        width: double.infinity,
+                      child: VendingMachine3DView(
+                        machine: previewMachineFor(zoneType),
                         height: imageHeight,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                            width: double.infinity,
-                            height: imageHeight,
-                            color: Colors.grey[800],
-                            child: Center(
-                              child: Text(
-                                'View image not found',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: dialogWidth * AppConfig.machineStatusDialogErrorTextFontSizeFactor,
-                                ),
-                              ),
-                            ),
-                          );
-                        },
+                        showCaption: false,
                       ),
                     ),
                     Positioned(
@@ -5070,844 +3134,6 @@ class _MachinePurchaseDialog extends ConsumerWidget {
   }
 }
 
-/// Widget that renders an animated pedestrian with sprite extraction
-class _AnimatedPedestrian extends StatefulWidget {
-  final int personId; // 0-9
-  final String direction; // 'front' or 'back'
-  final bool flipHorizontal;
-  
-  const _AnimatedPedestrian({
-    required this.personId,
-    required this.direction,
-    required this.flipHorizontal,
-  });
-  
-  @override
-  State<_AnimatedPedestrian> createState() => _AnimatedPedestrianState();
-}
-
-class _AnimatedPedestrianState extends State<_AnimatedPedestrian> 
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  List<ImageProvider>? _frameImages;
-  Size? _spriteSize;
-  bool _isLoading = true;
-  
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 1000), // 10 frames * 100ms
-      vsync: this,
-    )..repeat();
-    
-    _loadFrames();
-  }
-  
-  Future<void> _loadFrames() async {
-    try {
-      // Load first frame to get dimensions
-      final firstFrameAsset = 'assets/images/pedestrian_walk/walk_${widget.direction}_0.png';
-      final firstImage = AssetImage(firstFrameAsset);
-      final completer = Completer<ImageInfo>();
-      final stream = firstImage.resolve(const ImageConfiguration());
-      late ImageStreamListener listener;
-      listener = ImageStreamListener((info, synchronousCall) {
-        completer.complete(info);
-        stream.removeListener(listener);
-      });
-      stream.addListener(listener);
-      final firstImageInfo = await completer.future;
-      final firstImageSize = firstImageInfo.image.width;
-      final firstImageHeight = firstImageInfo.image.height;
-      
-      // Calculate sprite size: 2 rows x 5 columns
-      final spriteWidth = firstImageSize / 5;
-      final spriteHeight = firstImageHeight / 2;
-      _spriteSize = Size(spriteWidth, spriteHeight);
-      
-      // Load all 10 frames
-      final frames = <ImageProvider>[];
-      for (int i = 0; i < 10; i++) {
-        frames.add(AssetImage('assets/images/pedestrian_walk/walk_${widget.direction}_$i.png'));
-      }
-      
-      if (mounted) {
-        setState(() {
-          _frameImages = frames;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      debugPrint('Error loading pedestrian frames: $e');
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
-  }
-  
-  @override
-  void didUpdateWidget(_AnimatedPedestrian oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.direction != widget.direction) {
-      _loadFrames();
-    }
-  }
-  
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-  
-  @override
-  Widget build(BuildContext context) {
-    if (_isLoading || _frameImages == null || _spriteSize == null) {
-      return Container(
-        color: Colors.transparent,
-        child: const SizedBox.shrink(),
-      );
-    }
-    
-    // Calculate grid position for this personId
-    final row = widget.personId ~/ 5;
-    final col = widget.personId % 5;
-    
-    // Calculate source rect for sprite extraction
-    final srcLeft = col * _spriteSize!.width;
-    final srcTop = row * _spriteSize!.height;
-    
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        // Get current frame index (0-9)
-        final frameIndex = ((_controller.value * 10) % 10).floor();
-        final imageProvider = _frameImages![frameIndex];
-        
-        Widget image = CustomPaint(
-          size: Size(_spriteSize!.width, _spriteSize!.height),
-          painter: _PedestrianSpritePainter(
-            imageProvider: imageProvider,
-            srcRect: Rect.fromLTWH(
-              srcLeft,
-              srcTop,
-              _spriteSize!.width,
-              _spriteSize!.height,
-            ),
-          ),
-        );
-        
-        if (widget.flipHorizontal) {
-          image = Transform(
-            alignment: Alignment.center,
-            transform: Matrix4.identity()..scale(-1.0, 1.0),
-            child: image,
-          );
-        }
-        
-        return image;
-      },
-    );
-  }
-}
-
-/// Custom painter for road tiles from sprite sheet with auto-tiling and flipping support
-class RoadTilePainter extends CustomPainter {
-  final ui.Image spriteSheet;
-  final int row;
-  final int col;
-  final bool flipHorizontal;
-  final bool flipVertical;
-  final int spriteSheetRows;
-  final int spriteSheetCols;
-  
-  RoadTilePainter({
-    required this.spriteSheet,
-    required this.row,
-    required this.col,
-    this.flipHorizontal = false,
-    this.flipVertical = false,
-    this.spriteSheetRows = 2,
-    this.spriteSheetCols = 4,
-  });
-  
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (spriteSheet.width == 0 || spriteSheet.height == 0) return;
-    
-    // Calculate sprite dimensions
-    final spriteWidth = spriteSheet.width / spriteSheetCols;
-    final spriteHeight = spriteSheet.height / spriteSheetRows;
-    
-    // Calculate source rectangle (the specific sprite from the sheet)
-    final srcRect = Rect.fromLTWH(
-      col * spriteWidth,
-      row * spriteHeight,
-      spriteWidth,
-      spriteHeight,
-    );
-    
-    // Destination rectangle (fill the entire size)
-    final dstRect = Rect.fromLTWH(0, 0, size.width, size.height);
-    
-    // Save canvas state for transformations
-    canvas.save();
-    
-    // Apply transformations for horizontal flipping ONLY (NO vertical flipping)
-    if (flipHorizontal) {
-      // Translate to center of tile
-      canvas.translate(size.width / 2, size.height / 2);
-      
-      // Apply horizontal flip (scale X = -1, scale Y = 1)
-      canvas.scale(-1.0, 1.0);
-      
-      // Translate back to origin
-      canvas.translate(-size.width / 2, -size.height / 2);
-    }
-    // Note: flipVertical is ignored - we do NOT use vertical flipping
-    
-    // Draw the sprite
-    canvas.drawImageRect(
-      spriteSheet,
-      srcRect,
-      dstRect,
-      Paint(),
-    );
-    
-    // Restore canvas state
-    canvas.restore();
-  }
-  
-  @override
-  bool shouldRepaint(RoadTilePainter oldDelegate) {
-    return oldDelegate.row != row || 
-           oldDelegate.col != col ||
-           oldDelegate.flipHorizontal != flipHorizontal ||
-           oldDelegate.flipVertical != flipVertical ||
-           oldDelegate.spriteSheet != spriteSheet;
-  }
-}
-
-/// Custom painter that extracts a sprite from a larger image
-class _PedestrianSpritePainter extends CustomPainter {
-  final ImageProvider imageProvider;
-  final Rect srcRect;
-  ImageInfo? _imageInfo;
-  
-  _PedestrianSpritePainter({
-    required this.imageProvider,
-    required this.srcRect,
-  }) {
-    _loadImage();
-  }
-  
-  void _loadImage() {
-    final stream = imageProvider.resolve(const ImageConfiguration());
-    stream.addListener(ImageStreamListener((info, synchronousCall) {
-      _imageInfo = info;
-    }));
-  }
-  
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (_imageInfo == null) return;
-    
-    final image = _imageInfo!.image;
-    final dstRect = Rect.fromLTWH(0, 0, size.width, size.height);
-    
-    canvas.drawImageRect(
-      image,
-      srcRect,
-      dstRect,
-      Paint(),
-    );
-  }
-  
-  @override
-  bool shouldRepaint(_PedestrianSpritePainter oldDelegate) {
-    return oldDelegate.imageProvider != imageProvider ||
-           oldDelegate.srcRect != srcRect;
-  }
-}
-
-enum _AnimationState {
-  waiting,          // New state: Waiting for customer to appear
-  walkingToMachine, 
-  backAnimation,    
-  pausing,          
-  walkingAway,      
-}
-
-class _AnimatedPersonMachine extends StatefulWidget {
-  final ZoneType zoneType;
-  final String machineId; 
-  final double dialogWidth; 
-  final double imageHeight; 
-  final Function(bool isSpecial) onPurchase; // Callback for purchase
-
-  const _AnimatedPersonMachine({
-    required this.zoneType,
-    required this.machineId,
-    required this.dialogWidth,
-    required this.imageHeight,
-    required this.onPurchase,
-  });
-
-  @override
-  State<_AnimatedPersonMachine> createState() => _AnimatedPersonMachineState();
-}
-
-class _AnimatedPersonMachineState extends State<_AnimatedPersonMachine>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  List<ImageInfo>? _walkFrameImageInfos;
-  List<ImageInfo>? _backFrameImageInfos;
-  Size? _spriteSize;
-  int? _personIndex;
-  bool _isLoading = true;
-  bool _isSpecial = false; 
-  
-  // State Management
-  _AnimationState _currentState = _AnimationState.waiting; 
-  Timer? _pauseTimer;
-  Timer? _walkUpdateTimer; 
-  Timer? _walkAwayTimer;   
-  
-  double _vendingMachinePosition = 0.0;
-  DateTime? _walkStartTime; 
-  double _walkProgress = 0.0;     
-  double _walkAwayProgress = 0.0; 
-  DateTime? _walkAwayStartTime;
-
-  // --- CONFIGURATION CONSTANTS (TWEAK THESE) ---
-  
-  // 1. STOP POSITION: Machine is on LEFT side of image
-  // Position is calculated as: dialogWidth * (factor + offsetFactor)
-  // Lower values = more LEFT, Higher values = more RIGHT
-  // NOTE: This position represents where the LEFT EDGE of the character stops
-  // Both factor and offsetFactor are relative (0.0 to 1.0 = 0% to 100% of dialog width)
-  // Machine is on far left, so character should be positioned very close to left edge
-  static const double _vendingMachinePositionFactor = 0.0; // Base position factor (0% = left edge)
-  static const double _stopPositionOffsetFactor = -0.25; // Relative offset factor (negative = left, positive = right)
-
-  // 2. FLIP CORRECTION: Compensates for visual jump when sprite flips horizontally
-  // When flipping, the sprite's anchor point may cause a visual offset
-  static const double _flipCorrection = 0.0;
-  
-  // 3. ROW OFFSET: Adjust vertical position for 2nd row characters (indices 5-9)
-  // 2nd row characters appear slightly higher in sprite sheet, so lower them
-  static const double _secondRowVerticalOffset = 10.0; // Pixels to lower 2nd row characters
-  
-  // 4. COLUMN OFFSETS: Adjust horizontal position for each column (0-4) within sprite sheet
-  // Each person in the 5 columns may be positioned differently within their sprite cell
-  // These are relative offsets (as percentage of dialog width) to fine-tune horizontal position
-  static const List<double> _columnHorizontalOffsets = [
-    0.0,   // Column 0: no adjustment
-    0.0,   // Column 1: no adjustment
-    0.0,   // Column 2: no adjustment
-    0.00,   // Column 3: no adjustment
-    0.05,   // Column 4: no adjustment
-  ];
-  
-  // 4. LOOP ANIMATION: Restart animation when character finishes walking away
-  static const bool _loopAnimation = true;
-  
-  // 5. DEBUG: Show bounding box around character (set to true to visualize)
-  static const bool _showDebugBox = false;
-
-  // 3. ANIMATION SETTINGS
-  static const double _spriteScaleX = 0.4; // Width scale
-  static const Duration _walkToMachineDuration = Duration(seconds: 3); 
-  static const Duration _walkAwayDuration = Duration(seconds: 2); // Faster walk away 
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 1000), 
-      vsync: this,
-    )..repeat();
-
-    _calculatePersonIndex();
-    _loadFrames();
-  }
-
-  @override
-  void dispose() {
-    _pauseTimer?.cancel();
-    _walkUpdateTimer?.cancel();
-    _walkAwayTimer?.cancel();
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _calculatePersonIndex() {
-    final random = math.Random();
-    
-    // Hospital and Subway can use any customer type (shop, school, gym, office, or special)
-    if (widget.zoneType == ZoneType.hospital || widget.zoneType == ZoneType.subway) {
-      // Randomly select from all available customer types
-      final customerType = random.nextInt(5); // 0-4 for shop, gym, school, office, special
-      
-      if (customerType == 4) {
-        // Special customers (20% chance)
-        _isSpecial = true;
-        _personIndex = 8 + random.nextInt(2);
-      } else {
-        // Regular customer types (80% chance)
-        _isSpecial = false;
-        final baseIndex = customerType * 2; // 0, 2, 4, or 6
-        _personIndex = baseIndex + random.nextInt(2);
-      }
-    } else {
-      // 1. Determine if "Special" (Any Zone)
-      // 20% chance for Special (Indices 8, 9)
-      if (random.nextDouble() < 0.20) { 
-        _isSpecial = true;
-        _personIndex = 8 + random.nextInt(2); 
-      } else {
-        _isSpecial = false;
-        // Zone specific (Normal)
-        final baseIndex = _getBasePersonIndexForZone(widget.zoneType);
-        _personIndex = baseIndex + random.nextInt(2); 
-      }
-    }
-  }
-
-  int _getBasePersonIndexForZone(ZoneType zoneType) {
-    switch (zoneType) {
-      case ZoneType.shop: return 0; // Uses indices 0-1
-      case ZoneType.gym: return 2;  // Uses indices 2-3
-      case ZoneType.school: return 4; // Uses indices 4-5
-      case ZoneType.office: return 6; // Uses indices 6-7
-      case ZoneType.university: return 0; // Uses indices 0-1 (same as shop)
-      case ZoneType.subway: // Always uses special (8-9), handled in _calculatePersonIndex
-      case ZoneType.hospital: // Always uses special (8-9), handled in _calculatePersonIndex
-        return 0; // Fallback, but should not be reached
-      // Indices 8-9 are special and can be used for any zone
-    }
-  }
-
-  Future<void> _loadFrames() async {
-    try {
-      // 1. Load first frame to get dimensions
-      final firstFrameAsset = 'assets/images/person_machine/person_machine_walk_0.png';
-      final firstImage = AssetImage(firstFrameAsset);
-      final completer = Completer<ImageInfo>();
-      final stream = firstImage.resolve(const ImageConfiguration());
-      
-      late ImageStreamListener listener;
-      listener = ImageStreamListener((info, synchronousCall) {
-        completer.complete(info);
-        stream.removeListener(listener);
-      });
-      stream.addListener(listener);
-      final firstImageInfo = await completer.future;
-      
-      final spriteWidth = firstImageInfo.image.width / 5;
-      final spriteHeight = firstImageInfo.image.height / 2;
-      _spriteSize = Size(spriteWidth, spriteHeight);
-
-      // 2. Preload Walk Frames
-      final walkFrameImageInfos = <ImageInfo>[];
-      for (int i = 0; i < 10; i++) {
-        final frameAsset = 'assets/images/person_machine/person_machine_walk_$i.png';
-        await _preloadImage(frameAsset).then((info) => walkFrameImageInfos.add(info));
-      }
-
-      // 3. Preload Back Frames
-      final backFrameImageInfos = <ImageInfo>[];
-      for (int i = 1; i <= 4; i++) {
-        final frameAsset = 'assets/images/person_machine/person_machine_back_$i.png';
-        await _preloadImage(frameAsset).then((info) => backFrameImageInfos.add(info));
-      }
-
-      _vendingMachinePosition = widget.dialogWidth * (_vendingMachinePositionFactor + _stopPositionOffsetFactor);
-      
-      if (mounted) {
-        setState(() {
-          _walkFrameImageInfos = walkFrameImageInfos;
-          _backFrameImageInfos = backFrameImageInfos;
-          _isLoading = false;
-        });
-        // Start waiting cycle instead of walking immediately
-        _startWaiting();
-      }
-    } catch (e) {
-      debugPrint('Error loading frames: $e');
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  Future<ImageInfo> _preloadImage(String assetPath) async {
-    final completer = Completer<ImageInfo>();
-    final img = AssetImage(assetPath);
-    final stream = img.resolve(const ImageConfiguration());
-    late ImageStreamListener listener;
-    listener = ImageStreamListener((info, _) {
-      completer.complete(info);
-      stream.removeListener(listener);
-    });
-    stream.addListener(listener);
-    return completer.future;
-  }
-
-  // --- LOGIC: WAITING ---
-  void _startWaiting() {
-    setState(() => _currentState = _AnimationState.waiting);
-    // Random wait time (5 to 30 seconds) - customers appear less often
-    final waitTime = Duration(milliseconds: 5000 + math.Random().nextInt(25000));
-    
-    _pauseTimer?.cancel();
-    _pauseTimer = Timer(waitTime, () {
-      if (mounted) {
-        _walkStartTime = DateTime.now();
-        _walkProgress = 0.0;
-        _startWalkInTimer();
-        setState(() => _currentState = _AnimationState.walkingToMachine);
-      }
-    });
-  }
-
-  // --- LOGIC: WALK IN ---
-  void _startWalkInTimer() {
-    _walkUpdateTimer?.cancel();
-    _walkUpdateTimer = Timer.periodic(const Duration(milliseconds: 16), (timer) {
-      if (!mounted || _currentState != _AnimationState.walkingToMachine) {
-        timer.cancel();
-        return;
-      }
-
-      final elapsed = DateTime.now().difference(_walkStartTime!);
-      final progress = (elapsed.inMilliseconds / _walkToMachineDuration.inMilliseconds).clamp(0.0, 1.0);
-
-      setState(() {
-        _walkProgress = progress;
-      });
-
-      if (_walkProgress >= 1.0) {
-        timer.cancel();
-        _startBackAnimation();
-      }
-    });
-  }
-
-  // --- LOGIC: INTERACT ---
-  void _startBackAnimation() {
-    setState(() {
-      _walkProgress = 1.0; 
-      _currentState = _AnimationState.backAnimation;
-    });
-    
-    // TRIGGER PURCHASE HERE
-    widget.onPurchase(_isSpecial);
-
-    _controller.duration = const Duration(milliseconds: 1000); 
-    _controller.reset();
-    _controller.forward().then((_) {
-      if (mounted) {
-        setState(() => _currentState = _AnimationState.pausing);
-        _pauseTimer = Timer(const Duration(seconds: 1), () {
-          if (mounted) _startWalkingAway();
-        });
-      }
-    });
-  }
-
-  // --- LOGIC: WALK AWAY ---
-  void _startWalkingAway() {
-    setState(() {
-      _currentState = _AnimationState.walkingAway;
-      _walkAwayProgress = 0.0;
-      _walkAwayStartTime = DateTime.now();
-    });
-    
-    _controller.duration = const Duration(milliseconds: 1000); 
-    _controller.repeat();
-    
-    _walkAwayTimer?.cancel();
-    _walkAwayTimer = Timer.periodic(const Duration(milliseconds: 16), (timer) {
-      if (!mounted || _currentState != _AnimationState.walkingAway) {
-        timer.cancel();
-        return;
-      }
-
-      final elapsed = DateTime.now().difference(_walkAwayStartTime!);
-      final progress = (elapsed.inMilliseconds / _walkAwayDuration.inMilliseconds).clamp(0.0, 1.0);
-
-      if (mounted) {
-        setState(() {
-          _walkAwayProgress = progress;
-        });
-      }
-
-      // Stop timer when animation completes (character is off-screen)
-      if (progress >= 1.0) {
-        timer.cancel();
-        // Ensure progress is exactly 1.0 to prevent stuck state
-        if (mounted) {
-          setState(() {
-            _walkAwayProgress = 1.0;
-          });
-          
-          // If looping is enabled, restart the animation after a brief delay
-          if (_loopAnimation) {
-            Timer(const Duration(milliseconds: 500), () {
-              if (mounted) {
-                _restartAnimation();
-              }
-            });
-          }
-        }
-      }
-    });
-  }
-
-  // --- LOGIC: RESTART ---
-  void _restartAnimation() {
-    if (!mounted) return;
-    
-    // Pick new person type for next appearance
-    _calculatePersonIndex();
-    
-    // Go back to waiting state
-    _startWaiting();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_currentState == _AnimationState.waiting || _isLoading || 
-        _walkFrameImageInfos == null || _backFrameImageInfos == null || 
-        _spriteSize == null || _personIndex == null) {
-      return const SizedBox.shrink();
-    }
-
-    // Grid calculations
-    final row = _personIndex! ~/ 5;
-    final col = _personIndex! % 5;
-    final srcRect = Rect.fromLTWH(
-      col * _spriteSize!.width, 
-      row * _spriteSize!.height, 
-      _spriteSize!.width, 
-      _spriteSize!.height
-    );
-
-    return RepaintBoundary(
-      child: AnimatedBuilder(
-        animation: _controller,
-        builder: (context, child) {
-          ImageInfo imageInfo;
-          double horizontalOffset = 0.0;
-          bool flipHorizontal = true; 
-
-          switch (_currentState) {
-            case _AnimationState.waiting:
-               return const SizedBox.shrink();
-
-            case _AnimationState.walkingToMachine:
-              // 1. Walking IN: From right to machine position (left side)
-              final frameIndex = ((_controller.value * 10) % 10).floor();
-              imageInfo = _walkFrameImageInfos![frameIndex];
-              
-              // Start from right side of dialog (90% from left = right side)
-              final startPos = widget.dialogWidth * 0.9;
-              // End at machine position on LEFT side
-              final endPos = _vendingMachinePosition;
-              
-              // Interpolate: progress 0 = startPos (right), progress 1 = endPos (left)
-              // Formula: startPos + (endPos - startPos) * progress
-              // When progress=0: startPos (right side)
-              // When progress=1: endPos (left side, machine position)
-              horizontalOffset = startPos + (endPos - startPos) * _walkProgress.clamp(0.0, 1.0);
-              flipHorizontal = true; 
-              break;
-
-            case _AnimationState.backAnimation:
-              // 2. Interaction
-              final frameIndex = (_controller.value * 4).floor().clamp(0, 3);
-              imageInfo = _backFrameImageInfos![frameIndex];
-              // Facing right, no flip correction needed
-              horizontalOffset = _vendingMachinePosition;
-              flipHorizontal = false; 
-              break;
-
-            case _AnimationState.pausing:
-              // 3. Pausing
-              imageInfo = _backFrameImageInfos![3]; 
-              // Facing right, no flip correction needed (same as backAnimation)
-              horizontalOffset = _vendingMachinePosition;
-              flipHorizontal = false; 
-              break;
-
-            case _AnimationState.walkingAway:
-              // 4. Walking OUT: From machine position (left side) to off-screen left
-              final frameIndex = ((_controller.value * 10) % 10).floor();
-              imageInfo = _walkFrameImageInfos![frameIndex];
-              
-              // Start from machine position (same as backAnimation/pausing)
-              final startPos = _vendingMachinePosition;
-              // End off-screen to the left (move further left to ensure fully exits dialogue)
-              // Character is 128px wide, so need to move at least that much past left edge
-              final endPos = -widget.dialogWidth * 0.8; // 50% past left edge to fully exit
-              
-              // Interpolate: as progress goes from 0 to 1, move from startPos to endPos
-              // Clamp progress to ensure smooth movement even if timer continues
-              final clampedProgress = _walkAwayProgress.clamp(0.0, 1.0);
-              horizontalOffset = startPos + (endPos - startPos) * clampedProgress;
-              flipHorizontal = true; 
-              break;
-          }
-
-          // --- RENDER SPRITE ---
-          // Calculate actual rendered size after scaling
-          final scaledWidth = _spriteSize!.width * _spriteScaleX;
-          final scaledHeight = _spriteSize!.height;
-          
-          final imageWidget = Transform.scale(
-            scaleX: _spriteScaleX, 
-            scaleY: 1.0, 
-            alignment: Alignment.center,
-            child: CustomPaint(
-              size: _spriteSize!,
-              painter: _PersonMachineSpritePainter(
-                imageInfo: imageInfo,
-                srcRect: srcRect,
-              ),
-            ),
-          );
-
-          // Calculate final visual position
-          // When facing right (backAnimation/pausing): no correction needed
-          // When facing left (walkingToMachine/walkingAway): apply flip correction if needed
-          final baseVisualOffset = horizontalOffset + (flipHorizontal ? _flipCorrection : 0.0);
-          
-          // Calculate column-based horizontal adjustment
-          // Each column (0-4) may need different horizontal positioning within the sprite cell
-          final col = _personIndex! % 5;
-          final columnOffset = widget.dialogWidth * _columnHorizontalOffsets[col];
-          final visualOffset = baseVisualOffset + columnOffset;
-          
-          // Calculate vertical offset for 2nd row characters (indices 5-9)
-          // Row 0 = indices 0-4, Row 1 = indices 5-9
-          final row = _personIndex! ~/ 5;
-          final verticalOffset = row == 1 ? _secondRowVerticalOffset : 0.0;
-          
-          // Debug output for position tracking
-          if (_currentState == _AnimationState.backAnimation || _currentState == _AnimationState.pausing) {
-            final percentFromLeft = (visualOffset / widget.dialogWidth * 100).toStringAsFixed(1);
-            final characterCenter = visualOffset + scaledWidth / 2;
-            final characterRight = visualOffset + scaledWidth;
-            debugPrint('=== CHARACTER POSITION DEBUG ===');
-            debugPrint('Machine target: ${_vendingMachinePosition.toStringAsFixed(1)}px (${(_vendingMachinePositionFactor * 100).toStringAsFixed(1)}% from left)');
-            debugPrint('Character LEFT edge: ${visualOffset.toStringAsFixed(1)}px ($percentFromLeft% from left)');
-            debugPrint('Character CENTER: ${characterCenter.toStringAsFixed(1)}px (${(characterCenter / widget.dialogWidth * 100).toStringAsFixed(1)}% from left)');
-            debugPrint('Character RIGHT edge: ${characterRight.toStringAsFixed(1)}px (${(characterRight / widget.dialogWidth * 100).toStringAsFixed(1)}% from left)');
-            debugPrint('Character size: ${scaledWidth.toStringAsFixed(1)}x${scaledHeight.toStringAsFixed(1)}px');
-            debugPrint('Dialog width: ${widget.dialogWidth.toStringAsFixed(1)}px');
-          }
-
-          Widget characterWidget = Transform(
-            alignment: Alignment.center,
-            transform: Matrix4.identity()..scale(flipHorizontal ? -1.0 : 1.0, 1.0),
-            child: imageWidget,
-          );
-          
-          // Add debug bounding box if enabled - overlay on top of sprite
-          if (_showDebugBox) {
-            characterWidget = Stack(
-              clipBehavior: Clip.none,
-              children: [
-                characterWidget,
-                // Debug bounding box - align with sprite (sprite is centered, so offset by half size)
-                Positioned(
-                  left: (_spriteSize!.width - scaledWidth) / 2, // Account for scaling offset
-                  top: 0, // Align with top of sprite
-                  child: Container(
-                    width: scaledWidth,
-                    height: scaledHeight,
-                    decoration: BoxDecoration(
-                      border: Border.all(
-                        color: Colors.red,
-                        width: 2.0,
-                      ),
-                    ),
-                    child: Stack(
-                      children: [
-                        // Size label
-                        Positioned(
-                          top: 2,
-                          left: 2,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                            color: Colors.red.withOpacity(0.8),
-                            child: Text(
-                              '${scaledWidth.toStringAsFixed(0)}x${scaledHeight.toStringAsFixed(0)}',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-                        // Position label
-                        Positioned(
-                          bottom: 2,
-                          left: 2,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                            color: Colors.blue.withOpacity(0.8),
-                            child: Text(
-                              'X: ${visualOffset.toStringAsFixed(0)}',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            );
-          }
-
-          return Transform.translate(
-            offset: Offset(visualOffset, verticalOffset),
-            child: characterWidget,
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _PersonMachineSpritePainter extends CustomPainter {
-  final ImageInfo imageInfo;
-  final Rect srcRect;
-
-  _PersonMachineSpritePainter({required this.imageInfo, required this.srcRect});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    canvas.drawImageRect(
-      imageInfo.image,
-      srcRect,
-      Rect.fromLTWH(0, 0, size.width, size.height),
-      Paint(),
-    );
-  }
-
-  @override
-  bool shouldRepaint(_PersonMachineSpritePainter oldDelegate) {
-    return oldDelegate.imageInfo != imageInfo || oldDelegate.srcRect != srcRect;
-  }
-}
 class RainPainter extends CustomPainter {
   final double intensity;
   final double time;

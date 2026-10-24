@@ -6,7 +6,8 @@ import 'options_screen.dart';
 import '../../state/save_load_service.dart';
 import '../../state/providers.dart';
 import '../../services/sound_service.dart';
-import '../utils/screen_utils.dart';
+import '../theme/vex_theme.dart';
+import '../theme/vex_widgets.dart';
 
 /// Main menu screen shown at app startup
 class MenuScreen extends ConsumerStatefulWidget {
@@ -53,7 +54,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('No saved games found'),
-          backgroundColor: Colors.red,
+          backgroundColor: VexColors.red,
           duration: Duration(seconds: 2),
         ),
       );
@@ -79,7 +80,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       content: Text('Failed to load game'),
-                      backgroundColor: Colors.red,
+                      backgroundColor: VexColors.red,
                       duration: Duration(seconds: 2),
                     ),
                   );
@@ -116,7 +117,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
                             content: Text('Game loaded successfully!'),
-                            backgroundColor: Colors.green,
+                            backgroundColor: VexColors.green,
                             duration: Duration(seconds: 2),
                           ),
                         );
@@ -131,7 +132,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text('Error loading game: ${e.toString()}'),
-                    backgroundColor: Colors.red,
+                    backgroundColor: VexColors.red,
                     duration: const Duration(seconds: 2),
                   ),
                 );
@@ -143,228 +144,163 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
     );
   }
 
+  void _startNewGame(BuildContext context, WidgetRef ref) async {
+    // Stop menu music before navigating
+    await SoundService().stopBackgroundMusic();
+    // Small delay to ensure music stops
+    await Future.delayed(const Duration(milliseconds: 100));
+    // Reset game to initial state
+    ref.read(gameControllerProvider.notifier).resetGame();
+    // Start simulation before navigating
+    ref.read(gameControllerProvider.notifier).startSimulation();
+    // Navigate to main game screen
+    if (context.mounted) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => const MainScreen(),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final smallerDim = ScreenUtils.getSmallerDimension(context);
-            final screenHeight = constraints.maxHeight;
-            
-            return SingleChildScrollView(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  minHeight: screenHeight,
-                ),
-                child: Center(
-                  child: Padding(
-                    padding: ScreenUtils.relativePaddingSymmetric(
-                      context,
-                      horizontal: 0.043,
-                      vertical: 0.021,
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Game Title Image - width relative to smaller dimension
-                        SizedBox(
-                          width: smallerDim * 0.85,
-                          child: Image.asset(
-                            'assets/images/title.png',
-                            fit: BoxFit.contain,
-                            errorBuilder: (context, error, stackTrace) {
-                              return const SizedBox.shrink();
-                            },
-                          ),
+      body: Stack(
+        children: [
+          const Positioned.fill(child: _MenuBackdrop()),
+          SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 420),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Text(
+                        'VENDING',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: VexColors.gold,
+                          fontSize: 40,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 8,
                         ),
-                        
-                        SizedBox(
-                          height: screenHeight * 0.1, // 10% of screen height
+                      ),
+                      const Text(
+                        'TYCOON',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: VexColors.cream,
+                          fontSize: 28,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 10,
                         ),
-                        
-                        // Start Game Button - width relative to smaller dimension
-                        SizedBox(
-                          width: smallerDim * 0.7,
-                          child: GestureDetector(
-                            onTap: () async {
-                              // Stop menu music before navigating
-                              await SoundService().stopBackgroundMusic();
-                              // Small delay to ensure music stops
-                              await Future.delayed(const Duration(milliseconds: 100));
-                              // Reset game to initial state
-                              ref.read(gameControllerProvider.notifier).resetGame();
-                              // Start simulation before navigating
-                              ref.read(gameControllerProvider.notifier).startSimulation();
-                              // Navigate to main game screen
-                              if (context.mounted) {
-                                Navigator.of(context).pushReplacement(
-                                  MaterialPageRoute(
-                                    builder: (context) => const MainScreen(),
-                                  ),
-                                );
-                              }
-                            },
-                            child: Image.asset(
-                              'assets/images/start_button.png',
-                              fit: BoxFit.fitWidth,
-                              errorBuilder: (context, error, stackTrace) {
-                                return Container(
-                                  width: smallerDim * 0.7,
-                                  height: ScreenUtils.relativeSize(context, 0.034),
-                                  color: Colors.red,
-                                  child: Center(
-                                    child: Text(
-                                      'START GAME',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: ScreenUtils.relativeFontSize(context, 0.01),
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              },
+                      ),
+                      const SizedBox(height: 10),
+                      const Text(
+                        'Stock the machines. Win the city. Keep the change.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: VexColors.muted, fontSize: 14),
+                      ),
+                      const SizedBox(height: 36),
+                      VexButton(
+                        label: 'Start game',
+                        icon: Icons.play_arrow,
+                        primary: true,
+                        expand: true,
+                        onPressed: () => _startNewGame(context, ref),
+                      ),
+                      const SizedBox(height: 10),
+                      FutureBuilder<bool>(
+                        future: SaveLoadService.hasSavedGame(),
+                        builder: (context, snapshot) {
+                          final hasSave = snapshot.data ?? false;
+                          return VexButton(
+                            label: 'Load game',
+                            icon: Icons.folder_open,
+                            expand: true,
+                            onPressed: hasSave ? () => _loadGame(context, ref) : null,
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 10),
+                      VexButton(
+                        label: 'Options',
+                        icon: Icons.tune,
+                        expand: true,
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => const OptionsScreen(),
                             ),
-                          ),
-                        ),
-                        
-                        SizedBox(
-                          height: screenHeight * 0.1, // 10% of screen height
-                        ),
-                        
-                        // Bottom Buttons Row - width relative to smaller dimension
-                        SizedBox(
-                          width: smallerDim * 0.85,
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            children: [
-                              // Load Game Button
-                              Expanded(
-                                child: FutureBuilder<bool>(
-                                  future: SaveLoadService.hasSavedGame(),
-                                  builder: (context, snapshot) {
-                                    final hasSave = snapshot.data ?? false;
-                                    return GestureDetector(
-                                      onTap: hasSave ? () => _loadGame(context, ref) : null,
-                                      child: Opacity(
-                                        opacity: hasSave ? 1.0 : 0.5,
-                                        child: Image.asset(
-                                          'assets/images/load_game_button.png',
-                                          fit: BoxFit.fitWidth,
-                                          errorBuilder: (context, error, stackTrace) {
-                                            return Container(
-                                              height: ScreenUtils.relativeSize(context, 0.026),
-                                              color: Colors.yellow,
-                                              child: Center(
-                                                child: Text(
-                                                  'LOAD GAME',
-                                                  style: TextStyle(
-                                                    color: Colors.white,
-                                                    fontSize: ScreenUtils.relativeFontSize(context, 0.007),
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                              ),
-                                            );
-                                          },
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ),
-                              
-                              SizedBox(
-                                width: ScreenUtils.relativeSize(context, 0.0085),
-                              ),
-                              
-                              // Options Button
-                              Expanded(
-                                child: GestureDetector(
-                                  onTap: () {
-                                    Navigator.of(context).push(
-                                      MaterialPageRoute(
-                                        builder: (context) => const OptionsScreen(),
-                                      ),
-                                    );
-                                  },
-                                  child: Image.asset(
-                                    'assets/images/options_button.png',
-                                    fit: BoxFit.fitWidth,
-                                    errorBuilder: (context, error, stackTrace) {
-                                      return Container(
-                                        height: ScreenUtils.relativeSize(context, 0.026),
-                                        color: Colors.yellow,
-                                        child: Center(
-                                          child: Text(
-                                            'OPTIONS',
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontSize: ScreenUtils.relativeFontSize(context, 0.007),
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                ),
-                              ),
-                              
-                              SizedBox(
-                                width: ScreenUtils.relativeSize(context, 0.0085),
-                              ),
-                              
-                              // Credits Button
-                              Expanded(
-                                child: GestureDetector(
-                                  onTap: () {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Credits feature coming soon!'),
-                                        duration: Duration(seconds: 2),
-                                      ),
-                                    );
-                                  },
-                                  child: Image.asset(
-                                    'assets/images/credits_button.png',
-                                    fit: BoxFit.fitWidth,
-                                    errorBuilder: (context, error, stackTrace) {
-                                      return Container(
-                                        height: ScreenUtils.relativeSize(context, 0.026),
-                                        color: Colors.yellow,
-                                        child: Center(
-                                          child: Text(
-                                            'CREDITS',
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontSize: ScreenUtils.relativeFontSize(context, 0.007),
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 10),
+                      VexButton(
+                        label: 'Credits',
+                        icon: Icons.info_outline,
+                        expand: true,
+                        onPressed: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Credits feature coming soon!'),
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
                   ),
                 ),
               ),
-            );
-          },
-        ),
+            ),
+          ),
+        ],
       ),
     );
   }
+}
+
+/// The menu background: an ink gradient with a faint gold grid, as in vexmarch's title.
+class _MenuBackdrop extends StatelessWidget {
+  const _MenuBackdrop();
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        gradient: RadialGradient(
+          center: Alignment(0, -0.4),
+          radius: 1.2,
+          colors: [Color(0xFF1E1620), VexColors.ink],
+        ),
+      ),
+      child: CustomPaint(painter: _GridPainter()),
+    );
+  }
+}
+
+class _GridPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0x14F2D27A)
+      ..strokeWidth = 1;
+    const step = 36.0;
+    for (var x = 0.0; x < size.width; x += step) {
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
+    }
+    for (var y = 0.0; y < size.height; y += step) {
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_GridPainter oldDelegate) => false;
 }
 
 /// Dialog for selecting save slot to load

@@ -661,6 +661,18 @@ class LowPolyPainter extends CustomPainter {
       oldDelegate.pixelRatio != pixelRatio;
 }
 
+/// Lets buttons on the screen zoom and reset a [LowPolyView].
+class LowPolyController {
+  void Function(double factor)? _zoom;
+  VoidCallback? _reset;
+
+  /// Multiplies the camera distance: below 1 zooms in, above 1 zooms out.
+  void zoomBy(double factor) => _zoom?.call(factor);
+
+  /// Returns the camera to the view the widget was given.
+  void reset() => _reset?.call();
+}
+
 /// Interactive lowpoly view. One finger orbits, a pinch or the scroll wheel
 /// zooms, and a short tap reports the payload under the finger.
 ///
@@ -676,7 +688,10 @@ class LowPolyView extends StatefulWidget {
     this.minDistance = 4,
     this.maxDistance = 60,
     this.onTapTarget,
+    this.controller,
   });
+
+  final LowPolyController? controller;
 
   final List<LowPolyObject> objects;
   final List<LowPolyObject> overlay;
@@ -705,9 +720,40 @@ class _LowPolyViewState extends State<LowPolyView> {
   double? _pinchSpan;
 
   @override
+  void initState() {
+    super.initState();
+    _attach(widget.controller);
+  }
+
+  @override
+  void didUpdateWidget(covariant LowPolyView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.controller, widget.controller)) {
+      _detach(oldWidget.controller);
+      _attach(widget.controller);
+    }
+  }
+
+  @override
   void dispose() {
+    _detach(widget.controller);
     _layer.dispose();
     super.dispose();
+  }
+
+  void _attach(LowPolyController? controller) {
+    controller?._zoom = _zoomBy;
+    controller?._reset = _resetView;
+  }
+
+  void _detach(LowPolyController? controller) {
+    if (controller == null) return;
+    controller._zoom = null;
+    controller._reset = null;
+  }
+
+  void _resetView() {
+    setState(() => _camera = widget.camera);
   }
 
   double? _span() {

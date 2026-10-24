@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -14,6 +13,8 @@ import '../../services/sound_service.dart';
 import 'menu_screen.dart';
 import '../utils/screen_utils.dart';
 import '../widgets/admob_banner.dart';
+import '../theme/vex_theme.dart';
+import '../theme/vex_widgets.dart';
 
 /// Main navigation screen with bottom navigation bar
 class MainScreen extends ConsumerStatefulWidget {
@@ -100,23 +101,10 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   }
 }
 
-/// Calculate the required height for the status bar
-double _calculateStatusBarHeight(BuildContext context) {
-  // Calculate card dimensions (same logic as in _StatusBar)
-  final cardHeight = ScreenUtils.barHeight(
-    context,
-    AppConfig.statusCardHeightFactor,
-    AppConfig.statusBarMaxHeightFraction,
-  );
-  
-  // Container padding
-  final containerPadding = ScreenUtils.relativeSize(context, AppConfig.statusBarContainerPaddingFactor);
-  
-  // Total height needed: card height + vertical padding on both sides
-  return cardHeight + (containerPadding * 2);
-}
+/// Height of the top status bar.
+double _calculateStatusBarHeight(BuildContext context) => 56;
 
-/// Status bar showing cash, reputation, and time - always visible
+/// Status bar showing cash, reputation and time, with save and exit on the right.
 class _StatusBar extends ConsumerWidget {
   const _StatusBar();
 
@@ -126,178 +114,49 @@ class _StatusBar extends ConsumerWidget {
     final reputation = ref.watch(reputationProvider);
     final dayCount = ref.watch(dayCountProvider);
     final hourOfDay = ref.watch(hourOfDayProvider);
-    
+
     // Format hour as 12-hour format with AM/PM (hour only, no minutes)
     final hour12 = hourOfDay == 0 ? 12 : (hourOfDay > 12 ? hourOfDay - 12 : hourOfDay);
     final amPm = hourOfDay < 12 ? 'AM' : 'PM';
     final timeString = 'Day $dayCount, $hour12$amPm';
-    
-    // Card height drives the size; width follows the frame artwork's aspect
-    final cardHeight = ScreenUtils.barHeight(
-      context,
-      AppConfig.statusCardHeightFactor,
-      AppConfig.statusBarMaxHeightFraction,
-    );
-    final cardWidth = cardHeight * AppConfig.statusCardAspectRatio;
-    
-    // Padding is a fraction of the card itself, so it stays in proportion
-    // with it on every screen
-    // Font size for value - use status card specific size
-    final valueFontSize = ScreenUtils.relativeFontSize(context, AppConfig.statusCardTextSizeFactor);
-    
-    final padding = cardWidth * AppConfig.statusCardPaddingFactor;
-    
-    final containerPadding = ScreenUtils.relativeSize(context, AppConfig.statusBarContainerPaddingFactor);
-    
+
     return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: containerPadding,
-        vertical: containerPadding,
+      padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+      decoration: const BoxDecoration(
+        color: VexColors.ink,
+        border: Border(bottom: BorderSide(color: VexColors.line)),
       ),
-      color: Theme.of(context).colorScheme.surface,
-      child: Stack(
-        alignment: Alignment.center,
+      child: Row(
         children: [
-          // Save/Exit sit in the space the status cards leave free on the right
-          Positioned(
-            right: 0,
-            top: 0,
-            bottom: 0,
-            child: Center(
-              child: _SaveExitButtons(
-                size: cardHeight * AppConfig.saveExitButtonSizeRatio,
-              ),
-            ),
-          ),
-          Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        spacing: containerPadding * 4,
-        children: [
-          _StatusCard(
-            iconAsset: 'assets/images/cash_icon.png',
-            value: '\$${cash.toStringAsFixed(2)}',
-            valueColor: Colors.green,
-            cardWidth: cardWidth,
-            cardHeight: cardHeight,
-            valueFontSize: valueFontSize,
-            padding: padding,
-          ),
-          _StatusCard(
-            iconAsset: 'assets/images/star_icon.png',
-            value: reputation.toString(),
-            valueColor: Colors.amber,
-            cardWidth: cardWidth,
-            cardHeight: cardHeight,
-            valueFontSize: valueFontSize,
-            padding: padding,
-          ),
-          _StatusCard(
-            iconAsset: 'assets/images/clock_icon.png',
-            value: timeString,
-            valueColor: Colors.blue,
-            cardWidth: cardWidth,
-            cardHeight: cardHeight,
-            valueFontSize: valueFontSize,
-            padding: padding,
-          ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Compact status card for main screen status bar
-class _StatusCard extends StatelessWidget {
-  final String iconAsset;
-  final String value;
-  final Color valueColor;
-  final double cardWidth;
-  final double cardHeight;
-  final double valueFontSize;
-  final double padding;
-
-  const _StatusCard({
-    required this.iconAsset,
-    required this.value,
-    required this.valueColor,
-    required this.cardWidth,
-    required this.cardHeight,
-    required this.valueFontSize,
-    required this.padding,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: cardWidth,
-      height: cardHeight,
-      child: Stack(
-        children: [
-          // Background icon
-          Image.asset(
-            'assets/images/status_icon.png',
-            width: cardWidth,
-            height: cardHeight,
-            fit: BoxFit.contain,
-            errorBuilder: (context, error, stackTrace) {
-              return Container(
-                width: cardWidth,
-                height: cardHeight,
-                decoration: BoxDecoration(
-                  color: Colors.grey[200],
-                  borderRadius: BorderRadius.circular(8),
+          Expanded(
+            child: Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                VexStat(
+                  icon: Icons.paid,
+                  value: '\$${cash.toStringAsFixed(2)}',
+                  color: VexColors.green,
                 ),
-              );
-            },
-          ),
-          // Content overlay - icon above, value below.
-          // Laid out in a Column rather than absolutely positioned so the icon
-          // and the value can never overlap, whatever the card size works out
-          // to on a given screen.
-          Positioned.fill(
-            child: Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: padding,
-                vertical: cardHeight * 0.08,
-              ),
-              child: Column(
-                children: [
-                  // The icon takes whatever height is left after the value
-                  Expanded(
-                    child: Image.asset(
-                      iconAsset,
-                      fit: BoxFit.contain,
-                      errorBuilder: (context, error, stackTrace) =>
-                          const SizedBox.shrink(),
-                    ),
-                  ),
-                  SizedBox(height: cardHeight * 0.04),
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      value,
-                      style: TextStyle(
-                        fontSize: valueFontSize,
-                        fontWeight: FontWeight.bold,
-                        color: valueColor,
-                      ),
-                      maxLines: 1,
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ],
-              ),
+                VexStat(
+                  icon: Icons.star,
+                  value: reputation.toString(),
+                  color: VexColors.gold,
+                ),
+                VexStat(icon: Icons.schedule, value: timeString),
+              ],
             ),
           ),
+          const SizedBox(width: 8),
+          const _SaveExitButtons(size: 40),
         ],
       ),
     );
   }
 }
 
-/// Custom bottom navigation bar using image assets
+/// Vexmarch-style bottom navigation with four tabs.
 class _CustomBottomNavigationBar extends ConsumerWidget {
   final int currentIndex;
   final Function(int) onTap;
@@ -309,141 +168,35 @@ class _CustomBottomNavigationBar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // The four tab buttons share the full width of the row, so size them from
-    // the width each one actually gets and let the bar be as tall as those
-    // buttons need. Driving the bar from a height factor alone left the buttons
-    // far smaller than the space available to them.
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final tabSlotWidth =
-            (constraints.maxWidth - AppConfig.tabButtonCount * _tabGap(context)) /
-                AppConfig.tabButtonCount;
-        // Tab artwork is wider than it is tall, so width decides the height
-        final tabHeightForWidth = tabSlotWidth / AppConfig.tabButtonAspectRatio;
-        final maxBarHeight = ScreenUtils.barHeight(
-          context,
-          AppConfig.bottomNavBarHeightFactor,
-          AppConfig.bottomNavBarMaxHeightFraction,
-        );
-        final tabHeight = math.min(
-          tabHeightForWidth,
-          maxBarHeight * AppConfig.tabButtonHeightRatio,
-        );
-        final barHeight = tabHeight / AppConfig.tabButtonHeightRatio;
-
-        return Container(
-          height: barHeight,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.1),
-                blurRadius: ScreenUtils.relativeSize(context, 0.0017),
-                offset: Offset(0, -ScreenUtils.relativeSize(context, 0.00085)),
+    const tabs = [
+      (Icons.business, 'HQ'),
+      (Icons.location_city, 'City'),
+      (Icons.local_shipping, 'Fleet'),
+      (Icons.storefront, 'Market'),
+    ];
+    return SafeArea(
+      top: false,
+      child: Container(
+        decoration: const BoxDecoration(
+          color: VexColors.panel,
+          border: Border(top: BorderSide(color: VexColors.border)),
+        ),
+        child: Row(
+          children: [
+            for (var i = 0; i < tabs.length; i++)
+              VexNavTab(
+                icon: tabs[i].$1,
+                label: tabs[i].$2,
+                selected: currentIndex == i,
+                onTap: () => onTap(i),
               ),
-            ],
-          ),
-          child: SafeArea(
-            top: false,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _buildTabItem(
-                  context,
-                  tabHeight: tabHeight,
-                  index: 0,
-                  pressAsset: 'assets/images/hq_tab_press.png',
-                  unpressAsset: 'assets/images/hq_tab_unpress.png',
-                ),
-                _buildTabItem(
-                  context,
-                  tabHeight: tabHeight,
-                  index: 1,
-                  pressAsset: 'assets/images/city_tab_press.png',
-                  unpressAsset: 'assets/images/city_tab_unpress.png',
-                ),
-                _buildTabItem(
-                  context,
-                  tabHeight: tabHeight,
-                  index: 2,
-                  pressAsset: 'assets/images/fleet_tab_press.png',
-                  unpressAsset: 'assets/images/fleet_tab_unpress.png',
-                ),
-                _buildTabItem(
-                  context,
-                  tabHeight: tabHeight,
-                  index: 3,
-                  pressAsset: 'assets/images/market_tab_press.png',
-                  unpressAsset: 'assets/images/market_tab_unpress.png',
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  double _tabGap(BuildContext context) =>
-      ScreenUtils.relativeSize(context, AppConfig.paddingSmallFactor);
-
-  Widget _buildTabItem(
-    BuildContext context, {
-    required double tabHeight,
-    required int index,
-    required String pressAsset,
-    required String unpressAsset,
-  }) {
-    final isSelected = currentIndex == index;
-    
-    return GestureDetector(
-      onTap: () => onTap(index),
-      behavior: HitTestBehavior.opaque,
-      child: SizedBox(
-        height: tabHeight,
-        width: tabHeight * AppConfig.tabButtonAspectRatio,
-        child: Center(
-          child: Image.asset(
-            isSelected ? pressAsset : unpressAsset,
-            fit: BoxFit.contain, // Prevents distortion - image grows as big as possible without distorting
-            errorBuilder: (context, error, stackTrace) {
-              // Fallback to icon if image fails to load
-              return Icon(
-                _getIconForIndex(index),
-                color: isSelected ? Colors.green : Colors.grey,
-                size: ScreenUtils.relativeSize(
-                  context,
-                  AppConfig.tabButtonIconSizeFactor,
-                ),
-              );
-            },
-          ),
+          ],
         ),
       ),
     );
   }
-
-  IconData _getIconForIndex(int index) {
-    switch (index) {
-      case 0:
-        return Icons.dashboard_rounded;
-      case 1:
-        return Icons.map_rounded;
-      case 2:
-        return Icons.local_shipping_rounded;
-      case 3:
-        return Icons.store_rounded;
-      default:
-        return Icons.circle;
-    }
-  }
 }
 
-/// Save and Exit buttons.
-///
-/// These live in the status bar rather than the bottom navigation row: they are
-/// utility actions, not navigation, and taking them out of that row gives the
-/// four tab buttons the whole width to grow into.
 class _SaveExitButtons extends ConsumerWidget {
   final double size;
 
@@ -451,74 +204,24 @@ class _SaveExitButtons extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-        final buttonHeight = size;
-        final sideBySideButtonWidth = size;
-        
-        return Row(
-          mainAxisSize: MainAxisSize.min, // Keep compact on the right side
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Save Button
-            GestureDetector(
-              onTap: () => _saveGame(context, ref),
-              child: Container(
-                width: sideBySideButtonWidth,
-                height: buttonHeight,
-                alignment: Alignment.center,
-                child: Image.asset(
-                  'assets/images/save_button.png',
-                  fit: BoxFit.contain, // Keeps button shape correct
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      width: sideBySideButtonWidth,
-                      height: buttonHeight,
-                      decoration: BoxDecoration(
-                        color: Colors.blue,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.save,
-                        color: Colors.white,
-                        size: buttonHeight * 0.5,
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
-            SizedBox(width: ScreenUtils.relativeSize(context, AppConfig.paddingSmallFactor)), // Spacing between buttons
-            // Exit Button
-            GestureDetector(
-              onTap: () {
-                _exitToMenu(context, ref);
-              },
-              child: Container(
-                width: sideBySideButtonWidth,
-                height: buttonHeight,
-                alignment: Alignment.center,
-                child: Image.asset(
-                  'assets/images/exit_button.png',
-                  fit: BoxFit.contain, // Keeps button shape correct
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      width: sideBySideButtonWidth,
-                      height: buttonHeight,
-                      decoration: BoxDecoration(
-                        color: Colors.red,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.exit_to_app,
-                        color: Colors.white,
-                        size: buttonHeight * 0.5,
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
-          ],
-        );
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _ActionIcon(
+          icon: Icons.save,
+          color: VexColors.gold,
+          size: size,
+          onTap: () => _saveGame(context, ref),
+        ),
+        const SizedBox(width: 6),
+        _ActionIcon(
+          icon: Icons.logout,
+          color: VexColors.red,
+          size: size,
+          onTap: () => _exitToMenu(context, ref),
+        ),
+      ],
+    );
   }
 
   Future<void> _saveGame(BuildContext context, WidgetRef ref) async {
@@ -541,7 +244,7 @@ class _SaveExitButtons extends ConsumerWidget {
                   content: Text(success 
                     ? 'Game saved successfully!' 
                     : 'Failed to save game'),
-                  backgroundColor: success ? Colors.green : Colors.red,
+                  backgroundColor: success ? VexColors.green : VexColors.red,
                   duration: AppConfig.snackbarDurationShort,
                 ),
               );
@@ -695,3 +398,38 @@ class _SaveGameDialogState extends State<_SaveGameDialog> {
   }
 }
 
+
+/// A square icon button in a bordered panel, used for save and exit.
+class _ActionIcon extends StatelessWidget {
+  const _ActionIcon({
+    required this.icon,
+    required this.color,
+    required this.size,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final Color color;
+  final double size;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: VexColors.panelSoft,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(4),
+        side: BorderSide(color: color.withValues(alpha: 0.6)),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(4),
+        child: SizedBox(
+          width: size,
+          height: size,
+          child: Icon(icon, color: color, size: size * 0.55),
+        ),
+      ),
+    );
+  }
+}

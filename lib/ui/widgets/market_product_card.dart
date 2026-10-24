@@ -5,6 +5,7 @@ import '../../state/market_provider.dart';
 import '../../state/selectors.dart';
 import '../../state/providers.dart';
 import '../../config.dart';
+import '../theme/product_badge.dart';
 import '../utils/screen_utils.dart';
 
 /// Card widget that displays a product in the market
@@ -17,30 +18,6 @@ class MarketProductCard extends ConsumerWidget {
     required this.product,
     this.onProductTapped,
   });
-
-  /// Get image asset path for product
-  String _getProductImagePath(Product product) {
-    switch (product) {
-      case Product.soda:
-        return 'assets/images/items/soda.png';
-      case Product.chips:
-        return 'assets/images/items/chips.png';
-      case Product.proteinBar:
-        return 'assets/images/items/protein_bar.png';
-      case Product.coffee:
-        return 'assets/images/items/coffee.png';
-      case Product.techGadget:
-        return 'assets/images/items/tech_gadget.png';
-      case Product.sandwich:
-        return 'assets/images/items/sandwich.png';
-      case Product.freshSalad:
-        return 'assets/images/items/fresh_salad.png';
-      case Product.newspaper:
-        return 'assets/images/items/newspaper.png';
-      case Product.energyDrink:
-        return 'assets/images/items/energy_drink.png';
-    }
-  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -86,20 +63,7 @@ class MarketProductCard extends ConsumerWidget {
                   borderRadius: BorderRadius.circular(
                     ScreenUtils.relativeSize(context, AppConfig.borderRadiusFactorSmall),
                   ),
-                  child: Image.asset(
-                    _getProductImagePath(product),
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Icon(
-                        Icons.image_not_supported,
-                        size: ScreenUtils.relativeSize(
-                          context,
-                          AppConfig.productCardImageFallbackSizeFactor,
-                        ),
-                        color: Colors.grey[600],
-                      );
-                    },
-                  ),
+                  child: ProductBadge(product: product),
                 ),
               ),
               SizedBox(
@@ -192,30 +156,6 @@ class _BuyStockDialog extends ConsumerStatefulWidget {
 class _BuyStockDialogState extends ConsumerState<_BuyStockDialog> {
   double _quantity = 0.0;
 
-  /// Get image asset path for product
-  String _getProductImagePath(Product product) {
-    switch (product) {
-      case Product.soda:
-        return 'assets/images/items/soda.png';
-      case Product.chips:
-        return 'assets/images/items/chips.png';
-      case Product.proteinBar:
-        return 'assets/images/items/protein_bar.png';
-      case Product.coffee:
-        return 'assets/images/items/coffee.png';
-      case Product.techGadget:
-        return 'assets/images/items/tech_gadget.png';
-      case Product.sandwich:
-        return 'assets/images/items/sandwich.png';
-      case Product.freshSalad:
-        return 'assets/images/items/fresh_salad.png';
-      case Product.newspaper:
-        return 'assets/images/items/newspaper.png';
-      case Product.energyDrink:
-        return 'assets/images/items/energy_drink.png';
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     
@@ -241,7 +181,6 @@ class _BuyStockDialogState extends ConsumerState<_BuyStockDialog> {
     final screenHeight = MediaQuery.of(context).size.height;
     final dialogMaxWidth = screenWidth * AppConfig.buyDialogWidthFactor;
     
-    final imagePath = _getProductImagePath(widget.product);
 
     return Dialog(
       backgroundColor: Colors.transparent,
@@ -288,17 +227,9 @@ class _BuyStockDialogState extends ConsumerState<_BuyStockDialog> {
                       // Product icon and title
                       Row(
                         children: [
-                          Image.asset(
-                            imagePath,
-                            width: dialogWidth * AppConfig.buyDialogHeaderIconSizeFactor,
-                            height: dialogWidth * AppConfig.buyDialogHeaderIconSizeFactor,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Icon(
-                                Icons.image_not_supported,
-                                size: dialogWidth * AppConfig.buyDialogHeaderIconSizeFactor,
-                                color: Colors.grey[600],
-                              );
-                            },
+                          ProductBadge(
+                            product: widget.product,
+                            size: dialogWidth * AppConfig.buyDialogHeaderIconSizeFactor,
                           ),
                           SizedBox(width: padding * AppConfig.buyDialogHeaderTitleSpacingFactor),
                           Text(

@@ -5,6 +5,8 @@ import '../../simulation/models/zone.dart';
 import '../../state/providers.dart';
 import '../../config.dart';
 import '../../services/sound_service.dart';
+import '../theme/vex_widgets.dart';
+import '../three_d/vending_machine_3d.dart';
 import '../utils/screen_utils.dart';
 import '../theme/zone_ui.dart';
 import 'machine_upgrade_dialog.dart';
@@ -139,12 +141,6 @@ class _MachineInteriorDialogState extends ConsumerState<MachineInteriorDialog> w
   }
 
   /// Get the interior image path based on zone type and cash status
-  /// Falls back to generic images if zone-specific images don't exist
-  String _getInteriorImagePath(ZoneType zoneType, bool hasCash) {
-    final cashSuffix = hasCash ? '_with_money' : '_without_money';
-    return 'assets/images/machine$cashSuffix.png';
-  }
-
   /// Open the machine upgrade dialog
   void _openUpgrades() {
     showDialog(
@@ -204,9 +200,6 @@ class _MachineInteriorDialogState extends ConsumerState<MachineInteriorDialog> w
     final dialogMaxWidth = screenWidth * AppConfig.machineInteriorDialogWidthFactor;
     final dialogMaxHeight = screenHeight * AppConfig.machineInteriorDialogHeightFactor;
 
-    // Determine which image to show based on zone type and cash status
-    final imagePath = _getInteriorImagePath(widget.machine.zone.type, _hasCash);
-
     return PopScope(
       canPop: false,
       onPopInvoked: (didPop) {
@@ -255,139 +248,22 @@ class _MachineInteriorDialogState extends ConsumerState<MachineInteriorDialog> w
                         ),
                         child: Stack(
                           children: [
-                            // Background image
-                            Image.asset(
-                              imagePath,
-                              fit: BoxFit.contain,
-                              width: double.infinity,
+                            // The machine in 3D. Drag to turn it.
+                            VendingMachine3DView(
+                              machine: _currentMachine,
                               height: imageHeight,
-                              errorBuilder: (context, error, stackTrace) {
-                                return Container(
-                                  width: double.infinity,
-                                  height: imageHeight,
-                                  color: Colors.grey[800],
-                                  child: Center(
-                                    child: Text(
-                                      'Machine interior image not found',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: dialogWidth * AppConfig.machineInteriorDialogErrorTextFontSizeFactor,
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              },
+                              showCaption: false,
                             ),
-                            // Zone A: Bill Validator/Cash Stack area (top-right area)
-                            // Positioned approximately in the upper-right portion
+                            // One button collects the cash, shown while there is cash.
                             if (_hasCash)
                               Positioned(
-                                left: dialogWidth * AppConfig.machineInteriorDialogZoneALeftFactor,
-                                top: imageHeight * AppConfig.machineInteriorDialogZoneATopFactor,
-                                width: dialogWidth * AppConfig.machineInteriorDialogZoneAWidthFactor,
-                                height: imageHeight * AppConfig.machineInteriorDialogZoneAHeightFactor,
-                                child: Stack(
-                                  children: [
-                                    // Touchable area (behind the circle)
-                                    GestureDetector(
-                                      onTap: () => _collectCash('A'),
-                                      child: Container(
-                                        color: Colors.transparent,
-                                      ),
-                                    ),
-                                    // Blinking circle indicator (first time only) - on top
-                                    if (_showTutorial)
-                                      Positioned.fill(
-                                        child: AnimatedBuilder(
-                                          animation: _flashAnimation,
-                                          builder: (context, child) {
-                                            final flashAlpha = _flashAnimation.value;
-                                            final zoneWidth = dialogWidth * AppConfig.machineInteriorDialogZoneAWidthFactor;
-                                            final zoneHeight = imageHeight * AppConfig.machineInteriorDialogZoneAHeightFactor;
-                                            final circleSize = (zoneWidth > zoneHeight ? zoneWidth : zoneHeight) * 1.7;
-                                            
-                                            return Center(
-                                              child: IgnorePointer(
-                                                child: Container(
-                                                  width: circleSize,
-                                                  height: circleSize,
-                                                  decoration: BoxDecoration(
-                                                    shape: BoxShape.circle,
-                                                    border: Border.all(
-                                                      color: Colors.green.withValues(alpha: flashAlpha),
-                                                      width: 4.0,
-                                                    ),
-                                                    boxShadow: [
-                                                      BoxShadow(
-                                                        color: Colors.green.withValues(alpha: 0.5 * flashAlpha),
-                                                        blurRadius: 12.0 * flashAlpha,
-                                                        spreadRadius: 2.0 * flashAlpha,
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ),
-                                            );
-                                          },
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                              ),
-                            // Zone B: Coin Drop/Bin area (bottom area)
-                            // Positioned approximately in the lower portion
-                            if (_hasCash)
-                              Positioned(
-                                left: dialogWidth * AppConfig.machineInteriorDialogZoneBLeftFactor,
-                                top: imageHeight * AppConfig.machineInteriorDialogZoneBTopFactor,
-                                width: dialogWidth * AppConfig.machineInteriorDialogZoneBWidthFactor,
-                                height: imageHeight * AppConfig.machineInteriorDialogZoneBHeightFactor,
-                                child: Stack(
-                                  children: [
-                                    // Touchable area (behind the circle)
-                                    GestureDetector(
-                                      onTap: () => _collectCash('B'),
-                                      child: Container(
-                                        color: Colors.transparent,
-                                      ),
-                                    ),
-                                    // Blinking circle indicator (first time only) - on top
-                                    if (_showTutorial)
-                                      Positioned.fill(
-                                        child: AnimatedBuilder(
-                                          animation: _flashAnimation,
-                                          builder: (context, child) {
-                                            final flashAlpha = _flashAnimation.value;
-                                            final zoneWidth = dialogWidth * AppConfig.machineInteriorDialogZoneBWidthFactor;
-                                            final zoneHeight = imageHeight * AppConfig.machineInteriorDialogZoneBHeightFactor;
-                                            final circleSize = (zoneWidth > zoneHeight ? zoneWidth : zoneHeight) * 1.7;
-                                            
-                                            return Center(
-                                              child: IgnorePointer(
-                                                child: Container(
-                                                  width: circleSize,
-                                                  height: circleSize,
-                                                  decoration: BoxDecoration(
-                                                    shape: BoxShape.circle,
-                                                    border: Border.all(
-                                                      color: Colors.green.withValues(alpha: flashAlpha),
-                                                      width: 4.0,
-                                                    ),
-                                                    boxShadow: [
-                                                      BoxShadow(
-                                                        color: Colors.green.withValues(alpha: 0.5 * flashAlpha),
-                                                        blurRadius: 12.0 * flashAlpha,
-                                                        spreadRadius: 2.0 * flashAlpha,
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ),
-                                            );
-                                          },
-                                        ),
-                                      ),
-                                  ],
+                                right: padding,
+                                bottom: padding,
+                                child: VexButton(
+                                  label: 'Collect cash',
+                                  icon: Icons.payments,
+                                  primary: true,
+                                  onPressed: () => _collectCash('A'),
                                 ),
                               ),
                             // Tutorial message (similar to rush sell message)

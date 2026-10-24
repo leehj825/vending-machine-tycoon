@@ -1,6 +1,7 @@
 import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'ui/theme/vex_theme.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
@@ -99,24 +100,7 @@ class _VendingMachineTycoonAppState extends State<VendingMachineTycoonApp> with 
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Vending Machine Tycoon',
-      theme: ThemeData(
-        useMaterial3: true,
-        // Use bundled Fredoka font for consistent rendering across all platforms
-        // This overrides platform-specific defaults (Roboto on Android, San Francisco on macOS)
-        fontFamily: 'Fredoka',
-        // Apply font to all text styles
-        textTheme: ThemeData.light().textTheme.apply(
-          fontFamily: 'Fredoka',
-        ),
-        primaryTextTheme: ThemeData.light().primaryTextTheme.apply(
-          fontFamily: 'Fredoka',
-        ),
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.green,
-          brightness: Brightness.light,
-          surface: const Color(0xFFF5F5F5), // Light grey background instead of white
-        ),
-      ),
+      theme: VexTheme.dark,
       home: const MenuScreen(),
       debugShowCheckedModeBanner: false,
     );

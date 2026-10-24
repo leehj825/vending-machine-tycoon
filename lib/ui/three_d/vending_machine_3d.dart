@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../simulation/models/machine.dart' as sim;
 import '../../simulation/models/product.dart';
+import '../../simulation/models/zone.dart';
+import '../theme/vex_theme.dart';
 import '../theme/zone_ui.dart';
 import 'lowpoly_engine.dart';
 
@@ -19,10 +21,12 @@ class VendingMachine3DView extends StatelessWidget {
     super.key,
     required this.machine,
     this.height = 260,
+    this.showCaption = true,
   });
 
   final sim.Machine machine;
   final double height;
+  final bool showCaption;
 
   @override
   Widget build(BuildContext context) {
@@ -42,12 +46,14 @@ class VendingMachine3DView extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 4),
-        Text(
-          'Drag to rotate · pinch to zoom',
-          textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-        ),
+        if (showCaption) ...[
+          const SizedBox(height: 4),
+          Text(
+            'Drag to rotate · pinch to zoom',
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 12, color: VexColors.muted),
+          ),
+        ],
       ],
     );
   }
@@ -150,3 +156,11 @@ List<_Slot?> _slotLayout(sim.Machine machine) {
   }
   return slots;
 }
+
+/// An empty machine of [type], for showing a machine before it is bought.
+sim.Machine previewMachineFor(ZoneType type) => sim.Machine(
+      id: 'preview-${type.name}',
+      name: type.name,
+      zone: Zone(id: 'preview-${type.name}', type: type, name: type.name, x: 1, y: 1),
+      condition: sim.MachineCondition.good,
+    );
