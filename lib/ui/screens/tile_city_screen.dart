@@ -737,25 +737,27 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
       children: [
         // Not Positioned: a Stack needs one unpositioned child to size itself,
         // and without it the whole city collapses to nothing.
-        SizedBox.expand(child: _build3DCity(isNight)),
-
-        // Machine details over the bottom of the map. The map stays visible and usable
-        // around it, and the panel can be minimized to its header.
-        if (_openMachineId != null)
-          Positioned(
-            left: 8,
-            right: 8,
-            bottom: 8,
-            child: Center(
-              child: _MachineViewPanel(
-                machineId: _openMachineId!,
-                minimized: _machinePanelMinimized,
-                onToggleMinimized: () =>
-                    setState(() => _machinePanelMinimized = !_machinePanelMinimized),
-                onClose: _closeMachineView,
+        // The map and the machine panel share a column, so the panel never sits on top of
+        // the map's platform view. Opening it shrinks the map above; closing it grows the map
+        // back. A panel laid over the WebView left the map black when it closed.
+        Column(
+          children: [
+            Expanded(child: _build3DCity(isNight)),
+            if (_openMachineId != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                child: Center(
+                  child: _MachineViewPanel(
+                    machineId: _openMachineId!,
+                    minimized: _machinePanelMinimized,
+                    onToggleMinimized: () =>
+                        setState(() => _machinePanelMinimized = !_machinePanelMinimized),
+                    onClose: _closeMachineView,
+                  ),
+                ),
               ),
-            ),
-          ),
+          ],
+        ),
 
         // Rain overlay (full screen)
         if (weather == WeatherType.rainy || weather == WeatherType.stormy)
