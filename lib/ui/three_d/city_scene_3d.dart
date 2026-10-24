@@ -30,6 +30,37 @@ const Color _grassB = Color(0xFF69B05A);
 const Color _asphalt = Color(0xFF4A4F57);
 const Color _lane = Color(0xFFF2F2F2);
 const Color _pathStone = Color(0xFFD7CCC8);
+const List<Color> _houseWalls = [
+  Color(0xFFF6D7B0),
+  Color(0xFFE8F1F5),
+  Color(0xFFF2E0A8),
+  Color(0xFFD9E8D0),
+];
+const List<Color> _houseRoofs = [
+  Color(0xFFB23A48),
+  Color(0xFF5D4037),
+  Color(0xFF37474F),
+  Color(0xFFBF5B2E),
+];
+const List<Color> _officeBodies = [
+  Color(0xFF8FB8DE),
+  Color(0xFFB0BEC5),
+  Color(0xFF9FD3C7),
+  Color(0xFFC9B6E4),
+];
+const List<Color> _awnings = [
+  Color(0xFFE4572E),
+  Color(0xFF2E7D32),
+  Color(0xFF1565C0),
+  Color(0xFFF9A825),
+];
+
+/// One colour from [palette], chosen by tile position, so neighbours differ.
+Color _variant(List<Color> palette, int x, int y) =>
+    palette[(x * 7 + y * 13 + x * y) % palette.length];
+
+const Color _pavement = Color(0xFFBDBDB5);
+const Color _kerb = Color(0xFFD9D4C7);
 const Color _water = Color(0xFF4FC3F7);
 const Color _benchWood = Color(0xFF8D6E63);
 const Color _trunk = Color(0xFF7A5230);
@@ -78,8 +109,9 @@ List<LowPolyObject> buildCityScene({
       final road = y < roadDirections.length && x < roadDirections[y].length
           ? roadDirections[y][x]
           : null;
-      objects.add(_groundTile(brightness, x, y, type, road));
+      objects.add(_groundTile(brightness, grid, x, y, type, road));
       objects.addAll(_buildingObjects(brightness, x, y, type));
+      objects.addAll(_streetObjects(brightness, grid, x, y, type));
     }
   }
 
@@ -96,14 +128,29 @@ List<LowPolyObject> buildCityScene({
 /// Deterministic 0..1 value per cell, so grass varies without flickering.
 double _cellNoise(int x, int y) => ((x * 73 + y * 151 + x * y * 31) % 97) / 96.0;
 
+/// Whether the tile at ([x], [y]) is a road. Off the map counts as no road.
+bool _isRoadAt(List<List<TileType>> grid, int x, int y) {
+  if (y < 0 || y >= grid.length || x < 0 || x >= grid[y].length) return false;
+  return grid[y][x] == TileType.road;
+}
+
+/// Ground under one tile: asphalt with lane markings and kerbs on a road,
+/// grass with a sidewalk strip beside a road, and a park's paths and pond.
 LowPolyObject _groundTile(
   double brightness,
+  List<List<TileType>> grid,
   int x,
   int y,
   TileType type,
   RoadDirection? road,
 ) {
   final m = LowPolyMeshBuilder(brightness: brightness);
+  // Sides of this tile that face a road, as (dx, dy) steps.
+  final roadSides = [
+    for (final step in const [(1, 0), (-1, 0), (0, 1), (0, -1)])
+      if (_isRoadAt(grid, x + step.$1, y + step.$2)) step,
+  ];
+
   if (type == TileType.road) {
     m.flat(x + 0.0, y + 0.0, x + 1.0, y + 1.0, 0.0, _asphalt);
     if (road == RoadDirection.vertical) {
@@ -111,9 +158,36 @@ LowPolyObject _groundTile(
     } else if (road == RoadDirection.horizontal) {
       m.flat(x + 0.1, y + 0.47, x + 0.9, y + 0.53, 0.004, _lane);
     }
+    // Kerbs where the road meets grass or a building.
+    for (final step in const [(1, 0), (-1, 0), (0, 1), (0, -1)]) {
+      if (_isRoadAt(grid, x + step.$1, y + step.$2)) continue;
+      const kerb = 0.1;
+      if (step.$1 == 1) {
+        m.flat(x + 1 - kerb, y + 0.0, x + 1.0, y + 1.0, 0.01, _kerb);
+      } else if (step.$1 == -1) {
+        m.flat(x + 0.0, y + 0.0, x + kerb, y + 1.0, 0.01, _kerb);
+      } else if (step.$2 == 1) {
+        m.flat(x + 0.0, y + 1 - kerb, x + 1.0, y + 1.0, 0.01, _kerb);
+      } else {
+        m.flat(x + 0.0, y + 0.0, x + 1.0, y + kerb, 0.01, _kerb);
+      }
+    }
   } else {
     final grass = Color.lerp(_grassA, _grassB, _cellNoise(x, y)) ?? _grassA;
     m.flat(x + 0.0, y + 0.0, x + 1.0, y + 1.0, 0.0, grass);
+    // A pavement strip along every side that faces a road.
+    for (final step in roadSides) {
+      const walk = 0.16;
+      if (step.$1 == 1) {
+        m.flat(x + 1 - walk, y + 0.0, x + 1.0, y + 1.0, 0.006, _pavement);
+      } else if (step.$1 == -1) {
+        m.flat(x + 0.0, y + 0.0, x + walk, y + 1.0, 0.006, _pavement);
+      } else if (step.$2 == 1) {
+        m.flat(x + 0.0, y + 1 - walk, x + 1.0, y + 1.0, 0.006, _pavement);
+      } else {
+        m.flat(x + 0.0, y + 0.0, x + 1.0, y + walk, 0.006, _pavement);
+      }
+    }
     if (type == TileType.park) {
       // Paths cross the park, with a pond and a bench on the grass.
       m
@@ -124,6 +198,41 @@ LowPolyObject _groundTile(
     }
   }
   return m.build(center: Vec3(x + 0.5, 0, y + 0.5), onGround: true);
+}
+
+/// Street furniture on the pavement: lamp posts and street trees along roads.
+/// They are spaced by position, so the pattern is the same on every load.
+List<LowPolyObject> _streetObjects(
+  double brightness,
+  List<List<TileType>> grid,
+  int x,
+  int y,
+  TileType type,
+) {
+  if (type == TileType.road || type == TileType.park) return const [];
+  final objects = <LowPolyObject>[];
+  final onRoad = _isRoadAt(grid, x, y - 1) || _isRoadAt(grid, x, y + 1) ||
+      _isRoadAt(grid, x - 1, y) || _isRoadAt(grid, x + 1, y);
+  if (!onRoad) return objects;
+
+  final m = LowPolyMeshBuilder(brightness: brightness);
+  // A lamp on every other tile at the kerb corner, and a tree on the rest.
+  if ((x + y).isEven) {
+    final px = x + 0.9;
+    final pz = y + 0.1;
+    m
+      ..box(px - 0.02, 0, pz - 0.02, px + 0.02, 0.4, pz + 0.02, _darkGrey)
+      ..box(px - 0.04, 0.4, pz - 0.04, px + 0.04, 0.44, pz + 0.04, _lampLight);
+    objects.add(m.build(center: Vec3(px, 0.2, pz)));
+  } else {
+    final tx = x + 0.12;
+    final tz = y + 0.12;
+    m
+      ..box(tx - 0.02, 0, tz - 0.02, tx + 0.02, 0.14, tz + 0.02, _trunk)
+      ..cone(tx, tz, 0.1, 6, 0.12, 0.42, _foliage);
+    objects.add(m.build(center: Vec3(tx, 0.2, tz)));
+  }
+  return objects;
 }
 
 /// A small lamp post with a warm light, placed at a tile corner.
@@ -196,7 +305,7 @@ List<LowPolyObject> _buildingObjects(
       break;
     case TileType.office:
       m
-        ..box(x + 0.2, 0, y + 0.2, x + 0.8, 1.5, y + 0.8, const Color(0xFF8FB8DE),
+        ..box(x + 0.2, 0, y + 0.2, x + 0.8, 1.5, y + 0.8, _variant(_officeBodies, x, y),
             top: const Color(0xFF3D5A80))
         ..windows(x + 0.2, y + 0.2, x + 0.8, y + 0.8, 0.12, 1.42,
             cols: 3, rows: 6, glass: _glass, lit: _warm)
@@ -234,7 +343,7 @@ List<LowPolyObject> _buildingObjects(
         ..box(x + 0.84, 0, y + 0.1, x + 0.9, 0.5, y + 0.16, pillar)
         ..box(x + 0.1, 0, y + 0.84, x + 0.16, 0.5, y + 0.9, pillar)
         ..box(x + 0.84, 0, y + 0.84, x + 0.9, 0.5, y + 0.9, pillar)
-        ..box(x + 0.04, 0.5, y + 0.04, x + 0.96, 0.6, y + 0.96, _red,
+        ..box(x + 0.04, 0.5, y + 0.04, x + 0.96, 0.6, y + 0.96, _variant(_awnings, x, y),
             top: const Color(0xFFFF7043))
         ..box(x + 0.2, 0.6, y + 0.44, x + 0.8, 0.63, y + 0.5, _white)
         ..box(x + 0.93, 0, y + 0.1, x + 0.97, 0.9, y + 0.14, _grey)
@@ -243,11 +352,11 @@ List<LowPolyObject> _buildingObjects(
       break;
     case TileType.house:
       m
-        ..box(x + 0.2, 0, y + 0.25, x + 0.8, 0.42, y + 0.8, const Color(0xFFF6D7B0))
+        ..box(x + 0.2, 0, y + 0.25, x + 0.8, 0.42, y + 0.8, _variant(_houseWalls, x, y))
         ..windows(x + 0.2, y + 0.25, x + 0.8, y + 0.8, 0.1, 0.36,
             cols: 2, rows: 1, glass: _glass, lit: _warm)
         ..box(x + 0.44, 0, y + 0.8, x + 0.56, 0.22, y + 0.84, _brown)
-        ..roof(x + 0.14, y + 0.19, x + 0.86, y + 0.86, 0.42, 0.7, const Color(0xFFB23A48))
+        ..roof(x + 0.14, y + 0.19, x + 0.86, y + 0.86, 0.42, 0.7, _variant(_houseRoofs, x, y))
         ..box(x + 0.62, 0.5, y + 0.3, x + 0.7, 0.86, y + 0.38, _brick)
         ..box(x + 0.1, 0, y + 0.84, x + 0.18, 0.12, y + 0.92, _bush)
         ..box(x + 0.82, 0, y + 0.84, x + 0.9, 0.12, y + 0.92, _bush);

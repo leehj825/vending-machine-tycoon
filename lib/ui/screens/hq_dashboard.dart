@@ -103,7 +103,7 @@ class HQDashboard extends ConsumerWidget {
             Text(
               'DAILY CONTRACTS',
               style: TextStyle(
-                fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorLarge),
+                fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorMedium),
                 fontWeight: FontWeight.bold,
                 letterSpacing: 1.2,
               ),
@@ -166,7 +166,7 @@ class HQDashboard extends ConsumerWidget {
             Text(
               'RESEARCH LAB',
               style: TextStyle(
-                fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorLarge),
+                fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorMedium),
                 fontWeight: FontWeight.bold,
                 letterSpacing: 1.2,
               ),
@@ -219,7 +219,7 @@ class HQDashboard extends ConsumerWidget {
             Text(
               'RIVAL COMPANY',
               style: TextStyle(
-                fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorLarge),
+                fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorMedium),
                 fontWeight: FontWeight.bold,
                 letterSpacing: 1.2,
               ),
@@ -279,12 +279,12 @@ class HQDashboard extends ConsumerWidget {
           children: [
             Row(
               children: [
-                Icon(Icons.dashboard, color: Colors.blue.shade700, size: ScreenUtils.relativeSizeClamped(context, 0.04)),
+                Icon(Icons.dashboard, color: Colors.blue.shade700, size: ScreenUtils.relativeSizeClamped(context, 0.03)),
                 SizedBox(width: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall)),
                 Text(
                   'Business Overview',
                   style: TextStyle(
-                    fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorLarge),
+                    fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorMedium),
                     fontWeight: FontWeight.bold,
                     color: Colors.blue.shade900,
                   ),
@@ -460,7 +460,7 @@ class HQDashboard extends ConsumerWidget {
                         'Received \$1,000 from investors!',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
+                          fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorSmall),
                         ),
                       ),
                     ],
@@ -487,7 +487,7 @@ class HQDashboard extends ConsumerWidget {
                             'Received \$1,000 from investors!',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
+                              fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorSmall),
                             ),
                           ),
                         ],
@@ -509,7 +509,7 @@ class HQDashboard extends ConsumerWidget {
                       Text(
                         'Searching for investors...',
                         style: TextStyle(
-                          fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
+                          fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorSmall),
                         ),
                       ),
                     ],
@@ -524,7 +524,7 @@ class HQDashboard extends ConsumerWidget {
           },
           borderRadius: BorderRadius.circular(ScreenUtils.relativeSize(context, 0.008)),
           child: Padding(
-            padding: ScreenUtils.relativePadding(context, AppConfig.spacingFactorMedium),
+            padding: ScreenUtils.relativePadding(context, AppConfig.spacingFactorSmall),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -532,7 +532,7 @@ class HQDashboard extends ConsumerWidget {
                 Icon(
                   Icons.videocam, // Changed icon
                   color: Colors.white,
-                  size: ScreenUtils.relativeSizeClamped(context, 0.05),
+                  size: ScreenUtils.relativeSizeClamped(context, 0.028),
                 ),
                 SizedBox(width: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall)),
                 Text(
@@ -540,7 +540,7 @@ class HQDashboard extends ConsumerWidget {
                   style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
-                    fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorLarge),
+                    fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorSmall),
                   ),
                 ),
                 SizedBox(width: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall)),
@@ -558,7 +558,7 @@ class HQDashboard extends ConsumerWidget {
                     style: TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
-                      fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
+                      fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorSmall),
                     ),
                   ),
                 ),
@@ -676,7 +676,7 @@ class HQDashboard extends ConsumerWidget {
                 Text(
                   'Maintenance',
                   style: TextStyle(
-                    fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorLarge),
+                    fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorMedium),
                     fontWeight: FontWeight.bold,
                     color: needsAttention.isEmpty ? Colors.green.shade900 : Colors.red.shade900,
                   ),
@@ -819,12 +819,12 @@ class HQDashboard extends ConsumerWidget {
           children: [
             Row(
               children: [
-                Icon(Icons.people, color: Colors.blue.shade700, size: ScreenUtils.relativeSizeClamped(context, 0.04)),
+                Icon(Icons.people, color: Colors.blue.shade700, size: ScreenUtils.relativeSizeClamped(context, 0.03)),
                 SizedBox(width: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall)),
                 Text(
                   'Staff Management',
                   style: TextStyle(
-                    fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorLarge),
+                    fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorMedium),
                     fontWeight: FontWeight.bold,
                     color: Colors.blue.shade900,
                   ),
@@ -1014,12 +1014,12 @@ class HQDashboard extends ConsumerWidget {
           children: [
             Row(
               children: [
-                Icon(Icons.account_balance_wallet, color: Colors.orange.shade700, size: ScreenUtils.relativeSizeClamped(context, 0.04)),
+                Icon(Icons.account_balance_wallet, color: Colors.orange.shade700, size: ScreenUtils.relativeSizeClamped(context, 0.03)),
                 SizedBox(width: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall)),
                 Text(
                   'Hourly Operating Costs',
                   style: TextStyle(
-                    fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorLarge),
+                    fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorMedium),
                     fontWeight: FontWeight.bold,
                     color: Colors.orange.shade900,
                   ),

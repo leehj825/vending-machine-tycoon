@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../state/providers.dart';
 import '../../state/selectors.dart';
 import '../../state/city_map_state.dart';
+import '../../simulation/city_roads.dart';
 import '../../simulation/models/zone.dart';
 import '../../simulation/models/machine.dart' as sim;
 import '../../simulation/models/product.dart';
@@ -338,7 +339,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
       (_) => List.filled(gridSize, null),
     );
 
-    _loadMap();
+    _loadMap(math.Random());
     _placeBuildings();
     
     // Update valid roads in simulation engine
@@ -370,55 +371,12 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
     }
   }
 
-  // A 15x15 map with 3 main loops and edge connections. 
-  // No dead ends inside the map.
-  // R = Road, . = Grass (Valid spot for buildings), X = Grass (Reserved/Decor)
-  static const List<String> _naturalRoadMap = [
-    "R...R......R...", // Exits North
-    "R...R......R...",
-    "RRRRRRRRRRRRRRR", // North Artery
-    "..R.......R....",
-    "..R.......R....",
-    ".RRRRRRRRRRRRR.", // Middle Loop Top
-    ".R......R....R.",
-    ".R...RRRRR...R.", // Inner Square
-    ".R...R...R...R.",
-    ".R...RRRRR...R.",
-    ".R....R......R.",
-    ".RRRRRRRRRRRRR.", // Middle Loop Bottom
-    "....R.....R....",
-    "RRRRRRRRRRRRRRR", // South Artery
-    "....R.....R....", // Exits South
-  ];
-
-  /// Load the fixed natural road map layout
-  void _loadMap() {
-    // Initialize grid to grass
+  /// Lays out the roads with a fresh random network, then sets the tile types.
+  void _loadMap(math.Random random) {
+    final roads = generateRoadMask(gridSize, random);
     for (int y = 0; y < gridSize; y++) {
       for (int x = 0; x < gridSize; x++) {
-        _grid[y][x] = TileType.grass;
-      }
-    }
-
-    // Parse the natural road map layout
-    for (int y = 0; y < gridSize && y < _naturalRoadMap.length; y++) {
-      final row = _naturalRoadMap[y];
-      for (int x = 0; x < gridSize && x < row.length; x++) {
-        final char = row[x];
-        
-        switch (char) {
-          case 'R':
-            _grid[y][x] = TileType.road;
-            break;
-          case '.':
-          case 'X':
-            // Both . and X are grass (X is reserved/decor but can be used if needed)
-            _grid[y][x] = TileType.grass;
-            break;
-          default:
-            _grid[y][x] = TileType.grass;
-            break;
-        }
+        _grid[y][x] = roads[y][x] ? TileType.road : TileType.grass;
       }
     }
 
