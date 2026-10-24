@@ -97,11 +97,31 @@
   let downAt = null;
   let downTime = 0;
   let pinchSpan = null;
+  let lastMid = null;
 
   function span() {
     if (pointers.size < 2) return null;
     const [a, b] = [...pointers.values()];
     return Math.hypot(a.x - b.x, a.y - b.y);
+  }
+
+  // Midpoint of two fingers, or null with fewer than two.
+  function midpoint() {
+    if (pointers.size < 2) return null;
+    const [a, b] = [...pointers.values()];
+    return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+  }
+
+  // Two fingers pan the view: the scene under the fingers moves with them. The ground
+  // distance per pixel follows the camera's view height, so a pan keeps pace at any zoom.
+  const VIEW_HEIGHT_PER_DISTANCE = 2 * Math.tan((30 * Math.PI) / 360);
+  function panBy(dx, dy) {
+    const perPixel = (VIEW_HEIGHT_PER_DISTANCE * cam.distance) / Math.max(1, window.innerHeight);
+    const right = { x: Math.cos(cam.yaw), z: -Math.sin(cam.yaw) };
+    const forward = { x: -Math.sin(cam.yaw), z: -Math.cos(cam.yaw) };
+    // Fingers moving right move the scene right, so the target moves left.
+    cam.target.x += (-right.x * dx + forward.x * dy) * perPixel;
+    cam.target.z += (-right.z * dx + forward.z * dy) * perPixel;
   }
 
   dom.addEventListener('pointerdown', (e) => {
@@ -115,6 +135,7 @@
       tapCandidate = false;
     }
     pinchSpan = span();
+    lastMid = midpoint();
   });
 
   dom.addEventListener('pointermove', (e) => {
@@ -133,6 +154,9 @@
     const s = span();
     if (s != null && pinchSpan != null && pinchSpan > 0) zoomBy(pinchSpan / s);
     pinchSpan = s;
+    const mid = midpoint();
+    if (mid && lastMid) panBy(mid.x - lastMid.x, mid.y - lastMid.y);
+    lastMid = mid;
   });
 
   function endPointer(e, cancelled) {
@@ -140,6 +164,7 @@
     const isTap = !cancelled && wasSingle && tapCandidate && performance.now() - downTime < TAP_MS;
     pointers.delete(e.pointerId);
     pinchSpan = span();
+    lastMid = midpoint();
     if (cancelled) {
       tapCandidate = false;
       return;

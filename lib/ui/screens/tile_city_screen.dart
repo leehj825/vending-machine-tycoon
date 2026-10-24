@@ -85,6 +85,10 @@ class _PedestrianState {
   // walk on, so turning or changing sides slides them over instead of jumping.
   double offsetX = 0;
   double offsetZ = 0;
+  // The tile the side was last chosen on. The side is chosen again only on a new tile, so
+  // a walker does not swap sides, and cross the road, each time the pavement test flips.
+  int? sideTileX;
+  int? sideTileY;
   
   _PedestrianState({
     required this.personId,
@@ -1037,14 +1041,18 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
     final now = DateTime.now();
     final walkers = <Map<String, Object?>>[];
     for (final pedestrian in _pedestrians) {
-      final cx = pedestrian.gridX + 0.5 + pedestrian.offsetX;
-      final cz = pedestrian.gridY + 0.5 + pedestrian.offsetZ;
+      // Heading comes from the walk along the tile centres. The side offset is added only
+      // for drawing; using the drawn spot would feed the offset back into the heading.
+      final centreX = pedestrian.gridX + 0.5;
+      final centreZ = pedestrian.gridY + 0.5;
+      final cx = centreX + pedestrian.offsetX;
+      final cz = centreZ + pedestrian.offsetZ;
       final body = pedestrian == _tutorialPedestrian
           ? tutorialColor
           : bodyColors[pedestrian.personId % bodyColors.length];
       // Walks while moving, and runs once a tap sends them to a machine.
       final running = pedestrian.isHeadingToShop;
-      final moving = advanceHumanPose(pedestrian.pose, cx, cz, running, now);
+      final moving = advanceHumanPose(pedestrian.pose, centreX, centreZ, running, now);
       walkers.add(walkerJson(
         key: 'p${pedestrian.personId}',
         x: cx,
@@ -1445,14 +1453,23 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
     final rightZ = math.sin(heading);
     final centreX = pedestrian.gridX + 0.5;
     final centreZ = pedestrian.gridY + 0.5;
-    var side = pedestrian.walkSide == 0 ? 1 : pedestrian.walkSide;
-    bool onPavement(int s) => isPavementAt(
-          _grid,
-          centreX + rightX * _walkOffset * s,
-          centreZ + rightZ * _walkOffset * s,
-        );
-    if (!onPavement(side) && onPavement(-side)) side = -side;
-    pedestrian.walkSide = side;
+    final tileX = centreX.floor();
+    final tileY = centreZ.floor();
+    if (pedestrian.walkSide == 0 || pedestrian.sideTileX != tileX || pedestrian.sideTileY != tileY) {
+      // Keep the current side while it is pavement, else take the other side if that is
+      // pavement. A new walker starts on the right of their heading.
+      var side = pedestrian.walkSide == 0 ? 1 : pedestrian.walkSide;
+      bool onPavement(int s) => isPavementAt(
+            _grid,
+            centreX + rightX * _walkOffset * s,
+            centreZ + rightZ * _walkOffset * s,
+          );
+      if (!onPavement(side) && onPavement(-side)) side = -side;
+      pedestrian.walkSide = side;
+      pedestrian.sideTileX = tileX;
+      pedestrian.sideTileY = tileY;
+    }
+    final side = pedestrian.walkSide;
     final targetX = rightX * _walkOffset * side;
     final targetZ = rightZ * _walkOffset * side;
     // A new walker starts on the pavement, rather than sliding in from the tile centre.
