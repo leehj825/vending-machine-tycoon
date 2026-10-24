@@ -285,7 +285,7 @@ LowPolyObject _groundTile(
         ..box(x + 0.6, 0, y + 0.6, x + 0.74, 0.1, y + 0.66, _benchWood);
     }
   }
-  return m.build(center: Vec3(x + 0.5, 0, y + 0.5), onGround: true);
+  return m.build(center: Vec3(x + 0.5, 0, y + 0.5), onGround: true, payload: GroundCell(x, y));
 }
 
 /// Street furniture on the pavement: lamp posts and street trees along roads.
@@ -582,6 +582,14 @@ void _facadeDetail(
       ..box(ax - 0.015, top + 0.04, az - 0.015, ax + 0.015, top + 0.4, az + 0.015, _grey)
       ..box(ax - 0.03, top + 0.4, az - 0.03, ax + 0.03, top + 0.43, az + 0.03, _red);
   }
+}
+
+/// What a tap on a ground tile reports: the tile, so the player can walk there.
+class GroundCell {
+  const GroundCell(this.x, this.y);
+
+  final int x;
+  final int y;
 }
 
 /// What a tap on a machine's cash coin collects.

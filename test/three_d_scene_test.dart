@@ -171,16 +171,16 @@ void main() {
     );
   });
 
-  test('tapping empty grass picks nothing', () {
+  test('tapping grass picks the ground tile, so the player can walk there', () {
     final camera = defaultCityCamera(_size);
     final scene = _testScene();
     final grass = LowPolyProjector(camera, _viewport).project(const Vec3(0.5, 0, 0.5));
     expect(grass, isNotNull);
 
-    expect(
-      lowPolyPick(objects: scene, camera: camera, size: _viewport, at: grass!),
-      isNull,
-    );
+    final picked = lowPolyPick(objects: scene, camera: camera, size: _viewport, at: grass!);
+    expect(picked, isA<GroundCell>());
+    expect((picked as GroundCell).x, 0);
+    expect(picked.y, 0);
   });
 
   testWidgets('static scene is cached and overlay redraws without errors', (tester) async {

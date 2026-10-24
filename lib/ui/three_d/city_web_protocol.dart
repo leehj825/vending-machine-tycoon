@@ -19,6 +19,7 @@ String hexColour(Color c) => '#${(c.toARGB32() & 0xFFFFFF).toRadixString(16).pad
 Map<String, Object?>? _pickFor(Object? payload) {
   if (payload is CityCell) return {'kind': 'cell', 'x': payload.x, 'y': payload.y};
   if (payload is CollectTarget) return {'kind': 'collect', 'machineId': payload.machineId};
+  if (payload is GroundCell) return {'kind': 'ground', 'x': payload.x, 'y': payload.y};
   if (identical(payload, marketingTapTarget)) return {'kind': 'marketing'};
   return null;
 }
@@ -104,9 +105,11 @@ Map<String, Object?> walkerJson({
 Map<String, Object?> cityFrameJson({
   required List<Map<String, Object?>> walkers,
   required List<LowPolyObject> soups,
+  Map<String, Object?>? follow,
 }) {
   return {
     'walkers': walkers,
+    'follow': follow,
     'soups': [
       for (final object in soups)
         if (object.drawn) lowPolyObjectJson(object),

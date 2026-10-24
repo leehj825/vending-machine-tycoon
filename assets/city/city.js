@@ -44,6 +44,7 @@
   let rig = null; // { rest, parts } from the Dart rig
   const walkers = new Map(); // key -> { group, mesh, pad, geometry, role colours }
   let soups = [];
+  let follow = null; // where the camera drifts to, when following the player
 
   function applyCamera() {
     const cp = Math.cos(cam.pitch);
@@ -372,6 +373,7 @@
     },
 
     setFrame(message) {
+      follow = message.follow || null;
       // Moving vehicles and markers are rebuilt from triangles every frame.
       for (const mesh of soups) {
         dynamicGroup.remove(mesh);
@@ -440,6 +442,10 @@
 
   function frame(now) {
     stepGlide(now);
+    if (follow && !glide) {
+      cam.target.x += (follow.x - cam.target.x) * 0.12;
+      cam.target.z += (follow.z - cam.target.z) * 0.12;
+    }
     applyCamera();
     renderer.render(scene, camera);
     requestAnimationFrame(frame);
