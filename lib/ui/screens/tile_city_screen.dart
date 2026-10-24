@@ -90,6 +90,9 @@ class _PedestrianState {
   // a walker does not swap sides, and cross the road, each time the pavement test flips.
   int? sideTileX;
   int? sideTileY;
+  // Set when the walker is going into a building or off the map. They are removed there.
+  int? enterX;
+  int? enterY;
   
   _PedestrianState({
     required this.personId,
@@ -1399,8 +1402,10 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
       pedestrian.sideTileY = tileY;
     }
     final side = pedestrian.walkSide;
-    final targetX = rightX * _walkOffset * side;
-    final targetZ = rightZ * _walkOffset * side;
+    // Going in, a walker moves onto the centre line, so they walk straight into the building.
+    final going = pedestrian.enterX != null;
+    final targetX = going ? 0.0 : rightX * _walkOffset * side;
+    final targetZ = going ? 0.0 : rightZ * _walkOffset * side;
     // A new walker starts on the pavement, rather than sliding in from the tile centre.
     if (pedestrian.offsetX == 0 && pedestrian.offsetZ == 0) {
       pedestrian.offsetX = targetX;
@@ -1417,6 +1422,36 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
       pedestrian.offsetX += dx / dist * _maxOffsetStep;
       pedestrian.offsetZ += dz / dist * _maxOffsetStep;
     }
+  }
+
+  /// Sends a walker into the building of [machine], where they then disappear.
+  void _startEntering(_PedestrianState pedestrian, {required String? machine}) {
+    final found = ref.read(machinesProvider).where((m) => m.id == machine);
+    if (found.isEmpty) return;
+    pedestrian
+      ..enterX = (found.first.zone.x - 1).floor()
+      ..enterY = (found.first.zone.y - 1).floor();
+  }
+
+  /// Picks a new neighbouring road tile for a walker who has been standing still. On the
+  /// map's edge, a walker may instead walk off the map.
+  void _rerouteWalker(_PedestrianState pedestrian) {
+    final x = pedestrian.gridX.floor();
+    final y = pedestrian.gridY.floor();
+    final last = gridSize - 1;
+    final onEdge = x == 0 || y == 0 || x == last || y == last;
+    if (onEdge && _pedestrianRandom.nextDouble() < 0.5) {
+      pedestrian
+        ..enterX = x == 0 ? -1 : (x == last ? gridSize : x)
+        ..enterY = y == 0 ? -1 : (y == last ? gridSize : y);
+      return;
+    }
+    final options = _getAdjacentValidTilesForPedestrian(x, y);
+    if (options.isEmpty) return;
+    final next = options[_pedestrianRandom.nextInt(options.length)];
+    pedestrian
+      ..targetGridX = next.x.toDouble()
+      ..targetGridY = next.y.toDouble();
   }
 
   void _updatePedestrians() {
@@ -1443,6 +1478,20 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
     
     for (final pedestrian in _pedestrians) {
       // Clamp position to stay within map bounds
+      final enterX = pedestrian.enterX;
+      final enterY = pedestrian.enterY;
+      if (enterX != null && enterY != null) {
+        final dx = enterX - pedestrian.gridX;
+        final dy = enterY - pedestrian.gridY;
+        final distance = math.sqrt(dx * dx + dy * dy);
+        if (distance < 0.12) {
+          pedestriansToRemove.add(pedestrian);
+        } else {
+          pedestrian.gridX += dx / distance * fastSpeed * 0.6;
+          pedestrian.gridY += dy / distance * fastSpeed * 0.6;
+        }
+        continue;
+      }
       final previousX = pedestrian.gridX;
       final previousY = pedestrian.gridY;
       pedestrian.gridX = pedestrian.gridX.clamp(0.0, (gridSize - 1).toDouble());
@@ -1456,15 +1505,11 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
         // Still in the same tile, increment counter
         pedestrian.sameTileCounter++;
         
-        // If stuck in same tile for more than 150 frames (7.5 seconds at 50ms updates), remove them
+        // Stuck on one tile for 7.5 seconds: pick a new way to go. Walkers are not removed
+        // here, since a walker that vanishes on the street reads as a bug.
         if (pedestrian.sameTileCounter > 150 && !pedestrian.isHeadingToShop) {
-          pedestriansToRemove.add(pedestrian);
-          // Decrement personId count
-          final count = _personIdCounts[pedestrian.personId] ?? 0;
-          if (count > 0) {
-            _personIdCounts[pedestrian.personId] = count - 1;
-          }
-          continue; // Skip processing this pedestrian
+          pedestrian.sameTileCounter = 0;
+          _rerouteWalker(pedestrian);
         }
       } else {
         // Moved to a different tile, reset counter and update last tile
@@ -1639,7 +1684,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
                 }
                 
                 // Mark pedestrian for removal - they disappear on the road tile next to building
-                pedestriansToRemove.add(pedestrian);
+                _startEntering(pedestrian, machine: pedestrian.targetMachineId);
               }
             }
           }
@@ -1683,7 +1728,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
                   );
                 }
                 
-                pedestriansToRemove.add(pedestrian);
+                _startEntering(pedestrian, machine: pedestrian.targetMachineId);
               } else {
                 // Move towards the road tile next to building
                 final normalizedDx = dx / distance;
