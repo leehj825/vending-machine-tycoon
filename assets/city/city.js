@@ -45,6 +45,7 @@
   const walkers = new Map(); // key -> { group, mesh, pad, geometry, role colours }
   let soups = [];
   let follow = null; // where the camera drifts to, when following the player
+  let collectMachine = null; // the machine the Collect button is for
 
   function applyCamera() {
     const cp = Math.cos(cam.pitch);
@@ -186,6 +187,60 @@
   function post(message) {
     if (window.CityTap) window.CityTap.postMessage(JSON.stringify(message));
   }
+
+  // The stick: its direction is turned to the ground from the camera's view, so pushing
+  // up always walks away from the camera. Flutter moves the player with it.
+  const stick = document.getElementById('stick');
+  const knob = document.getElementById('knob');
+  const talkBtn = document.getElementById('talkBtn');
+  const collectBtn = document.getElementById('collectBtn');
+  const STICK_RADIUS = 50;
+  let stickId = null;
+
+  function stickMove(clientX, clientY) {
+    const r = stick.getBoundingClientRect();
+    let dx = clientX - (r.left + r.width / 2);
+    let dy = clientY - (r.top + r.height / 2);
+    const d = Math.hypot(dx, dy);
+    const k = d > STICK_RADIUS ? STICK_RADIUS / d : 1;
+    dx *= k;
+    dy *= k;
+    knob.style.transform = `translate(${dx}px, ${dy}px)`;
+    const sx = dx / STICK_RADIUS;
+    const sy = dy / STICK_RADIUS;
+    const rightX = Math.cos(cam.yaw);
+    const rightZ = -Math.sin(cam.yaw);
+    const forwardX = -Math.sin(cam.yaw);
+    const forwardZ = -Math.cos(cam.yaw);
+    post({ kind: 'move', dx: rightX * sx - forwardX * sy, dz: rightZ * sx - forwardZ * sy });
+  }
+
+  function stickRelease() {
+    stickId = null;
+    knob.style.transform = '';
+    post({ kind: 'move', dx: 0, dz: 0 });
+  }
+
+  stick.addEventListener('pointerdown', (e) => {
+    stickId = e.pointerId;
+    stick.setPointerCapture(e.pointerId);
+    stickMove(e.clientX, e.clientY);
+    e.stopPropagation();
+  });
+  stick.addEventListener('pointermove', (e) => {
+    if (e.pointerId === stickId) stickMove(e.clientX, e.clientY);
+  });
+  stick.addEventListener('pointerup', (e) => {
+    if (e.pointerId === stickId) stickRelease();
+  });
+  stick.addEventListener('pointercancel', (e) => {
+    if (e.pointerId === stickId) stickRelease();
+  });
+
+  talkBtn.addEventListener('click', () => post({ kind: 'talk' }));
+  collectBtn.addEventListener('click', () => {
+    if (collectMachine) post({ kind: 'collectNear', machineId: collectMachine });
+  });
 
   function pick(clientX, clientY) {
     const r = dom.getBoundingClientRect();
@@ -374,6 +429,10 @@
 
     setFrame(message) {
       follow = message.follow || null;
+      const actions = message.actions || {};
+      talkBtn.style.display = actions.talk ? 'block' : 'none';
+      collectMachine = actions.collect || null;
+      collectBtn.style.display = collectMachine ? 'block' : 'none';
       // Moving vehicles and markers are rebuilt from triangles every frame.
       for (const mesh of soups) {
         dynamicGroup.remove(mesh);

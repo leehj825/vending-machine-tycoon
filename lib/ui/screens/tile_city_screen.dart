@@ -197,8 +197,11 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen>
   _PedestrianState? _playerTalkTo;
   int _playerRepathTicks = 0;
   bool _playerRunning = false;
-  bool _playerFollow = false;
+  bool _playerFollow = true;
   List<List<TileType>>? _playerGrid;
+  // Where the stick pushes, in world ground directions, each up to 1 long.
+  double _stickDx = 0;
+  double _stickDz = 0;
 
   // When each machine last sold to a walker passing its front.
   final Map<String, DateTime> _customerSoldAt = {};
@@ -944,6 +947,10 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen>
         follow: _playerFollow && _playerX != null
             ? {'x': _playerX, 'z': _playerZ}
             : null,
+        actions: {
+          'talk': _nearbyPedestrian() != null,
+          'collect': _nearbyMachineId(),
+        },
       ),
     );
     return CityWebView(
@@ -1086,6 +1093,14 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen>
         }
       case 'ground':
         _playerWalkToTile(target['x']! as int, target['y']! as int);
+      case 'move':
+        _stickDx = (target['dx']! as num).toDouble();
+        _stickDz = (target['dz']! as num).toDouble();
+      case 'talk':
+        final near = _nearbyPedestrian();
+        if (near != null) _playerTalk(near);
+      case 'collectNear':
+        _collectCash(target['machineId']! as String);
       case 'marketing':
         _marketingKey.currentState?.tap();
     }
@@ -1712,6 +1727,22 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen>
     var px = _playerX!;
     var pz = _playerZ!;
 
+    // The stick walks the player by hand, which ends any walk to a point.
+    final stickLength = math.sqrt(_stickDx * _stickDx + _stickDz * _stickDz);
+    final movedByStick = stickLength > 0.05;
+    if (movedByStick) {
+      _playerPath = [];
+      _playerTalkTo = null;
+      _playerArrived = null;
+      final speed =
+          (_playerRunning ? _playerRunSpeed : _playerWalkSpeed) * math.min(1.0, stickLength);
+      final nx = px + _stickDx / stickLength * speed;
+      final nz = pz + _stickDz / stickLength * speed;
+      // Walk only on roads: try each axis on its own, so the player slides along a kerb.
+      if (_playerWalkable(nx, pz)) px = nx;
+      if (_playerWalkable(px, nz)) pz = nz;
+    }
+
     // Talking: keep walking to the walker, then talk once close enough.
     final talk = _playerTalkTo;
     if (talk != null) {
@@ -1736,7 +1767,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen>
       }
     }
 
-    if (_playerPath.isNotEmpty) {
+    if (!movedByStick && _playerPath.isNotEmpty) {
       final next = _playerPath.first;
       final tx = next.$1 + 0.5;
       final tz = next.$2 + 0.5;
@@ -1843,6 +1874,39 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen>
           if (isRoadTile(_grid, x + dx, y + dy)) return (x + dx, y + dy);
         }
       }
+    }
+    return null;
+  }
+
+  /// Whether the player may stand at ([x], [z]): only on a road.
+  bool _playerWalkable(double x, double z) => isRoadTile(_grid, x.floor(), z.floor());
+
+  /// The walker within talking distance of the player, or null.
+  _PedestrianState? _nearbyPedestrian() {
+    final px = _playerX;
+    final pz = _playerZ;
+    if (px == null || pz == null) return null;
+    for (final pedestrian in _pedestrians) {
+      final dx = pedestrian.gridX + 0.5 - px;
+      final dz = pedestrian.gridY + 0.5 - pz;
+      if (math.sqrt(dx * dx + dz * dz) < 1.3) return pedestrian;
+    }
+    return null;
+  }
+
+  /// The machine with cash close enough to collect from, or null.
+  String? _nearbyMachineId() {
+    final px = _playerX;
+    final pz = _playerZ;
+    if (px == null || pz == null) return null;
+    for (final machine in ref.read(machinesProvider)) {
+      if (machine.currentCash <= 0) continue;
+      final (ax, az) = machineAnchor(
+        _grid,
+        (machine.zone.x - 1).floor(),
+        (machine.zone.y - 1).floor(),
+      );
+      if (math.sqrt(math.pow(px - ax, 2) + math.pow(pz - az, 2)) < 2.5) return machine.id;
     }
     return null;
   }

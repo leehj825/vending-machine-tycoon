@@ -106,10 +106,12 @@ Map<String, Object?> cityFrameJson({
   required List<Map<String, Object?>> walkers,
   required List<LowPolyObject> soups,
   Map<String, Object?>? follow,
+  Map<String, Object?>? actions,
 }) {
   return {
     'walkers': walkers,
     'follow': follow,
+    'actions': actions,
     'soups': [
       for (final object in soups)
         if (object.drawn) lowPolyObjectJson(object),
