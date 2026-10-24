@@ -21,6 +21,9 @@ import '../theme/zone_ui.dart';
 import '../utils/screen_utils.dart';
 import '../widgets/machine_interior_dialog.dart';
 import '../widgets/marketing_button.dart';
+import '../three_d/city_scene_3d.dart';
+import '../three_d/lowpoly_engine.dart';
+import '../three_d/vending_machine_3d.dart';
 
 enum TileType {
   grass,
@@ -291,6 +294,14 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
   Timer? _pedestrianUpdateTimer;
   final Map<int, int> _personIdCounts = {}; // Track count of each personId (max 1 per personId - 10 unique pedestrians max)
   final math.Random _pedestrianRandom = math.Random();
+
+  // The city draws as a 3D lowpoly scene by default. The 2D isometric map stays
+  // available through the toggle in the top-right corner.
+  bool _use3DMap = true;
+  List<LowPolyObject>? _scene3D;
+  List<List<TileType>>? _scene3DGrid;
+  List<sim.Machine>? _scene3DMachines;
+  double? _scene3DBrightness;
 
   @override
   void initState() {
@@ -1465,8 +1476,14 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
         final isNight = gameState.hourOfDay < 6 || gameState.hourOfDay >= 20;
         final weather = gameState.weather;
 
+        // Pedestrians and the tutorial only exist on the 2D map, so the tutorial keeps it.
+        final use3D = _use3DMap && !_showPedestrianTutorial;
+
         return Stack(
           children: [
+            if (use3D)
+              Positioned.fill(child: _build3DCity(isNight))
+            else
             InteractiveViewer(
               transformationController: _transformationController,
               boundaryMargin: EdgeInsets.all(ScreenUtils.relativeSize(context, 0.2)),
@@ -1536,10 +1553,60 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
                 ),
               ),
 
-            // Marketing button rendered outside InteractiveViewer to stay visible during panning
-            _buildMarketingButtonOverlay(context, centerOffset, tileWidth, tileHeight),
+            // Switches between the 3D lowpoly city and the 2D isometric map
+            if (!_showPedestrianTutorial)
+              Positioned(
+                top: ScreenUtils.relativeSize(context, 0.01),
+                right: ScreenUtils.relativeSize(context, 0.02),
+                child: IconButton.filledTonal(
+                  tooltip: use3D ? 'Show 2D map' : 'Show 3D map',
+                  icon: Icon(use3D ? Icons.map_outlined : Icons.view_in_ar),
+                  onPressed: () => setState(() => _use3DMap = !_use3DMap),
+                ),
+              ),
+
+            // Marketing button rendered outside InteractiveViewer to stay visible during panning.
+            // Its position is in 2D map coordinates, so it is hidden on the 3D city.
+            if (!use3D)
+              _buildMarketingButtonOverlay(context, centerOffset, tileWidth, tileHeight),
           ],
         );
+      },
+    );
+  }
+
+  /// The 3D lowpoly city. A tap on a building or machine uses the same handler
+  /// as the 2D map, so purchases and machine views work the same way.
+  Widget _build3DCity(bool isNight) {
+    final machines = ref.watch(machinesProvider);
+    final brightness = isNight ? cityNightBrightness : 1.0;
+    // Rebuilding the scene is the costly part, so reuse it until the grid,
+    // the machines or the lighting change. Grid edits happen only while the
+    // map is generated, and that reassigns _grid first.
+    if (_scene3D == null ||
+        !identical(_scene3DGrid, _grid) ||
+        !identical(_scene3DMachines, machines) ||
+        _scene3DBrightness != brightness) {
+      _scene3D = buildCityScene(
+        grid: _grid,
+        roadDirections: _roadDirections,
+        machines: machines,
+        brightness: brightness,
+      );
+      _scene3DGrid = _grid;
+      _scene3DMachines = machines;
+      _scene3DBrightness = brightness;
+    }
+    return LowPolyView(
+      objects: _scene3D!,
+      camera: defaultCityCamera(gridSize),
+      background: isNight ? cityNightSky : cityDaySky,
+      minDistance: 10,
+      maxDistance: 40,
+      onTapTarget: (target) {
+        if (target is CityCell) {
+          _handleDebouncedBuildingTap(target.x, target.y, target.tileType);
+        }
       },
     );
   }
@@ -4057,6 +4124,8 @@ class _MachineStatusSection extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        VendingMachine3DView(machine: machine, height: dialogWidth * 0.75),
+        const SizedBox(height: 16),
         Row(
           children: [
             Container(
