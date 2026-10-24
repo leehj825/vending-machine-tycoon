@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/vex_theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../services/sound_service.dart';
@@ -52,8 +53,8 @@ class RivalScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Rival Company'),
-        backgroundColor: Colors.deepOrange.shade900,
-        foregroundColor: Colors.white,
+        backgroundColor: VexColors.panel,
+        foregroundColor: VexColors.gold,
       ),
       body: Container(
         color: Colors.deepOrange.shade50,
@@ -120,7 +121,7 @@ class RivalScreen extends ConsumerWidget {
                                   ),
                                   Text(
                                     'Your machines here: $machineCount',
-                                    style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
+                                    style: TextStyle(color: VexColors.muted, fontSize: 12),
                                   ),
                                 ],
                               ),
@@ -141,7 +142,7 @@ class RivalScreen extends ConsumerWidget {
                           child: LinearProgressIndicator(
                             value: presence,
                             minHeight: 10,
-                            backgroundColor: Colors.grey.shade200,
+                            backgroundColor: VexColors.panelSoft,
                             color: presence > 0.5 ? Colors.red.shade400 : Colors.deepOrange.shade400,
                           ),
                         ),
@@ -150,7 +151,7 @@ class RivalScreen extends ConsumerWidget {
                           demandCutPercent > 0
                               ? 'Cutting your sales here by about $demandCutPercent%'
                               : 'No impact on your sales here yet',
-                          style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
+                          style: TextStyle(color: VexColors.muted, fontSize: 12),
                         ),
                         const SizedBox(height: 12),
                         SizedBox(
@@ -159,7 +160,7 @@ class RivalScreen extends ConsumerWidget {
                               ? Container(
                                   padding: const EdgeInsets.symmetric(vertical: 8),
                                   decoration: BoxDecoration(
-                                    color: Colors.green.shade100,
+                                    color: VexColors.panelSoft,
                                     borderRadius: BorderRadius.circular(6),
                                   ),
                                   child: const Center(

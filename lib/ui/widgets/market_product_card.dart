@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/vex_theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../simulation/models/product.dart';
 import '../../state/market_provider.dart';
@@ -55,7 +56,7 @@ class MarketProductCard extends ConsumerWidget {
                     ScreenUtils.relativeSize(context, AppConfig.borderRadiusFactorSmall),
                   ),
                   border: Border.all(
-                    color: Colors.grey[300]!,
+                    color: VexColors.line!,
                     width: ScreenUtils.relativeSize(context, AppConfig.borderWidthFactorSmall),
                   ),
                 ),
@@ -111,7 +112,7 @@ class MarketProductCard extends ConsumerWidget {
                       '\$${unitPrice.toStringAsFixed(2)}',
                       style: TextStyle(
                         fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
-                        color: Colors.grey[700],
+                        color: VexColors.muted,
                       ),
                     ),
                   ],
@@ -269,7 +270,7 @@ class _BuyStockDialogState extends ConsumerState<_BuyStockDialog> {
                             'Unit Price: \$${widget.unitPrice.toStringAsFixed(2)}',
                             style: TextStyle(
                               fontSize: dialogWidth * AppConfig.buyDialogUnitPriceFontSizeFactor,
-                              color: Colors.grey[700],
+                              color: VexColors.muted,
                             ),
                           ),
                           SizedBox(height: padding),
@@ -596,7 +597,7 @@ class _NumberPadInputState extends State<_NumberPadInput> {
               contentPadding: EdgeInsets.zero,
               hintText: '0',
               hintStyle: TextStyle(
-                color: Colors.grey[400],
+                color: VexColors.muted,
               ),
             ),
             onChanged: (value) {
@@ -622,7 +623,7 @@ class _NumberPadInputState extends State<_NumberPadInput> {
             color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(_getSize(AppConfig.numberPadContainerBorderRadiusFactor)),
             border: Border.all(
-              color: Colors.grey[300]!,
+              color: VexColors.line!,
               width: _getSize(AppConfig.numberPadContainerBorderWidthFactor),
             ),
           ),

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../theme/vex_theme.dart';
+import '../theme/vex_theme.dart';
 import '../../services/sound_service.dart';
 import '../utils/screen_utils.dart';
 
@@ -26,17 +28,16 @@ class _OptionsScreenState extends State<OptionsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: VexColors.ink,
       appBar: AppBar(
         title: const Text(
           'Options',
           style: TextStyle(
-            fontFamily: 'Fredoka',
             fontWeight: FontWeight.bold,
           ),
         ),
-        backgroundColor: Colors.green,
-        foregroundColor: Colors.white,
+        backgroundColor: VexColors.panel,
+        foregroundColor: VexColors.gold,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.of(context).pop(),
@@ -103,7 +104,6 @@ class _OptionsScreenState extends State<OptionsScreen> {
             Text(
               title,
               style: TextStyle(
-                fontFamily: 'Fredoka',
                 fontSize: ScreenUtils.relativeFontSize(
                   context,
                   0.018,
@@ -111,13 +111,12 @@ class _OptionsScreenState extends State<OptionsScreen> {
                   max: 24,
                 ),
                 fontWeight: FontWeight.w600,
-                color: Colors.black87,
+                color: VexColors.cream,
               ),
             ),
             Text(
               '$percentage%',
               style: TextStyle(
-                fontFamily: 'Fredoka',
                 fontSize: ScreenUtils.relativeFontSize(
                   context,
                   0.016,
@@ -134,7 +133,7 @@ class _OptionsScreenState extends State<OptionsScreen> {
         SliderTheme(
           data: SliderTheme.of(context).copyWith(
             activeTrackColor: Colors.green,
-            inactiveTrackColor: Colors.grey[300],
+            inactiveTrackColor: VexColors.line,
             thumbColor: Colors.green,
             overlayColor: Colors.green.withOpacity(0.2),
             thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 12),

@@ -62,6 +62,21 @@ class VexTheme {
           side: const BorderSide(color: VexColors.line),
         ),
       ),
+      sliderTheme: const SliderThemeData(
+        activeTrackColor: VexColors.gold,
+        inactiveTrackColor: VexColors.line,
+        thumbColor: VexColors.gold,
+        overlayColor: Color(0x33F2D27A),
+      ),
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected) ? VexColors.gold : VexColors.muted,
+        ),
+        trackColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected) ? const Color(0x80F2D27A) : VexColors.line,
+        ),
+      ),
+      progressIndicatorTheme: const ProgressIndicatorThemeData(color: VexColors.gold),
       snackBarTheme: const SnackBarThemeData(
         backgroundColor: VexColors.panel,
         contentTextStyle: TextStyle(color: VexColors.cream),

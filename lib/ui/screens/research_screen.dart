@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/vex_theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../simulation/models/research.dart';
 import '../../state/providers.dart';
@@ -43,18 +44,18 @@ class ResearchScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Research Lab'),
-        backgroundColor: Colors.indigo.shade800,
-        foregroundColor: Colors.white,
+        backgroundColor: VexColors.panel,
+        foregroundColor: VexColors.gold,
       ),
       body: Container(
-        color: Colors.indigo.shade50,
+        color: VexColors.panelSoft,
         padding: ScreenUtils.relativePadding(context, 0.02),
         child: Column(
           children: [
             // Header Stats
             Card(
               elevation: 4,
-              color: Colors.indigo.shade100,
+              color: VexColors.panelSoft,
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Row(
@@ -112,7 +113,7 @@ class ResearchScreen extends ConsumerWidget {
                           Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: unlocked ? Colors.green.shade100 : Colors.indigo.shade50,
+                              color: unlocked ? VexColors.panelSoft : VexColors.panelSoft,
                               shape: BoxShape.circle,
                             ),
                             child: Icon(
@@ -140,7 +141,7 @@ class ResearchScreen extends ConsumerWidget {
                                 Text(
                                   research.description,
                                   style: TextStyle(
-                                    color: Colors.grey.shade700,
+                                    color: VexColors.muted,
                                     fontSize: 12,
                                   ),
                                   maxLines: 2,
@@ -151,7 +152,7 @@ class ResearchScreen extends ConsumerWidget {
                                   ? Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                       decoration: BoxDecoration(
-                                        color: Colors.green.shade100,
+                                        color: VexColors.panelSoft,
                                         borderRadius: BorderRadius.circular(4),
                                       ),
                                       child: Text(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/vex_theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:state_notifier/state_notifier.dart';
 import '../../state/providers.dart';
@@ -693,7 +694,7 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> with Ti
                                   ),
                                 ),
                                 decoration: BoxDecoration(
-                                  color: Colors.white,
+                                  color: VexColors.panel,
                                   borderRadius: BorderRadius.circular(
                                     ScreenUtils.relativeSize(context, AppConfig.truckCardBorderRadiusFactor),
                                   ),
@@ -761,7 +762,7 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> with Ti
                                           ),
                                           color: isSelected
                                               ? Colors.green
-                                              : Colors.grey[600],
+                                              : VexColors.muted,
                                         ),
                                       ),
                                       SizedBox(
@@ -778,7 +779,7 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> with Ti
                                             fontWeight: FontWeight.bold,
                                             color: isSelected
                                                 ? Colors.green
-                                                : Colors.black87,
+                                                : VexColors.cream,
                                             fontSize: ScreenUtils.relativeFontSize(context, AppConfig.truckNameFontSizeFactor),
                                           ),
                                           textAlign: TextAlign.center,
@@ -920,7 +921,7 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> with Ti
                         child: Container(
                           padding: EdgeInsets.all(padding),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: VexColors.panel,
                           borderRadius: BorderRadius.circular(
                             ScreenUtils.relativeSize(context, AppConfig.spacingFactorLarge),
                           ),
@@ -1073,10 +1074,10 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> with Ti
                             vertical: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall),
                           ),
                           decoration: BoxDecoration(
-                            color: selectedTruck.hasDriver ? Colors.green.shade100 : Colors.grey.shade200,
+                            color: selectedTruck.hasDriver ? VexColors.panelSoft : VexColors.panelSoft,
                             borderRadius: BorderRadius.circular(ScreenUtils.relativeSize(context, AppConfig.gameButtonBorderRadiusFactor)),
                             border: Border.all(
-                              color: selectedTruck.hasDriver ? Colors.green.shade300 : Colors.grey.shade400,
+                              color: selectedTruck.hasDriver ? Colors.green.shade300 : VexColors.muted,
                               width: ScreenUtils.relativeSize(context, AppConfig.spacingFactorTiny) * 2,
                             ),
                           ),
@@ -1085,14 +1086,14 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> with Ti
                             children: [
                               Icon(
                                 selectedTruck.hasDriver ? Icons.person : Icons.person_off,
-                                color: selectedTruck.hasDriver ? Colors.green.shade700 : Colors.grey.shade600,
+                                color: selectedTruck.hasDriver ? Colors.green.shade700 : VexColors.muted,
                                 size: ScreenUtils.relativeSizeClamped(context, 0.03),
                               ),
                               SizedBox(width: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall)),
                               Text(
                                 selectedTruck.hasDriver ? 'Driver: Assigned' : 'Driver: None',
                                 style: TextStyle(
-                                  color: selectedTruck.hasDriver ? Colors.green.shade900 : Colors.grey.shade700,
+                                  color: selectedTruck.hasDriver ? Colors.green.shade900 : VexColors.muted,
                                   fontWeight: FontWeight.bold,
                                   fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorSmall),
                                 ),
@@ -1163,7 +1164,7 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> with Ti
                       Icon(
                         Icons.route,
                         size: ScreenUtils.relativeSize(context, AppConfig.routeListEmptyIconSizeFactor),
-                        color: Colors.grey[400],
+                        color: VexColors.muted,
                       ),
                       SizedBox(
                         height: ScreenUtils.relativeSize(
@@ -1175,7 +1176,7 @@ class _RoutePlannerScreenState extends ConsumerState<RoutePlannerScreen> with Ti
                         'No stops in route',
                         style: TextStyle(
                           fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorSmall),
-                          color: Colors.grey[600],
+                          color: VexColors.muted,
                         ),
                       ),
                       SizedBox(
@@ -1521,7 +1522,7 @@ class _StatItem extends StatelessWidget {
           Icon(
             icon,
             size: ScreenUtils.relativeSize(context, AppConfig.efficiencyStatIconSizeFactor),
-            color: valueColor ?? Colors.grey[700],
+            color: valueColor ?? VexColors.muted,
           ),
           SizedBox(
             height: ScreenUtils.relativeSize(
@@ -1534,7 +1535,7 @@ class _StatItem extends StatelessWidget {
             style: TextStyle(
               fontSize: ScreenUtils.relativeFontSize(context, AppConfig.routeEfficiencyValueFontSizeFactor),
               fontWeight: FontWeight.bold,
-              color: valueColor ?? Colors.black87,
+              color: valueColor ?? VexColors.cream,
             ),
           ),
           SizedBox(
@@ -1547,7 +1548,7 @@ class _StatItem extends StatelessWidget {
             label,
             style: TextStyle(
               fontSize: ScreenUtils.relativeFontSize(context, AppConfig.routeEfficiencyLabelFontSizeFactor),
-              color: Colors.grey[600],
+              color: VexColors.muted,
             ),
             textAlign: TextAlign.center,
           ),
@@ -1879,7 +1880,7 @@ class _NumberPadInputState extends State<_NumberPadInput> {
               contentPadding: EdgeInsets.zero,
               hintText: '0',
               hintStyle: TextStyle(
-                color: Colors.grey[400],
+                color: VexColors.muted,
               ),
             ),
             onChanged: (value) {
@@ -1905,7 +1906,7 @@ class _NumberPadInputState extends State<_NumberPadInput> {
             color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(_getSize(AppConfig.numberPadContainerBorderRadiusFactor)),
             border: Border.all(
-              color: Colors.grey[300]!,
+              color: VexColors.line!,
               width: _getSize(AppConfig.numberPadContainerBorderWidthFactor),
             ),
           ),

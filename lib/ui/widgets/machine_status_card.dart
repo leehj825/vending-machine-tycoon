@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/vex_theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../simulation/models/machine.dart';
 import '../../state/providers.dart';
@@ -53,7 +54,7 @@ class _MachineStatusCardState extends ConsumerState<MachineStatusCard> {
         vertical: ScreenUtils.relativeSize(context, AppConfig.spacingFactorMedium),
       ),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: VexColors.panel,
         borderRadius: BorderRadius.circular(ScreenUtils.relativeSize(context, AppConfig.borderRadiusFactorLarge)),
         border: Border.all(
           color: zoneColor.withValues(alpha: 0.5), // Colored border based on zone
@@ -138,13 +139,13 @@ class _MachineStatusCardState extends ConsumerState<MachineStatusCard> {
                               'Stock: ${machine.totalInventory} items',
                               style: TextStyle(
                                 fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorSmall),
-                                color: Colors.grey[600],
+                                color: VexColors.muted,
                               ),
                             ),
                             SizedBox(height: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall)),
                             LinearProgressIndicator(
                               value: stockLevel,
-                              backgroundColor: Colors.grey[300],
+                              backgroundColor: VexColors.line,
                               valueColor: AlwaysStoppedAnimation<Color>(stockColor),
                               minHeight: ScreenUtils.relativeSize(context, 0.006),
                             ),
@@ -172,7 +173,7 @@ class _MachineStatusCardState extends ConsumerState<MachineStatusCard> {
                               'Cash',
                               style: TextStyle(
                                 fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorTiny),
-                                color: Colors.grey[600],
+                                color: VexColors.muted,
                               ),
                             ),
                             Text(
@@ -189,7 +190,7 @@ class _MachineStatusCardState extends ConsumerState<MachineStatusCard> {
                       SizedBox(height: ScreenUtils.relativeSize(context, AppConfig.spacingFactorMedium)),
                       Icon(
                         _isExpanded ? Icons.expand_less : Icons.expand_more,
-                        color: Colors.grey[600],
+                        color: VexColors.muted,
                       ),
                     ],
                   ),
@@ -214,7 +215,7 @@ class _MachineStatusCardState extends ConsumerState<MachineStatusCard> {
                       'Empty',
                       style: TextStyle(
                         fontStyle: FontStyle.italic,
-                        color: Colors.grey[600],
+                        color: VexColors.muted,
                       ),
                     ),
                   )
@@ -238,7 +239,7 @@ class _MachineStatusCardState extends ConsumerState<MachineStatusCard> {
                             Container(
                               padding: EdgeInsets.symmetric(horizontal: ScreenUtils.relativeSize(context, AppConfig.spacingFactorMedium), vertical: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall)),
                               decoration: BoxDecoration(
-                                color: Colors.blue.shade50,
+                                color: VexColors.panelSoft,
                                 borderRadius: BorderRadius.circular(ScreenUtils.relativeSize(context, 0.012)),
                               ),
                               child: Text(
@@ -256,7 +257,7 @@ class _MachineStatusCardState extends ConsumerState<MachineStatusCard> {
                         // Customer Interest Progress Bar
                         LinearProgressIndicator(
                           value: item.customerInterest,
-                          backgroundColor: Colors.grey[200],
+                          backgroundColor: VexColors.panelSoft,
                           valueColor: AlwaysStoppedAnimation<Color>(
                             item.customerInterest > 0.7 
                               ? Colors.green 
@@ -292,14 +293,14 @@ class _MachineStatusCardState extends ConsumerState<MachineStatusCard> {
                     width: double.infinity,
                     padding: EdgeInsets.symmetric(vertical: ScreenUtils.relativeSize(context, AppConfig.spacingFactorLarge)),
                     decoration: BoxDecoration(
-                      color: Colors.grey[200],
+                      color: VexColors.panelSoft,
                       borderRadius: BorderRadius.circular(ScreenUtils.relativeSize(context, 0.008)),
                     ),
                     child: Center(
                       child: Text(
                         'No cash to retrieve',
                         style: TextStyle(
-                          color: Colors.grey[600],
+                          color: VexColors.muted,
                           fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorSmall),
                         ),
                       ),

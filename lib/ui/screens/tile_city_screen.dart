@@ -983,7 +983,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
               'Day ${gameState.dayCount}',
               style: TextStyle(
                 fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorSmall),
-                color: Colors.grey.shade600,
+                color: VexColors.muted,
               ),
             ),
             SizedBox(height: ScreenUtils.relativeSize(context, AppConfig.spacingFactorMedium)),
@@ -991,7 +991,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
               'Try to manage your expenses better next time!',
               style: TextStyle(
                 fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorSmall),
-                color: Colors.grey.shade700,
+                color: VexColors.muted,
               ),
             ),
           ],
@@ -2232,7 +2232,7 @@ class _MachineViewDialog extends ConsumerWidget {
               maxHeight: screenHeight * AppConfig.machineStatusDialogHeightFactor,
             ),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: VexColors.panel,
               borderRadius: BorderRadius.circular(borderRadius),
             ),
             child: Column(
@@ -2361,7 +2361,7 @@ class _MachineStatusSection extends ConsumerWidget {
               'Stock: ${machine.totalInventory} items',
               style: TextStyle(
                 fontSize: dialogWidth * AppConfig.machineStatusDialogStockTextFontSizeFactor,
-                color: Colors.grey[600],
+                color: VexColors.muted,
               ),
             ),
             SizedBox(
@@ -2369,7 +2369,7 @@ class _MachineStatusSection extends ConsumerWidget {
             ),
             LinearProgressIndicator(
               value: stockLevel,
-              backgroundColor: Colors.grey[300],
+              backgroundColor: VexColors.line,
               valueColor: AlwaysStoppedAnimation<Color>(stockColor),
               minHeight: dialogWidth * AppConfig.machineStatusDialogProgressBarHeightFactor,
             ),
@@ -2398,7 +2398,7 @@ class _MachineStatusSection extends ConsumerWidget {
                     'Cash',
                     style: TextStyle(
                       fontSize: dialogWidth * AppConfig.machineStatusDialogInfoLabelFontSizeFactor,
-                      color: Colors.grey[600],
+                      color: VexColors.muted,
                     ),
                   ),
                   Text(
@@ -2478,7 +2478,7 @@ class _MachineStatusSection extends ConsumerWidget {
                             'Stock: ${item.quantity} / ${item.allocation}',
                             style: TextStyle(
                               fontSize: dialogWidth * AppConfig.machineStatusDialogStockItemFontSizeFactor * 0.85,
-                              color: Colors.grey[600],
+                              color: VexColors.muted,
                             ),
                           ),
                         ],
@@ -2504,7 +2504,7 @@ class _MachineStatusSection extends ConsumerWidget {
                         vertical: dialogWidth * AppConfig.machineStatusDialogStockItemBadgePaddingVerticalFactor,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.blue.shade50,
+                        color: VexColors.panelSoft,
                         borderRadius: BorderRadius.circular(
                           dialogWidth * AppConfig.machineStatusDialogStockItemBadgeBorderRadiusFactor,
                         ),
@@ -2551,7 +2551,7 @@ class _MachineStatusSection extends ConsumerWidget {
                 if (item.quantity > 0)
                 LinearProgressIndicator(
                   value: item.customerInterest,
-                  backgroundColor: Colors.grey[200],
+                  backgroundColor: VexColors.panelSoft,
                   valueColor: AlwaysStoppedAnimation<Color>(
                     item.customerInterest > 0.7 
                       ? Colors.green 
@@ -2683,7 +2683,7 @@ class _MachineStatusSection extends ConsumerWidget {
             text: TextSpan(
               style: TextStyle(
                 fontSize: dialogWidth * AppConfig.machineStatusDialogStockItemFontSizeFactor * 0.85,
-                color: Colors.grey[800],
+                color: VexColors.cream,
               ),
               children: [
                 TextSpan(
@@ -2935,7 +2935,7 @@ class _MachinePurchaseDialog extends ConsumerWidget {
               maxHeight: screenHeight * AppConfig.machineStatusDialogHeightFactor,
             ),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: VexColors.panel,
               borderRadius: BorderRadius.circular(borderRadius),
             ),
             child: Column(
@@ -3033,7 +3033,7 @@ class _MachinePurchaseDialog extends ConsumerWidget {
                                       'Price',
                                       style: TextStyle(
                                         fontSize: dialogWidth * AppConfig.machineStatusDialogInfoLabelFontSizeFactor,
-                                        color: Colors.grey[600],
+                                        color: VexColors.muted,
                                       ),
                                     ),
                                     Text(
@@ -3053,7 +3053,7 @@ class _MachinePurchaseDialog extends ConsumerWidget {
                                       'Your Cash',
                                       style: TextStyle(
                                         fontSize: dialogWidth * AppConfig.machineStatusDialogInfoLabelFontSizeFactor,
-                                        color: Colors.grey[600],
+                                        color: VexColors.muted,
                                       ),
                                     ),
                                     Text(
@@ -3108,7 +3108,7 @@ class _MachinePurchaseDialog extends ConsumerWidget {
                                 backgroundColor: Colors.green,
                                 foregroundColor: Colors.white,
                                 disabledBackgroundColor: Colors.grey,
-                                disabledForegroundColor: Colors.grey[400],
+                                disabledForegroundColor: VexColors.muted,
                                 padding: EdgeInsets.symmetric(
                                   vertical: dialogWidth * AppConfig.machineStatusDialogCashButtonPaddingFactor,
                                 ),

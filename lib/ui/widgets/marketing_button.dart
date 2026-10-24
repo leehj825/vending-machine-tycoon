@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../theme/vex_theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../state/providers.dart';
 import '../../config.dart';
@@ -286,7 +287,7 @@ class MarketingButtonState extends ConsumerState<MarketingButton>
                         child: CircularProgressIndicator(
                           value: hypeLevel,
                           strokeWidth: ScreenUtils.relativeSize(context, AppConfig.borderWidthFactorMedium * 2),
-                          backgroundColor: Colors.grey[300],
+                          backgroundColor: VexColors.line,
                           valueColor: AlwaysStoppedAnimation<Color>(
                             progressColor,
                           ),

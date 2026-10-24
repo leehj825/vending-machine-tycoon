@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import '../theme/vex_theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../simulation/models/machine.dart';
-import '../../simulation/models/zone.dart';
 import '../../state/providers.dart';
 import '../../config.dart';
 import '../../services/sound_service.dart';
@@ -224,7 +224,7 @@ class _MachineInteriorDialogState extends ConsumerState<MachineInteriorDialog> w
               maxHeight: dialogMaxHeight,
             ),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: VexColors.panel,
               borderRadius: BorderRadius.circular(borderRadius),
             ),
             child: Column(
@@ -392,7 +392,7 @@ class _MachineInteriorDialogState extends ConsumerState<MachineInteriorDialog> w
                                   'Cash Available',
                                   style: TextStyle(
                                     fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorSmall),
-                                    color: Colors.grey[600],
+                                    color: VexColors.muted,
                                   ),
                                 ),
                                 SizedBox(height: padding * AppConfig.machineInteriorDialogCashDisplaySpacingFactor),
@@ -401,7 +401,7 @@ class _MachineInteriorDialogState extends ConsumerState<MachineInteriorDialog> w
                                   style: TextStyle(
                                     fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorLarge),
                                     fontWeight: FontWeight.bold,
-                                    color: _hasCash ? Colors.green.shade700 : Colors.grey[600],
+                                    color: _hasCash ? Colors.green.shade700 : VexColors.muted,
                                   ),
                                 ),
                               ],
@@ -413,7 +413,7 @@ class _MachineInteriorDialogState extends ConsumerState<MachineInteriorDialog> w
                               'Tap on the bill validator or coin bin to collect cash',
                               style: TextStyle(
                                 fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorSmall),
-                                color: Colors.grey[600],
+                                color: VexColors.muted,
                               ),
                               textAlign: TextAlign.center,
                             )
@@ -422,7 +422,7 @@ class _MachineInteriorDialogState extends ConsumerState<MachineInteriorDialog> w
                               'No cash available',
                               style: TextStyle(
                                 fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorSmall),
-                                color: Colors.grey[600],
+                                color: VexColors.muted,
                               ),
                               textAlign: TextAlign.center,
                             ),

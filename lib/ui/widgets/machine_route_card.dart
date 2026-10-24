@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/vex_theme.dart';
 import '../../simulation/models/machine.dart';
 import '../../config.dart';
 import '../theme/zone_ui.dart';
@@ -41,7 +42,7 @@ class MachineRouteCard extends StatelessWidget {
         vertical: ScreenUtils.relativeSize(context, AppConfig.machineRouteCardMarginVerticalFactor),
       ),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: VexColors.panel,
         borderRadius: BorderRadius.circular(cardBorderRadius),
         border: Border.all(
           color: zoneColor.withOpacity(0.5),
@@ -99,7 +100,7 @@ class MachineRouteCard extends StatelessWidget {
                       'Zone: ${machine.zone.type.name.toUpperCase()}',
                       style: TextStyle(
                         fontSize: ScreenUtils.relativeSize(context, AppConfig.machineRouteCardZoneFontSizeFactor),
-                        color: Colors.grey[600],
+                        color: VexColors.muted,
                       ),
                     ),
                     SizedBox(height: ScreenUtils.relativeSize(context, AppConfig.machineRouteCardTextSpacingFactor)),

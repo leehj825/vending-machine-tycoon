@@ -71,7 +71,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        backgroundColor: VexColors.panel,
         elevation: 0, // AppBar elevation is typically 0
         toolbarHeight: 0,
       ),

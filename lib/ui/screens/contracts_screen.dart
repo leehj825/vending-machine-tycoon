@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/vex_theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../config.dart';
@@ -37,11 +38,11 @@ class ContractsScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Daily Contracts'),
-        backgroundColor: Colors.teal.shade800,
-        foregroundColor: Colors.white,
+        backgroundColor: VexColors.panel,
+        foregroundColor: VexColors.gold,
       ),
       body: Container(
-        color: Colors.teal.shade50,
+        color: VexColors.panelSoft,
         padding: ScreenUtils.relativePadding(context, 0.02),
         child: Column(
           children: [
@@ -99,7 +100,7 @@ class _SummaryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       elevation: 4,
-      color: Colors.teal.shade100,
+      color: VexColors.panelSoft,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Row(
@@ -167,7 +168,7 @@ class _ContractCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: done ? Colors.green.shade100 : Colors.teal.shade50,
+                    color: done ? VexColors.panelSoft : VexColors.panelSoft,
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
@@ -192,7 +193,7 @@ class _ContractCard extends StatelessWidget {
                       Text(
                         contract.description,
                         style: TextStyle(
-                          color: Colors.grey.shade700,
+                          color: VexColors.muted,
                           fontSize: 12,
                         ),
                       ),
@@ -208,7 +209,7 @@ class _ContractCard extends StatelessWidget {
               child: LinearProgressIndicator(
                 value: contract.progressRatio,
                 minHeight: 10,
-                backgroundColor: Colors.grey.shade300,
+                backgroundColor: VexColors.line,
                 valueColor: AlwaysStoppedAnimation<Color>(
                   done ? Colors.green.shade600 : Colors.teal.shade600,
                 ),
@@ -223,7 +224,7 @@ class _ContractCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
-                    color: Colors.grey.shade800,
+                    color: VexColors.cream,
                   ),
                 ),
                 if (done)
@@ -238,7 +239,7 @@ class _ContractCard extends StatelessWidget {
                 else if (contract.wasRerolled)
                   Text(
                     'Already swapped',
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                    style: TextStyle(fontSize: 12, color: VexColors.muted),
                   )
                 else
                   TextButton.icon(
@@ -275,7 +276,7 @@ class _ContractCard extends StatelessWidget {
         ),
         Text(
           '+${contract.rewardReputation} rep',
-          style: TextStyle(fontSize: 11, color: Colors.grey.shade700),
+          style: TextStyle(fontSize: 11, color: VexColors.muted),
         ),
       ],
     );

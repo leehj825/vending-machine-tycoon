@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
+import '../theme/vex_theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../config.dart';
 import '../../simulation/models/machine.dart';
 import '../../state/providers.dart';
 import '../../services/sound_service.dart';
-import '../utils/screen_utils.dart';
 
 /// Dialog to manage upgrades for a specific machine
 class MachineUpgradeDialog extends ConsumerStatefulWidget {
@@ -277,7 +277,7 @@ class _MachineUpgradeDialogState extends ConsumerState<MachineUpgradeDialog> {
                   Text(
                     description,
                     style: TextStyle(
-                      color: Colors.grey[600],
+                      color: VexColors.muted,
                       fontSize: 12,
                     ),
                   ),
@@ -304,7 +304,7 @@ class _MachineUpgradeDialogState extends ConsumerState<MachineUpgradeDialog> {
                 backgroundColor: Colors.green,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                disabledBackgroundColor: Colors.grey[300],
+                disabledBackgroundColor: VexColors.line,
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,

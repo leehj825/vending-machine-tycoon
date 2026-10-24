@@ -1,6 +1,7 @@
 import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb, kReleaseMode;
 import 'package:flutter/material.dart';
+import '../theme/vex_theme.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import '../../config.dart';
 import '../utils/screen_utils.dart';
@@ -131,7 +132,7 @@ class _AdMobBannerState extends State<AdMobBanner> {
       return Container(
         width: double.infinity,
         height: AdSize.banner.height.toDouble(),
-        color: Colors.grey[200],
+        color: VexColors.panelSoft,
         child: Center(
           child: SizedBox(
             width: ScreenUtils.relativeSize(context, AppConfig.iconSizeSmallFactor),
@@ -148,7 +149,7 @@ class _AdMobBannerState extends State<AdMobBanner> {
       alignment: Alignment.center,
       width: double.infinity,
       height: _bannerAd!.size.height.toDouble(),
-      color: Colors.white,
+      color: VexColors.panel,
       child: AdWidget(ad: _bannerAd!),
     );
   }

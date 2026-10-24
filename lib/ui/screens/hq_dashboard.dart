@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io' show Platform, InternetAddress;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import '../theme/vex_theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../state/game_state.dart';
 import '../../state/providers.dart';
@@ -352,7 +353,7 @@ class HQDashboard extends ConsumerWidget {
 
     if (topPerformingMachine != null) {
       return Card(
-        color: Colors.teal.shade50,
+        color: VexColors.panelSoft,
         elevation: ScreenUtils.relativeSize(context, AppConfig.cardElevationFactor * 0.5),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(ScreenUtils.relativeSize(context, 0.008)),
@@ -389,7 +390,7 @@ class HQDashboard extends ConsumerWidget {
       );
     } else {
       return Card(
-        color: Colors.grey.shade100,
+        color: VexColors.panelSoft,
         elevation: ScreenUtils.relativeSize(context, AppConfig.cardElevationFactor * 0.5),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(ScreenUtils.relativeSize(context, 0.008)),
@@ -582,15 +583,15 @@ class HQDashboard extends ConsumerWidget {
     Color valueColor;
     
     if (label == 'Net Worth') {
-      cardColor = Colors.blue.shade50;
+      cardColor = VexColors.panelSoft;
       iconColor = Colors.blue.shade700;
       valueColor = Colors.blue.shade900;
     } else if (label == 'Active Machines') {
-      cardColor = Colors.green.shade50;
+      cardColor = VexColors.panelSoft;
       iconColor = Colors.green.shade700;
       valueColor = Colors.green.shade900;
     } else {
-      cardColor = Colors.purple.shade50;
+      cardColor = VexColors.panelSoft;
       iconColor = Colors.purple.shade700;
       valueColor = Colors.purple.shade900;
     }
@@ -632,7 +633,7 @@ class HQDashboard extends ConsumerWidget {
               label,
               style: TextStyle(
                 fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorSmall),
-                color: Colors.grey.shade700,
+                color: VexColors.muted,
               ),
               textAlign: TextAlign.center,
             ),
@@ -655,7 +656,7 @@ class HQDashboard extends ConsumerWidget {
 
     return Card(
       elevation: ScreenUtils.relativeSize(context, AppConfig.cardElevationFactor),
-      color: needsAttention.isEmpty ? Colors.green.shade50 : Colors.red.shade50,
+      color: needsAttention.isEmpty ? VexColors.panelSoft : VexColors.panelSoft,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(ScreenUtils.relativeSize(context, 0.012)),
       ),
@@ -685,7 +686,7 @@ class HQDashboard extends ConsumerWidget {
             SizedBox(height: ScreenUtils.relativeSize(context, AppConfig.spacingFactorMedium)),
             if (needsAttention.isEmpty)
               Card(
-                color: Colors.green.shade100,
+                color: VexColors.panelSoft,
                 elevation: ScreenUtils.relativeSize(context, AppConfig.cardElevationFactor * 0.5),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(ScreenUtils.relativeSize(context, 0.008)),
@@ -731,12 +732,12 @@ class HQDashboard extends ConsumerWidget {
                   issue = 'Broken';
                   icon = Icons.error_outline;
                   color = Colors.red.shade700;
-                  bgColor = Colors.red.shade100;
+                  bgColor = VexColors.panelSoft;
                 } else {
                   issue = 'Critically Low Stock (${machine.totalInventory} items)';
                   icon = Icons.inventory_2_outlined;
                   color = Colors.orange.shade700;
-                  bgColor = Colors.orange.shade100;
+                  bgColor = VexColors.panelSoft;
                 }
                 
                 return Card(
@@ -807,7 +808,7 @@ class HQDashboard extends ConsumerWidget {
 
     return Card(
       elevation: ScreenUtils.relativeSize(context, AppConfig.cardElevationFactor),
-      color: Colors.blue.shade50,
+      color: VexColors.panelSoft,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(ScreenUtils.relativeSize(context, 0.012)),
       ),
@@ -893,7 +894,7 @@ class HQDashboard extends ConsumerWidget {
     {required VoidCallback onHire, required VoidCallback onFire}
   ) {
     return Card(
-      color: Colors.white,
+      color: VexColors.panel,
       elevation: ScreenUtils.relativeSize(context, AppConfig.cardElevationFactor * 0.5),
       child: Padding(
         padding: ScreenUtils.relativePadding(context, AppConfig.spacingFactorSmall),
@@ -917,7 +918,7 @@ class HQDashboard extends ConsumerWidget {
                         '—',
                         style: TextStyle(
                           fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
-                          color: Colors.grey.shade400,
+                          color: VexColors.muted,
                         ),
                       ),
                       SizedBox(width: ScreenUtils.relativeSize(context, AppConfig.spacingFactorMedium)),
@@ -935,7 +936,7 @@ class HQDashboard extends ConsumerWidget {
                     subtitle,
                     style: TextStyle(
                       fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorSmall),
-                      color: Colors.grey.shade600,
+                      color: VexColors.muted,
                     ),
                   ),
                   Text(
@@ -1002,7 +1003,7 @@ class HQDashboard extends ConsumerWidget {
     
     return Card(
       elevation: ScreenUtils.relativeSize(context, AppConfig.cardElevationFactor),
-      color: Colors.orange.shade50,
+      color: VexColors.panelSoft,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(ScreenUtils.relativeSize(context, 0.012)),
       ),
@@ -1112,7 +1113,7 @@ class HQDashboard extends ConsumerWidget {
                   detail,
                   style: TextStyle(
                     fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorSmall),
-                    color: Colors.grey.shade600,
+                    color: VexColors.muted,
                   ),
                 )),
               ],

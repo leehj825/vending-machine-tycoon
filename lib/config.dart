@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import './ui/theme/vex_theme.dart';
 
 /// Central configuration file for all constants used throughout the app
 class AppConfig {
@@ -730,7 +731,7 @@ class AppConfig {
   
   /// Primary game colors
   static const Color gameGreen = Color(0xFF4CAF50);
-  static const Color surfaceColor = Color(0xFFF5F5F5);
+  static const Color surfaceColor = VexColors.ink;
   static const Color grassGreen = Color(0xFF388E3C);
   
   /// Status colors

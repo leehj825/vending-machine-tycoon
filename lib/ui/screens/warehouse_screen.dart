@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/vex_theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../simulation/models/product.dart';
 import '../../simulation/models/truck.dart';
@@ -156,7 +157,7 @@ class _WarehouseScreenState extends ConsumerState<WarehouseScreen> with TickerPr
                             SizedBox(height: ScreenUtils.relativeSize(context, AppConfig.spacingFactorMedium)),
                             LinearProgressIndicator(
                               value: capacityPercent,
-                              backgroundColor: Colors.grey[300],
+                              backgroundColor: VexColors.line,
                               valueColor: AlwaysStoppedAnimation<Color>(
                                 capacityPercent > 0.9
                                     ? Colors.red
@@ -226,7 +227,7 @@ class _WarehouseScreenState extends ConsumerState<WarehouseScreen> with TickerPr
                     Container(
                       padding: EdgeInsets.all(ScreenUtils.relativeSize(context, AppConfig.spacingFactorXLarge)),
                       decoration: BoxDecoration(
-                        color: Colors.grey[200],
+                        color: VexColors.panelSoft,
                         borderRadius: BorderRadius.circular(ScreenUtils.relativeSize(context, AppConfig.borderRadiusFactorSmall)),
                       ),
                       child: Row(
@@ -283,7 +284,7 @@ class _WarehouseScreenState extends ConsumerState<WarehouseScreen> with TickerPr
                           'Prices update automatically',
                           style: TextStyle(
                             fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
-                            color: Colors.grey[600],
+                            color: VexColors.muted,
                           ),
                         ),
                       ],
@@ -435,19 +436,19 @@ class _WarehouseScreenState extends ConsumerState<WarehouseScreen> with TickerPr
       return Container(
         padding: ScreenUtils.relativePadding(context, AppConfig.spacingFactorMedium),
         child: Card(
-          color: Colors.grey.shade100,
+          color: VexColors.panelSoft,
           child: Padding(
             padding: ScreenUtils.relativePadding(context, AppConfig.spacingFactorMedium),
             child: Row(
               children: [
-                Icon(Icons.info_outline, color: Colors.grey.shade600),
+                Icon(Icons.info_outline, color: VexColors.muted),
                 SizedBox(width: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall)),
                 Expanded(
                   child: Text(
                     'Hire Purchasing Agents in HQ to enable auto-buying',
                     style: TextStyle(
                       fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorSmall),
-                      color: Colors.grey.shade600,
+                      color: VexColors.muted,
                     ),
                   ),
                 ),
@@ -462,7 +463,7 @@ class _WarehouseScreenState extends ConsumerState<WarehouseScreen> with TickerPr
       padding: ScreenUtils.relativePadding(context, AppConfig.spacingFactorMedium),
       child: Card(
         elevation: ScreenUtils.relativeSize(context, AppConfig.cardElevationFactor),
-        color: Colors.purple.shade50,
+        color: VexColors.panelSoft,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(ScreenUtils.relativeSize(context, 0.012)),
         ),
@@ -487,7 +488,7 @@ class _WarehouseScreenState extends ConsumerState<WarehouseScreen> with TickerPr
             '$agentCount Agent${agentCount > 1 ? 's' : ''} - Auto-buys when inventory < 50% of target',
             style: TextStyle(
               fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorSmall),
-              color: Colors.grey.shade600,
+              color: VexColors.muted,
             ),
           ),
           children: [
@@ -504,7 +505,7 @@ class _WarehouseScreenState extends ConsumerState<WarehouseScreen> with TickerPr
               return Padding(
                 padding: EdgeInsets.only(bottom: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall)),
                 child: Card(
-                  color: Colors.white,
+                  color: VexColors.panel,
                   elevation: ScreenUtils.relativeSize(context, AppConfig.cardElevationFactor * 0.5),
                   child: Padding(
                     padding: ScreenUtils.relativePadding(context, AppConfig.spacingFactorSmall),
@@ -918,7 +919,7 @@ class _NumberPadInputState extends State<_NumberPadInput> {
               contentPadding: EdgeInsets.zero,
               hintText: '0',
               hintStyle: TextStyle(
-                color: Colors.grey[400],
+                color: VexColors.muted,
               ),
             ),
             onChanged: (value) {
@@ -944,7 +945,7 @@ class _NumberPadInputState extends State<_NumberPadInput> {
             color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(_getSize(AppConfig.numberPadContainerBorderRadiusFactor)),
             border: Border.all(
-              color: Colors.grey[300]!,
+              color: VexColors.line!,
               width: _getSize(AppConfig.numberPadContainerBorderWidthFactor),
             ),
           ),
