@@ -98,7 +98,61 @@ void main() {
 
       expect(offAsphalt, 0, reason: 'seed $seed: truck left the road');
       expect(curTrucks.first.isRouteComplete, isTrue, reason: 'seed $seed: route not finished');
+      // 40 units cover two stops of 20 each. The other two stop on the next run.
+      expect(curTrucks.first.route, ['m2', 'm3'], reason: 'seed $seed: unserved stops not kept');
       expect(curMachines.first.totalSales, greaterThan(0), reason: 'seed $seed: first stop never restocked');
     }
+  });
+
+  test('a stop with no road route is skipped, and the rest of the route is served', () {
+    // Two road islands: the truck starts on the first and cannot reach the second.
+    final roadTiles = <({double x, double y})>[
+      (x: 2.0, y: 1.0),
+      (x: 3.0, y: 1.0),
+      (x: 4.0, y: 1.0),
+      (x: 11.0, y: 10.0),
+      (x: 12.0, y: 10.0),
+    ];
+    Machine at(String id, double x, double y) => Machine(
+          id: id,
+          name: id,
+          zone: Zone(id: 'z$id', type: ZoneType.shop, name: 'Z', x: x, y: y),
+          condition: MachineCondition.good,
+          inventory: {
+            Product.soda: const InventoryItem(
+              product: Product.soda,
+              quantity: 0,
+              dayAdded: 0,
+              allocation: 20,
+            ),
+          },
+        );
+    final machines = [at('far', 11.5, 9.5), at('near', 3.5, 0.5)];
+    final truck = Truck(
+      id: 't',
+      name: 'T',
+      currentX: 2.0,
+      currentY: 1.0,
+      targetX: 2.0,
+      targetY: 1.0,
+      status: TruckStatus.traveling,
+      route: const ['far', 'near'],
+      inventory: const {Product.soda: 40},
+    );
+    final engine = SimulationEngine(initialMachines: machines, initialTrucks: [truck]);
+    engine.setMapLayout(roadTiles);
+    engine.updateWarehouseRoadPosition(2.0, 1.0);
+
+    var curMachines = machines;
+    var curTrucks = [truck];
+    for (var t = 0; t < 3000; t++) {
+      final r = engine.tick(curMachines, curTrucks);
+      curMachines = r.machines;
+      curTrucks = r.trucks;
+      // The truck never leaves the first island.
+      expect(curTrucks.first.currentX, lessThanOrEqualTo(4.01), reason: 'tick $t: truck crossed to the other island');
+    }
+    expect(curTrucks.first.isRouteComplete, isTrue);
+    expect(curMachines.firstWhere((m) => m.id == 'near').totalSales, greaterThan(0));
   });
 }

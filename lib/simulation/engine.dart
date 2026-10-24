@@ -175,6 +175,20 @@ class SimulationEngine extends StateNotifier<SimulationState> {
   // Debug output throttling - only print once per second
   DateTime? _lastDebugPrint;
 
+  // Notices about trucks, collected during a tick and shown to the player
+  final List<String> _truckNotices = [];
+
+  /// Takes the truck notices collected so far.
+  List<String> _takeTruckNotices() {
+    final notices = List<String>.from(_truckNotices);
+    _truckNotices.clear();
+    return notices;
+  }
+
+  /// Whether a machine is short of stock for any product it sells.
+  bool _needsStock(Machine machine) =>
+      machine.inventory.values.any((item) => item.quantity < item.allocation);
+
   SimulationEngine({
     required List<Machine> initialMachines,
     required List<Truck> initialTrucks,
@@ -529,6 +543,7 @@ class SimulationEngine extends StateNotifier<SimulationState> {
     pendingMessages.addAll(autoRestockResult.messages);
     
     updatedTrucks = _processTruckMovement(updatedTrucks, updatedMachines);
+    pendingMessages.addAll(_takeTruckNotices());
     
     final restockResult = _processTruckRestocking(updatedTrucks, updatedMachines);
     updatedTrucks = restockResult.trucks;
@@ -1174,7 +1189,8 @@ class SimulationEngine extends StateNotifier<SimulationState> {
       movementSpeed *= 1.25;
     }
     
-    List<({double x, double y})> findPath(
+    /// Road route from the start to the end, or null when no road route exists.
+    List<({double x, double y})>? findPath(
       double startX, double startY,
       double endX, double endY,
     ) {
@@ -1279,7 +1295,8 @@ class SimulationEngine extends StateNotifier<SimulationState> {
             }
           }
         }
-        return [end];
+        // No road route connects these points. The caller decides what to do.
+        return null;
     }
     
     return trucks.map((truck) {
@@ -1327,7 +1344,20 @@ class SimulationEngine extends StateNotifier<SimulationState> {
       if (path.isEmpty || 
           (path.isNotEmpty && (path.last.x != targetX || path.last.y != targetY)) ||
           pathIndex >= path.length) {
-        path = findPath(truck.currentX, truck.currentY, targetX, targetY);
+        final found = findPath(truck.currentX, truck.currentY, targetX, targetY);
+        if (found == null) {
+          // No road route: skip the stop rather than drive across the map.
+          if (isRoutingToMachine) {
+            _truckNotices.add('🚚 ${truck.name} has no road route to a stop, so it was skipped.');
+            return truck.copyWith(
+              currentRouteIndex: truck.currentRouteIndex + 1,
+              path: const [],
+              pathIndex: 0,
+            );
+          }
+          return truck.copyWith(path: const [], pathIndex: 0);
+        }
+        path = found;
         pathIndex = 0;
       }
 
@@ -1405,6 +1435,10 @@ class SimulationEngine extends StateNotifier<SimulationState> {
          nextStatus = TruckStatus.traveling;
       }
 
+      // Arriving home on the path makes the truck idle, and idle trucks are skipped
+      // above. So a pending route is applied here, as the arrival check above does.
+      final arrivedHome = !isRoutingToMachine && currentPathIndex >= path.length;
+      final applyPending = arrivedHome && truck.pendingRoute.isNotEmpty;
       return truck.copyWith(
         status: nextStatus,
         currentX: simX,
@@ -1413,6 +1447,9 @@ class SimulationEngine extends StateNotifier<SimulationState> {
         targetY: targetY,
         path: path,
         pathIndex: currentPathIndex,
+        route: applyPending ? truck.pendingRoute : truck.route,
+        pendingRoute: applyPending ? const [] : truck.pendingRoute,
+        currentRouteIndex: applyPending ? truck.pendingRoute.length : truck.currentRouteIndex,
       );
     }).toList();
   }
@@ -1703,11 +1740,28 @@ class SimulationEngine extends StateNotifier<SimulationState> {
         final warehouseRoadY = state.warehouseRoadY ?? 4.0;
         
         if (isTruckEmpty || !hasMoreDestinations || !remainingDestinationsNeedItems) {
-          // Truck is empty OR last destination completed OR no remaining destinations need items - return to warehouse
+          // Truck is empty OR last destination completed OR no remaining destinations need items - return to warehouse.
+          // Stops still short of stock are kept as the pending route, so the next run
+          // after a reload serves them, and the player is told.
+          final unservedStops = <String>[];
+          for (int routeIdx = truck.currentRouteIndex + 1; routeIdx < truck.route.length; routeIdx++) {
+            final stopId = truck.route[routeIdx];
+            final stop = updatedMachines.where((m) => m.id == stopId).firstOrNull;
+            if (stop != null && _needsStock(stop)) unservedStops.add(stopId);
+          }
+          if (unservedStops.isNotEmpty) {
+            _truckNotices.add(
+              '🚚 ${truck.name} ran out of stock: ${unservedStops.length} stop(s) kept for the next run.',
+            );
+          }
           updatedTrucks[i] = truck.copyWith(
             inventory: updatedTruckInventory,
             status: TruckStatus.traveling,
             currentRouteIndex: truck.route.length, // Mark route as complete
+            pendingRoute: [
+              ...unservedStops,
+              ...truck.pendingRoute.where((id) => !unservedStops.contains(id)),
+            ],
             targetX: warehouseRoadX,
             targetY: warehouseRoadY,
             path: [], // Clear path so it recalculates to warehouse
