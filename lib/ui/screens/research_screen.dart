@@ -87,7 +87,8 @@ class ResearchScreen extends ConsumerWidget {
               child: GridView.builder(
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: MediaQuery.of(context).size.width > 600 ? 2 : 1,
-                  childAspectRatio: 2.5,
+                  // A fixed height, so each card has room for its text in landscape too.
+                  mainAxisExtent: 190,
                   crossAxisSpacing: 16,
                   mainAxisSpacing: 16,
                 ),

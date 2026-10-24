@@ -906,11 +906,16 @@ class HQDashboard extends ConsumerWidget {
                 children: [
                   Row(
                     children: [
-                      Text(
-                        title,
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
+                      // Title and count share the row, and shorten on a narrow screen.
+                      Flexible(
+                        child: Text(
+                          title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
+                          ),
                         ),
                       ),
                       SizedBox(width: ScreenUtils.relativeSize(context, AppConfig.spacingFactorSmall)),
@@ -922,12 +927,16 @@ class HQDashboard extends ConsumerWidget {
                         ),
                       ),
                       SizedBox(width: ScreenUtils.relativeSize(context, AppConfig.spacingFactorMedium)),
-                      Text(
-                        count,
-                        style: TextStyle(
-                          fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
-                          fontWeight: FontWeight.w600,
-                          color: Colors.blue.shade700,
+                      Flexible(
+                        child: Text(
+                          count,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: ScreenUtils.relativeFontSize(context, AppConfig.fontSizeFactorNormal),
+                            fontWeight: FontWeight.w600,
+                            color: Colors.blue.shade700,
+                          ),
                         ),
                       ),
                     ],

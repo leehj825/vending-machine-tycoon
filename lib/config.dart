@@ -121,7 +121,7 @@ class AppConfig {
   
   /// Truck selector card sizes (fleet manager screen)
   static const double truckCardWidthFactor = 0.15; // Card width as factor of screen width
-  static const double truckCardHeightFactor = 0.12; // Card container height as factor of smaller screen dimension
+  static const double truckCardHeightFactor = 0.24; // Card container height as factor of smaller screen dimension
   static const double truckCardPaddingFactor = spacingFactorSmall * 4; // 0.008 - Internal padding of truck card
   static const double truckCardBorderRadiusFactor = borderWidthFactorSmall; // 0.002 - Border radius of truck card
   static const double truckCardMarginHorizontalFactor = spacingFactorTiny; // 0.001 - Horizontal margin between cards
