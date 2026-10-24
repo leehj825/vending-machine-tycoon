@@ -100,7 +100,7 @@ class _VendingMachineTycoonAppState extends State<VendingMachineTycoonApp> with 
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Vending Machine Tycoon',
-      theme: VexTheme.dark,
+      theme: VexTheme.light,
       home: const MenuScreen(),
       debugShowCheckedModeBanner: false,
     );
