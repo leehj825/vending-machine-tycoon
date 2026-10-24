@@ -540,6 +540,7 @@ void _drawObjects(
 /// size, background or pixel ratio change.
 class LowPolyStaticLayer {
   ui.Image? _image;
+  bool _built = false;
   List<LowPolyObject>? _objects;
   LowPolyCamera? _camera;
   Size? _size;
@@ -547,6 +548,8 @@ class LowPolyStaticLayer {
   double? _pixelRatio;
 
   /// Returns the cached image, rebuilding it first when anything has changed.
+  /// Returns null when the image cannot be built, and the caller then draws
+  /// the scene directly.
   ui.Image? resolve({
     required List<LowPolyObject> objects,
     required LowPolyCamera camera,
@@ -554,7 +557,7 @@ class LowPolyStaticLayer {
     required Color background,
     required double pixelRatio,
   }) {
-    final valid = _image != null &&
+    final valid = _built &&
         identical(_objects, objects) &&
         identical(_camera, camera) &&
         _size == size &&
@@ -563,28 +566,39 @@ class LowPolyStaticLayer {
     if (valid) return _image;
 
     _image?.dispose();
-    final recorder = ui.PictureRecorder();
-    final canvas = Canvas(recorder);
-    canvas.scale(pixelRatio);
-    _drawObjects(canvas, size, objects, camera, background);
-    final picture = recorder.endRecording();
-    _image = picture.toImageSync(
-      (size.width * pixelRatio).ceil(),
-      (size.height * pixelRatio).ceil(),
-    );
-    picture.dispose();
-
+    _image = null;
+    _built = true;
     _objects = objects;
     _camera = camera;
     _size = size;
     _background = background;
     _pixelRatio = pixelRatio;
+    if (size.isEmpty || pixelRatio <= 0) return null;
+
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+    canvas.scale(pixelRatio);
+    _drawObjects(canvas, size, objects, camera, background);
+    final picture = recorder.endRecording();
+    try {
+      _image = picture.toImageSync(
+        (size.width * pixelRatio).ceil(),
+        (size.height * pixelRatio).ceil(),
+      );
+    } catch (error) {
+      // Drawing the scene directly is slower, but the map still shows.
+      debugPrint('Lowpoly city image could not be built: $error');
+      _image = null;
+    } finally {
+      picture.dispose();
+    }
     return _image;
   }
 
   void dispose() {
     _image?.dispose();
     _image = null;
+    _built = false;
     _objects = null;
   }
 }
@@ -615,6 +629,7 @@ class LowPolyPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    if (size.isEmpty) return;
     final cached = layer?.resolve(
       objects: objects,
       camera: camera,

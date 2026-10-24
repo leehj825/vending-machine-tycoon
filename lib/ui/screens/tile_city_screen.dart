@@ -1484,7 +1484,9 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen> with TickerProv
         return Stack(
           children: [
             if (use3D)
-              Positioned.fill(child: _build3DCity(isNight))
+              // Not Positioned: a Stack needs one unpositioned child to size itself,
+              // and without it the whole city collapses to nothing.
+              SizedBox.expand(child: _build3DCity(isNight))
             else
             InteractiveViewer(
               transformationController: _transformationController,
