@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+  <meta name="theme-color" content="#ffffff">
+  <title>Vending Machine Tycoon</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header>
+    <div class="brand">Vending Tycoon</div>
+    <div id="stats"></div>
+    <div class="controls">
+      <button id="pause" class="ctl" aria-label="Pause or play">❚❚</button>
+      <button id="speed" class="ctl" aria-label="Game speed">1×</button>
+    </div>
+  </header>
+  <div id="toast" class="toast" hidden></div>
+  <main>
+    <div id="city"></div>
+    <section id="panel"></section>
+  </main>
+  <script src="vendor/three.min.js"></script>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

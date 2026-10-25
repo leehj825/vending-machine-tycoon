@@ -1,17 +1,10 @@
-# Miscellaneous
+# Dependencies and build output
+node_modules/
+dist/
+android/
+ios/
+
+# Editors and OS files
 .DS_Store
-
-# Flutter/Dart/Pub related
-.dart_tool/
-.packages
-.pub/
-.flutter-plugins-dependencies
-build/
-build/*.apk
-build/**/*.apk
-build/*apk
-
-# Local tool installs (workspace-only)
-.flutter/
-.android-sdk/
-android/app/upload-keystore.jks
+.idea/
+*.iml

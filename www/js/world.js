@@ -1,0 +1,43 @@
+import { ZONE_IDS } from './products.js';
+
+// A small seeded random generator, so the same seed always makes the same city.
+export function seededRandom(seed) {
+  let t = seed >>> 0;
+  return () => {
+    t = (t + 0x6d2b79f5) >>> 0;
+    let r = t;
+    r = Math.imul(r ^ (r >>> 15), r | 1);
+    r ^= r + Math.imul(r ^ (r >>> 7), r | 61);
+    return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// The city is a grid of roads every fourth row and column, with blocks between them. Each
+// block tile is a building of some zone, or a patch of grass.
+export function generateCity(size, seed = 7) {
+  const random = seededRandom(seed);
+  const grid = [];
+  for (let y = 0; y < size; y++) {
+    const row = [];
+    for (let x = 0; x < size; x++) {
+      if (x % 4 === 0 || y % 4 === 0) {
+        row.push({ type: 'road' });
+      } else if (random() < 0.25) {
+        row.push({ type: 'grass' });
+      } else {
+        const zone = ZONE_IDS[Math.floor(random() * ZONE_IDS.length)];
+        row.push({ type: 'building', zone });
+      }
+    }
+    grid.push(row);
+  }
+  return grid;
+}
+
+export function cellAt(city, x, y) {
+  if (y < 0 || y >= city.length || x < 0 || x >= city[y].length) return null;
+  return city[y][x];
+}
+
+// Where the warehouse stands: the first road crossing, at the top left.
+export const WAREHOUSE_CELL = { x: 0, y: 0 };
