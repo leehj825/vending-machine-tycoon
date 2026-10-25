@@ -412,6 +412,8 @@ export function counterAttack(state, zone) {
   return result.ok ? ok(result.message) : fail(result.message);
 }
 
+export { salesFactor } from './rival.js';
+
 export function counterCost(state, zone) {
   return counterCostRule(state, zone);
 }
