@@ -1,9 +1,10 @@
 /* global THREE */
-// The city in three.js: a low-poly map with roads, grass, buildings and machines. Taps report
-// the grid cell that was touched; one-finger drags turn the view; pinch and wheel zoom.
+// The city in three.js: the map with its streets, buildings and machines, the people on it, and
+// the camera. Map view: taps pick a cell, drags turn the view, pinch and wheel zoom. Walk view:
+// a camera behind the player, drags turn the player, pinch zooms.
 import { ZONES } from './products.js';
 import { WAREHOUSE_CELL, cellAt } from './world.js';
-import { machineAt } from './sim.js';
+import { createFigure, poseFigure } from './figure.js';
 
 const COLORS = {
   road: 0x3a3d44,
@@ -15,6 +16,8 @@ const COLORS = {
   select: 0xffd54f,
 };
 const TAP_SLOP = 8;
+const WALK_DISTANCE = { start: 3.2, near: 1.4, far: 9 };
+const MAP_DISTANCE = { start: 20, near: 6, far: 40 };
 
 export function createCityView(container, onTap) {
   const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -32,13 +35,17 @@ export function createCityView(container, onTap) {
   const cityGroup = new THREE.Group();
   const machineGroup = new THREE.Group();
   const pickGroup = new THREE.Group();
-  scene.add(cityGroup, machineGroup, pickGroup);
+  const figureGroup = new THREE.Group();
+  scene.add(cityGroup, machineGroup, pickGroup, figureGroup);
 
-  const view = { target: new THREE.Vector3(7, 0, 7), yaw: 0.8, pitch: 0.9, distance: 20 };
-  const limits = { near: 6, far: 40 };
+  // The map view and the walk view share one camera: yaw and the target are common, the
+  // distance and pitch belong to the mode.
+  const cam = { target: new THREE.Vector3(7, 0, 7), yaw: 0.8, pitch: 0.9, distance: MAP_DISTANCE.start };
+  const walk = { on: false, follow: null, distance: WALK_DISTANCE.start };
   let city = null;
   let selected = null;
   let selectMesh = null;
+  const figures = new Map();
 
   const material = (color) => new THREE.MeshLambertMaterial({ color, flatShading: true });
   const box = (w, h, d, color, x, y, z) => {
@@ -47,7 +54,6 @@ export function createCityView(container, onTap) {
     return mesh;
   };
 
-  // Builds the static parts of a city: streets, grass, buildings, and the pick plates.
   function buildCity(grid) {
     clear(cityGroup);
     clear(pickGroup);
@@ -72,8 +78,9 @@ export function createCityView(container, onTap) {
       plate.userData.cell = { x, y };
       pickGroup.add(plate);
     }));
-    const depot = cellAt(grid, WAREHOUSE_CELL.x, WAREHOUSE_CELL.y);
-    if (depot) cityGroup.add(box(0.5, 0.4, 0.5, COLORS.warehouse, WAREHOUSE_CELL.x + 0.5, 0.25, WAREHOUSE_CELL.y + 0.5));
+    if (cellAt(grid, WAREHOUSE_CELL.x, WAREHOUSE_CELL.y)) {
+      cityGroup.add(box(0.5, 0.4, 0.5, COLORS.warehouse, WAREHOUSE_CELL.x + 0.5, 0.25, WAREHOUSE_CELL.y + 0.5));
+    }
     selectMesh = new THREE.Mesh(
       new THREE.PlaneGeometry(1, 1),
       new THREE.MeshBasicMaterial({ color: COLORS.select, transparent: true, opacity: 0.55, depthWrite: false }),
@@ -82,10 +89,9 @@ export function createCityView(container, onTap) {
     selectMesh.position.y = 0.13;
     selectMesh.visible = false;
     cityGroup.add(selectMesh);
-    view.target.set(grid.length / 2, 0, grid.length / 2);
+    cam.target.set(grid.length / 2, 0, grid.length / 2);
   }
 
-  // Machines and their takings, drawn on the building's front. Rebuilt when the machines change.
   function drawMachines(state) {
     clear(machineGroup);
     for (const m of state.machines) {
@@ -112,7 +118,6 @@ export function createCityView(container, onTap) {
     if (cell) selectMesh.position.set(cell.x + 0.5, 0.13, cell.y + 0.5);
   }
 
-  // Redraws the city when its map changes, and the machines when they change.
   function update(state) {
     if (state.city !== city) {
       city = state.city;
@@ -122,15 +127,62 @@ export function createCityView(container, onTap) {
     drawMachines(state);
   }
 
-  // Camera: orbit around the target, zoomed by distance, and clamped to a sensible range.
+  // The people: one figure per key, placed and posed each frame, and removed when they leave.
+  // people is a list of { key, x, z, yaw, pose, look }.
+  function drawPeople(people) {
+    const seen = new Set();
+    for (const person of people) {
+      seen.add(person.key);
+      let figure = figures.get(person.key);
+      if (!figure) {
+        figure = createFigure(person.look);
+        figures.set(person.key, figure);
+        figureGroup.add(figure.root);
+      }
+      poseFigure(figure, person.x, person.z, person.yaw, person.pose);
+    }
+    for (const [key, figure] of figures) {
+      if (seen.has(key)) continue;
+      figureGroup.remove(figure.root);
+      figure.dispose();
+      figures.delete(key);
+    }
+  }
+
+  // Walk view: the camera follows the player's spot, with the player's own facing.
+  function setWalking(on) {
+    walk.on = on;
+    if (on) {
+      walk.distance = WALK_DISTANCE.start;
+      cam.pitch = 0.5;
+    } else {
+      cam.distance = MAP_DISTANCE.start;
+      cam.pitch = 0.9;
+      cam.target.set(city ? city.length / 2 : 7, 0, city ? city.length / 2 : 7);
+    }
+  }
+
+  function follow(x, z) {
+    walk.follow = { x, z };
+  }
+
+  // The facing a player takes from the camera: straight away from it.
+  function walkFacing() {
+    return cam.yaw - Math.PI;
+  }
+
+  function cameraYaw() {
+    return cam.yaw;
+  }
+
   function applyCamera() {
-    const cp = Math.cos(view.pitch);
+    const cp = Math.cos(cam.pitch);
     camera.position.set(
-      view.target.x + view.distance * Math.sin(view.yaw) * cp,
-      view.target.y + view.distance * Math.sin(view.pitch),
-      view.target.z + view.distance * Math.cos(view.yaw) * cp,
+      cam.target.x + cam.distance * Math.sin(cam.yaw) * cp,
+      cam.target.y + cam.distance * Math.sin(cam.pitch),
+      cam.target.z + cam.distance * Math.cos(cam.yaw) * cp,
     );
-    camera.lookAt(view.target);
+    camera.lookAt(cam.target);
   }
 
   function resize() {
@@ -143,7 +195,8 @@ export function createCityView(container, onTap) {
     camera.updateProjectionMatrix();
   }
 
-  // Touch and mouse: one pointer drags the view, two pinch the zoom, and a short press picks.
+  // Pointers: one drags the view (in walk view it turns the player), two pinch the zoom, and a
+  // short press picks a cell (map view only).
   const pointers = new Map();
   let downAt = null;
   let moved = false;
@@ -166,8 +219,8 @@ export function createCityView(container, onTap) {
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (pointers.size === 1) {
       if (downAt && Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) > TAP_SLOP) moved = true;
-      view.yaw -= (e.clientX - prev.x) * 0.008;
-      view.pitch = Math.min(1.45, Math.max(0.35, view.pitch + (e.clientY - prev.y) * 0.006));
+      cam.yaw -= (e.clientX - prev.x) * 0.008;
+      if (!walk.on) cam.pitch = Math.min(1.45, Math.max(0.35, cam.pitch + (e.clientY - prev.y) * 0.006));
     } else if (pointers.size === 2 && pinch) {
       const now = distance();
       if (now > 0) zoom(pinch / now);
@@ -177,7 +230,7 @@ export function createCityView(container, onTap) {
   });
 
   const release = (e) => {
-    const wasTap = pointers.size === 1 && !moved && downAt;
+    const wasTap = pointers.size === 1 && !moved && downAt && !walk.on;
     pointers.delete(e.pointerId);
     pinch = null;
     if (wasTap && e.type === 'pointerup') pick(e.clientX, e.clientY);
@@ -196,7 +249,11 @@ export function createCityView(container, onTap) {
   }
 
   function zoom(factor) {
-    view.distance = Math.min(limits.far, Math.max(limits.near, view.distance * factor));
+    if (walk.on) {
+      walk.distance = Math.min(WALK_DISTANCE.far, Math.max(WALK_DISTANCE.near, walk.distance * factor));
+    } else {
+      cam.distance = Math.min(MAP_DISTANCE.far, Math.max(MAP_DISTANCE.near, cam.distance * factor));
+    }
   }
 
   const raycaster = new THREE.Raycaster();
@@ -209,18 +266,33 @@ export function createCityView(container, onTap) {
     if (hit) onTap(hit.object.userData.cell);
   }
 
-  window.addEventListener('resize', resize);
-  resize();
-  function frame() {
+  // Frame loop: the walk camera eases toward the player's spot, and the scene draws each frame.
+  let last = performance.now();
+  function frame(now) {
+    const dt = Math.min(0.1, (now - last) / 1000);
+    last = now;
+    if (walk.on && walk.follow) {
+      const k = 1 - Math.exp(-dt * 12);
+      cam.target.x += (walk.follow.x - cam.target.x) * k;
+      cam.target.z += (walk.follow.z - cam.target.z) * k;
+      cam.distance += (walk.distance - cam.distance) * k;
+    }
     applyCamera();
     renderer.render(scene, camera);
     requestAnimationFrame(frame);
   }
+
+  window.addEventListener('resize', resize);
+  resize();
   requestAnimationFrame(frame);
 
   return {
     update,
     setSelected,
-    machineAt: (state, cell) => machineAt(state, cell.x, cell.y),
+    drawPeople,
+    setWalking,
+    follow,
+    walkFacing,
+    cameraYaw,
   };
 }

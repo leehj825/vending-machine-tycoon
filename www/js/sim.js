@@ -3,6 +3,7 @@
 import { CONFIG } from './config.js';
 import { PRODUCTS, PRODUCT_IDS, ZONES } from './products.js';
 import { cellAt, generateCity, seededRandom, WAREHOUSE_CELL } from './world.js';
+import { machineFront } from './locomotion.js';
 
 const TICKS_PER_DAY = CONFIG.ticksPerHour * CONFIG.hoursPerDay;
 
@@ -64,6 +65,7 @@ export function machineAt(state, x, y) {
 export function buyMachine(state, x, y) {
   const cell = cellAt(state.city, x, y);
   if (!cell || cell.type !== 'building') return fail('Machines go on building tiles.');
+  if (!machineFront(state.city, x, y)) return fail('A machine needs a street beside it.');
   if (machineAt(state, x, y)) return fail('There is already a machine here.');
   if (state.cash < CONFIG.machinePrice) return fail('Not enough cash for a machine.');
   state.cash -= CONFIG.machinePrice;
@@ -78,6 +80,23 @@ export function buyMachine(state, x, y) {
     emptyHours: 0,
   });
   return ok(`${ZONES[cell.zone].name} machine installed.`);
+}
+
+// A passer-by buys one item from a machine that has stock. Their choice is random among the
+// products in stock, and it counts as a sale in every other way.
+export function sellToWalker(state, machineId) {
+  const machine = machineById(state, machineId);
+  if (!machine) return fail('No such machine.');
+  const options = PRODUCT_IDS.filter((p) => machine.stock[p] > 0);
+  if (options.length === 0) return fail('That machine is out of stock.');
+  const product = options[Math.floor(nextRandom(state) * options.length)];
+  const price = PRODUCTS[product].basePrice * machine.prices[product];
+  machine.stock[product] -= 1;
+  machine.cash += price;
+  state.today.sales[product] += 1;
+  state.today.revenue += price;
+  state.reputation += CONFIG.reputationGainPerSale;
+  return ok(`A passer-by bought ${PRODUCTS[product].name}.`);
 }
 
 export function setPrice(state, machineId, product, multiplier) {

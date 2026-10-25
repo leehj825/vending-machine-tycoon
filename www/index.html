@@ -14,11 +14,20 @@
     <div class="controls">
       <button id="pause" class="ctl" aria-label="Pause or play">❚❚</button>
       <button id="speed" class="ctl" aria-label="Game speed">1×</button>
+      <button id="walk" class="ctl" aria-label="Walk out into town">Walk</button>
     </div>
   </header>
   <div id="toast" class="toast" hidden></div>
   <main>
-    <div id="city"></div>
+    <div id="city">
+      <div id="walk-ui" hidden>
+        <div id="stick"><div id="knob"></div></div>
+        <button id="office" class="walk-ctl">Office</button>
+        <button id="run" class="walk-ctl" aria-pressed="false">Run</button>
+        <button id="talk" class="action" disabled>Talk</button>
+        <button id="collect" class="action" disabled>Collect</button>
+      </div>
+    </div>
     <section id="panel"></section>
   </main>
   <script src="vendor/three.min.js"></script>

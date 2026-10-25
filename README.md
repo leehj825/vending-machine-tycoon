@@ -10,7 +10,7 @@ git history before the commit "Replace the Flutter app with a web game".
 ## Running it
 
 ```bash
-npm test            # rules tests (node:test, no install needed)
+npm test            # rules and movement tests (node:test, no install needed)
 npm run serve       # then open http://localhost:8080
 ```
 
@@ -29,10 +29,16 @@ www/
   js/city3d.js      three.js city: map, machines, taps, drag and pinch camera
   js/ui.js          top bar and the City, Warehouse, Fleet and HQ panels
   js/save.js        save and load in local storage
+  js/locomotion.js  clip choice, pose blending, walls, touch range, paths (pure)
+  js/walk.js        the player and the walkers (pure)
+  js/figure.js      the three.js figure: 13 bones and the body parts
+  js/walkmode.js    walk mode: the stick, Talk, Collect, Run, Office
   js/main.js        starts the game and runs the clock
   vendor/three.min.js   three.js r160 (classic build)
   assets/           sound files and app icon, for later
 tests/sim.test.js   rules tests
+tests/walk.test.js  movement, walls, paths and walkers
+tools/build_clips.js  builds www/assets/clips.json from Nightfall Settlement's clips
 ```
 
 ## Current version (milestone 1)
@@ -50,18 +56,22 @@ tests/sim.test.js   rules tests
   reputation, up to +50%
 - Clock: 1 game day = 5 minutes real time (3,000 ticks at 10 ticks per second), with 1×, 2×, and 4×
 - Save every 30 seconds, at the end of each day, and when the page closes
+- Walk mode (Walk button): a third-person player walks the streets with a stick. Walking uses the
+  unarmed clips from Nightfall Settlement (walk, run, back, strafe). The player walks on grass and
+  roads, not into buildings. A drag turns the view and the player with it; pinch zooms.
+- Talk: the nearest walker in front and touching goes to the nearest machine with stock and buys one
+  item (a sale). Collect: take the cash from a machine that is touching and in front.
+- Walkers wander the roads on the right-hand side, in map view and in walk mode
 
 ## Planned (in the order of the design)
 
-1. Walking mode: a third-person player walks, talks to walkers, and collects from machines
-   (animations from Nightfall Settlement's unarmed clips), with a stick and a view drag
-2. Animated trucks on the map, and per-truck routes with efficiency ratings
+1. Animated trucks on the map, and per-truck routes with efficiency ratings
 3. Sandwich and salad spoilage
 4. Daily contracts (three each morning, with a reroll for $250)
 5. Theft and vandalism, with the Security upgrade
 6. Rival company by zone, with a counter-attack
 7. Research, rush hours, and machine upgrades (capacity, cooling, security, ad display)
-8. Walkers on the pavement and the town's animated life
+8. More town life: walkers buying from machines by themselves, crossings, and traffic
 9. Android package with Capacitor, and an APK in CI
 
 ## Economy reference
@@ -81,8 +91,14 @@ tests/sim.test.js   rules tests
 npm test
 ```
 
-The tests cover the rules: buying, pricing, sales, empty machines, restocking, collecting, the day
-close, and a save round trip.
+The tests cover the rules (buying, pricing, sales, empty machines, restocking, collecting, the day
+close, a save round trip) and the walking rules (clips, walls, touch range, paths, walkers).
+
+To rebuild the clip data from Nightfall Settlement's source:
+
+```bash
+node tools/build_clips.js <path to Nightfall-Settlement>
+```
 
 ## Android (planned)
 

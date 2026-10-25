@@ -1,19 +1,19 @@
-// Starts the game: loads or starts a save, runs the clock, and connects the city view to the
-// screens. The game clock runs on its own timer, so it keeps going while a panel is open.
+// Starts the game: loads or starts a save, runs the clock, the walk mode, and connects the city
+// view to the screens. The game clock runs on its own timer, so it keeps going while a panel is
+// open, and the walk mode runs on animation frames.
 import { CONFIG } from './config.js';
 import * as sim from './sim.js';
 import { loadGame, saveGame } from './save.js';
 import { createCityView } from './city3d.js';
 import { createUi } from './ui.js';
-
-const state = loadGame() || sim.newGame(Math.floor(Math.random() * 100000));
-let paused = false;
-let speeds = [1, 2, 4];
-let speedIndex = 0;
+import { createWalkMode } from './walkmode.js';
 
 const $ = (id) => document.getElementById(id);
 const toastEl = $('toast');
 let toastTimer = null;
+let paused = false;
+const speeds = [1, 2, 4];
+let speedIndex = 0;
 
 function toast(message, ok) {
   toastEl.textContent = message;
@@ -23,46 +23,94 @@ function toast(message, ok) {
   toastTimer = setTimeout(() => { toastEl.hidden = true; }, 2500);
 }
 
-// Runs a game action, saves when it worked, and shows the result.
-function act(run) {
-  const result = run();
-  if (result.ok) saveGame(state);
-  ui.showMessage(result);
+async function start() {
+  const clips = await fetch('assets/clips.json').then((r) => r.json());
+  const state = loadGame() || sim.newGame(Math.floor(Math.random() * 100000));
+
+  // Runs a game action, saves when it worked, and shows the result.
+  function act(run) {
+    const result = run();
+    if (result.ok) saveGame(state);
+    ui.showMessage(result);
+    city.update(state);
+    return result;
+  }
+
+  const ui = createUi({ panel: $('panel'), stats: $('stats'), toast, act, state });
+
+  const city = createCityView($('city'), (cell) => {
+    city.setSelected(cell);
+    ui.select(cell);
+  });
+
+  const walk = createWalkMode({
+    city,
+    getState: () => state,
+    clips,
+    sale: {
+      collect: (machineId) => act(() => sim.collectCash(state, machineId)),
+      // A passer-by's purchase saves quietly, without a message for every sale.
+      walkerBuys: (machineId) => {
+        const result = sim.sellToWalker(state, machineId);
+        if (result.ok) {
+          saveGame(state);
+          city.update(state);
+        }
+        return result;
+      },
+    },
+    say: (message) => ui.showMessage({ ok: true, message }),
+    buttons: {
+      show: (on) => { $('walk-ui').hidden = !on; $('walk').disabled = on; },
+      setTalk: (on) => { $('talk').disabled = !on; },
+      setCollect: (on) => { $('collect').disabled = !on; },
+      setRun: (on) => { $('run').setAttribute('aria-pressed', String(on)); },
+      stick: $('stick'),
+      knob: $('knob'),
+      talkEl: $('talk'),
+      collectEl: $('collect'),
+      runEl: $('run'),
+      officeEl: $('office'),
+    },
+  });
+
+  $('walk').addEventListener('click', () => walk.enter());
+  $('pause').addEventListener('click', () => {
+    paused = !paused;
+    $('pause').textContent = paused ? '▶' : '❚❚';
+  });
+  $('speed').addEventListener('click', () => {
+    speedIndex = (speedIndex + 1) % speeds.length;
+    $('speed').textContent = `${speeds[speedIndex]}×`;
+  });
+
+  // The clock: a few ticks per interval at higher speeds. Saves when a day closes.
+  setInterval(() => {
+    if (paused) return;
+    const day = state.day;
+    for (let i = 0; i < speeds[speedIndex]; i++) sim.tick(state);
+    if (state.day !== day) saveGame(state);
+  }, CONFIG.tickMs);
+
+  setInterval(() => {
+    ui.refresh(state);
+    city.update(state);
+  }, 500);
+
+  setInterval(() => saveGame(state), 30000);
+  window.addEventListener('pagehide', () => saveGame(state));
+
+  let lastFrame = performance.now();
+  function frame(now) {
+    const dt = Math.min(0.1, (now - lastFrame) / 1000);
+    lastFrame = now;
+    walk.frame(dt);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
+  ui.render(state);
   city.update(state);
-  return result;
 }
 
-const ui = createUi({ panel: $('panel'), stats: $('stats'), toast, act, state });
-
-const city = createCityView($('city'), (cell) => {
-  city.setSelected(cell);
-  ui.select(cell);
-});
-
-$('pause').addEventListener('click', () => {
-  paused = !paused;
-  $('pause').textContent = paused ? '▶' : '❚❚';
-});
-$('speed').addEventListener('click', () => {
-  speedIndex = (speedIndex + 1) % speeds.length;
-  $('speed').textContent = `${speeds[speedIndex]}×`;
-});
-
-// The clock: a few ticks per interval at higher speeds. Saves when a day closes.
-setInterval(() => {
-  if (paused) return;
-  const day = state.day;
-  for (let i = 0; i < speeds[speedIndex]; i++) sim.tick(state);
-  if (state.day !== day) saveGame(state);
-}, CONFIG.tickMs);
-
-setInterval(() => {
-  ui.refresh(state);
-  city.update(state);
-}, 500);
-
-setInterval(() => saveGame(state), 30000);
-window.addEventListener('pagehide', () => saveGame(state));
-
-ui.render(state);
-city.update(state);
+start();

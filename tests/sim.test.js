@@ -133,3 +133,18 @@ test('the day closes after 24 hours and keeps the sales history', () => {
   assert.equal(state.history.length, 1);
   assert.equal(state.tick, 0);
 });
+
+test('a passer-by buys one item from a stocked machine and not from an empty one', () => {
+  const state = sim.newGame(7);
+  const spot = buildingCell(state);
+  sim.buyMachine(state, spot.x, spot.y);
+  const machine = state.machines[0];
+  assert.equal(sim.sellToWalker(state, machine.id).ok, false, 'empty machine');
+  fullStock(machine, 3);
+  const before = PRODUCT_IDS.reduce((n, p) => n + machine.stock[p], 0);
+  const cash = machine.cash;
+  assert.equal(sim.sellToWalker(state, machine.id).ok, true);
+  const after = PRODUCT_IDS.reduce((n, p) => n + machine.stock[p], 0);
+  assert.equal(after, before - 1);
+  assert.ok(machine.cash > cash);
+});
