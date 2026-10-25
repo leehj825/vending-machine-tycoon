@@ -280,3 +280,29 @@ test('security costs cash once, and a broken machine sells nothing to passers-by
   machine.condition = 4;
   assert.equal(sim.sellToWalker(state, machine.id).ok, false);
 });
+
+test('the rival grows fastest where you have no machines, and a counter-attack costs cash', () => {
+  const state = sim.newGame(7);
+  const spot = buildingCell(state);
+  sim.buyMachine(state, spot.x, spot.y);
+  const zone = state.machines[0].zone;
+  const other = Object.keys(state.rival).find((z) => z !== zone);
+  for (let i = 0; i < CONFIG.ticksPerHour * CONFIG.hoursPerDay; i++) sim.tick(state);
+  assert.ok(state.rival[other] > state.rival[zone], 'the unguarded zone grows faster');
+  state.cash = 5000; // a counter-attack costs about $1,500 or more
+  const cash = state.cash;
+  const before = state.rival[other];
+  assert.equal(sim.counterAttack(state, other).ok, true);
+  assert.ok(state.rival[other] < before);
+  assert.ok(state.cash < cash);
+});
+
+test('a strong rival cuts sales in its zone', () => {
+  const state = sim.newGame(7);
+  const spot = buildingCell(state);
+  sim.buyMachine(state, spot.x, spot.y);
+  const machine = state.machines[0];
+  const clear = sim.saleChance(state, machine, 'soda');
+  state.rival[machine.zone] = 0.75;
+  assert.ok(sim.saleChance(state, machine, 'soda') < clear);
+});

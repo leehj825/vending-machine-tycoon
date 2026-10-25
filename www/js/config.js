@@ -44,5 +44,16 @@ export const CONFIG = {
   securityRiskFactor: 0.35,
   securityPenaltyFactor: 0.5,
   repairCostPerLevel: 150,
+  // The rival company, by zone type. Presence grows each day, fastest where you are absent.
+  rivalMaxPresence: 0.75,
+  rivalBaseDailyGrowth: 0.04,
+  rivalResistancePerMachine: 0.18,
+  rivalMinGrowthShare: 0.12,
+  // A rival at full strength cuts sales by up to this much.
+  rivalMaxSalesCut: 0.45,
+  rivalSalesCutPerPresence: 0.6,
+  rivalCounterBaseCost: 1500,
+  rivalCounterCostPerPresence: 3000,
+  rivalCounterReduction: 0.3,
   saveKey: 'vending_tycoon_save_v2',
 };

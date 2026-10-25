@@ -5,6 +5,7 @@ import { PRODUCTS, PRODUCT_IDS, ZONES } from './products.js';
 import { cellAt, generateCity, seededRandom, WAREHOUSE_CELL } from './world.js';
 import { findPath, machineFront, walkerWalkable } from './locomotion.js';
 import { makeContracts, settleContracts, swapContract as swapContractRule } from './contracts.js';
+import { counterAttack as counterAttackRule, counterCost as counterCostRule, growRival, newRival, salesFactor } from './rival.js';
 
 const TICKS_PER_DAY = CONFIG.ticksPerHour * CONFIG.hoursPerDay;
 // Machine condition, best first, and how much each condition sells (broken sells nothing).
@@ -27,6 +28,7 @@ export function newGame(seed = 7) {
     warehouseDay: Object.fromEntries(PRODUCT_IDS.map((p) => [p, 1])),
     spoiled: 0,
     contracts: [],
+    rival: newRival(),
     news: [],
     nextId: 1,
     // Sales and revenue per product for today and the last seven days.
@@ -276,7 +278,7 @@ export function saleChance(state, machine, product) {
   const perHour = Math.min(
     0.95,
     PRODUCTS[product].demand * zoneDemand * priceFactor * CONDITION_SALES[machine.condition]
-      * (1 + reputationBonus(state.reputation)),
+      * salesFactor(state, machine.zone) * (1 + reputationBonus(state.reputation)),
   );
   return 1 - Math.pow(1 - perHour, 1 / CONFIG.ticksPerHour);
 }
@@ -405,6 +407,15 @@ function announce(state, messages) {
   state.news = state.news.slice(0, 6);
 }
 
+export function counterAttack(state, zone) {
+  const result = counterAttackRule(state, zone);
+  return result.ok ? ok(result.message) : fail(result.message);
+}
+
+export function counterCost(state, zone) {
+  return counterCostRule(state, zone);
+}
+
 export function swapContract(state, id) {
   const result = swapContractRule(state, id, () => nextRandom(state));
   return result.ok ? ok(result.message) : fail(result.message);
@@ -418,6 +429,7 @@ function endDay(state) {
   state.day += 1;
   state.tick = 0;
   state.contracts = makeContracts(state, () => nextRandom(state));
+  growRival(state);
 }
 
 // Total worth: cash, cash waiting in machines, and the warehouse stock at its cost.

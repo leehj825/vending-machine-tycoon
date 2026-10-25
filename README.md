@@ -61,6 +61,12 @@ tools/build_clips.js  builds www/assets/clips.json from Nightfall Settlement's c
 - Daily contracts: three each morning (a revenue target, a product target, and a volume target),
   scaled to recent takings and the machine count. A completed contract pays cash and +15 reputation.
   An unfinished one can be swapped once for $250 (HQ tab)
+- Theft and vandalism: each hour a machine may be targeted. With cash in it, a machine may be robbed
+  of part of its takings; otherwise it is vandalized (condition falls, and a broken machine sells
+  nothing until repaired). Risk rises at night, with the cash in the machine, and in riskier zones.
+  Security ($400 per machine) cuts the risk and halves the empty-machine penalty
+- Rival company, by zone type: presence grows each day, fastest where you have few machines, and cuts
+  sales by up to 45%. A counter-attack (HQ tab) pushes it back, at a cost, and it grows again
 - Clock: 1 game day = 5 minutes real time (3,000 ticks at 10 ticks per second), with 1×, 2×, and 4×
 - Save every 30 seconds, at the end of each day, and when the page closes
 - Walk mode (Walk button): a third-person player walks the streets with a stick. Walking uses the
@@ -72,11 +78,9 @@ tools/build_clips.js  builds www/assets/clips.json from Nightfall Settlement's c
 
 ## Planned (in the order of the design)
 
-1. Theft and vandalism, with the Security upgrade
-2. Rival company by zone, with a counter-attack
-3. Research, rush hours, and machine upgrades (capacity, cooling, security, ad display)
-4. More town life: walkers buying from machines by themselves, crossings, and traffic
-5. Android package with Capacitor, and an APK in CI
+1. Research, rush hours, and machine upgrades (capacity, cooling, security, ad display)
+2. More town life: walkers buying from machines by themselves, crossings, and traffic
+3. Android package with Capacitor, and an APK in CI
 
 ## Economy reference
 

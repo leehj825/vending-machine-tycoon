@@ -1,7 +1,7 @@
 // The screens around the city: the top bar, and the City, Warehouse, Fleet and HQ panels.
 // Buttons carry data-act attributes; one click handler routes them to the game actions.
 import { CONFIG } from './config.js';
-import { PRODUCTS, PRODUCT_IDS, ZONES } from './products.js';
+import { PRODUCTS, PRODUCT_IDS, ZONE_IDS, ZONES } from './products.js';
 import * as sim from './sim.js';
 import { cellAt, WAREHOUSE_CELL } from './world.js';
 import { CONTRACT_RULES, progressOf as contractProgress } from './contracts.js';
@@ -157,6 +157,17 @@ export function createUi({ panel, stats, toast, act, state: current }) {
     }).join('');
   }
 
+  function rivalRows(state) {
+    return ZONE_IDS.map((zone) => {
+      const presence = Math.round(state.rival[zone] * 100);
+      const cut = Math.round((1 - sim.salesFactor(state, zone)) * 100);
+      const attack = state.rival[zone] > 0
+        ? `<button data-act="counter" data-zone="${zone}" ${state.cash < sim.counterCost(state, zone) ? 'disabled' : ''}>Counter ${wholeMoney(sim.counterCost(state, zone))}</button>`
+        : '';
+      return `<tr><td>${ZONES[zone].name}</td><td>${presence}% (sales −${cut}%)</td><td>${attack}</td></tr>`;
+    }).join('');
+  }
+
   function hqPanel(state) {
     const today = PRODUCT_IDS.reduce((n, p) => n + state.today.sales[p], 0);
     const history = state.history.map((d) => `<tr><td>Day ${d.day}</td><td>${money(d.revenue)}</td></tr>`).join('');
@@ -170,6 +181,8 @@ export function createUi({ panel, stats, toast, act, state: current }) {
         <tr><th>Today's sales</th><td>${today} items, ${money(state.today.revenue)}</td></tr>
         <tr><th>Spoiled so far</th><td>${state.spoiled} items</td></tr>
       </table>
+      <h3>Rival company</h3>
+      <table>${rivalRows(state)}</table>
       <h3>Contracts</h3>
       <table>${contractRows(state)}</table>
       ${news ? `<h3>News</h3><ul class="news">${news}</ul>` : ''}
@@ -199,6 +212,7 @@ export function createUi({ panel, stats, toast, act, state: current }) {
       'buy-truck': () => act(() => sim.buyTruck(latest)),
       dispatch: () => act(() => sim.dispatchTruck(latest)),
       swap: () => act(() => sim.swapContract(latest, d.id)),
+      counter: () => act(() => sim.counterAttack(latest, d.zone)),
     };
     actions[d.act]?.();
   }
