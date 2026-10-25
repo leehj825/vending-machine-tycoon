@@ -32,6 +32,8 @@ export function newGame(seed = 7) {
     research: Object.fromEntries(Object.keys(CONFIG.research).map((r) => [r, false])),
     hype: 0,
     rushTicks: 0,
+    // Vandals kicking machines: each one is a machine being attacked until it is stopped.
+    attacks: [],
     news: [],
     nextId: 1,
     // Sales and revenue per product for today and the last seven days.
@@ -356,7 +358,7 @@ export function securityChance(machine, hour) {
     * (machine.security ? CONFIG.securityRiskFactor : 1);
 }
 
-// A targeted machine is robbed, or vandalized. Nothing in the till means vandalism.
+// A targeted machine is robbed, or a vandal comes to kick it. Cash in the till can be taken.
 function targetMachine(state, machine) {
   const robbed = machine.cash > 0 && nextRandom(state) < CONFIG.theftShare;
   if (robbed) {
@@ -366,7 +368,52 @@ function targetMachine(state, machine) {
     announce(state, [`A machine was robbed: $${taken.toFixed(2)} gone.`]);
     return;
   }
-  if (machine.condition < CONDITIONS.length - 1) {
+  if (attackOn(state, machine.id)) return;
+  state.attacks ??= [];
+  state.attacks.push({ id: state.nextId++, machineId: machine.id, kicking: false, progress: 0 });
+  announce(state, ['Someone is kicking a machine. Talk to them to stop it.']);
+}
+
+export function attackOn(state, machineId) {
+  return (state.attacks ?? []).find((a) => a.machineId === machineId) || null;
+}
+
+function findAttack(state, attackId) {
+  return (state.attacks ?? []).find((a) => a.id === attackId) || null;
+}
+
+// A vandal has reached the machine and started kicking it.
+export function beginKick(state, attackId) {
+  const attack = findAttack(state, attackId);
+  if (attack) attack.kicking = true;
+}
+
+// Talking to the vandal stops the attack: the machine is left alone.
+export function stopAttack(state, attackId) {
+  if (!findAttack(state, attackId)) return fail('They have already moved on.');
+  state.attacks = state.attacks.filter((a) => a.id !== attackId);
+  announce(state, ['A vandal was talked out of kicking a machine.']);
+  return { ok: true, message: 'You talked them out of it. The machine is safe.' };
+}
+
+// Kicking goes on while the vandal is at the machine. Once it has gone on long enough, the
+// machine is vandalized. Called every frame with the seconds that passed.
+export function advanceAttacks(state, dt) {
+  for (const attack of state.attacks ?? []) {
+    if (attack.kicking) attack.progress += dt;
+  }
+  for (const attack of (state.attacks ?? []).filter((a) => a.progress >= CONFIG.vandalKickSeconds)) {
+    completeAttack(state, attack.id);
+  }
+}
+
+// The attack lands: the machine is vandalized, and the attack is over.
+export function completeAttack(state, attackId) {
+  const attack = findAttack(state, attackId);
+  if (!attack) return;
+  state.attacks = state.attacks.filter((a) => a.id !== attackId);
+  const machine = machineById(state, attack.machineId);
+  if (machine && machine.condition < CONDITIONS.length - 1) {
     machine.condition += 1;
     announce(state, [`A machine was vandalized: now ${CONDITIONS[machine.condition]}.`]);
   }

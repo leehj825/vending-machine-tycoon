@@ -3,7 +3,9 @@
 // open, and the walk mode runs on animation frames.
 import { CONFIG } from './config.js';
 import * as sim from './sim.js';
-import { loadGame, saveGame } from './save.js';
+import { loadSlot, saveGame, setActiveSlot } from './save.js';
+import { goToMenu, initMenu, pickedSlot } from './menu.js';
+import { applyVolumes, playMusic, playSound, unlockAudio } from './audio.js';
 import { createCityView } from './city3d.js';
 import { createUi } from './ui.js';
 import { createWalkMode } from './walkmode.js';
@@ -30,9 +32,10 @@ function toast(message, ok) {
   toastTimer = setTimeout(() => { toastEl.hidden = true; }, 2500);
 }
 
-async function start() {
+// Plays the game in a slot: loads its save, or starts a new game if the slot is empty.
+async function start(slot) {
   const clips = await fetch('assets/clips.json').then((r) => r.json());
-  const state = loadGame() || sim.newGame(Math.floor(Math.random() * 100000));
+  const state = loadSlot(slot) || sim.newGame(Math.floor(Math.random() * 100000));
 
   // Runs a game action, saves when it worked, and shows the result.
   function act(run) {
@@ -55,7 +58,11 @@ async function start() {
     getState: () => state,
     clips,
     sale: {
-      collect: (machineId) => act(() => sim.collectCash(state, machineId)),
+      collect: (machineId) => {
+        const result = act(() => sim.collectCash(state, machineId));
+        if (result.ok) playSound('coin_collect');
+        return result;
+      },
       // A passer-by's purchase saves quietly, without a message for every sale.
       walkerBuys: (machineId) => {
         const result = sim.sellToWalker(state, machineId);
@@ -64,6 +71,16 @@ async function start() {
           city.update(state);
         }
         return result;
+      },
+    },
+    // A vandal kicking a machine: talking to them stops it; if they kick on, it is vandalized.
+    vandal: {
+      beginKick: (id) => sim.beginKick(state, id),
+      stop: (id) => act(() => sim.stopAttack(state, id)),
+      finish: (id) => {
+        sim.completeAttack(state, id);
+        saveGame(state);
+        city.update(state);
       },
     },
     say: (message) => ui.showMessage({ ok: true, message }),
@@ -85,6 +102,10 @@ async function start() {
   $('walk').addEventListener('click', () => {
     if (!document.body.classList.contains('panel-hidden')) dockToggle.click();
     walk.enter();
+  });
+  $('to-menu').addEventListener('click', () => {
+    saveGame(state);
+    goToMenu();
   });
 
   // The clock always runs. Saves when a day closes.
@@ -108,6 +129,7 @@ async function start() {
     const dt = Math.min(0.1, (now - lastFrame) / 1000);
     lastFrame = now;
     sim.moveTrucks(state, dt);
+    sim.advanceAttacks(state, dt);
     city.drawVehicles(state.trucks.filter((t) => t.trip).map((t) => ({ key: `t${t.id}`, ...truckPosition(state, t) })));
     walk.frame(dt);
     requestAnimationFrame(frame);
@@ -118,5 +140,22 @@ async function start() {
   city.update(state);
 }
 
-start();
+// The page opens on the menu, or straight into a game when a slot was picked.
+const slot = pickedSlot();
+if (slot) {
+  setActiveSlot(slot);
+  document.getElementById('menu').hidden = true;
+  playMusic('game_background');
+  start(slot);
+} else {
+  initMenu();
+}
 startAds();
+
+// Browsers only let sound start after a tap: every tap unlocks sound, and every button makes
+// its click.
+window.addEventListener('pointerdown', unlockAudio, { capture: true });
+document.addEventListener('click', (event) => {
+  if (event.target.closest('button')) playSound('button');
+});
+applyVolumes();

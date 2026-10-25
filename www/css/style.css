@@ -201,3 +201,37 @@ td.buttons button { padding: 4px 8px; min-height: 32px; margin-left: 4px; }
 #run[aria-pressed="true"] { background: var(--ink); color: #fff; }
 
 .news { margin: 0; padding-left: 18px; color: var(--muted); }
+
+/* The main menu: a full-screen page over the game, with a card for each screen. */
+.menu {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  padding-top: calc(16px + var(--ad-top) + env(safe-area-inset-top, 0px));
+  padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  background: var(--soft);
+  overflow-y: auto;
+}
+.menu[hidden] { display: none; }
+.menu-screen {
+  width: min(420px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 20px;
+}
+.menu-screen[hidden] { display: none; }
+.menu-screen h2 { text-align: center; margin: 0 0 4px; }
+.menu-btn { font-size: 16px; padding: 12px; min-height: 48px; }
+.menu-btn.primary { background: var(--gold); border-color: var(--gold); color: #fff; font-weight: 700; }
+.menu-btn.slot { text-align: left; font-size: 15px; }
+.menu-slider { display: flex; flex-direction: column; gap: 6px; font-weight: 600; }
+.menu-slider output { float: right; color: var(--muted); font-weight: 400; }
+.menu-slider input { width: 100%; }

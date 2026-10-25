@@ -255,18 +255,41 @@ test('night and cash in the machine raise the risk; security lowers it', () => {
   assert.ok(sim.securityChance(machine, 12) < day, 'security lowers it');
 });
 
-test('a targeted machine with nothing in it is vandalized, and repair restores it', () => {
-  const state = sim.newGame(7);
+function attackedMachine(state) {
   const spot = buildingCell(state);
   sim.buyMachine(state, spot.x, spot.y);
   const machine = state.machines[0];
   machine.cash = 0;
-  for (let i = 0; i < 100000 && machine.condition === 0; i++) sim.tick(state);
+  for (let i = 0; i < 100000 && state.attacks.length === 0; i++) sim.tick(state);
+  assert.equal(state.attacks.length, 1, 'a vandal comes');
+  return { machine, attack: state.attacks[0] };
+}
+
+test('a vandal kicking a machine vandalizes it, and repair restores it', () => {
+  const state = sim.newGame(7);
+  const { machine, attack } = attackedMachine(state);
+  sim.advanceAttacks(state, CONFIG.vandalKickSeconds * 2);
+  assert.equal(machine.condition, 0, 'nothing happens until the vandal kicks');
+  sim.beginKick(state, attack.id);
+  sim.advanceAttacks(state, CONFIG.vandalKickSeconds);
   assert.ok(machine.condition > 0, 'vandalized');
+  assert.equal(state.attacks.length, 0);
   const cash = state.cash;
   assert.equal(sim.repairMachine(state, machine.id).ok, true);
   assert.equal(machine.condition, 0);
   assert.ok(state.cash < cash);
+});
+
+test('talking to a kicking vandal stops the attack before the machine is hurt', () => {
+  const state = sim.newGame(7);
+  const { machine, attack } = attackedMachine(state);
+  sim.beginKick(state, attack.id);
+  sim.advanceAttacks(state, CONFIG.vandalKickSeconds / 2);
+  assert.equal(sim.stopAttack(state, attack.id).ok, true);
+  sim.advanceAttacks(state, CONFIG.vandalKickSeconds * 2);
+  assert.equal(machine.condition, 0, 'the machine is safe');
+  assert.equal(state.attacks.length, 0);
+  assert.equal(sim.stopAttack(state, attack.id).ok, false, 'the vandal has gone');
 });
 
 test('security costs cash once, and a broken machine sells nothing to passers-by', () => {

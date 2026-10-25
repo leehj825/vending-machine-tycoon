@@ -29,6 +29,8 @@ export const CONFIG = {
   truckSpeed: 1.5,
   // Thrown out per expired item.
   disposalCostPerItem: 0.5,
+  // Seconds a vandal kicks a machine before it is vandalized. Talking to them stops it sooner.
+  vandalKickSeconds: 12,
   // Theft and vandalism, each hour a machine may be targeted.
   securityBaseHourlyChance: 0.003,
   nightMultiplier: 3,

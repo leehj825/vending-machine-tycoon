@@ -1,6 +1,7 @@
 // Walk mode: the player leaves the office and walks the streets. The stick walks, a drag turns
-// the view (and the player with it), Talk sends a nearby walker to buy from a machine, and Collect
-// takes the cash from a machine that is close and in front. Also keeps the walkers on the streets.
+// the view (and the player with it), Talk sends a nearby walker to buy from a machine or stops a
+// vandal, and Collect takes the cash from a machine that is close and in front. Also keeps the
+// walkers on the streets, and sends a vandal to any machine under attack.
 import { machineFront, inFront, samplePose, newPose } from './locomotion.js';
 import { movePlayer, newPlayer, sendWalker, spawnWalkers, stepWalker } from './walk.js';
 import { seededRandom } from './world.js';
@@ -21,7 +22,7 @@ const WALKER_LOOKS = [
   { shirt: 0xecf0f1, hat: 0x4a4a4a },
 ];
 
-export function createWalkMode({ city, getState, clips, sale, say, buttons }) {
+export function createWalkMode({ city, getState, clips, sale, vandal, say, buttons }) {
   const random = seededRandom(Date.now() % 100000);
   const walkers = spawnWalkers(getState().city, 8, random, WALKER_LOOKS);
   const mode = { active: false, player: null, stick: { x: 0, y: 0, id: null }, running: false };
@@ -91,6 +92,10 @@ export function createWalkMode({ city, getState, clips, sale, say, buttons }) {
   function talk() {
     const walker = nearWalker();
     if (!walker) return;
+    if (walker.attackId) {
+      vandal.stop(walker.attackId);
+      return;
+    }
     if (walker.task) {
       say('They are already on their way somewhere.');
       return;
@@ -114,7 +119,7 @@ export function createWalkMode({ city, getState, clips, sale, say, buttons }) {
 
   // Town life: a walker with nothing to do now and then goes to buy from the nearest machine.
   function errands(w, dt) {
-    if (w.task) return;
+    if (w.task || w.attackId) return;
     if (w.errandIn === undefined) w.errandIn = ERRAND_GAP_MIN + random() * (ERRAND_GAP_MAX - ERRAND_GAP_MIN);
     w.errandIn -= dt;
     if (w.errandIn > 0) return;
@@ -123,14 +128,69 @@ export function createWalkMode({ city, getState, clips, sale, say, buttons }) {
     if (machine) sendWalker(w, getState().city, machine);
   }
 
+  // Each machine under attack gets a vandal: the nearest free walker goes to it and kicks.
+  function dispatchVandals(state) {
+    for (const attack of state.attacks ?? []) {
+      if (walkers.some((w) => w.attackId === attack.id)) continue;
+      const machine = state.machines.find((m) => m.id === attack.machineId);
+      if (!machine) {
+        vandal.finish(attack.id);
+        continue;
+      }
+      const distance = (w) => Math.hypot(machine.x + 0.5 - w.x, machine.y + 0.5 - w.z);
+      const free = walkers.filter((w) => !w.attackId && !w.task && !w.kicking).sort((a, b) => distance(a) - distance(b));
+      if (free.length === 0) return;
+      const sent = free.find((w) => {
+        if (!sendWalker(w, state.city, machine)) return false;
+        w.task.attackId = attack.id;
+        w.attackId = attack.id;
+        return true;
+      });
+      // No walker can get there: the attack lands without a vandal in sight.
+      if (!sent) vandal.finish(attack.id);
+    }
+  }
+
+  // A vandal at the machine turns to it and kicks until the attack ends.
+  function startKick(w, arrived, state) {
+    const machine = state.machines.find((m) => m.id === arrived.machineId);
+    const front = machine ? machineFront(state.city, machine.x, machine.y) : null;
+    w.x = w.cell.x + 0.5;
+    w.z = w.cell.y + 0.5;
+    if (front) w.facing = Math.atan2(front.anchor.x - w.x, front.anchor.z - w.z);
+    w.kicking = true;
+    w.kickPhase = 0;
+    vandal.beginKick(arrived.attackId);
+  }
+
+  // A vandal whose attack has ended (talked out of it, or it landed) goes back to the streets.
+  function releaseIfGone(w, state) {
+    if (!w.attackId) return;
+    if ((state.attacks ?? []).some((a) => a.id === w.attackId)) return;
+    w.attackId = null;
+    w.kicking = false;
+    if (w.task?.attackId) {
+      w.task = null;
+      w.path = [];
+    }
+  }
+
   // Frame update: the walkers always walk; the player walks only in walk mode.
   function frame(dt) {
     const state = getState();
     const grid = state.city;
+    dispatchVandals(state);
     for (const w of walkers) {
+      releaseIfGone(w, state);
+      if (w.kicking) {
+        w.kickPhase += dt / clips.clips.kick.d;
+        continue;
+      }
       errands(w, dt);
       const arrived = stepWalker(w, grid, dt, random);
-      if (arrived) sale.walkerBuys(arrived.machineId);
+      if (!arrived) continue;
+      if (arrived.attackId) startKick(w, arrived, state);
+      else sale.walkerBuys(arrived.machineId);
     }
     if (mode.active && mode.player) {
       const player = mode.player;
@@ -157,7 +217,7 @@ export function createWalkMode({ city, getState, clips, sale, say, buttons }) {
         x: w.x,
         z: w.z,
         yaw: w.facing,
-        pose: posed(true, 'walk', w.phase),
+        pose: w.kicking ? posed(true, 'kick', w.kickPhase) : posed(true, 'walk', w.phase),
         look: w.look,
       });
     }
