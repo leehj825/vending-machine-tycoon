@@ -25,5 +25,7 @@ export const CONFIG = {
   maxReputationBonus: 0.5,
   fuelCostPerDistance: 0.05,
   truckSpeed: 1.5,
+  // Thrown out per expired item.
+  disposalCostPerItem: 0.5,
   saveKey: 'vending_tycoon_save_v2',
 };

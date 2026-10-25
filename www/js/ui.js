@@ -144,6 +144,7 @@ export function createUi({ panel, stats, toast, act, state: current }) {
         <tr><th>Machines</th><td>${state.machines.length}</td></tr>
         <tr><th>Trucks</th><td>${state.trucks.length}</td></tr>
         <tr><th>Today's sales</th><td>${today} items, ${money(state.today.revenue)}</td></tr>
+        <tr><th>Spoiled so far</th><td>${state.spoiled} items</td></tr>
       </table>
       ${history ? `<h3>Last days</h3><table>${history}</table>` : ''}`;
   }

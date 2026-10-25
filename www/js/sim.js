@@ -19,6 +19,9 @@ export function newGame(seed = 7) {
     machines: [],
     trucks: [],
     warehouse: Object.fromEntries(PRODUCT_IDS.map((p) => [p, 0])),
+    // The day each product's current stock arrived, for spoilage. Warehouse stock has its own.
+    warehouseDay: Object.fromEntries(PRODUCT_IDS.map((p) => [p, 1])),
+    spoiled: 0,
     nextId: 1,
     // Sales and revenue per product for today and the last seven days.
     today: { sales: zeroCounts(), revenue: 0 },
@@ -78,6 +81,7 @@ export function buyMachine(state, x, y) {
     prices: Object.fromEntries(PRODUCT_IDS.map((p) => [p, 1.0])),
     cash: 0,
     emptyHours: 0,
+    stockDay: Object.fromEntries(PRODUCT_IDS.map((p) => [p, state.day])),
   });
   return ok(`${ZONES[cell.zone].name} machine installed.`);
 }
@@ -124,6 +128,7 @@ export function buyWarehouseStock(state, product, units) {
   const cost = count * wholesalePrice(product);
   if (state.cash < cost) return fail('Not enough cash for that stock.');
   state.cash -= cost;
+  if (state.warehouse[product] === 0) state.warehouseDay[product] = state.day;
   state.warehouse[product] += count;
   return ok(`Bought ${count} ${PRODUCTS[product].name}.`);
 }
@@ -210,7 +215,10 @@ export function moveTrucks(state, dt) {
 function unload(state, stop) {
   const machine = machineById(state, stop.machineId);
   if (!machine) return;
-  for (const [product, count] of Object.entries(stop.load)) machine.stock[product] += count;
+  for (const [product, count] of Object.entries(stop.load)) {
+    if (machine.stock[product] === 0) machine.stockDay[product] = state.day;
+    machine.stock[product] += count;
+  }
 }
 
 // Where a truck is on the map, in tiles: between the cells it has just passed and is heading to.
@@ -293,7 +301,33 @@ function hourlyChecks(state) {
   }
 }
 
+// Stock of a product that can spoil, and is now too old, is thrown out at the day's close. A
+// sandwich stocked on day 1 is gone at the close of day 3.
+function spoilStock(state) {
+  let spoiled = 0;
+  const expired = (day, product) => PRODUCTS[product].spoilDays && state.day + 1 - day >= PRODUCTS[product].spoilDays;
+  for (const machine of state.machines) {
+    for (const product of PRODUCT_IDS) {
+      if (machine.stock[product] > 0 && expired(machine.stockDay[product], product)) {
+        spoiled += machine.stock[product];
+        machine.stock[product] = 0;
+      }
+    }
+  }
+  for (const product of PRODUCT_IDS) {
+    if (state.warehouse[product] > 0 && expired(state.warehouseDay[product], product)) {
+      spoiled += state.warehouse[product];
+      state.warehouse[product] = 0;
+    }
+  }
+  if (spoiled > 0) {
+    state.cash -= spoiled * CONFIG.disposalCostPerItem;
+    state.spoiled += spoiled;
+  }
+}
+
 function endDay(state) {
+  spoilStock(state);
   state.history.unshift({ day: state.day, sales: state.today.sales, revenue: state.today.revenue });
   state.history = state.history.slice(0, 7);
   state.today = { sales: zeroCounts(), revenue: 0 };

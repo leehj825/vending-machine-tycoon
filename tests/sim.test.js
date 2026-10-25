@@ -169,3 +169,33 @@ test('a passer-by buys one item from a stocked machine and not from an empty one
   assert.equal(after, before - 1);
   assert.ok(machine.cash > cash);
 });
+
+test('a sandwich goes off when its third day closes, and disposal costs cash', () => {
+  const state = sim.newGame(7);
+  const spot = buildingCell(state);
+  sim.buyMachine(state, spot.x, spot.y);
+  const machine = state.machines[0];
+  machine.stock.sandwich = 5;
+  machine.stockDay.sandwich = 1;
+  state.day = 3;
+  state.tick = CONFIG.ticksPerHour * CONFIG.hoursPerDay - 1;
+  const cash = state.cash;
+  sim.tick(state); // closes day 3; at most one sale can happen in that last tick
+  assert.equal(machine.stock.sandwich, 0, 'thrown out');
+  assert.ok(state.spoiled >= 4 && state.spoiled <= 5, `spoiled ${state.spoiled}`);
+  assert.ok(state.cash < cash + 5, 'disposal cost paid');
+});
+
+test('a sandwich stocked the day before is still fresh at the close of day 2', () => {
+  const state = sim.newGame(7);
+  const spot = buildingCell(state);
+  sim.buyMachine(state, spot.x, spot.y);
+  const machine = state.machines[0];
+  machine.stock.sandwich = 5;
+  machine.stockDay.sandwich = 2;
+  state.day = 3;
+  state.tick = CONFIG.ticksPerHour * CONFIG.hoursPerDay - 1;
+  sim.tick(state);
+  assert.ok(machine.stock.sandwich >= 4, 'still on sale');
+  assert.equal(state.spoiled, 0);
+});

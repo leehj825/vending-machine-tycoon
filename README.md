@@ -56,6 +56,8 @@ tools/build_clips.js  builds www/assets/clips.json from Nightfall Settlement's c
 - Collect cash from each machine
 - Reputation: +1 per sale, -5 per hour for an empty machine after a 4-hour grace; +5% sales per 100
   reputation, up to +50%
+- Sandwiches go off three days after they are stocked, in a machine or in the warehouse; the
+  stock is thrown out at the day's close, for $0.50 an item
 - Clock: 1 game day = 5 minutes real time (3,000 ticks at 10 ticks per second), with 1×, 2×, and 4×
 - Save every 30 seconds, at the end of each day, and when the page closes
 - Walk mode (Walk button): a third-person player walks the streets with a stick. Walking uses the
@@ -67,8 +69,6 @@ tools/build_clips.js  builds www/assets/clips.json from Nightfall Settlement's c
 
 ## Planned (in the order of the design)
 
-1. Animated trucks on the map, and per-truck routes with efficiency ratings
-2. Sandwich and salad spoilage
 4. Daily contracts (three each morning, with a reroll for $250)
 5. Theft and vandalism, with the Security upgrade
 6. Rival company by zone, with a counter-attack
