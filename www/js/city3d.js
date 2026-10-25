@@ -19,6 +19,8 @@ const MAP_VIEW = { yaw: Math.PI / 4, pitch: 0.85 };
 const PITCH = { map: [0.35, 1.45], walk: [0.15, 1.2] };
 // Walk camera: a building this tall or taller blocks the view when the camera's line crosses it.
 const BUILDING_TOP = 2.6;
+// The walk camera looks this far ahead of the player, so the player sits low on the screen.
+const WALK_LOOK_AHEAD = 1.5;
 
 function geometryFrom({ positions, colors }) {
   const geometry = new THREE.BufferGeometry();
@@ -232,7 +234,12 @@ export function createCityView(container, onTap) {
       cam.target.y + cam.distance * Math.sin(cam.pitch),
       cam.target.z + cam.distance * Math.cos(cam.yaw) * cp,
     );
-    camera.lookAt(cam.target);
+    const look = cam.target.clone();
+    if (walk.on) {
+      look.x -= Math.sin(cam.yaw) * WALK_LOOK_AHEAD;
+      look.z -= Math.cos(cam.yaw) * WALK_LOOK_AHEAD;
+    }
+    camera.lookAt(look);
   }
 
   function resize() {
