@@ -40,9 +40,6 @@ export function createUi({ panel, stats, toast, act, state: current }) {
   }
 
   function renderPanel(state) {
-    const tabs = [['city', 'City'], ['warehouse', 'Warehouse'], ['fleet', 'Fleet'], ['hq', 'HQ']]
-      .map(([id, label]) => `<button class="tab ${ui.tab === id ? 'on' : ''}" data-act="tab" data-tab="${id}">${label}</button>`)
-      .join('');
     const body = {
       city: () => cityPanel(state),
       warehouse: () => warehousePanel(state),
@@ -50,7 +47,6 @@ export function createUi({ panel, stats, toast, act, state: current }) {
       hq: () => hqPanel(state),
     }[ui.tab]();
     panel.innerHTML = `
-      <nav class="tabs">${tabs}</nav>
       ${ui.note ? `<p class="note">${ui.note}</p>` : ''}
       ${body}
     `;
@@ -257,7 +253,6 @@ export function createUi({ panel, stats, toast, act, state: current }) {
     if (!el) return;
     const d = el.dataset;
     const actions = {
-      tab: () => { ui.tab = d.tab; ui.note = ''; render(latest); },
       'buy-machine': () => act(() => sim.buyMachine(latest, +d.x, +d.y)),
       price: () => act(() => sim.setPrice(latest, +d.machine, d.product, sim.machineById(latest, +d.machine).prices[d.product] + +d.delta)),
       collect: () => act(() => sim.collectCash(latest, +d.machine)),
@@ -295,5 +290,12 @@ export function createUi({ panel, stats, toast, act, state: current }) {
     render(latest);
   }
 
-  return { render, refresh, select, showMessage, ui };
+  // Opens a tab from the left rail. The City tab shows the selected building, if any.
+  function openTab(tab) {
+    ui.tab = tab;
+    ui.note = '';
+    render(latest);
+  }
+
+  return { render, refresh, select, showMessage, openTab, ui };
 }

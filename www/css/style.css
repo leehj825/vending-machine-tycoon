@@ -83,38 +83,6 @@ main { flex: 1; display: flex; flex-direction: column; min-height: 0; position: 
 #city { flex: 1 1 auto; min-height: 160px; position: relative; overflow: hidden; }
 #city canvas { display: block; width: 100%; height: 100%; }
 
-#dock {
-  flex: 0 0 auto;
-  display: flex;
-  flex-direction: column;
-  background: var(--paper);
-  border-top: 1px solid var(--line);
-  min-height: 0;
-}
-/* On a phone the open panel covers the whole city; Hide panel brings the city back. */
-@media (max-width: 719px) {
-  #dock { position: absolute; inset: 0; z-index: 2; }
-  body.panel-hidden #dock { position: relative; inset: auto; }
-}
-.dock-toggle {
-  border: 0;
-  padding: 4px 12px;
-  border-bottom: 1px solid var(--line);
-  border-radius: 0;
-  background: var(--soft);
-  min-height: 0;
-  font-weight: 700;
-  color: var(--muted);
-}
-#panel {
-  flex: 1 1 auto;
-  overflow-y: auto;
-  padding: 12px;
-  min-height: 0;
-}
-body.panel-hidden #panel { display: none; }
-
-.tabs { display: flex; gap: 6px; margin-bottom: 10px; }
 .tab { flex: 1; }
 .tab.on { background: var(--ink); color: #fff; border-color: var(--ink); }
 
@@ -133,21 +101,48 @@ td.price span { display: inline-block; min-width: 118px; text-align: center; }
 td.buttons { white-space: nowrap; }
 td.buttons button { padding: 4px 8px; min-height: 32px; margin-left: 4px; }
 
-@media (min-width: 720px) {
-  main { flex-direction: row; }
-  #city { flex: 1 1 auto; min-width: 0; }
-  #dock { flex: 0 0 380px; border-top: 0; border-left: 1px solid var(--line); }
-  #dock-toggle { min-height: 40px; }
-  #panel { flex: 1 1 auto; }
-  body.panel-hidden #dock { flex: 0 0 44px; }
-  body.panel-hidden #dock-toggle {
-    flex: 1 1 auto;
-    writing-mode: vertical-rl;
-    border-bottom: 0;
-    border-left: 0;
-    padding: 12px 0;
-  }
+
+/* The left rail: City, Warehouse, Fleet and HQ, stacked over the map. */
+.rail { position: absolute; left: 8px; top: 8px; z-index: 3; display: flex; flex-direction: column; gap: 6px; }
+.rail[hidden] { display: none; }
+.rail-btn { width: 80px; padding: 8px 4px; font-size: 13px; background: rgba(255, 255, 255, 0.92); }
+.rail-btn.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+
+/* The popup: a card over most of the screen, with a bar for its title and buttons. */
+.sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  top: 8%;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  background: var(--paper);
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.2);
 }
+.sheet[hidden] { display: none; }
+.sheet-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+.sheet-bar h2 { margin: 0; }
+.sheet-buttons { display: flex; gap: 6px; }
+#panel { flex: 1 1 auto; overflow-y: auto; padding: 12px; min-height: 0; }
+
+/* A minimized machine detail: a pill at the bottom of the map. */
+.machine-pill {
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
+  z-index: 4;
+  padding: 8px 16px;
+  border-radius: 20px;
+  background: var(--ink);
+  color: #fff;
+  font-weight: 700;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25);
+}
+.machine-pill[hidden] { display: none; }
 
 /* Walk mode: the stick and the buttons sit over the city. Buttons stay visible; they are
    disabled when their target is not close and in front. */

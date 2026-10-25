@@ -29,10 +29,23 @@
         <button id="fix" class="action" disabled>Fix</button>
       </div>
     </div>
-    <div id="dock">
-      <button id="dock-toggle" class="dock-toggle" aria-expanded="true" aria-controls="panel">Hide panel ▾</button>
-      <section id="panel"></section>
-    </div>
+    <nav id="rail" class="rail">
+      <button class="rail-btn" data-tab="city">City</button>
+      <button class="rail-btn" data-tab="warehouse">Warehouse</button>
+      <button class="rail-btn" data-tab="fleet">Fleet</button>
+      <button class="rail-btn" data-tab="hq">HQ</button>
+    </nav>
+    <section id="sheet" class="sheet" hidden>
+      <div class="sheet-bar">
+        <h2 id="sheet-title"></h2>
+        <span class="sheet-buttons">
+          <button id="sheet-minimize" hidden>Minimize</button>
+          <button id="sheet-close">Close</button>
+        </span>
+      </div>
+      <div id="panel"></div>
+    </section>
+    <button id="machine-pill" class="machine-pill" hidden></button>
   </main>
 
   <!-- The pause dialog: from the Menu button, or when the app goes to the background. -->

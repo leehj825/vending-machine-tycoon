@@ -2,6 +2,7 @@
 // view to the screens. The game clock runs on its own timer, so it keeps going while a panel is
 // open, and the walk mode runs on animation frames.
 import { CONFIG } from './config.js';
+import { ZONES } from './products.js';
 import * as sim from './sim.js';
 import { loadSlot, saveGame, setActiveSlot } from './save.js';
 import { goToMenu, initMenu, pickedSlot } from './menu.js';
@@ -14,14 +15,12 @@ import { truckPosition } from './sim.js';
 
 const $ = (id) => document.getElementById(id);
 const toastEl = $('toast');
-const dockToggle = $('dock-toggle');
 
-// Shows or hides the panel under the city. Hidden, the city takes the space.
-dockToggle.addEventListener('click', () => {
-  const hidden = document.body.classList.toggle('panel-hidden');
-  dockToggle.setAttribute('aria-expanded', String(!hidden));
-  dockToggle.textContent = hidden ? 'Show panel ▴' : 'Hide panel ▾';
-});
+const TAB_TITLES = { city: 'City', warehouse: 'Warehouse', fleet: 'Fleet', hq: 'HQ' };
+
+function machineTitle(state, cell) {
+  return `${ZONES[state.city[cell.y][cell.x].zone].name} building`;
+}
 let toastTimer = null;
 // While paused, the clock, the trucks, the attacks and the walkers all stand still.
 let paused = false;
@@ -61,13 +60,47 @@ async function start(slot) {
 
   const ui = createUi({ panel: $('panel'), stats: $('stats'), toast, act, state });
 
+  // The popup: a tab from the left rail, or a shop front's machine detail. The machine detail can
+  // be minimized to a pill at the bottom; a tab cannot. One popup at a time.
+  const rail = [...document.querySelectorAll('.rail-btn')];
+  function showSheet(title, mode, tab = null) {
+    $('sheet-title').textContent = title;
+    $('sheet-minimize').hidden = mode !== 'machine';
+    $('sheet').hidden = false;
+    $('machine-pill').hidden = true;
+    for (const btn of rail) btn.classList.toggle('on', btn.dataset.tab === tab);
+  }
+
+  function closeSheet() {
+    $('sheet').hidden = true;
+    $('machine-pill').hidden = true;
+    for (const btn of rail) btn.classList.remove('on');
+    city.setSelected(null);
+  }
+
+  for (const btn of rail) {
+    btn.addEventListener('click', () => {
+      ui.openTab(btn.dataset.tab);
+      showSheet(TAB_TITLES[btn.dataset.tab], 'tab', btn.dataset.tab);
+    });
+  }
+  $('sheet-close').addEventListener('click', closeSheet);
+  $('sheet-minimize').addEventListener('click', () => {
+    $('sheet').hidden = true;
+    $('machine-pill').textContent = $('sheet-title').textContent;
+    $('machine-pill').hidden = false;
+  });
+  $('machine-pill').addEventListener('click', () => {
+    $('machine-pill').hidden = true;
+    $('sheet').hidden = false;
+  });
+
   const city = createCityView($('city'), (cell) => {
-    // Only shop fronts open the panel: roads, grass, parks and houses do nothing.
+    // Only shop fronts open the popup: roads, grass, parks and houses do nothing.
     if (state.city[cell.y][cell.x].type !== 'building') return;
     city.setSelected(cell);
     ui.select(cell);
-    // A building picked while the panel is hidden opens the panel on its City tab.
-    if (document.body.classList.contains('panel-hidden')) dockToggle.click();
+    showSheet(machineTitle(state, cell), 'machine', 'city');
   });
 
   const walk = createWalkMode({
@@ -103,7 +136,12 @@ async function start(slot) {
     fix: { repair: (id) => act(() => sim.repairMachine(state, id)) },
     say: (message) => ui.showMessage({ ok: true, message }),
     buttons: {
-      show: (on) => { $('walk-ui').hidden = !on; $('walk').disabled = on; },
+      show: (on) => {
+        $('walk-ui').hidden = !on;
+        $('walk').disabled = on;
+        $('rail').hidden = on;
+        if (on) closeSheet();
+      },
       setTalk: (on) => { $('talk').disabled = !on; },
       setCollect: (on) => { $('collect').disabled = !on; },
       setFix: (on) => { $('fix').disabled = !on; },
@@ -121,7 +159,6 @@ async function start(slot) {
 
   // Walking needs the city on screen, so an open panel is minimized first.
   $('walk').addEventListener('click', () => {
-    if (!document.body.classList.contains('panel-hidden')) dockToggle.click();
     // Walking follows the player: the map's selection highlight goes.
     city.setSelected(null);
     walk.enter();
