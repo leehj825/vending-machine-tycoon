@@ -48,6 +48,11 @@
   const walkers = new Map(); // key -> { group, mesh, pad, geometry, role colours }
   let soups = [];
   let follow = null; // where the camera drifts to, when following the player
+  // The player arrives from Flutter about every 50 ms. The page eases the player's shown spot
+  // toward each arrival and draws the figure and camera from that, so a sideways walk does not step.
+  let playerTarget = null;
+  let playerShown = null;
+  let lastFrameTime = null;
   let collectMachine = null; // the machine the Collect button is for
   let thirdPerson = false; // the camera follows the player from behind
   let thirdDistance = 3.2; // how far behind the player, which two fingers or the wheel change
@@ -513,6 +518,7 @@
 
       // People: one mesh per person, kept between frames and dropped when they leave.
       const seen = new Set();
+      playerTarget = null;
       if (rig) {
         for (const person of message.walkers) {
           seen.add(person.key);
@@ -521,7 +527,8 @@
             walker = makeWalker(person.key, person);
             walkers.set(person.key, walker);
           }
-          updateWalker(walker, person);
+          if (person.key === 'player') playerTarget = person;
+          else updateWalker(walker, person);
         }
       }
       for (const [key, walker] of walkers) {
@@ -579,6 +586,21 @@
   function frame(now) {
     stepGlide(now);
     if (stickId !== null) postMove();
+    const dt = lastFrameTime === null ? 0 : Math.min(0.1, (now - lastFrameTime) / 1000);
+    lastFrameTime = now;
+    if (playerTarget) {
+      // Snap on a jump (a teleport or a new walk), otherwise ease at any frame rate.
+      if (!playerShown || Math.hypot(playerTarget.x - playerShown.x, playerTarget.z - playerShown.z) > 2) {
+        playerShown = { x: playerTarget.x, z: playerTarget.z };
+      }
+      const k = 1 - Math.exp(-dt * 25);
+      playerShown.x += (playerTarget.x - playerShown.x) * k;
+      playerShown.z += (playerTarget.z - playerShown.z) * k;
+      const walker = walkers.get('player');
+      if (walker) updateWalker(walker, { ...playerTarget, x: playerShown.x, z: playerShown.z });
+    } else {
+      playerShown = null;
+    }
     if (thirdPerson && follow) {
       // Behind the player. The camera's direction is the player's, so it is only set once,
       // when walking starts; after that the player's own drags and strafes steer it.
@@ -586,8 +608,9 @@
         cam.yaw = follow.yaw + Math.PI;
         thirdNeedsYaw = false;
       }
-      cam.target.x += (follow.x - cam.target.x) * 0.2;
-      cam.target.z += (follow.z - cam.target.z) * 0.2;
+      const spot = playerShown || follow;
+      cam.target.x = spot.x;
+      cam.target.z = spot.z;
       cam.distance += (thirdDistance - cam.distance) * 0.2;
     } else if (follow && !glide) {
       cam.target.x += (follow.x - cam.target.x) * 0.12;
