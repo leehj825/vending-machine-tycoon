@@ -1081,6 +1081,8 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen>
           }
         }
       case 'collect':
+        // Walking, a machine is worked only with the Collect button, from right in front.
+        if (_walking) return;
         final machineId = target['machineId']! as String;
         final machine = ref
             .read(machinesProvider)
@@ -1117,7 +1119,9 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen>
         final near = _nearbyPedestrian();
         if (near != null) _playerTalk(near);
       case 'collectNear':
-        _collectCash(target['machineId']! as String);
+        // Only from right in front of the machine, checked again here as the button may lag a frame.
+        final machineId = target['machineId']! as String;
+        if (_nearbyMachineId() == machineId) _collectCash(machineId);
       case 'marketing':
         _marketingKey.currentState?.tap();
     }
@@ -1954,10 +1958,18 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen>
     return (dx * facingX + dz * facingZ) / distance >= 0.5;
   }
 
-  /// The walker close in front of the player, or null.
+  /// How close the player must be to talk to a walker, in tiles: touching distance.
+  static const double _talkReach = 0.6;
+
+  /// How close the player must be to a machine to collect, in tiles: touching distance.
+  static const double _collectReach = 0.7;
+
+  /// The walker touching the player, right in front, or null.
   _PedestrianState? _nearbyPedestrian() {
     for (final pedestrian in _pedestrians) {
-      if (_isInFront(pedestrian.gridX + 0.5, pedestrian.gridY + 0.5, 1.6)) return pedestrian;
+      if (_isInFront(pedestrian.gridX + 0.5, pedestrian.gridY + 0.5, _talkReach)) {
+        return pedestrian;
+      }
     }
     return null;
   }
@@ -1971,7 +1983,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen>
         (machine.zone.x - 1).floor(),
         (machine.zone.y - 1).floor(),
       );
-      if (_isInFront(ax, az, 2.2)) return machine.id;
+      if (_isInFront(ax, az, _collectReach)) return machine.id;
     }
     return null;
   }
