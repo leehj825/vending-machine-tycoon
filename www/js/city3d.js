@@ -19,8 +19,9 @@ const MAP_VIEW = { yaw: Math.PI / 4, pitch: 0.85 };
 const PITCH = { map: [0.35, 1.45], walk: [0.15, 1.2] };
 // Walk camera: a building this tall or taller blocks the view when the camera's line crosses it.
 const BUILDING_TOP = 2.6;
-// The walk camera looks this far ahead of the player, so the player sits low on the screen.
-const WALK_LOOK_AHEAD = 1.5;
+// The share of the screen height the walk view moves the picture down, so the player sits low
+// while the camera still looks at them.
+const WALK_SCREEN_SHIFT = 0.18;
 
 function geometryFrom({ positions, colors }) {
   const geometry = new THREE.BufferGeometry();
@@ -55,6 +56,7 @@ export function createCityView(container, onTap) {
   const vertexMaterial = new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide });
   const cam = { target: new THREE.Vector3(7.5, 0, 7.5), yaw: MAP_VIEW.yaw, pitch: MAP_VIEW.pitch, distance: 16.5 };
   const walk = { on: false, follow: null, distance: WALK_DISTANCE.start };
+  const view = { w: 1, h: 1 };
   let city = null;
   let selected = null;
   let selectMesh = null;
@@ -234,17 +236,16 @@ export function createCityView(container, onTap) {
       cam.target.y + cam.distance * Math.sin(cam.pitch),
       cam.target.z + cam.distance * Math.cos(cam.yaw) * cp,
     );
-    const look = cam.target.clone();
-    if (walk.on) {
-      look.x -= Math.sin(cam.yaw) * WALK_LOOK_AHEAD;
-      look.z -= Math.cos(cam.yaw) * WALK_LOOK_AHEAD;
-    }
-    camera.lookAt(look);
+    camera.lookAt(cam.target);
+    if (walk.on) camera.setViewOffset(view.w, view.h, 0, -view.h * WALK_SCREEN_SHIFT, view.w, view.h);
+    else camera.clearViewOffset();
   }
 
   function resize() {
     const w = container.clientWidth || 1;
     const h = container.clientHeight || 1;
+    view.w = w;
+    view.h = h;
     renderer.setSize(w, h, false);
     renderer.domElement.style.width = `${w}px`;
     renderer.domElement.style.height = `${h}px`;
