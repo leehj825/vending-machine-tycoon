@@ -24,13 +24,15 @@ html, body {
   user-select: none;
 }
 
-html { --ad-top: 0px; }
+html { --ad-top: 0px; --ad-min: 0px; }
+/* In the Android app the banner is at least this tall, whatever height it last reported. */
+html.native { --ad-min: 64px; }
 html.native, html.native body { background: transparent; }
 /* The top ad banner, and the phone's status bar and navigation buttons, are kept clear. */
 body {
   display: flex;
   flex-direction: column;
-  padding-top: max(var(--ad-top), env(safe-area-inset-top, 0px));
+  padding-top: max(var(--ad-top), var(--ad-min), env(safe-area-inset-top, 0px));
   padding-bottom: env(safe-area-inset-bottom, 0px);
   box-sizing: border-box;
 }
@@ -64,7 +66,7 @@ button.primary { background: var(--gold); border-color: var(--gold); color: #fff
 
 .toast {
   position: fixed;
-  top: calc(max(var(--ad-top), env(safe-area-inset-top, 0px)) + 8px);
+  top: calc(max(var(--ad-top), var(--ad-min), env(safe-area-inset-top, 0px)) + 8px);
   left: 50%;
   transform: translateX(-50%);
   padding: 8px 14px;
@@ -225,7 +227,7 @@ td.buttons button { padding: 4px 8px; min-height: 32px; margin-left: 4px; }
   align-items: center;
   justify-content: center;
   padding: 16px;
-  padding-top: calc(16px + max(var(--ad-top), env(safe-area-inset-top, 0px)));
+  padding-top: calc(16px + max(var(--ad-top), var(--ad-min), env(safe-area-inset-top, 0px)));
   padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
   background: var(--soft);
   overflow-y: auto;

@@ -3,6 +3,12 @@
 // element as --ad-top, so the header and the city start below it.
 import { CONFIG } from './config.js';
 
+// No banner is showing: the page takes no room for one.
+function noBanner() {
+  document.documentElement.style.setProperty('--ad-top', '0px');
+  document.documentElement.style.setProperty('--ad-min', '0px');
+}
+
 export async function startAds() {
   const capacitor = window.Capacitor;
   if (!capacitor?.isNativePlatform?.()) return;
@@ -17,7 +23,7 @@ export async function startAds() {
       document.documentElement.style.setProperty('--ad-top', `${info.height}px`);
     });
     await AdMob.addListener('bannerAdFailedToLoad', () => {
-      document.documentElement.style.setProperty('--ad-top', '0px');
+      noBanner();
     });
     await AdMob.showBanner({
       adId: CONFIG.admob.testing ? CONFIG.admob.testBannerId : CONFIG.admob.bannerId,
@@ -27,7 +33,7 @@ export async function startAds() {
     });
   } catch {
     // Ads are optional: if they cannot start, the game runs without them.
-    document.documentElement.style.setProperty('--ad-top', '0px');
+    noBanner();
   }
 }
 
