@@ -1,7 +1,6 @@
 apply plugin: 'com.android.application'
 
-// Release signing comes from android/key.properties, which CI writes from its secrets. Without it,
-// release builds stay unsigned by this project.
+// Release signing comes from android/key.properties, which CI writes from its secrets.
 def keystorePropertiesFile = rootProject.file("key.properties")
 def keystoreProperties = new Properties()
 if (keystorePropertiesFile.exists()) {
@@ -15,7 +14,7 @@ android {
         applicationId "com.vendingmachiinetycoon.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 27
+        versionCode 29
         versionName "2.0.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
@@ -24,6 +23,11 @@ android {
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
     signingConfigs {
         release {
             if (keystorePropertiesFile.exists()) {

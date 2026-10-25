@@ -17,7 +17,7 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 21
+          java-version: 17
       # The Ubuntu runner already has the Android SDK installed at ANDROID_HOME.
       - run: npm ci
       - run: npm test
