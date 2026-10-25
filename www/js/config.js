@@ -76,5 +76,12 @@ export const CONFIG = {
   campaignHype: 0.25,
   rushMultiplier: 10,
   rushTicks: 125,
+  // AdMob, as in the original app. The banner sits at the top of the screen, inside the Android app
+  // only. Set testing to true while you check the layout: live ads must not be clicked by their owner.
+  admob: {
+    bannerId: 'ca-app-pub-4400173019354346/5798507534',
+    testBannerId: 'ca-app-pub-3940256099942544/6300978111',
+    testing: false,
+  },
   saveKey: 'vending_tycoon_save_v2',
 };

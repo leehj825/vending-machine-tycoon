@@ -14,6 +14,7 @@
 html, body {
   margin: 0;
   height: 100%;
+  height: 100dvh;
   overflow: hidden;
   background: var(--soft);
   color: var(--ink);
@@ -23,7 +24,15 @@ html, body {
   user-select: none;
 }
 
-body { display: flex; flex-direction: column; }
+html { --ad-top: 0px; }
+/* The top ad banner, and the phone's status bar and navigation buttons, are kept clear. */
+body {
+  display: flex;
+  flex-direction: column;
+  padding-top: calc(var(--ad-top) + env(safe-area-inset-top, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  box-sizing: border-box;
+}
 
 header {
   display: flex;
@@ -72,18 +81,21 @@ button.primary { background: var(--gold); border-color: var(--gold); color: #fff
 main { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 
 
-#city { flex: 1 1 auto; min-height: 200px; position: relative; overflow: hidden; }
+#city { flex: 1 1 auto; min-height: 160px; position: relative; overflow: hidden; }
 #city canvas { display: block; width: 100%; height: 100%; }
 
 #dock {
-  flex: 0 0 auto;
+  flex: 0 0 52vh;
   display: flex;
   flex-direction: column;
   background: var(--paper);
   border-top: 1px solid var(--line);
+  min-height: 0;
 }
+body.panel-hidden #dock { flex: 0 0 auto; }
 .dock-toggle {
   border: 0;
+  padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
   border-bottom: 1px solid var(--line);
   border-radius: 0;
   background: var(--soft);
@@ -92,7 +104,7 @@ main { flex: 1; display: flex; flex-direction: column; min-height: 0; }
   color: var(--muted);
 }
 #panel {
-  max-height: 52vh;
+  flex: 1 1 auto;
   overflow-y: auto;
   padding: 12px;
   min-height: 0;
@@ -123,7 +135,7 @@ td.buttons button { padding: 4px 8px; min-height: 32px; margin-left: 4px; }
   #city { flex: 1 1 auto; min-width: 0; }
   #dock { flex: 0 0 380px; border-top: 0; border-left: 1px solid var(--line); }
   #dock-toggle { min-height: 40px; }
-  #panel { max-height: none; flex: 1 1 auto; }
+  #panel { flex: 1 1 auto; }
   body.panel-hidden #dock { flex: 0 0 44px; }
   body.panel-hidden #dock-toggle {
     flex: 1 1 auto;

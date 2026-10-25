@@ -7,6 +7,7 @@ import { loadGame, saveGame } from './save.js';
 import { createCityView } from './city3d.js';
 import { createUi } from './ui.js';
 import { createWalkMode } from './walkmode.js';
+import { startAds } from './ads.js';
 import { truckPosition } from './sim.js';
 
 const $ = (id) => document.getElementById(id);
@@ -126,3 +127,4 @@ async function start() {
 }
 
 start();
+startAds();

@@ -26,6 +26,16 @@ jobs:
         if: github.ref != 'refs/heads/main'
         working-directory: android
         run: ./gradlew assembleDebug
+      - name: Release signing (main)
+        if: github.ref == 'refs/heads/main'
+        env:
+          KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          echo "$KEYSTORE_B64" | base64 --decode > android/release.jks
+          printf 'storeFile=release.jks\nstorePassword=%s\nkeyPassword=%s\nkeyAlias=%s\n' "$KEYSTORE_PASSWORD" "$KEY_PASSWORD" "$KEY_ALIAS" > android/key.properties
       - name: Release APK and AAB (main)
         if: github.ref == 'refs/heads/main'
         working-directory: android
