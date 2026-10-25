@@ -92,6 +92,13 @@ export function createUi({ panel, stats, toast, act, state: current }) {
         <span>Cash in machine: <b>${money(machine.cash)}</b></span>
         <button class="primary" data-act="collect" data-machine="${machine.id}" ${machine.cash > 0 ? '' : 'disabled'}>Collect</button>
       </div>
+      <div class="row">
+        <span>Condition: <b>${sim.CONDITIONS[machine.condition]}</b></span>
+        <span class="buttons">
+          <button data-act="repair" data-machine="${machine.id}" ${machine.condition === 0 ? 'disabled' : ''}>Repair</button>
+          <button data-act="security" data-machine="${machine.id}" ${machine.security ? 'disabled' : ''}>${machine.security ? 'Secured' : `Security ${wholeMoney(CONFIG.securityCost)}`}</button>
+        </span>
+      </div>
       <table><tr><th>Product</th><th>Stock</th><th>Price</th></tr>${rows}</table>`;
   }
 
@@ -186,6 +193,8 @@ export function createUi({ panel, stats, toast, act, state: current }) {
       'buy-machine': () => act(() => sim.buyMachine(latest, +d.x, +d.y)),
       price: () => act(() => sim.setPrice(latest, +d.machine, d.product, sim.machineById(latest, +d.machine).prices[d.product] + +d.delta)),
       collect: () => act(() => sim.collectCash(latest, +d.machine)),
+      repair: () => act(() => sim.repairMachine(latest, +d.machine)),
+      security: () => act(() => sim.installSecurity(latest, +d.machine)),
       'buy-stock': () => act(() => sim.buyWarehouseStock(latest, d.product, +d.units)),
       'buy-truck': () => act(() => sim.buyTruck(latest)),
       dispatch: () => act(() => sim.dispatchTruck(latest)),

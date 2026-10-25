@@ -238,3 +238,45 @@ test('the morning brings a new set of contracts', () => {
   assert.equal(state.contracts.length, 3);
   assert.ok(state.contracts.every((c, i) => c.id !== before[i]));
 });
+
+test('night and cash in the machine raise the risk; security lowers it', () => {
+  const state = sim.newGame(7);
+  const spot = buildingCell(state);
+  sim.buyMachine(state, spot.x, spot.y);
+  const machine = state.machines[0];
+  machine.cash = 0;
+  const day = sim.securityChance(machine, 12);
+  const night = sim.securityChance(machine, 23);
+  assert.ok(night > day * 2.5, 'night is about three times the day');
+  machine.cash = 300;
+  assert.ok(sim.securityChance(machine, 12) > day, 'cash raises the risk');
+  machine.cash = 0;
+  machine.security = true;
+  assert.ok(sim.securityChance(machine, 12) < day, 'security lowers it');
+});
+
+test('a targeted machine with nothing in it is vandalized, and repair restores it', () => {
+  const state = sim.newGame(7);
+  const spot = buildingCell(state);
+  sim.buyMachine(state, spot.x, spot.y);
+  const machine = state.machines[0];
+  machine.cash = 0;
+  for (let i = 0; i < 20000 && machine.condition === 0; i++) sim.tick(state);
+  assert.ok(machine.condition > 0, 'vandalized');
+  const cash = state.cash;
+  assert.equal(sim.repairMachine(state, machine.id).ok, true);
+  assert.equal(machine.condition, 0);
+  assert.ok(state.cash < cash);
+});
+
+test('security costs cash once, and a broken machine sells nothing to passers-by', () => {
+  const state = sim.newGame(7);
+  const spot = buildingCell(state);
+  sim.buyMachine(state, spot.x, spot.y);
+  const machine = state.machines[0];
+  assert.equal(sim.installSecurity(state, machine.id).ok, true);
+  assert.equal(sim.installSecurity(state, machine.id).ok, false);
+  fullStock(machine, 3);
+  machine.condition = 4;
+  assert.equal(sim.sellToWalker(state, machine.id).ok, false);
+});

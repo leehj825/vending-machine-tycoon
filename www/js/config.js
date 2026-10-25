@@ -27,5 +27,22 @@ export const CONFIG = {
   truckSpeed: 1.5,
   // Thrown out per expired item.
   disposalCostPerItem: 0.5,
+  // Theft and vandalism, each hour a machine may be targeted.
+  securityBaseHourlyChance: 0.003,
+  nightMultiplier: 3,
+  nightStartHour: 22,
+  nightEndHour: 5,
+  // Extra chance per 100 of cash in the machine, up to 1.
+  cashRiskPer100: 0.05,
+  cashRiskCap: 1.0,
+  // Share of targeted machines robbed (when they hold cash); the rest are vandalized.
+  theftShare: 0.65,
+  // A robbery takes this share of the cash in the machine.
+  theftCashMin: 0.5,
+  theftCashMax: 1.0,
+  securityCost: 400,
+  securityRiskFactor: 0.35,
+  securityPenaltyFactor: 0.5,
+  repairCostPerLevel: 150,
   saveKey: 'vending_tycoon_save_v2',
 };

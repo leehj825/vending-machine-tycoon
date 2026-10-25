@@ -7,6 +7,9 @@ import { findPath, machineFront, walkerWalkable } from './locomotion.js';
 import { makeContracts, settleContracts, swapContract as swapContractRule } from './contracts.js';
 
 const TICKS_PER_DAY = CONFIG.ticksPerHour * CONFIG.hoursPerDay;
+// Machine condition, best first, and how much each condition sells (broken sells nothing).
+export const CONDITIONS = ['Excellent', 'Good', 'Fair', 'Poor', 'Broken'];
+const CONDITION_SALES = [1, 0.9, 0.75, 0.5, 0];
 
 export function newGame(seed = 7) {
   const state = {
@@ -86,6 +89,8 @@ export function buyMachine(state, x, y) {
     prices: Object.fromEntries(PRODUCT_IDS.map((p) => [p, 1.0])),
     cash: 0,
     emptyHours: 0,
+    condition: 0,
+    security: false,
     stockDay: Object.fromEntries(PRODUCT_IDS.map((p) => [p, state.day])),
   });
   return ok(`${ZONES[cell.zone].name} machine installed.`);
@@ -96,6 +101,7 @@ export function buyMachine(state, x, y) {
 export function sellToWalker(state, machineId) {
   const machine = machineById(state, machineId);
   if (!machine) return fail('No such machine.');
+  if (machine.condition === CONDITIONS.length - 1) return fail('That machine is broken.');
   const options = PRODUCT_IDS.filter((p) => machine.stock[p] > 0);
   if (options.length === 0) return fail('That machine is out of stock.');
   const product = options[Math.floor(nextRandom(state) * options.length)];
@@ -269,7 +275,8 @@ export function saleChance(state, machine, product) {
   const priceFactor = Math.max(0, 1 - zone.elasticity * (multiplier - 1));
   const perHour = Math.min(
     0.95,
-    PRODUCTS[product].demand * zoneDemand * priceFactor * (1 + reputationBonus(state.reputation)),
+    PRODUCTS[product].demand * zoneDemand * priceFactor * CONDITION_SALES[machine.condition]
+      * (1 + reputationBonus(state.reputation)),
   );
   return 1 - Math.pow(1 - perHour, 1 / CONFIG.ticksPerHour);
 }
@@ -296,16 +303,74 @@ export function tick(state) {
 }
 
 function hourlyChecks(state) {
+  const hour = Math.floor(state.tick / CONFIG.ticksPerHour) % CONFIG.hoursPerDay;
   for (const machine of state.machines) {
     if (machineTotal(machine) > 0) {
       machine.emptyHours = 0;
-      continue;
+    } else {
+      machine.emptyHours += 1;
+      if (machine.emptyHours > CONFIG.emptyGraceHours) {
+        const penalty = machine.security
+          ? CONFIG.emptyPenaltyPerHour * CONFIG.securityPenaltyFactor
+          : CONFIG.emptyPenaltyPerHour;
+        state.reputation = Math.max(0, state.reputation - penalty);
+      }
     }
-    machine.emptyHours += 1;
-    if (machine.emptyHours > CONFIG.emptyGraceHours) {
-      state.reputation = Math.max(0, state.reputation - CONFIG.emptyPenaltyPerHour);
+    if (nextRandom(state) < securityChance(machine, hour)) {
+      targetMachine(state, machine);
     }
   }
+}
+
+// The chance a machine is targeted this hour: more at night, with more cash in it, in riskier
+// zones, and far less with a security system.
+export function securityChance(machine, hour) {
+  const night = hour >= CONFIG.nightStartHour || hour < CONFIG.nightEndHour;
+  const cashRisk = Math.min(CONFIG.cashRiskCap, (machine.cash / 100) * CONFIG.cashRiskPer100);
+  return CONFIG.securityBaseHourlyChance
+    * (night ? CONFIG.nightMultiplier : 1)
+    * ZONES[machine.zone].crime
+    * (1 + cashRisk)
+    * (machine.security ? CONFIG.securityRiskFactor : 1);
+}
+
+// A targeted machine is robbed, or vandalized. Nothing in the till means vandalism.
+function targetMachine(state, machine) {
+  const robbed = machine.cash > 0 && nextRandom(state) < CONFIG.theftShare;
+  if (robbed) {
+    const share = CONFIG.theftCashMin + nextRandom(state) * (CONFIG.theftCashMax - CONFIG.theftCashMin);
+    const taken = machine.cash * share;
+    machine.cash -= taken;
+    announce(state, [`A machine was robbed: $${taken.toFixed(2)} gone.`]);
+    return;
+  }
+  if (machine.condition < CONDITIONS.length - 1) {
+    machine.condition += 1;
+    announce(state, [`A machine was vandalized: now ${CONDITIONS[machine.condition]}.`]);
+  }
+}
+
+// Repairs a machine to Excellent, at a price per level it has fallen.
+export function repairMachine(state, machineId) {
+  const machine = machineById(state, machineId);
+  if (!machine) return fail('No such machine.');
+  if (machine.condition === 0) return fail('That machine is already in good shape.');
+  const cost = machine.condition * CONFIG.repairCostPerLevel;
+  if (state.cash < cost) return fail(`Repairs cost $${cost}.`);
+  state.cash -= cost;
+  machine.condition = 0;
+  return ok('Machine repaired.');
+}
+
+// Installs a security system on a machine, once.
+export function installSecurity(state, machineId) {
+  const machine = machineById(state, machineId);
+  if (!machine) return fail('No such machine.');
+  if (machine.security) return fail('This machine already has security.');
+  if (state.cash < CONFIG.securityCost) return fail('Not enough cash for security.');
+  state.cash -= CONFIG.securityCost;
+  machine.security = true;
+  return ok('Security installed.');
 }
 
 // Stock of a product that can spoil, and is now too old, is thrown out at the day's close. A

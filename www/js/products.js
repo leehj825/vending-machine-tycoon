@@ -11,26 +11,31 @@ export const PRODUCTS = {
 
 export const PRODUCT_IDS = Object.keys(PRODUCTS);
 
-// The building types. demand scales a product's chance in that zone. elasticity is how much a
+// The building types. crime scales the theft and vandalism risk. demand scales a product's chance in that zone. elasticity is how much a
 // price rise cuts demand: captive audiences (hospital, office) barely notice, school punishes it.
 export const ZONES = {
   office: {
+    crime: 0.6,
     name: 'Office', color: 0x6d8fb3, height: 2.2, elasticity: 0.2,
     demand: { coffee: 1.6, techGadget: 1.3, sandwich: 1.2 },
   },
   school: {
+    crime: 1.6,
     name: 'School', color: 0xe0b84a, height: 1.4, elasticity: 0.8,
     demand: { soda: 1.4, chips: 1.4 },
   },
   gym: {
+    crime: 1.0,
     name: 'Gym', color: 0xc96b4b, height: 1.6, elasticity: 0.5,
     demand: { proteinBar: 1.8, soda: 1.1 },
   },
   shop: {
+    crime: 1.2,
     name: 'Shop', color: 0x9a7bb8, height: 1.2, elasticity: 0.5,
     demand: { chips: 1.2, soda: 1.1 },
   },
   hospital: {
+    crime: 0.5,
     name: 'Hospital', color: 0xe7e7e7, height: 2.0, elasticity: 0.1,
     demand: { sandwich: 1.3 },
   },
