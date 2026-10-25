@@ -109,6 +109,8 @@ async function start(slot) {
   // Walking needs the city on screen, so an open panel is minimized first.
   $('walk').addEventListener('click', () => {
     if (!document.body.classList.contains('panel-hidden')) dockToggle.click();
+    // Walking follows the player: the map's selection highlight goes.
+    city.setSelected(null);
     walk.enter();
   });
   $('to-menu').addEventListener('click', () => {
