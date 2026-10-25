@@ -41,7 +41,7 @@ tests/walk.test.js  movement, walls, paths and walkers
 tools/build_clips.js  builds www/assets/clips.json from Nightfall Settlement's clips
 ```
 
-## Current version (milestone 1)
+## Features
 
 - City map: roads, grass, and buildings of five zones (office, school, gym, shop, hospital)
 - Buy a machine on a building ($400), one per building
