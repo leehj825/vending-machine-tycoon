@@ -51,6 +51,8 @@ async function start(slot) {
   const city = createCityView($('city'), (cell) => {
     city.setSelected(cell);
     ui.select(cell);
+    // A building picked while the panel is hidden opens the panel on its City tab.
+    if (document.body.classList.contains('panel-hidden')) dockToggle.click();
   });
 
   const walk = createWalkMode({
