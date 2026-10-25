@@ -24,5 +24,6 @@ export const CONFIG = {
   reputationBonusPer100: 0.05,
   maxReputationBonus: 0.5,
   fuelCostPerDistance: 0.05,
+  truckSpeed: 1.5,
   saveKey: 'vending_tycoon_save_v2',
 };

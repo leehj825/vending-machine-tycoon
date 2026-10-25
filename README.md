@@ -49,8 +49,10 @@ tools/build_clips.js  builds www/assets/clips.json from Nightfall Settlement's c
 - Per-machine price multiplier per product (0.5× to 2×); higher prices sell less, most in schools
 - Machines hold up to 50 items, 20 per product
 - Warehouse (1,000 items): buy stock at half the base price
-- Trucks ($500, 500 items): one restock run loads the warehouse and visits the machines that need
-  stock, nearest first, and charges fuel
+- Trucks ($500, 500 items): a restock run loads the warehouse, drives the road route past each machine
+  that needs stock (nearest first), and comes back. Stock lands as the truck reaches each machine. Fuel
+  is paid at the start. Routes rate Great, Good, Fair or Poor by length. Trucks follow the game clock,
+  so they stop when the game is paused.
 - Collect cash from each machine
 - Reputation: +1 per sale, -5 per hour for an empty machine after a 4-hour grace; +5% sales per 100
   reputation, up to +50%
@@ -66,7 +68,7 @@ tools/build_clips.js  builds www/assets/clips.json from Nightfall Settlement's c
 ## Planned (in the order of the design)
 
 1. Animated trucks on the map, and per-truck routes with efficiency ratings
-3. Sandwich and salad spoilage
+2. Sandwich and salad spoilage
 4. Daily contracts (three each morning, with a reroll for $250)
 5. Theft and vandalism, with the Security upgrade
 6. Rival company by zone, with a counter-attack

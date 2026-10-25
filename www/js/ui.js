@@ -115,13 +115,22 @@ export function createUi({ panel, stats, toast, act, state: current }) {
   }
 
   function fleetPanel(state) {
+    const idle = state.trucks.some((t) => !t.trip);
+    const rows = state.trucks.map((t, i) => {
+      const trip = t.trip;
+      const status = trip
+        ? `On a run: stop ${trip.nextStop + 1} of ${trip.stops.length}, route ${sim.routeRating(trip.distance)}`
+        : 'Parked at the warehouse';
+      return `<tr><td>Truck ${i + 1}</td><td>${status}</td></tr>`;
+    }).join('');
     return `
       <h2>Fleet</h2>
-      <p class="hint">${state.trucks.length} truck${state.trucks.length === 1 ? '' : 's'}, ${CONFIG.truckCapacity} items each.
-        A run loads the warehouse and restocks every machine that needs stock.</p>
+      <p class="hint">A run loads the warehouse and restocks each machine on the road route, nearest first.
+        Trucks carry ${CONFIG.truckCapacity} items.</p>
+      ${rows ? `<table>${rows}</table>` : ''}
       <div class="row">
         <button data-act="buy-truck" ${state.cash < CONFIG.truckPrice ? 'disabled' : ''}>Buy truck ${wholeMoney(CONFIG.truckPrice)}</button>
-        <button class="primary" data-act="dispatch" ${state.trucks.length === 0 ? 'disabled' : ''}>Send restock run</button>
+        <button class="primary" data-act="dispatch" ${!idle ? 'disabled' : ''}>Send restock run</button>
       </div>`;
   }
 

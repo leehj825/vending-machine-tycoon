@@ -36,7 +36,8 @@ export function createCityView(container, onTap) {
   const machineGroup = new THREE.Group();
   const pickGroup = new THREE.Group();
   const figureGroup = new THREE.Group();
-  scene.add(cityGroup, machineGroup, pickGroup, figureGroup);
+  const vehicleGroup = new THREE.Group();
+  scene.add(cityGroup, machineGroup, pickGroup, figureGroup, vehicleGroup);
 
   // The map view and the walk view share one camera: yaw and the target are common, the
   // distance and pitch belong to the mode.
@@ -46,6 +47,7 @@ export function createCityView(container, onTap) {
   let selected = null;
   let selectMesh = null;
   const figures = new Map();
+  const vehicles = new Map();
 
   const material = (color) => new THREE.MeshLambertMaterial({ color, flatShading: true });
   const box = (w, h, d, color, x, y, z) => {
@@ -146,6 +148,30 @@ export function createCityView(container, onTap) {
       figureGroup.remove(figure.root);
       figure.dispose();
       figures.delete(key);
+    }
+  }
+
+  // Trucks on the road: a box per truck, turned to its heading. positions is a list of
+  // { key, x, z, yaw }.
+  function drawVehicles(positions) {
+    const seen = new Set();
+    for (const p of positions) {
+      seen.add(p.key);
+      let mesh = vehicles.get(p.key);
+      if (!mesh) {
+        mesh = box(0.42, 0.28, 0.6, COLORS.warehouse, 0, 0.2, 0);
+        vehicles.set(p.key, mesh);
+        vehicleGroup.add(mesh);
+      }
+      mesh.position.set(p.x, 0.2, p.z);
+      mesh.rotation.y = p.yaw;
+    }
+    for (const [key, mesh] of vehicles) {
+      if (seen.has(key)) continue;
+      vehicleGroup.remove(mesh);
+      mesh.geometry.dispose();
+      mesh.material.dispose();
+      vehicles.delete(key);
     }
   }
 
@@ -290,6 +316,7 @@ export function createCityView(container, onTap) {
     update,
     setSelected,
     drawPeople,
+    drawVehicles,
     setWalking,
     follow,
     walkFacing,

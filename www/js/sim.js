@@ -3,7 +3,7 @@
 import { CONFIG } from './config.js';
 import { PRODUCTS, PRODUCT_IDS, ZONES } from './products.js';
 import { cellAt, generateCity, seededRandom, WAREHOUSE_CELL } from './world.js';
-import { machineFront } from './locomotion.js';
+import { findPath, machineFront, walkerWalkable } from './locomotion.js';
 
 const TICKS_PER_DAY = CONFIG.ticksPerHour * CONFIG.hoursPerDay;
 
@@ -135,17 +135,24 @@ export function buyTruck(state) {
   return ok('Truck bought.');
 }
 
-// One restock run: a truck loads from the warehouse and visits the machines that need stock,
-// nearest first, then drives back. Trips are instant in this version.
+// A restock run: the truck loads from the warehouse, drives the road route past each machine
+// that needs stock, and comes back. The loads are taken now and the stock lands as the truck
+// reaches each machine (see moveTrucks). Fuel is paid at the start.
 export function dispatchTruck(state) {
   if (state.trucks.length === 0) return fail('You need a truck first.');
+  const truck = state.trucks.find((t) => !t.trip);
+  if (!truck) return fail('Every truck is out on a run.');
   if (warehouseTotal(state) === 0) return fail('The warehouse is empty.');
-  const route = nearestRoute(state.machines, WAREHOUSE_CELL);
-  let loaded = 0;
-  let distance = 0;
-  let here = WAREHOUSE_CELL;
+  const reserve = { ...state.warehouse };
+  const cells = [];
   const stops = [];
-  for (const machine of route) {
+  let here = WAREHOUSE_CELL;
+  let loaded = 0;
+  for (const machine of nearestRoute(state.machines, WAREHOUSE_CELL)) {
+    const front = machineFront(state.city, machine.x, machine.y);
+    if (!front) continue;
+    const leg = findPath(state.city, here, front.cell, walkerWalkable);
+    if (!leg) continue;
     const load = {};
     for (const product of PRODUCT_IDS) {
       if (loaded >= CONFIG.truckCapacity) break;
@@ -153,28 +160,71 @@ export function dispatchTruck(state) {
         CONFIG.machinePerProduct - machine.stock[product],
         CONFIG.machineCapacity - machineTotal(machine),
       );
-      const give = Math.min(need, state.warehouse[product], CONFIG.truckCapacity - loaded);
+      const give = Math.min(need, reserve[product], CONFIG.truckCapacity - loaded);
       if (give > 0) {
         load[product] = give;
+        reserve[product] -= give;
         loaded += give;
       }
     }
     if (Object.keys(load).length === 0) continue;
-    distance += manhattan(here, machine);
-    here = machine;
-    stops.push({ machine, load });
+    cells.push(...leg);
+    stops.push({ machineId: machine.id, load, at: cells.length });
+    here = front.cell;
   }
-  if (stops.length === 0) return fail('Every machine is already stocked.');
-  distance += manhattan(here, WAREHOUSE_CELL);
-  for (const { machine, load } of stops) {
-    for (const [product, count] of Object.entries(load)) {
-      state.warehouse[product] -= count;
-      machine.stock[product] += count;
-    }
+  if (stops.length === 0) return fail('Every machine is already stocked, or cannot be reached by road.');
+  const back = findPath(state.city, here, WAREHOUSE_CELL, walkerWalkable);
+  if (!back) return fail('No road back to the warehouse.');
+  cells.push(...back);
+  for (const stop of stops) {
+    for (const [product, count] of Object.entries(stop.load)) state.warehouse[product] -= count;
   }
-  const fuel = distance * CONFIG.fuelCostPerDistance;
+  const fuel = cells.length * CONFIG.fuelCostPerDistance;
   state.cash -= fuel;
-  return ok(`Restocked ${stops.length} machines with ${loaded} items. Fuel $${fuel.toFixed(2)}.`);
+  truck.trip = { path: cells, at: 0, stops, nextStop: 0, distance: cells.length };
+  return ok(`A truck is on its way to ${stops.length} machines. Route ${routeRating(cells.length)}, fuel $${fuel.toFixed(2)}.`);
+}
+
+// How good a route is, by its length in tiles: short routes rate best.
+export function routeRating(distance) {
+  if (distance <= 50) return 'Great';
+  if (distance <= 100) return 'Good';
+  if (distance <= 200) return 'Fair';
+  return 'Poor';
+}
+
+// Moves the trucks on their runs by dt seconds, and lands each stop's stock as they reach it.
+export function moveTrucks(state, dt) {
+  for (const truck of state.trucks) {
+    const trip = truck.trip;
+    if (!trip) continue;
+    trip.at += CONFIG.truckSpeed * dt;
+    while (trip.nextStop < trip.stops.length && trip.at >= trip.stops[trip.nextStop].at) {
+      unload(state, trip.stops[trip.nextStop]);
+      trip.nextStop += 1;
+    }
+    if (trip.at >= trip.path.length) truck.trip = null;
+  }
+}
+
+function unload(state, stop) {
+  const machine = machineById(state, stop.machineId);
+  if (!machine) return;
+  for (const [product, count] of Object.entries(stop.load)) machine.stock[product] += count;
+}
+
+// Where a truck is on the map, in tiles: between the cells it has just passed and is heading to.
+export function truckPosition(state, truck) {
+  const trip = truck.trip;
+  if (!trip) return { x: WAREHOUSE_CELL.x + 0.5, z: WAREHOUSE_CELL.y + 0.5, yaw: 0, moving: false };
+  const idx = Math.min(Math.floor(trip.at), trip.path.length - 1);
+  const frac = Math.min(1, trip.at - Math.floor(trip.at));
+  const to = trip.path[idx];
+  const from = idx > 0 ? trip.path[idx - 1] : WAREHOUSE_CELL;
+  const x = from.x + 0.5 + (to.x - from.x) * frac;
+  const z = from.y + 0.5 + (to.y - from.y) * frac;
+  const yaw = Math.atan2(to.x - from.x, to.y - from.y);
+  return { x, z, yaw, moving: true };
 }
 
 function nearestRoute(machines, start) {

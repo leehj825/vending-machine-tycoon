@@ -4,6 +4,7 @@ import { CONFIG } from '../www/js/config.js';
 import { PRODUCT_IDS } from '../www/js/products.js';
 import * as sim from '../www/js/sim.js';
 import { cellAt, WAREHOUSE_CELL } from '../www/js/world.js';
+import * as loco from '../www/js/locomotion.js';
 
 function buildingCell(state) {
   for (let y = 0; y < state.city.length; y++) {
@@ -12,6 +13,10 @@ function buildingCell(state) {
     }
   }
   throw new Error('no building in city');
+}
+
+function machineFrontFor(state, x, y) {
+  return loco.machineFront(state.city, x, y);
 }
 
 function fullStock(machine, amount = CONFIG.machinePerProduct) {
@@ -81,19 +86,35 @@ test('an empty machine costs reputation only after the grace hours', () => {
   assert.ok(state.reputation < start, 'penalty after grace');
 });
 
-test('a truck restocks machines from the warehouse and charges fuel', () => {
+test('a truck drives its road route, restocks machines on the way and charges fuel', () => {
   const state = sim.newGame(7);
-  const spot = buildingCell(state);
-  sim.buyMachine(state, spot.x, spot.y);
+  // Two machines on different buildings, each with a street beside it.
+  const spots = [];
+  state.city.forEach((row, y) => row.forEach((cell, x) => {
+    if (spots.length < 2 && cell.type === 'building' && machineFrontFor(state, x, y)) spots.push({ x, y });
+  }));
+  for (const spot of spots) sim.buyMachine(state, spot.x, spot.y);
+  assert.equal(state.machines.length, 2, 'two machines');
   assert.equal(sim.dispatchTruck(state).ok, false, 'needs a truck');
   sim.buyTruck(state);
   assert.equal(sim.dispatchTruck(state).ok, false, 'needs warehouse stock');
-  sim.buyWarehouseStock(state, 'soda', 100);
+  sim.buyWarehouseStock(state, 'soda', 200);
   const cashBefore = state.cash;
   assert.equal(sim.dispatchTruck(state).ok, true);
-  assert.equal(state.machines[0].stock.soda, CONFIG.machinePerProduct);
-  assert.equal(state.warehouse.soda, 100 - CONFIG.machinePerProduct);
-  assert.ok(state.cash < cashBefore, 'buying stock and fuel cost cash');
+  assert.ok(state.cash < cashBefore, 'fuel is paid at the start');
+  assert.equal(state.machines[0].stock.soda, 0, 'nothing lands before the truck arrives');
+  assert.equal(state.trucks[0].trip.stops.length, 2);
+  for (let i = 0; i < 4000 && state.trucks[0].trip; i++) sim.moveTrucks(state, 0.05);
+  assert.equal(state.trucks[0].trip, null, 'the truck is back');
+  for (const machine of state.machines) assert.equal(machine.stock.soda, CONFIG.machinePerProduct);
+  assert.equal(state.warehouse.soda, 200 - 2 * CONFIG.machinePerProduct);
+});
+
+test('a truck\'s route rating follows its length', () => {
+  assert.equal(sim.routeRating(20), 'Great');
+  assert.equal(sim.routeRating(80), 'Good');
+  assert.equal(sim.routeRating(150), 'Fair');
+  assert.equal(sim.routeRating(300), 'Poor');
 });
 
 test('collecting moves a machine\'s takings into cash', () => {

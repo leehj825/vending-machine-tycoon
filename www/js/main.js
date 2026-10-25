@@ -7,6 +7,7 @@ import { loadGame, saveGame } from './save.js';
 import { createCityView } from './city3d.js';
 import { createUi } from './ui.js';
 import { createWalkMode } from './walkmode.js';
+import { truckPosition } from './sim.js';
 
 const $ = (id) => document.getElementById(id);
 const toastEl = $('toast');
@@ -100,10 +101,13 @@ async function start() {
   setInterval(() => saveGame(state), 30000);
   window.addEventListener('pagehide', () => saveGame(state));
 
+  // Trucks follow the game clock: they stop when the game is paused and run at its speed.
   let lastFrame = performance.now();
   function frame(now) {
     const dt = Math.min(0.1, (now - lastFrame) / 1000);
     lastFrame = now;
+    sim.moveTrucks(state, paused ? 0 : dt * speeds[speedIndex]);
+    city.drawVehicles(state.trucks.filter((t) => t.trip).map((t) => ({ key: `t${t.id}`, ...truckPosition(state, t) })));
     walk.frame(dt);
     requestAnimationFrame(frame);
   }
