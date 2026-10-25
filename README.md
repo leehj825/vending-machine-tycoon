@@ -67,6 +67,12 @@ tools/build_clips.js  builds www/assets/clips.json from Nightfall Settlement's c
   Security ($400 per machine) cuts the risk and halves the empty-machine penalty
 - Rival company, by zone type: presence grows each day, fastest where you have few machines, and cuts
   sales by up to 45%. A counter-attack (HQ tab) pushes it back, at a cost, and it grows again
+- Research (HQ tab): Turbo Logistics (trucks 25% faster), Premium Branding (prices 10% higher),
+  Efficient Cooling (half the spoilage)
+- Machine upgrades: capacity (+25 items, up to two levels), cooling (half the spoilage in that machine),
+  and an ad display (+$10 a day)
+- Rush Hour: each ad campaign ($200) fills a hype meter; when it is full, an hour of 10× sales starts.
+  This is a simplified version of the design
 - Clock: 1 game day = 5 minutes real time (3,000 ticks at 10 ticks per second), with 1×, 2×, and 4×
 - Save every 30 seconds, at the end of each day, and when the page closes
 - Walk mode (Walk button): a third-person player walks the streets with a stick. Walking uses the
@@ -78,9 +84,8 @@ tools/build_clips.js  builds www/assets/clips.json from Nightfall Settlement's c
 
 ## Planned (in the order of the design)
 
-1. Research, rush hours, and machine upgrades (capacity, cooling, security, ad display)
-2. More town life: walkers buying from machines by themselves, crossings, and traffic
-3. Android package with Capacitor, and an APK in CI
+1. More town life: walkers buying from machines by themselves, crossings, and traffic
+2. Android package with Capacitor, and an APK in CI
 
 ## Economy reference
 

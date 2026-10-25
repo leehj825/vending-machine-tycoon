@@ -29,6 +29,9 @@ export function newGame(seed = 7) {
     spoiled: 0,
     contracts: [],
     rival: newRival(),
+    research: Object.fromEntries(Object.keys(CONFIG.research).map((r) => [r, false])),
+    hype: 0,
+    rushTicks: 0,
     news: [],
     nextId: 1,
     // Sales and revenue per product for today and the last seven days.
@@ -53,6 +56,16 @@ function nextRandom(state) {
 
 export function warehouseTotal(state) {
   return PRODUCT_IDS.reduce((sum, p) => sum + state.warehouse[p], 0);
+}
+
+export function machineCapacity(machine) {
+  return CONFIG.machineCapacity + machine.capacityLevel * CONFIG.capacityUpgradeSlots;
+}
+
+// What one unit sells for: the list price times the machine's multiplier, plus Premium Branding.
+export function unitPrice(state, machine, product) {
+  const branding = state.research.premiumBranding ? CONFIG.premiumPriceFactor : 1;
+  return PRODUCTS[product].basePrice * machine.prices[product] * branding;
 }
 
 export function machineTotal(machine) {
@@ -93,6 +106,9 @@ export function buyMachine(state, x, y) {
     emptyHours: 0,
     condition: 0,
     security: false,
+    capacityLevel: 0,
+    cooling: false,
+    adDisplay: false,
     stockDay: Object.fromEntries(PRODUCT_IDS.map((p) => [p, state.day])),
   });
   return ok(`${ZONES[cell.zone].name} machine installed.`);
@@ -107,7 +123,7 @@ export function sellToWalker(state, machineId) {
   const options = PRODUCT_IDS.filter((p) => machine.stock[p] > 0);
   if (options.length === 0) return fail('That machine is out of stock.');
   const product = options[Math.floor(nextRandom(state) * options.length)];
-  const price = PRODUCTS[product].basePrice * machine.prices[product];
+  const price = unitPrice(state, machine, product);
   machine.stock[product] -= 1;
   machine.cash += price;
   state.today.sales[product] += 1;
@@ -177,7 +193,7 @@ export function dispatchTruck(state) {
       if (loaded >= CONFIG.truckCapacity) break;
       const need = Math.min(
         CONFIG.machinePerProduct - machine.stock[product],
-        CONFIG.machineCapacity - machineTotal(machine),
+        machineCapacity(machine) - machineTotal(machine),
       );
       const give = Math.min(need, reserve[product], CONFIG.truckCapacity - loaded);
       if (give > 0) {
@@ -217,7 +233,8 @@ export function moveTrucks(state, dt) {
   for (const truck of state.trucks) {
     const trip = truck.trip;
     if (!trip) continue;
-    trip.at += CONFIG.truckSpeed * dt;
+    const speed = state.research.turboTrucks ? CONFIG.truckSpeed * CONFIG.turboSpeedFactor : CONFIG.truckSpeed;
+    trip.at += speed * dt;
     while (trip.nextStop < trip.stops.length && trip.at >= trip.stops[trip.nextStop].at) {
       unload(state, trip.stops[trip.nextStop]);
       trip.nextStop += 1;
@@ -275,10 +292,11 @@ export function saleChance(state, machine, product) {
   const multiplier = machine.prices[product];
   const zoneDemand = zone.demand[product] || 1;
   const priceFactor = Math.max(0, 1 - zone.elasticity * (multiplier - 1));
+  const rush = state.rushTicks > 0 ? CONFIG.rushMultiplier : 1;
   const perHour = Math.min(
     0.95,
     PRODUCTS[product].demand * zoneDemand * priceFactor * CONDITION_SALES[machine.condition]
-      * salesFactor(state, machine.zone) * (1 + reputationBonus(state.reputation)),
+      * salesFactor(state, machine.zone) * (1 + reputationBonus(state.reputation)) * rush,
   );
   return 1 - Math.pow(1 - perHour, 1 / CONFIG.ticksPerHour);
 }
@@ -290,7 +308,7 @@ export function tick(state) {
     for (const product of PRODUCT_IDS) {
       if (machine.stock[product] <= 0) continue;
       if (nextRandom(state) >= saleChance(state, machine, product)) continue;
-      const price = PRODUCTS[product].basePrice * machine.prices[product];
+      const price = unitPrice(state, machine, product);
       machine.stock[product] -= 1;
       machine.cash += price;
       state.today.sales[product] += 1;
@@ -298,6 +316,7 @@ export function tick(state) {
       state.reputation += CONFIG.reputationGainPerSale;
     }
   }
+  if (state.rushTicks > 0) state.rushTicks -= 1;
   announce(state, settleContracts(state));
   state.tick += 1;
   if (state.tick % CONFIG.ticksPerHour === 0) hourlyChecks(state);
@@ -380,18 +399,21 @@ export function installSecurity(state, machineId) {
 function spoilStock(state) {
   let spoiled = 0;
   const expired = (day, product) => PRODUCTS[product].spoilDays && state.day + 1 - day >= PRODUCTS[product].spoilDays;
+  const cooled = state.research.efficientCooling ? CONFIG.coolingSpoilageFactor : 1;
   for (const machine of state.machines) {
     for (const product of PRODUCT_IDS) {
       if (machine.stock[product] > 0 && expired(machine.stockDay[product], product)) {
-        spoiled += machine.stock[product];
-        machine.stock[product] = 0;
+        const lost = machine.cooling ? Math.ceil(machine.stock[product] * CONFIG.coolingSpoilageFactor) : machine.stock[product];
+        spoiled += lost;
+        machine.stock[product] -= lost;
       }
     }
   }
   for (const product of PRODUCT_IDS) {
     if (state.warehouse[product] > 0 && expired(state.warehouseDay[product], product)) {
-      spoiled += state.warehouse[product];
-      state.warehouse[product] = 0;
+      const lost = Math.ceil(state.warehouse[product] * cooled);
+      spoiled += lost;
+      state.warehouse[product] -= lost;
     }
   }
   if (spoiled > 0) {
@@ -405,6 +427,60 @@ function announce(state, messages) {
     state.news.unshift(message);
   }
   state.news = state.news.slice(0, 6);
+}
+
+export function buyResearch(state, id) {
+  const item = CONFIG.research[id];
+  if (!item) return fail('No such research.');
+  if (state.research[id]) return fail('Already researched.');
+  if (state.cash < item.cost) return fail(`Research costs $${item.cost}.`);
+  state.cash -= item.cost;
+  state.research[id] = true;
+  return ok(`${item.name} researched.`);
+}
+
+export function upgradeCapacity(state, machineId) {
+  const machine = machineById(state, machineId);
+  if (!machine) return fail('No such machine.');
+  if (machine.capacityLevel >= CONFIG.capacityUpgradeMaxLevel) return fail('Fully upgraded.');
+  if (state.cash < CONFIG.capacityUpgradeCost) return fail(`Upgrade costs $${CONFIG.capacityUpgradeCost}.`);
+  state.cash -= CONFIG.capacityUpgradeCost;
+  machine.capacityLevel += 1;
+  return ok(`Capacity is now ${machineCapacity(machine)} items.`);
+}
+
+export function installCooling(state, machineId) {
+  const machine = machineById(state, machineId);
+  if (!machine) return fail('No such machine.');
+  if (machine.cooling) return fail('Already cooled.');
+  if (state.cash < CONFIG.coolingUpgradeCost) return fail(`Cooling costs $${CONFIG.coolingUpgradeCost}.`);
+  state.cash -= CONFIG.coolingUpgradeCost;
+  machine.cooling = true;
+  return ok('Cooling installed.');
+}
+
+export function installAdDisplay(state, machineId) {
+  const machine = machineById(state, machineId);
+  if (!machine) return fail('No such machine.');
+  if (machine.adDisplay) return fail('Already has an ad display.');
+  if (state.cash < CONFIG.adDisplayCost) return fail(`An ad display costs $${CONFIG.adDisplayCost}.`);
+  state.cash -= CONFIG.adDisplayCost;
+  machine.adDisplay = true;
+  return ok('Ad display installed.');
+}
+
+// An ad campaign fills the hype meter. A full meter starts an hour of Rush Hour.
+export function runCampaign(state) {
+  if (state.cash < CONFIG.campaignCost) return fail(`A campaign costs $${CONFIG.campaignCost}.`);
+  state.cash -= CONFIG.campaignCost;
+  state.hype = Math.min(1, state.hype + CONFIG.campaignHype);
+  if (state.hype >= 1) {
+    state.hype = 0;
+    state.rushTicks = CONFIG.rushTicks;
+    announce(state, ['Rush Hour! Sales are running at ten times the speed.']);
+    return ok('Rush Hour has started.');
+  }
+  return ok(`Hype is at ${Math.round(state.hype * 100)}%.`);
 }
 
 export function counterAttack(state, zone) {
@@ -425,6 +501,8 @@ export function swapContract(state, id) {
 
 function endDay(state) {
   spoilStock(state);
+  const adMachines = state.machines.filter((m) => m.adDisplay).length;
+  if (adMachines > 0) state.cash += adMachines * CONFIG.adDisplayDailyIncome;
   state.history.unshift({ day: state.day, sales: state.today.sales, revenue: state.today.revenue });
   state.history = state.history.slice(0, 7);
   state.today = { sales: zeroCounts(), revenue: 0 };

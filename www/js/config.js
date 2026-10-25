@@ -55,5 +55,26 @@ export const CONFIG = {
   rivalCounterBaseCost: 1500,
   rivalCounterCostPerPresence: 3000,
   rivalCounterReduction: 0.3,
+  // Research, one purchase each.
+  research: {
+    turboTrucks: { name: 'Turbo Logistics', cost: 2000, text: 'Trucks move 25% faster.' },
+    premiumBranding: { name: 'Premium Branding', cost: 5000, text: 'Prices 10% higher, with no loss of customers.' },
+    efficientCooling: { name: 'Efficient Cooling', cost: 3000, text: 'Halves spoilage.' },
+  },
+  turboSpeedFactor: 1.25,
+  premiumPriceFactor: 1.1,
+  coolingSpoilageFactor: 0.5,
+  // Machine upgrades.
+  capacityUpgradeCost: 500,
+  capacityUpgradeSlots: 25,
+  capacityUpgradeMaxLevel: 2,
+  coolingUpgradeCost: 800,
+  adDisplayCost: 1000,
+  adDisplayDailyIncome: 10,
+  // Rush Hour: an ad campaign fills the hype meter; a full meter starts an hour of 10× sales.
+  campaignCost: 200,
+  campaignHype: 0.25,
+  rushMultiplier: 10,
+  rushTicks: 125,
   saveKey: 'vending_tycoon_save_v2',
 };

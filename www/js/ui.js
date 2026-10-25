@@ -87,10 +87,15 @@ export function createUi({ panel, stats, toast, act, state: current }) {
       </tr>`).join('');
     return `
       <h2>${zone.name} machine</h2>
-      <p class="hint">Stock ${sim.machineTotal(machine)}/${CONFIG.machineCapacity}</p>
+      <p class="hint">Stock ${sim.machineTotal(machine)}/${sim.machineCapacity(machine)}</p>
       <div class="row">
         <span>Cash in machine: <b>${money(machine.cash)}</b></span>
         <button class="primary" data-act="collect" data-machine="${machine.id}" ${machine.cash > 0 ? '' : 'disabled'}>Collect</button>
+      </div>
+      <div class="row buttons">
+        <button data-act="capacity" data-machine="${machine.id}" ${machine.capacityLevel >= CONFIG.capacityUpgradeMaxLevel ? 'disabled' : ''}>Capacity ${machine.capacityLevel}/${CONFIG.capacityUpgradeMaxLevel} $${CONFIG.capacityUpgradeCost}</button>
+        <button data-act="cooling" data-machine="${machine.id}" ${machine.cooling ? 'disabled' : ''}>${machine.cooling ? 'Cooled' : `Cooling $${CONFIG.coolingUpgradeCost}`}</button>
+        <button data-act="ads" data-machine="${machine.id}" ${machine.adDisplay ? 'disabled' : ''}>${machine.adDisplay ? 'Ads on' : `Ad display ${wholeMoney(CONFIG.adDisplayCost)}`}</button>
       </div>
       <div class="row">
         <span>Condition: <b>${sim.CONDITIONS[machine.condition]}</b></span>
@@ -157,6 +162,14 @@ export function createUi({ panel, stats, toast, act, state: current }) {
     }).join('');
   }
 
+  function researchRows(state) {
+    return Object.entries(CONFIG.research).map(([id, item]) => `
+      <tr><td>${item.name}<br><span class="hint">${item.text}</span></td>
+      <td>${state.research[id]
+        ? 'Done'
+        : `<button data-act="research" data-id="${id}" ${state.cash < item.cost ? 'disabled' : ''}>${wholeMoney(item.cost)}</button>`}</td></tr>`).join('');
+  }
+
   function rivalRows(state) {
     return ZONE_IDS.map((zone) => {
       const presence = Math.round(state.rival[zone] * 100);
@@ -181,6 +194,13 @@ export function createUi({ panel, stats, toast, act, state: current }) {
         <tr><th>Today's sales</th><td>${today} items, ${money(state.today.revenue)}</td></tr>
         <tr><th>Spoiled so far</th><td>${state.spoiled} items</td></tr>
       </table>
+      <h3>Marketing</h3>
+      <div class="row">
+        <span>${state.rushTicks > 0 ? `<b>Rush Hour</b> on, ${Math.ceil(state.rushTicks / CONFIG.ticksPerHour * 60)} min left` : `Hype ${Math.round(state.hype * 100)}%`}</span>
+        <button data-act="campaign" ${state.cash < CONFIG.campaignCost ? 'disabled' : ''}>Ad campaign ${wholeMoney(CONFIG.campaignCost)}</button>
+      </div>
+      <h3>Research</h3>
+      <table>${researchRows(state)}</table>
       <h3>Rival company</h3>
       <table>${rivalRows(state)}</table>
       <h3>Contracts</h3>
@@ -213,6 +233,11 @@ export function createUi({ panel, stats, toast, act, state: current }) {
       dispatch: () => act(() => sim.dispatchTruck(latest)),
       swap: () => act(() => sim.swapContract(latest, d.id)),
       counter: () => act(() => sim.counterAttack(latest, d.zone)),
+      research: () => act(() => sim.buyResearch(latest, d.id)),
+      campaign: () => act(() => sim.runCampaign(latest)),
+      capacity: () => act(() => sim.upgradeCapacity(latest, +d.machine)),
+      cooling: () => act(() => sim.installCooling(latest, +d.machine)),
+      ads: () => act(() => sim.installAdDisplay(latest, +d.machine)),
     };
     actions[d.act]?.();
   }

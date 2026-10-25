@@ -306,3 +306,54 @@ test('a strong rival cuts sales in its zone', () => {
   state.rival[machine.zone] = 0.75;
   assert.ok(sim.saleChance(state, machine, 'soda') < clear);
 });
+
+test('premium branding raises prices by ten percent', () => {
+  const state = sim.newGame(7);
+  const spot = buildingCell(state);
+  sim.buyMachine(state, spot.x, spot.y);
+  const machine = state.machines[0];
+  const plain = sim.unitPrice(state, machine, 'soda');
+  state.cash = 10000;
+  assert.equal(sim.buyResearch(state, 'premiumBranding').ok, true);
+  assert.ok(Math.abs(sim.unitPrice(state, machine, 'soda') - plain * 1.1) < 1e-9);
+  assert.equal(sim.buyResearch(state, 'premiumBranding').ok, false, 'once');
+});
+
+test('capacity upgrades raise the limit, up to two levels', () => {
+  const state = sim.newGame(7);
+  const spot = buildingCell(state);
+  sim.buyMachine(state, spot.x, spot.y);
+  const machine = state.machines[0];
+  state.cash = 10000;
+  assert.equal(sim.machineCapacity(machine), CONFIG.machineCapacity);
+  sim.upgradeCapacity(state, machine.id);
+  sim.upgradeCapacity(state, machine.id);
+  assert.equal(sim.machineCapacity(machine), CONFIG.machineCapacity + 2 * CONFIG.capacityUpgradeSlots);
+  assert.equal(sim.upgradeCapacity(state, machine.id).ok, false);
+});
+
+test('an ad display pays a little each day', () => {
+  const state = sim.newGame(7);
+  const spot = buildingCell(state);
+  sim.buyMachine(state, spot.x, spot.y);
+  state.cash = 5000;
+  sim.installAdDisplay(state, state.machines[0].id);
+  const cash = state.cash;
+  for (let i = 0; i < CONFIG.ticksPerHour * CONFIG.hoursPerDay; i++) sim.tick(state);
+  assert.ok(state.cash >= cash + CONFIG.adDisplayDailyIncome);
+});
+
+test('four campaigns fill the hype meter and start Rush Hour, which sells faster', () => {
+  const state = sim.newGame(7);
+  state.cash = 10000;
+  for (let i = 0; i < 3; i++) sim.runCampaign(state);
+  assert.equal(state.rushTicks, 0);
+  sim.runCampaign(state);
+  assert.equal(state.rushTicks, CONFIG.rushTicks);
+  const spot = buildingCell(state);
+  sim.buyMachine(state, spot.x, spot.y);
+  const machine = state.machines[0];
+  const rush = sim.saleChance(state, machine, 'soda');
+  state.rushTicks = 0;
+  assert.ok(rush > sim.saleChance(state, machine, 'soda'));
+});
