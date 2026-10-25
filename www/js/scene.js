@@ -118,9 +118,34 @@ function roadTile(m, grid, x, y) {
   else if (across && !along) m.flat(x + 0.1, y + 0.47, x + 0.9, y + 0.53, 0.004, LANE);
 }
 
+// A park: a lawn with a path, a pond and a few trees. Nothing to buy here.
+function park(m, x, y) {
+  m.flat(x, y, x + 1, y + 1, 0, 0x8bd17c);
+  m.flat(x + 0.44, y, x + 0.56, y + 1, 0.003, 0xd7ccc8);
+  m.flat(x + 0.12, y + 0.12, x + 0.42, y + 0.36, 0.004, 0x4fc3f7);
+  for (const [tx, tz] of [[0.72, 0.2], [0.8, 0.7], [0.22, 0.78]]) {
+    m.box(x + tx - 0.02, 0, y + tz - 0.02, x + tx + 0.02, 0.22, y + tz + 0.02, TRUNK);
+    m.cone(x + tx, y + tz, 0.12, 6, 0.6, 0.2, FOLIAGE);
+  }
+}
+
+// A house: a cream cottage with a red roof and a garden. Houses are only for looking at.
+function house(m, x, y) {
+  m.flat(x + 0.05, y + 0.05, x + 0.95, y + 0.95, 0.002, 0x8bd17c);
+  m.box(x + 0.22, 0, y + 0.22, x + 0.78, 0.5, y + 0.78, 0xf3e9d2, { top: 0xe0d2b4 });
+  m.cone(x + 0.5, y + 0.5, 0.42, 4, 0.9, 0.5, RED);
+  m.box(x + 0.44, 0, y + 0.76, x + 0.56, 0.3, y + 0.79, BROWN);
+  m.box(x + 0.28, 0.28, y + 0.77, x + 0.38, 0.4, y + 0.79, GLASS);
+  m.box(x + 0.62, 0.28, y + 0.77, x + 0.72, 0.4, y + 0.79, GLASS);
+}
+
 function groundTile(m, grid, x, y, cell) {
   if (cell.type === 'road') {
     roadTile(m, grid, x, y);
+    return;
+  }
+  if (cell.type === 'park') {
+    park(m, x, y);
     return;
   }
   const grass = lerpHex(GRASS_A, GRASS_B, cellNoise(x, y));
@@ -285,7 +310,8 @@ export function buildStaticScene(grid, brightness = 1) {
       if (isBuildingCell(cell)) {
         const turns = frontTurns(grid, x, y) ?? 0;
         const turned = new MeshBuilder({ brightness, transform: turnTransform(x + 0.5, y + 0.5, turns) });
-        building(turned, x, y, cell.zone);
+        if (cell.type === 'house') house(turned, x, y);
+        else building(turned, x, y, cell.zone);
         mergeInto(m, turned);
       }
       streetObjects(m, grid, x, y, cell);

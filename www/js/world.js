@@ -25,7 +25,7 @@ export function generateCity(size, seed = 7) {
       if (x % 4 === 0 || y % 4 === 0) {
         row.push({ type: 'road' });
       } else if (random() < 0.25) {
-        row.push({ type: 'grass' });
+        row.push({ type: random() < 0.4 ? 'park' : 'grass' });
       } else {
         const zone = ZONE_IDS[Math.floor(random() * ZONE_IDS.length)];
         const type = random() < CONFIG.shopFrontShare ? 'building' : 'house';

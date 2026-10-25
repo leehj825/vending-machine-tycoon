@@ -49,6 +49,8 @@ async function start(slot) {
   const ui = createUi({ panel: $('panel'), stats: $('stats'), toast, act, state });
 
   const city = createCityView($('city'), (cell) => {
+    // Only shop fronts open the panel: roads, grass, parks and houses do nothing.
+    if (state.city[cell.y][cell.x].type !== 'building') return;
     city.setSelected(cell);
     ui.select(cell);
     // A building picked while the panel is hidden opens the panel on its City tab.
