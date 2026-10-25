@@ -284,6 +284,18 @@
     if (e.pointerId === stickId) stickRelease();
   });
 
+  // The release can miss the stick when another touch starts, so the window also ends any
+  // finger's hold: the stick stops, and the view forgets the finger.
+  function endAnyPointer(e) {
+    if (e.pointerId === stickId) stickRelease();
+    if (pointers.delete(e.pointerId)) {
+      pinchSpan = span();
+      lastMid = midpoint();
+    }
+  }
+  window.addEventListener('pointerup', endAnyPointer);
+  window.addEventListener('pointercancel', endAnyPointer);
+
   talkBtn.addEventListener('click', () => post({ kind: 'talk' }));
   collectBtn.addEventListener('click', () => {
     if (collectMachine) post({ kind: 'collectNear', machineId: collectMachine });
