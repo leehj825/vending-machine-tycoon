@@ -31,7 +31,21 @@ export function generateCity(size, seed = 7) {
     }
     grid.push(row);
   }
+  // A building must have a road beside it, so its front faces the street. A block's middle tile
+  // has no road beside it, so it is grass instead.
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      if (grid[y][x].type === 'building' && !hasRoadBeside(grid, x, y)) grid[y][x] = { type: 'grass' };
+    }
+  }
   return grid;
+}
+
+function hasRoadBeside(grid, x, y) {
+  return [[0, 1], [0, -1], [1, 0], [-1, 0]].some(([dx, dy]) => {
+    const cell = cellAt(grid, x + dx, y + dy);
+    return cell !== null && cell.type === 'road';
+  });
 }
 
 export function cellAt(city, x, y) {

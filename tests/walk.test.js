@@ -146,3 +146,44 @@ test('a walker sent to a machine arrives at its front and makes the sale', () =>
   assert.deepEqual(arrived, { machineId: machine.id });
   assert.equal(sim.sellToWalker(state, arrived.machineId).ok, true);
 });
+
+test('every building has a road beside it, and the middle of a block is never a building', () => {
+  for (const seed of [1, 7, 42, 99]) {
+    const grid = generateCity(CONFIG.gridSize, seed);
+    grid.forEach((row, y) => row.forEach((cell, x) => {
+      if (cell.type !== 'building') return;
+      const front = loco.machineFront(grid, x, y);
+      assert.ok(front, `building ${x},${y} in city ${seed} has road access`);
+    }));
+  }
+});
+
+test('a building\'s front turns toward a road beside it', () => {
+  const dirs = { 0: [0, 1], 1: [-1, 0], 2: [0, -1], 3: [1, 0] };
+  const grid = generateCity(CONFIG.gridSize, 7);
+  let checked = 0;
+  grid.forEach((row, y) => row.forEach((cell, x) => {
+    if (cell.type !== 'building') return;
+    const turns = [0, 3, 2, 1].find((t) => {
+      const [dx, dy] = dirs[t];
+      return cellAt(grid, x + dx, y + dy)?.type === 'road';
+    });
+    // The front starts facing +z (south, toward y + 1); a quarter turn moves it one way round.
+    const [fx, fz] = turnFront(0, 1, turns);
+    assert.equal(cellAt(grid, x + Math.round(fx), y + Math.round(fz))?.type, 'road');
+    checked++;
+  }));
+  assert.ok(checked > 0);
+});
+
+// The front after quarter turns, using the same turn as the scene.
+function turnFront(x, z, turns) {
+  let fx = x;
+  let fz = z;
+  for (let i = 0; i < turns % 4; i++) {
+    const t = fx;
+    fx = -fz;
+    fz = t;
+  }
+  return [fx, fz];
+}
