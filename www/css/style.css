@@ -44,7 +44,6 @@ header {
   flex-wrap: wrap;
 }
 
-.brand { font-weight: 800; color: var(--gold); }
 #stats { display: flex; flex-wrap: wrap; gap: 10px; flex: 1; font-size: 13px; color: var(--muted); }
 .stat b { color: var(--ink); }
 .controls { display: flex; gap: 6px; }
@@ -78,21 +77,24 @@ button.primary { background: var(--gold); border-color: var(--gold); color: #fff
 .toast.bad { background: var(--red); }
 .toast[hidden] { display: none; }
 
-main { flex: 1; display: flex; flex-direction: column; min-height: 0; }
-
+main { flex: 1; display: flex; flex-direction: column; min-height: 0; position: relative; }
 
 #city { flex: 1 1 auto; min-height: 160px; position: relative; overflow: hidden; }
 #city canvas { display: block; width: 100%; height: 100%; }
 
 #dock {
-  flex: 0 0 52vh;
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
   background: var(--paper);
   border-top: 1px solid var(--line);
   min-height: 0;
 }
-body.panel-hidden #dock { flex: 0 0 auto; }
+/* On a phone the open panel covers the whole city; Hide panel brings the city back. */
+@media (max-width: 719px) {
+  #dock { position: absolute; inset: 0; z-index: 2; }
+  body.panel-hidden #dock { position: relative; inset: auto; }
+}
 .dock-toggle {
   border: 0;
   padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));

@@ -21,9 +21,6 @@ dockToggle.addEventListener('click', () => {
   dockToggle.textContent = hidden ? 'Show panel ▴' : 'Hide panel ▾';
 });
 let toastTimer = null;
-let paused = false;
-const speeds = [1, 2, 4];
-let speedIndex = 0;
 
 function toast(message, ok) {
   toastEl.textContent = message;
@@ -84,21 +81,16 @@ async function start() {
     },
   });
 
-  $('walk').addEventListener('click', () => walk.enter());
-  $('pause').addEventListener('click', () => {
-    paused = !paused;
-    $('pause').textContent = paused ? '▶' : '❚❚';
-  });
-  $('speed').addEventListener('click', () => {
-    speedIndex = (speedIndex + 1) % speeds.length;
-    $('speed').textContent = `${speeds[speedIndex]}×`;
+  // Walking needs the city on screen, so an open panel is minimized first.
+  $('walk').addEventListener('click', () => {
+    if (!document.body.classList.contains('panel-hidden')) dockToggle.click();
+    walk.enter();
   });
 
-  // The clock: a few ticks per interval at higher speeds. Saves when a day closes.
+  // The clock always runs. Saves when a day closes.
   setInterval(() => {
-    if (paused) return;
     const day = state.day;
-    for (let i = 0; i < speeds[speedIndex]; i++) sim.tick(state);
+    sim.tick(state);
     if (state.day !== day) saveGame(state);
   }, CONFIG.tickMs);
 
@@ -110,12 +102,12 @@ async function start() {
   setInterval(() => saveGame(state), 30000);
   window.addEventListener('pagehide', () => saveGame(state));
 
-  // Trucks follow the game clock: they stop when the game is paused and run at its speed.
+  // Trucks drive along their routes in step with the clock.
   let lastFrame = performance.now();
   function frame(now) {
     const dt = Math.min(0.1, (now - lastFrame) / 1000);
     lastFrame = now;
-    sim.moveTrucks(state, paused ? 0 : dt * speeds[speedIndex]);
+    sim.moveTrucks(state, dt);
     city.drawVehicles(state.trucks.filter((t) => t.trip).map((t) => ({ key: `t${t.id}`, ...truckPosition(state, t) })));
     walk.frame(dt);
     requestAnimationFrame(frame);
