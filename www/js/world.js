@@ -1,4 +1,5 @@
 import { ZONE_IDS } from './products.js';
+import { CONFIG } from './config.js';
 
 // A small seeded random generator, so the same seed always makes the same city.
 export function seededRandom(seed) {
@@ -13,7 +14,8 @@ export function seededRandom(seed) {
 }
 
 // The city is a grid of roads every fourth row and column, with blocks between them. Each
-// block tile is a building of some zone, or a patch of grass.
+// block tile is a building of some zone, or a patch of grass. Only some buildings are shop
+// fronts, where a machine can go; the rest are houses, which are just for looking at.
 export function generateCity(size, seed = 7) {
   const random = seededRandom(seed);
   const grid = [];
@@ -26,7 +28,8 @@ export function generateCity(size, seed = 7) {
         row.push({ type: 'grass' });
       } else {
         const zone = ZONE_IDS[Math.floor(random() * ZONE_IDS.length)];
-        row.push({ type: 'building', zone });
+        const type = random() < CONFIG.shopFrontShare ? 'building' : 'house';
+        row.push({ type, zone });
       }
     }
     grid.push(row);
@@ -35,7 +38,8 @@ export function generateCity(size, seed = 7) {
   // has no road beside it, so it is grass instead.
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
-      if (grid[y][x].type === 'building' && !hasRoadBeside(grid, x, y)) grid[y][x] = { type: 'grass' };
+      const type = grid[y][x].type;
+      if ((type === 'building' || type === 'house') && !hasRoadBeside(grid, x, y)) grid[y][x] = { type: 'grass' };
     }
   }
   return grid;

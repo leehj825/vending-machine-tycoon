@@ -71,8 +71,9 @@ export function isRoad(grid, x, y) {
   return grid[y][x].type === 'road';
 }
 
+// Shop fronts and houses both stand as buildings; only shop fronts get purchase markers.
 export function isBuildingCell(cell) {
-  return cell.type === 'building';
+  return cell.type === 'building' || cell.type === 'house';
 }
 
 // Quarter turns that turn a building so its front faces a road next to it. Null with no road.
@@ -366,7 +367,7 @@ export function buildMarkers(state, bob = 0) {
   const machineAt = new Set(state.machines.map((m) => `${m.x},${m.y}`));
   const affordable = state.cash >= CONFIG.machinePrice;
   grid.forEach((row, y) => row.forEach((cell, x) => {
-    if (!isBuildingCell(cell)) return;
+    if (cell.type !== 'building') return;
     const h = markerHeight(cell.zone) + bob;
     if (machineAt.has(`${x},${y}`)) {
       owned.box(x + 0.4, h, y + 0.46, x + 0.6, h + 0.06, y + 0.54, OWNED_BLUE);

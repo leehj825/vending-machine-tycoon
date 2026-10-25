@@ -261,7 +261,7 @@ test('a targeted machine with nothing in it is vandalized, and repair restores i
   sim.buyMachine(state, spot.x, spot.y);
   const machine = state.machines[0];
   machine.cash = 0;
-  for (let i = 0; i < 20000 && machine.condition === 0; i++) sim.tick(state);
+  for (let i = 0; i < 100000 && machine.condition === 0; i++) sim.tick(state);
   assert.ok(machine.condition > 0, 'vandalized');
   const cash = state.cash;
   assert.equal(sim.repairMachine(state, machine.id).ok, true);

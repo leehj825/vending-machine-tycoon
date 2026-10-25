@@ -4,6 +4,8 @@ export const CONFIG = {
   startingCash: 2000,
   startingReputation: 100,
   machinePrice: 400,
+  // Share of the blocks' buildings that are shop fronts. The rest are houses, for looking at.
+  shopFrontShare: 0.3,
   truckPrice: 500,
   truckCapacity: 500,
   warehouseCapacity: 1000,

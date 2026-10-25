@@ -62,6 +62,9 @@ export function createUi({ panel, stats, toast, act, state: current }) {
     if (cell.x === WAREHOUSE_CELL.x && cell.y === WAREHOUSE_CELL.y) {
       return '<h2>Warehouse</h2><p class="hint">Buy stock here, then send a truck from the Fleet tab.</p>';
     }
+    if (tile.type === 'house') {
+      return `<h2>${ZONES[tile.zone].name} house</h2><p class="hint">Houses are just for looking at. Machines go on shop fronts.</p>`;
+    }
     if (tile.type !== 'building') {
       return `<h2>${tile.type === 'road' ? 'Road' : 'Grass'}</h2><p class="hint">Machines go on buildings.</p>`;
     }

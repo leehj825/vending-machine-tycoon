@@ -5,7 +5,7 @@ import {
 } from './locomotion.js';
 
 const MOVING_HOLD = 0.3; // seconds a figure keeps its walk after a step
-const LANE = 0.2; // walkers keep to the right of the road, this far from its centre
+const LANE = 0.4; // walkers keep to the right of the road, this far from its centre: on the pavement
 
 export function newPlayer(spawn) {
   return {

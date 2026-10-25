@@ -90,6 +90,7 @@ export function machineAt(state, x, y) {
 
 export function buyMachine(state, x, y) {
   const cell = cellAt(state.city, x, y);
+  if (cell?.type === 'house') return fail('That house is not for sale.');
   if (!cell || cell.type !== 'building') return fail('Machines go on building tiles.');
   if (!machineFront(state.city, x, y)) return fail('A machine needs a street beside it.');
   if (machineAt(state, x, y)) return fail('There is already a machine here.');
