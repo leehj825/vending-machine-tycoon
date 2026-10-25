@@ -36,6 +36,12 @@ function context() {
   soundBus = ctx.createGain();
   soundBus.connect(masterBus);
   applyVolumes();
+  // When the app goes to the background (another app is opened), the sound stops; it carries
+  // on from the same place when the app is back.
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) ctx.suspend();
+    else unlockAudio();
+  });
   return ctx;
 }
 
