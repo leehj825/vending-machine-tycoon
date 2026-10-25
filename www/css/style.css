@@ -64,7 +64,7 @@ button.primary { background: var(--gold); border-color: var(--gold); color: #fff
 
 .toast {
   position: fixed;
-  top: 64px;
+  top: calc(max(var(--ad-top), env(safe-area-inset-top, 0px)) + 8px);
   left: 50%;
   transform: translateX(-50%);
   padding: 8px 14px;

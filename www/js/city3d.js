@@ -317,8 +317,8 @@ export function createCityView(container, onTap) {
     const forwardX = -Math.sin(cam.yaw);
     const forwardZ = -Math.cos(cam.yaw);
     const size = city ? city.length : 15;
-    const x = cam.target.x - (rightX * dx + forwardX * dy) * scale;
-    const z = cam.target.z - (rightZ * dx + forwardZ * dy) * scale;
+    const x = cam.target.x + (forwardX * dy - rightX * dx) * scale;
+    const z = cam.target.z + (forwardZ * dy - rightZ * dx) * scale;
     cam.target.x = Math.min(size + 2, Math.max(-2, x));
     cam.target.z = Math.min(size + 2, Math.max(-2, z));
   }
