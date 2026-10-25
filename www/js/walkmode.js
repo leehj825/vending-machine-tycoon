@@ -7,6 +7,9 @@ import { seededRandom } from './world.js';
 import { machineTotal } from './sim.js';
 
 const TALK_REACH = 0.6;
+// Seconds between a walker's own errands to a machine.
+const ERRAND_GAP_MIN = 60;
+const ERRAND_GAP_MAX = 120;
 const COLLECT_REACH = 0.7;
 const PLAYER_LOOK = { shirt: 0xffeb3b, hat: 0xffffff };
 const WALKER_LOOKS = [
@@ -109,11 +112,23 @@ export function createWalkMode({ city, getState, clips, sale, say, buttons }) {
     if (machine) sale.collect(machine.id);
   }
 
+  // Town life: a walker with nothing to do now and then goes to buy from the nearest machine.
+  function errands(w, dt) {
+    if (w.task) return;
+    if (w.errandIn === undefined) w.errandIn = ERRAND_GAP_MIN + random() * (ERRAND_GAP_MAX - ERRAND_GAP_MIN);
+    w.errandIn -= dt;
+    if (w.errandIn > 0) return;
+    w.errandIn = ERRAND_GAP_MIN + random() * (ERRAND_GAP_MAX - ERRAND_GAP_MIN);
+    const machine = machineForWalker(w);
+    if (machine) sendWalker(w, getState().city, machine);
+  }
+
   // Frame update: the walkers always walk; the player walks only in walk mode.
   function frame(dt) {
     const state = getState();
     const grid = state.city;
     for (const w of walkers) {
+      errands(w, dt);
       const arrived = stepWalker(w, grid, dt, random);
       if (arrived) sale.walkerBuys(arrived.machineId);
     }

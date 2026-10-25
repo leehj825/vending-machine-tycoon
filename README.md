@@ -80,12 +80,13 @@ tools/build_clips.js  builds www/assets/clips.json from Nightfall Settlement's c
   roads, not into buildings. A drag turns the view and the player with it; pinch zooms.
 - Talk: the nearest walker in front and touching goes to the nearest machine with stock and buys one
   item (a sale). Collect: take the cash from a machine that is touching and in front.
-- Walkers wander the roads on the right-hand side, in map view and in walk mode
+- Walkers wander the roads on the right-hand side, in map view and in walk mode. Each walker goes to
+  buy from the nearest machine with stock every one to two minutes, so the machines sell while you are away
+  (traffic between vehicles is not in yet)
 
 ## Planned (in the order of the design)
 
-1. More town life: walkers buying from machines by themselves, crossings, and traffic
-2. Android package with Capacitor, and an APK in CI
+1. Android package with Capacitor, and an APK in CI
 
 ## Economy reference
 
