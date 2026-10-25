@@ -52,6 +52,16 @@ export const CONFIG = {
   securityRiskFactor: 0.35,
   securityPenaltyFactor: 0.5,
   repairCostPerLevel: 150,
+  // Wear: a machine wears a little each hour (more in risky zones and at night), and a kicker
+  // wears it faster. Each full step of wear lowers its condition by one.
+  wearPerHour: 0.6,
+  wearPerKickSecond: 2,
+  wearLimit: 100,
+  // Each day a working machine may break down: the chance grows with its condition.
+  breakdownChancePerDay: 0.03,
+  brokenReputationPenalty: 1,
+  // Most vandals that can be kicking one machine at once.
+  maxKickersPerMachine: 3,
   // The rival company, by zone type. Presence grows each day, fastest where you are absent.
   rivalMaxPresence: 0.75,
   rivalBaseDailyGrowth: 0.04,

@@ -110,6 +110,7 @@ export function buyMachine(state, x, y) {
     cash: 0,
     emptyHours: 0,
     condition: 0,
+    wear: 0,
     security: false,
     capacityLevel: 0,
     cooling: false,
@@ -328,8 +329,36 @@ export function tick(state) {
   if (state.tick >= TICKS_PER_DAY) endDay(state);
 }
 
+// Wear builds up on a machine; each full step wears its condition down by one.
+function addWear(state, machine, amount) {
+  machine.wear = (machine.wear ?? 0) + amount;
+  while (machine.wear >= CONFIG.wearLimit) {
+    machine.wear -= CONFIG.wearLimit;
+    if (machine.condition < CONDITIONS.length - 1) {
+      machine.condition += 1;
+      announce(state, [`A machine is wearing out: now ${CONDITIONS[machine.condition]}.`]);
+    }
+  }
+}
+
+// Each day a working machine may break down, more often when it is already worn. A broken
+// machine costs reputation each day until it is repaired.
+function breakdowns(state) {
+  for (const machine of state.machines) {
+    if (machine.condition === CONDITIONS.length - 1) {
+      state.reputation = Math.max(0, state.reputation - CONFIG.brokenReputationPenalty);
+      continue;
+    }
+    if (nextRandom(state) < CONFIG.breakdownChancePerDay * (machine.condition + 1)) {
+      machine.condition = CONDITIONS.length - 1;
+      announce(state, [`A machine broke down at (${machine.x}, ${machine.y}). Repair it to sell again.`]);
+    }
+  }
+}
+
 function hourlyChecks(state) {
   const hour = Math.floor(state.tick / CONFIG.ticksPerHour) % CONFIG.hoursPerDay;
+  const night = hour >= CONFIG.nightStartHour || hour < CONFIG.nightEndHour;
   for (const machine of state.machines) {
     if (machineTotal(machine) > 0) {
       machine.emptyHours = 0;
@@ -342,6 +371,7 @@ function hourlyChecks(state) {
         state.reputation = Math.max(0, state.reputation - penalty);
       }
     }
+    addWear(state, machine, CONFIG.wearPerHour * ZONES[machine.zone].crime * (night ? CONFIG.nightMultiplier : 1));
     if (nextRandom(state) < securityChance(machine, hour)) {
       targetMachine(state, machine);
     }
@@ -370,8 +400,8 @@ function targetMachine(state, machine) {
     announce(state, [`A machine was robbed: $${taken.toFixed(2)} gone.`]);
     return;
   }
-  if (attackOn(state, machine.id)) return;
   state.attacks ??= [];
+  if (state.attacks.filter((a) => a.machineId === machine.id).length >= CONFIG.maxKickersPerMachine) return;
   state.attacks.push({ id: state.nextId++, machineId: machine.id, kicking: false, progress: 0 });
   announce(state, ['Someone is kicking a machine. Talk to them to stop it.']);
 }
@@ -402,7 +432,10 @@ export function stopAttack(state, attackId) {
 // machine is vandalized. Called every frame with the seconds that passed.
 export function advanceAttacks(state, dt) {
   for (const attack of state.attacks ?? []) {
-    if (attack.kicking) attack.progress += dt;
+    if (!attack.kicking) continue;
+    attack.progress += dt;
+    const machine = machineById(state, attack.machineId);
+    if (machine) addWear(state, machine, CONFIG.wearPerKickSecond * dt);
   }
   for (const attack of (state.attacks ?? []).filter((a) => a.progress >= CONFIG.vandalKickSeconds)) {
     completeAttack(state, attack.id);
@@ -441,6 +474,7 @@ export function repairMachine(state, machineId) {
   if (state.cash < cost) return fail(`Repairs cost $${cost}.`);
   state.cash -= cost;
   machine.condition = 0;
+  machine.wear = 0;
   return ok('Machine repaired.');
 }
 
@@ -570,6 +604,7 @@ function endDay(state) {
   state.day += 1;
   state.tick = 0;
   state.contracts = makeContracts(state, () => nextRandom(state));
+  breakdowns(state);
   growRival(state);
 }
 

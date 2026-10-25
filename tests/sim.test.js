@@ -262,6 +262,8 @@ function attackedMachine(state) {
   machine.cash = 0;
   for (let i = 0; i < 100000 && state.attacks.length === 0; i++) sim.tick(state);
   assert.equal(state.attacks.length, 1, 'a vandal comes');
+  machine.condition = 0;
+  machine.wear = 0;
   return { machine, attack: state.attacks[0] };
 }
 
@@ -274,6 +276,43 @@ test('the walking arrow threshold starts at $50 and stays within its limits', ()
   assert.equal(sim.collectAlertOf(state), CONFIG.collectAlertMax);
   for (let i = 0; i < 100; i++) sim.changeCollectAlert(state, -CONFIG.collectAlertStep);
   assert.equal(sim.collectAlertOf(state), 0);
+});
+
+test('wear steps a machine down a condition, and kickers wear it faster', () => {
+  const state = sim.newGame(7);
+  const { machine } = attackedMachine(state);
+  state.attacks = [{ id: 999, machineId: machine.id, kicking: true, progress: -1e9 }];
+  machine.condition = 0;
+  machine.wear = 0;
+  sim.advanceAttacks(state, CONFIG.wearLimit / CONFIG.wearPerKickSecond);
+  assert.equal(machine.condition, 1, 'one full step of wear');
+  assert.equal(machine.wear, 0);
+});
+
+test('kickers pile up to a limit per machine', () => {
+  const state = sim.newGame(7);
+  const spot = buildingCell(state);
+  sim.buyMachine(state, spot.x, spot.y);
+  const machine = state.machines[0];
+  machine.cash = 0;
+  for (let i = 0; i < 300000 && state.attacks.filter((a) => a.machineId === machine.id).length < CONFIG.maxKickersPerMachine; i++) {
+    sim.tick(state);
+  }
+  assert.equal(state.attacks.filter((a) => a.machineId === machine.id).length, CONFIG.maxKickersPerMachine);
+});
+
+test('a broken machine costs reputation each day until it is repaired', () => {
+  const state = sim.newGame(7);
+  const spot = buildingCell(state);
+  sim.buyMachine(state, spot.x, spot.y);
+  const machine = state.machines[0];
+  machine.condition = 4;
+  const day = state.day;
+  const reputation = state.reputation;
+  for (let i = 0; i < 100000 && state.day === day; i++) sim.tick(state);
+  assert.ok(state.reputation < reputation, 'reputation falls while broken');
+  assert.equal(sim.repairMachine(state, machine.id).ok, true);
+  assert.equal(machine.condition, 0);
 });
 
 test('a vandal kicking a machine vandalizes it, and repair restores it', () => {
