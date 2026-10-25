@@ -199,3 +199,42 @@ test('a sandwich stocked the day before is still fresh at the close of day 2', (
   assert.ok(machine.stock.sandwich >= 4, 'still on sale');
   assert.equal(state.spoiled, 0);
 });
+
+test('three contracts a morning, one of each kind', () => {
+  const state = sim.newGame(7);
+  assert.equal(state.contracts.length, 3);
+  assert.deepEqual(state.contracts.map((c) => c.kind).sort(), ['revenue', 'supply', 'volume']);
+});
+
+test('a contract pays when today\'s sales reach its target', () => {
+  const state = sim.newGame(7);
+  const revenue = state.contracts.find((c) => c.kind === 'revenue');
+  const cash = state.cash;
+  const rep = state.reputation;
+  state.today.revenue = revenue.target;
+  sim.tick(state);
+  assert.equal(revenue.done, true);
+  assert.equal(state.cash, cash + revenue.reward);
+  assert.equal(state.reputation, rep + 15);
+  assert.ok(state.news[0].includes('Contract complete'));
+});
+
+test('an unfinished contract can be swapped once for a fee', () => {
+  const state = sim.newGame(7);
+  const id = state.contracts[0].id;
+  const kind = state.contracts[0].kind;
+  const cash = state.cash;
+  assert.equal(sim.swapContract(state, id).ok, true);
+  assert.equal(state.cash, cash - 250);
+  assert.equal(state.contracts[0].kind, kind);
+  assert.equal(sim.swapContract(state, state.contracts[0].id).ok, false, 'only once');
+});
+
+test('the morning brings a new set of contracts', () => {
+  const state = sim.newGame(7);
+  const before = state.contracts.map((c) => c.id);
+  for (let i = 0; i < CONFIG.ticksPerHour * CONFIG.hoursPerDay; i++) sim.tick(state);
+  assert.equal(state.day, 2);
+  assert.equal(state.contracts.length, 3);
+  assert.ok(state.contracts.every((c, i) => c.id !== before[i]));
+});

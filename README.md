@@ -58,6 +58,9 @@ tools/build_clips.js  builds www/assets/clips.json from Nightfall Settlement's c
   reputation, up to +50%
 - Sandwiches go off three days after they are stocked, in a machine or in the warehouse; the
   stock is thrown out at the day's close, for $0.50 an item
+- Daily contracts: three each morning (a revenue target, a product target, and a volume target),
+  scaled to recent takings and the machine count. A completed contract pays cash and +15 reputation.
+  An unfinished one can be swapped once for $250 (HQ tab)
 - Clock: 1 game day = 5 minutes real time (3,000 ticks at 10 ticks per second), with 1×, 2×, and 4×
 - Save every 30 seconds, at the end of each day, and when the page closes
 - Walk mode (Walk button): a third-person player walks the streets with a stick. Walking uses the
@@ -69,12 +72,11 @@ tools/build_clips.js  builds www/assets/clips.json from Nightfall Settlement's c
 
 ## Planned (in the order of the design)
 
-4. Daily contracts (three each morning, with a reroll for $250)
-5. Theft and vandalism, with the Security upgrade
-6. Rival company by zone, with a counter-attack
-7. Research, rush hours, and machine upgrades (capacity, cooling, security, ad display)
-8. More town life: walkers buying from machines by themselves, crossings, and traffic
-9. Android package with Capacitor, and an APK in CI
+1. Theft and vandalism, with the Security upgrade
+2. Rival company by zone, with a counter-attack
+3. Research, rush hours, and machine upgrades (capacity, cooling, security, ad display)
+4. More town life: walkers buying from machines by themselves, crossings, and traffic
+5. Android package with Capacitor, and an APK in CI
 
 ## Economy reference
 

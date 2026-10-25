@@ -160,3 +160,5 @@ td.buttons button { padding: 4px 8px; min-height: 32px; margin-left: 4px; }
 #office { left: 10px; }
 #run { right: 10px; }
 #run[aria-pressed="true"] { background: var(--ink); color: #fff; }
+
+.news { margin: 0; padding-left: 18px; color: var(--muted); }

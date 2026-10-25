@@ -4,6 +4,7 @@ import { CONFIG } from './config.js';
 import { PRODUCTS, PRODUCT_IDS, ZONES } from './products.js';
 import * as sim from './sim.js';
 import { cellAt, WAREHOUSE_CELL } from './world.js';
+import { CONTRACT_RULES, progressOf as contractProgress } from './contracts.js';
 
 const money = (n) => `$${n.toFixed(2)}`;
 const wholeMoney = (n) => `$${Math.round(n).toLocaleString('en-US')}`;
@@ -134,9 +135,25 @@ export function createUi({ panel, stats, toast, act, state: current }) {
       </div>`;
   }
 
+  function contractRows(state) {
+    return state.contracts.map((c) => {
+      const progress = contractProgress(state, c);
+      const what = c.kind === 'revenue' ? `Take ${wholeMoney(c.target)} today`
+        : c.kind === 'supply' ? `Sell ${c.target} ${PRODUCTS[c.product].name} today`
+        : `Sell ${c.target} items today`;
+      const status = c.done ? 'Complete' : `${Math.min(progress, c.target)} / ${c.target}`;
+      const swap = !c.done && !c.rerolled
+        ? `<button data-act="swap" data-id="${c.id}" ${state.cash < CONTRACT_RULES.rerollCost ? 'disabled' : ''}>Swap ${wholeMoney(CONTRACT_RULES.rerollCost)}</button>`
+        : '';
+      return `<tr><td>${what}<br><span class="hint">Pays ${wholeMoney(c.reward)} and +${CONTRACT_RULES.rewardReputation} rep</span></td>
+        <td>${status}</td><td>${swap}</td></tr>`;
+    }).join('');
+  }
+
   function hqPanel(state) {
     const today = PRODUCT_IDS.reduce((n, p) => n + state.today.sales[p], 0);
     const history = state.history.map((d) => `<tr><td>Day ${d.day}</td><td>${money(d.revenue)}</td></tr>`).join('');
+    const news = state.news.map((n) => `<li>${n}</li>`).join('');
     return `
       <h2>HQ</h2>
       <table>
@@ -146,6 +163,9 @@ export function createUi({ panel, stats, toast, act, state: current }) {
         <tr><th>Today's sales</th><td>${today} items, ${money(state.today.revenue)}</td></tr>
         <tr><th>Spoiled so far</th><td>${state.spoiled} items</td></tr>
       </table>
+      <h3>Contracts</h3>
+      <table>${contractRows(state)}</table>
+      ${news ? `<h3>News</h3><ul class="news">${news}</ul>` : ''}
       ${history ? `<h3>Last days</h3><table>${history}</table>` : ''}`;
   }
 
@@ -169,6 +189,7 @@ export function createUi({ panel, stats, toast, act, state: current }) {
       'buy-stock': () => act(() => sim.buyWarehouseStock(latest, d.product, +d.units)),
       'buy-truck': () => act(() => sim.buyTruck(latest)),
       dispatch: () => act(() => sim.dispatchTruck(latest)),
+      swap: () => act(() => sim.swapContract(latest, d.id)),
     };
     actions[d.act]?.();
   }

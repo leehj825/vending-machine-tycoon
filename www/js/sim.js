@@ -4,11 +4,12 @@ import { CONFIG } from './config.js';
 import { PRODUCTS, PRODUCT_IDS, ZONES } from './products.js';
 import { cellAt, generateCity, seededRandom, WAREHOUSE_CELL } from './world.js';
 import { findPath, machineFront, walkerWalkable } from './locomotion.js';
+import { makeContracts, settleContracts, swapContract as swapContractRule } from './contracts.js';
 
 const TICKS_PER_DAY = CONFIG.ticksPerHour * CONFIG.hoursPerDay;
 
 export function newGame(seed = 7) {
-  return {
+  const state = {
     seed,
     rngState: seed,
     day: 1,
@@ -22,11 +23,15 @@ export function newGame(seed = 7) {
     // The day each product's current stock arrived, for spoilage. Warehouse stock has its own.
     warehouseDay: Object.fromEntries(PRODUCT_IDS.map((p) => [p, 1])),
     spoiled: 0,
+    contracts: [],
+    news: [],
     nextId: 1,
     // Sales and revenue per product for today and the last seven days.
     today: { sales: zeroCounts(), revenue: 0 },
     history: [],
   };
+  state.contracts = makeContracts(state, () => nextRandom(state));
+  return state;
 }
 
 function zeroCounts() {
@@ -100,6 +105,7 @@ export function sellToWalker(state, machineId) {
   state.today.sales[product] += 1;
   state.today.revenue += price;
   state.reputation += CONFIG.reputationGainPerSale;
+  announce(state, settleContracts(state));
   return ok(`A passer-by bought ${PRODUCTS[product].name}.`);
 }
 
@@ -283,6 +289,7 @@ export function tick(state) {
       state.reputation += CONFIG.reputationGainPerSale;
     }
   }
+  announce(state, settleContracts(state));
   state.tick += 1;
   if (state.tick % CONFIG.ticksPerHour === 0) hourlyChecks(state);
   if (state.tick >= TICKS_PER_DAY) endDay(state);
@@ -326,6 +333,18 @@ function spoilStock(state) {
   }
 }
 
+function announce(state, messages) {
+  for (const message of messages) {
+    state.news.unshift(message);
+  }
+  state.news = state.news.slice(0, 6);
+}
+
+export function swapContract(state, id) {
+  const result = swapContractRule(state, id, () => nextRandom(state));
+  return result.ok ? ok(result.message) : fail(result.message);
+}
+
 function endDay(state) {
   spoilStock(state);
   state.history.unshift({ day: state.day, sales: state.today.sales, revenue: state.today.revenue });
@@ -333,6 +352,7 @@ function endDay(state) {
   state.today = { sales: zeroCounts(), revenue: 0 };
   state.day += 1;
   state.tick = 0;
+  state.contracts = makeContracts(state, () => nextRandom(state));
 }
 
 // Total worth: cash, cash waiting in machines, and the warehouse stock at its cost.
