@@ -6,6 +6,7 @@ import * as sim from './sim.js';
 import { cellAt, WAREHOUSE_CELL } from './world.js';
 import { CONTRACT_RULES, progressOf as contractProgress } from './contracts.js';
 import { playSound } from './audio.js';
+import { rewardReadyNow, showRewardAd } from './ads.js';
 
 const money = (n) => `$${n.toFixed(2)}`;
 const wholeMoney = (n) => `$${Math.round(n).toLocaleString('en-US')}`;
@@ -158,7 +159,12 @@ export function createUi({ panel, stats, toast, act, state: current }) {
       <div class="row">
         <button data-act="buy-truck" ${state.cash < CONFIG.truckPrice ? 'disabled' : ''}>Buy truck ${wholeMoney(CONFIG.truckPrice)}</button>
         <button class="primary" data-act="dispatch" ${!idle ? 'disabled' : ''}>Send restock run</button>
-      </div>`;
+      </div>
+      ${rewardReadyNow() && state.freeRunDay !== state.day && idle ? `
+      <div class="row">
+        <span class="hint">Watch a short video for a free restock run, once a day.</span>
+        <button data-act="free-run">Free run</button>
+      </div>` : ''}`;
   }
 
   function contractRows(state) {
@@ -259,6 +265,7 @@ export function createUi({ panel, stats, toast, act, state: current }) {
       security: () => act(() => sim.installSecurity(latest, +d.machine)),
       'buy-stock': () => act(() => sim.buyWarehouseStock(latest, d.product, +d.units)),
       'buy-truck': () => act(() => sim.buyTruck(latest)),
+      'free-run': () => showRewardAd(() => act(() => sim.freeRestockRun(latest))),
       dispatch: () => {
         const result = act(() => sim.dispatchTruck(latest));
         if (result.ok) playSound('truck');

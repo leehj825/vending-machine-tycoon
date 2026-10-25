@@ -111,6 +111,9 @@ export const CONFIG = {
     bannerId: 'ca-app-pub-4400173019354346/5798507534',
     testBannerId: 'ca-app-pub-3940256099942544/6300978111',
     testing: false,
+    // Rewarded video: watching it to the end gives a free restock run once a day (Flutter's IDs).
+    rewardedId: 'ca-app-pub-4400173019354346/8820412223',
+    rewardedTestId: 'ca-app-pub-3940256099942544/5224354917',
   },
   saveKey: 'vending_tycoon_save_v2',
 };

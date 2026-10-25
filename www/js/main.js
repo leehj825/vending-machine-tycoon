@@ -9,7 +9,7 @@ import { applyVolumes, playMusic, playSound, unlockAudio } from './audio.js';
 import { createCityView } from './city3d.js';
 import { createUi } from './ui.js';
 import { createWalkMode } from './walkmode.js';
-import { startAds } from './ads.js';
+import { startAds, startRewardAds } from './ads.js';
 import { truckPosition } from './sim.js';
 
 const $ = (id) => document.getElementById(id);
@@ -157,6 +157,7 @@ if (slot) {
   initMenu();
 }
 startAds();
+startRewardAds();
 
 // Browsers only let sound start after a tap: every tap unlocks sound, and every button makes
 // its click.
