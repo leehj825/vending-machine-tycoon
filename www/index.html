@@ -61,9 +61,10 @@
   <!-- The main menu: shown when the page opens without a game picked. -->
   <div id="menu" class="menu">
     <section data-screen="main" class="menu-screen">
-      <button data-go="start" class="menu-btn primary">Start game</button>
-      <button data-go="load" class="menu-btn">Load game</button>
-      <button data-go="settings" class="menu-btn">Settings</button>
+      <img class="menu-logo" src="assets/icon.png" alt="">
+      <button data-go="start" class="menu-btn primary"><b>Start game</b><span>Begin a new city</span></button>
+      <button data-go="load" class="menu-btn"><b>Load game</b><span>Carry on with a saved city</span></button>
+      <button data-go="settings" class="menu-btn"><b>Settings</b><span>Music and sound volume</span></button>
     </section>
 
     <section data-screen="start" class="menu-screen" hidden>
@@ -72,15 +73,16 @@
       <button data-slot="1" data-mode="start" class="menu-btn slot"></button>
       <button data-slot="2" data-mode="start" class="menu-btn slot"></button>
       <button data-slot="3" data-mode="start" class="menu-btn slot"></button>
-      <button data-go="main" class="menu-btn">Back</button>
+      <button data-go="main" class="menu-btn back">Back</button>
     </section>
 
     <section data-screen="load" class="menu-screen" hidden>
       <h2>Load a game</h2>
+      <p class="hint">Empty slots cannot be loaded.</p>
       <button data-slot="1" data-mode="load" class="menu-btn slot"></button>
       <button data-slot="2" data-mode="load" class="menu-btn slot"></button>
       <button data-slot="3" data-mode="load" class="menu-btn slot"></button>
-      <button data-go="main" class="menu-btn">Back</button>
+      <button data-go="main" class="menu-btn back">Back</button>
     </section>
 
     <section data-screen="settings" class="menu-screen" hidden>
@@ -94,7 +96,7 @@
       <label class="menu-slider">Sound effects <output data-out="sound"></output>
         <input type="range" min="0" max="100" data-setting="sound">
       </label>
-      <button data-go="main" class="menu-btn">Back</button>
+      <button data-go="main" class="menu-btn back">Back</button>
     </section>
   </div>
 

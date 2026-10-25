@@ -26,12 +26,13 @@ export function goToMenu() {
   location.reload();
 }
 
+// What a slot button shows: its name, and what is saved in it.
 function slotLabel(slot) {
   const info = slotInfo(slot);
-  if (!info) return `Slot ${slot}: empty`;
+  if (!info) return `<b>Slot ${slot}</b><span>Empty</span>`;
   const cash = Math.round(info.cash).toLocaleString();
-  const saved = info.savedAt ? ` · saved ${new Date(info.savedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}` : '';
-  return `Slot ${slot}: day ${info.day}, $${cash}${saved}`;
+  const saved = info.savedAt ? ` · ${new Date(info.savedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}` : '';
+  return `<b>Slot ${slot}</b><span>Day ${info.day} · $${cash}${saved}</span>`;
 }
 
 export function initMenu() {
@@ -49,7 +50,7 @@ export function initMenu() {
   function refreshSlots(mode) {
     for (const button of menu.querySelectorAll(`[data-mode="${mode}"][data-slot]`)) {
       const slot = Number(button.dataset.slot);
-      button.textContent = slotLabel(slot);
+      button.innerHTML = slotLabel(slot);
       if (mode === 'load') button.disabled = !slotInfo(slot);
     }
   }

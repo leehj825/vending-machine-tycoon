@@ -218,7 +218,7 @@ td.buttons button { padding: 4px 8px; min-height: 32px; margin-left: 4px; }
   text-shadow: 0 0 3px #fff, 0 0 2px #fff;
 }
 
-/* The main menu: a full-screen page over the game, with a card for each screen. */
+/* The main menu: a full-screen page with the logo, large buttons, and a card for each screen. */
 .menu {
   position: fixed;
   inset: 0;
@@ -226,10 +226,10 @@ td.buttons button { padding: 4px 8px; min-height: 32px; margin-left: 4px; }
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 16px;
-  padding-top: calc(16px + max(var(--ad-top), var(--ad-min), env(safe-area-inset-top, 0px)));
-  padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
-  background: var(--soft);
+  padding: 20px;
+  padding-top: calc(20px + max(var(--ad-top), var(--ad-min), env(safe-area-inset-top, 0px)));
+  padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(180deg, #a7d8f2 0%, #e6f5fc 55%, #f3f4f6 100%);
   overflow-y: auto;
 }
 .menu[hidden] { display: none; }
@@ -237,20 +237,45 @@ td.buttons button { padding: 4px 8px; min-height: 32px; margin-left: 4px; }
   width: min(420px, 100%);
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   background: var(--paper);
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  padding: 20px;
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0 10px 30px rgba(30, 29, 34, 0.18);
 }
 .menu-screen[hidden] { display: none; }
-.menu-screen h2 { text-align: center; margin: 0 0 4px; }
-.menu-btn { font-size: 16px; padding: 12px; min-height: 48px; }
-.menu-btn.primary { background: var(--gold); border-color: var(--gold); color: #fff; font-weight: 700; }
-.menu-btn.slot { text-align: left; font-size: 15px; }
-.menu-slider { display: flex; flex-direction: column; gap: 6px; font-weight: 600; }
+.menu-logo {
+  display: block;
+  width: 104px;
+  height: 104px;
+  margin: 0 auto 8px;
+  border-radius: 22px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+.menu-screen h2 { text-align: center; margin: 0; font-size: 20px; }
+.menu-screen .hint { text-align: center; margin: 0; }
+.menu-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-height: 56px;
+  padding: 12px 16px;
+  font-size: 16px;
+  text-align: left;
+  border-radius: 14px;
+}
+.menu-btn b { font-size: 17px; }
+.menu-btn span { color: var(--muted); font-size: 13px; }
+.menu-btn.primary { background: var(--gold); border-color: var(--gold); color: #fff; }
+.menu-btn.primary span { color: rgba(255, 255, 255, 0.85); }
+.menu-btn.slot { flex-direction: row; justify-content: space-between; align-items: center; gap: 10px; }
+.menu-btn.slot span { text-align: right; }
+.menu-btn.slot:disabled { opacity: 0.5; }
+.menu-btn.back { align-items: center; background: var(--soft); font-weight: 600; }
+.menu-slider { display: flex; flex-direction: column; gap: 8px; font-weight: 600; }
 .menu-slider output { float: right; color: var(--muted); font-weight: 400; }
-.menu-slider input { width: 100%; }
+.menu-slider input { width: 100%; accent-color: var(--gold); }
 
 .beacon.warn span { color: var(--red); }
 
