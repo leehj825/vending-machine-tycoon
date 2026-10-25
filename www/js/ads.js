@@ -8,6 +8,8 @@ export async function startAds() {
   if (!capacitor?.isNativePlatform?.()) return;
   const AdMob = capacitor.Plugins?.AdMob;
   if (!AdMob) return;
+  // Transparent page background, so the banner shows where the page's background would be.
+  document.documentElement.classList.add('native');
   document.body.classList.add('native');
   try {
     await AdMob.initialize({});

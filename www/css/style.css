@@ -25,6 +25,7 @@ html, body {
 }
 
 html { --ad-top: 0px; }
+html.native, html.native body { background: transparent; }
 /* The top ad banner, and the phone's status bar and navigation buttons, are kept clear. */
 body {
   display: flex;
