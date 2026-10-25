@@ -21,7 +21,7 @@ const PITCH = { map: [0.35, 1.45], walk: [0.15, 1.2] };
 const BUILDING_TOP = 2.6;
 // The share of the screen height the walk view moves the picture down, so the player sits low
 // while the camera still looks at them.
-const WALK_SCREEN_SHIFT = 0.18;
+const WALK_SCREEN_SHIFT = 0.28;
 
 function geometryFrom({ positions, colors }) {
   const geometry = new THREE.BufferGeometry();
