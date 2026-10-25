@@ -5,7 +5,7 @@
 import { machineFront, inFront, samplePose, newPose } from './locomotion.js';
 import { movePlayer, newPlayer, sendWalker, spawnWalkers, stepWalker } from './walk.js';
 import { seededRandom } from './world.js';
-import { collectAlertOf, machineTotal } from './sim.js';
+import { CONDITIONS, collectAlertOf, machineTotal } from './sim.js';
 
 const BEACON_MAX = 8;
 const beacons = [];
@@ -25,7 +25,7 @@ const WALKER_LOOKS = [
   { shirt: 0xecf0f1, hat: 0x4a4a4a },
 ];
 
-export function createWalkMode({ city, getState, clips, sale, vandal, say, buttons }) {
+export function createWalkMode({ city, getState, clips, sale, vandal, fix, say, buttons }) {
   const random = seededRandom(Date.now() % 100000);
   const walkers = spawnWalkers(getState().city, 8, random, WALKER_LOOKS);
   const mode = { active: false, player: null, stick: { x: 0, y: 0, id: null }, running: false };
@@ -118,6 +118,28 @@ export function createWalkMode({ city, getState, clips, sale, vandal, say, butto
   function collect() {
     const machine = nearMachine();
     if (machine) sale.collect(machine.id);
+  }
+
+  // A broken machine within reach and in front of the player, to fix.
+  function nearBroken() {
+    const state = getState();
+    const p = mode.player;
+    for (const m of state.machines) {
+      if (m.condition !== CONDITIONS.length - 1) continue;
+      const front = machineFront(state.city, m.x, m.y);
+      if (front && inFront(p, front.anchor.x, front.anchor.z, COLLECT_REACH)) return m;
+    }
+    return null;
+  }
+
+  function fixNearby() {
+    const machine = nearBroken();
+    if (machine) fix.repair(machine.id);
+  }
+
+  // A machine needs attention when a vandal is at it or it is broken: its arrow is red.
+  function isAlarm(state, m) {
+    return m.condition === CONDITIONS.length - 1 || (state.attacks ?? []).some((a) => a.machineId === m.id);
   }
 
   // Town life: a walker with nothing to do now and then goes to buy from the nearest machine.
@@ -237,6 +259,7 @@ export function createWalkMode({ city, getState, clips, sale, vandal, say, butto
   function updateButtons() {
     buttons.setTalk(Boolean(nearWalker()));
     buttons.setCollect(Boolean(nearMachine()));
+    buttons.setFix(Boolean(nearBroken()));
   }
 
   // Arrows around the player, one per nearby machine holding more cash than HQ's threshold.
@@ -249,11 +272,15 @@ export function createWalkMode({ city, getState, clips, sale, vandal, say, butto
     const forwardZ = -Math.cos(yaw);
     const alert = collectAlertOf(state);
     const targets = state.machines
-      .filter((m) => m.cash > alert)
+      .filter((m) => m.cash > alert || isAlarm(state, m))
       .map((m) => {
         const dx = m.x + 0.5 - player.x;
         const dz = m.y + 0.5 - player.z;
-        return { distance: Math.hypot(dx, dz), angle: Math.atan2(dx * rightX + dz * rightZ, dx * forwardX + dz * forwardZ) };
+        return {
+          distance: Math.hypot(dx, dz),
+          angle: Math.atan2(dx * rightX + dz * rightZ, dx * forwardX + dz * forwardZ),
+          warn: isAlarm(state, m),
+        };
       })
       .sort((a, b) => a.distance - b.distance)
       .slice(0, BEACON_MAX);
@@ -272,6 +299,7 @@ export function createWalkMode({ city, getState, clips, sale, vandal, say, butto
         return;
       }
       holder.hidden = false;
+      holder.classList.toggle('warn', targets[i].warn);
       holder.style.transform = `rotate(${(targets[i].angle * 180) / Math.PI}deg)`;
       holder.firstChild.style.top = `${-radius - 10}px`;
     });
@@ -319,6 +347,7 @@ export function createWalkMode({ city, getState, clips, sale, vandal, say, butto
 
   buttons.talkEl.addEventListener('click', talk);
   buttons.collectEl.addEventListener('click', collect);
+  buttons.fixEl.addEventListener('click', fixNearby);
   buttons.runEl.addEventListener('click', () => {
     mode.running = !mode.running;
     if (mode.player) mode.player.running = mode.running;

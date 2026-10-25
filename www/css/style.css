@@ -187,7 +187,8 @@ td.buttons button { padding: 4px 8px; min-height: 32px; margin-left: 4px; }
   font-size: 16px;
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
 }
-#talk { right: 150px; }
+#talk { right: 282px; }
+#fix { right: 150px; background: var(--red); }
 #collect { right: 18px; }
 .action:disabled { opacity: 0.4; }
 .walk-ctl {
@@ -251,3 +252,5 @@ td.buttons button { padding: 4px 8px; min-height: 32px; margin-left: 4px; }
 .menu-slider { display: flex; flex-direction: column; gap: 6px; font-weight: 600; }
 .menu-slider output { float: right; color: var(--muted); font-weight: 400; }
 .menu-slider input { width: 100%; }
+
+.beacon.warn span { color: var(--red); }
