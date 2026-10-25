@@ -184,7 +184,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen>
   // walker, and its own record of the last time a customer bought from it.
   // The player: walks the streets, collects from machines, and talks to walkers.
   static const double _playerWalkSpeed = 0.018; // tiles per update
-  static const double _playerRunSpeed = 0.036;
+  static const double _playerRunSpeed = 0.07;
   static const List<String> _talkLines = [
     'Hey! Where can I get a snack around here?',
     'Is there a machine nearby?',
@@ -1897,8 +1897,8 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen>
     _handlePedestrianTap(pedestrian);
   }
 
-  /// The shortest walk along roads from [start] to [goal], without the start tile. Null
-  /// when the goal cannot be reached along roads.
+  /// The shortest walk from [start] to [goal] over walkable tiles, without the start tile.
+  /// Null when the goal cannot be reached.
   List<(int, int)>? _roadPath((int, int) start, (int, int) goal) {
     if (start == goal) return <(int, int)>[];
     final previous = <(int, int), (int, int)>{start: start};
@@ -1909,7 +1909,7 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen>
       if (current == goal) break;
       for (final (dx, dz) in const [(1, 0), (-1, 0), (0, 1), (0, -1)]) {
         final next = (current.$1 + dx, current.$2 + dz);
-        if (previous.containsKey(next) || !isRoadTile(_grid, next.$1, next.$2))
+        if (previous.containsKey(next) || !_walkableTile(next.$1, next.$2))
           continue;
         previous[next] = current;
         queue.add(next);
@@ -1940,7 +1940,16 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen>
   }
 
   /// Whether the player may stand at ([x], [z]): only on a road.
-  bool _playerWalkable(double x, double z) => isRoadTile(_grid, x.floor(), z.floor());
+  bool _playerWalkable(double x, double z) => _walkableTile(x.floor(), z.floor());
+
+  /// The player walks on grass, parks and roads. Buildings, and the machines on them, are solid.
+  bool _walkableTile(int x, int y) {
+    if (y < 0 || y >= _grid.length || x < 0 || x >= _grid[y].length) return false;
+    return switch (_grid[y][x]) {
+      TileType.grass || TileType.park || TileType.road => true,
+      _ => false,
+    };
+  }
 
   /// Whether ([tx], [tz]) is within [maxDistance] of the player and in front of them, within
   /// about 60 degrees of the way they face.
