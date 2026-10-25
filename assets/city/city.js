@@ -13,6 +13,9 @@
   const GLIDE_MS = 450;
   const ORBIT_YAW = 0.008; // radians per pixel
   const ORBIT_PITCH = 0.006;
+  // A single move this far is a finger reported in the wrong place, not a turn of the view.
+  // A fast swipe moves well under this between two events.
+  const VIEW_JUMP_MAX = 60;
   const FIGURE_BOOT = '#2E241C';
 
   const host = document.getElementById('host');
@@ -154,10 +157,16 @@
       if (downAt && Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) > TAP_SLOP) {
         tapCandidate = false;
       }
-      cam.yaw -= (e.clientX - prev.x) * ORBIT_YAW;
-      cam.pitch = clamp(cam.pitch + (e.clientY - prev.y) * ORBIT_PITCH, 0.2, 1.45);
-      // Walking, the figure faces where the camera looks, so a drag turns the player too.
-      if (thirdPerson) post({ kind: 'facing', facing: cam.yaw - Math.PI });
+      const dx = e.clientX - prev.x;
+      const dy = e.clientY - prev.y;
+      // Only a real drag turns the view: not a finger that lands on the stick's side, or
+      // one reported far from where it was.
+      if (!overStick(e.clientX, e.clientY) && Math.hypot(dx, dy) <= VIEW_JUMP_MAX) {
+        cam.yaw -= dx * ORBIT_YAW;
+        cam.pitch = clamp(cam.pitch + dy * ORBIT_PITCH, 0.2, 1.45);
+        // Walking, the figure faces where the camera looks, so a drag turns the player too.
+        if (thirdPerson) post({ kind: 'facing', facing: cam.yaw - Math.PI });
+      }
       return;
     }
     tapCandidate = false;
@@ -249,6 +258,14 @@
     stickY = 0;
     knob.style.transform = '';
     post({ kind: 'move', dx: 0, dz: 0, facing: cam.yaw - Math.PI });
+  }
+
+  // Whether a point is over the stick, or close enough to it that it is the stick's finger.
+  function overStick(clientX, clientY) {
+    if (stick.style.display === 'none') return false;
+    const r = stick.getBoundingClientRect();
+    const reach = STICK_RADIUS + 20;
+    return Math.abs(clientX - (r.left + r.width / 2)) < reach && Math.abs(clientY - (r.top + r.height / 2)) < reach;
   }
 
   stick.addEventListener('pointerdown', (e) => {
