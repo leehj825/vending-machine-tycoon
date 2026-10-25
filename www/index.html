@@ -35,6 +35,16 @@
     </div>
   </main>
 
+  <!-- The pause dialog: from the Menu button, or when the app goes to the background. -->
+  <div id="pause-dialog" class="pause" hidden>
+    <section class="pause-card">
+      <h2>Paused</h2>
+      <p id="pause-message"></p>
+      <button id="pause-resume" class="menu-btn primary">Resume</button>
+      <button id="pause-exit" class="menu-btn">Save and exit to menu</button>
+    </section>
+  </div>
+
   <!-- The main menu: shown when the page opens without a game picked. -->
   <div id="menu" class="menu">
     <section data-screen="main" class="menu-screen">

@@ -23,6 +23,19 @@ dockToggle.addEventListener('click', () => {
   dockToggle.textContent = hidden ? 'Show panel ▴' : 'Hide panel ▾';
 });
 let toastTimer = null;
+// While paused, the clock, the trucks, the attacks and the walkers all stand still.
+let paused = false;
+
+function pauseGame(message) {
+  paused = true;
+  $('pause-message').textContent = message;
+  $('pause-dialog').hidden = false;
+}
+
+function resumeGame() {
+  paused = false;
+  $('pause-dialog').hidden = true;
+}
 
 function toast(message, ok) {
   toastEl.textContent = message;
@@ -113,13 +126,22 @@ async function start(slot) {
     city.setSelected(null);
     walk.enter();
   });
-  $('to-menu').addEventListener('click', () => {
+  $('to-menu').addEventListener('click', () => pauseGame('Save your game and go back to the main menu?'));
+  $('pause-resume').addEventListener('click', resumeGame);
+  $('pause-exit').addEventListener('click', () => {
     saveGame(state);
     goToMenu();
   });
+  // Going to the background pauses and saves; coming back shows the pause dialog.
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) return;
+    saveGame(state);
+    pauseGame('The game was paused while the app was in the background.');
+  });
 
-  // The clock always runs. Saves when a day closes.
+  // The clock runs unless the game is paused. Saves when a day closes.
   setInterval(() => {
+    if (paused) return;
     const day = state.day;
     sim.tick(state);
     if (state.day !== day) saveGame(state);
@@ -136,7 +158,7 @@ async function start(slot) {
   // Trucks drive along their routes in step with the clock.
   let lastFrame = performance.now();
   function frame(now) {
-    const dt = Math.min(0.1, (now - lastFrame) / 1000);
+    const dt = paused ? 0 : Math.min(0.1, (now - lastFrame) / 1000);
     lastFrame = now;
     sim.moveTrucks(state, dt);
     sim.advanceAttacks(state, dt);
