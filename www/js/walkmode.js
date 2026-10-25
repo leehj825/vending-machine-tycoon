@@ -345,15 +345,16 @@ export function createWalkMode({ city, getState, clips, sale, vandal, fix, say, 
   window.addEventListener('pointerup', endStick);
   window.addEventListener('pointercancel', endStick);
 
-  buttons.talkEl.addEventListener('click', talk);
-  buttons.collectEl.addEventListener('click', collect);
-  buttons.fixEl.addEventListener('click', fixNearby);
-  buttons.runEl.addEventListener('click', () => {
+  // The action buttons act on touch-down, so they work while another finger holds the stick.
+  buttons.talkEl.addEventListener('pointerdown', talk);
+  buttons.collectEl.addEventListener('pointerdown', collect);
+  buttons.fixEl.addEventListener('pointerdown', fixNearby);
+  buttons.runEl.addEventListener('pointerdown', () => {
     mode.running = !mode.running;
     if (mode.player) mode.player.running = mode.running;
     buttons.setRun(mode.running);
   });
-  buttons.officeEl.addEventListener('click', exit);
+  buttons.officeEl.addEventListener('pointerdown', exit);
 
   return {
     enter,

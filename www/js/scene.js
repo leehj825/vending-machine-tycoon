@@ -125,7 +125,7 @@ function park(m, x, y) {
   m.flat(x + 0.12, y + 0.12, x + 0.42, y + 0.36, 0.004, 0x4fc3f7);
   for (const [tx, tz] of [[0.72, 0.2], [0.8, 0.7], [0.22, 0.78]]) {
     m.box(x + tx - 0.02, 0, y + tz - 0.02, x + tx + 0.02, 0.22, y + tz + 0.02, TRUNK);
-    m.cone(x + tx, y + tz, 0.12, 6, 0.6, 0.2, FOLIAGE);
+    m.cone(x + tx, y + tz, 0.12, 6, 0.2, 0.6, FOLIAGE);
   }
 }
 
@@ -166,7 +166,7 @@ function house(m, x, y) {
   if (v < 0.35) m.box(x + 0.06, 0, y + 0.7, x + 0.16, 0.22, y + 0.9, BUSH);
   if (w < 0.3) {
     m.box(x + 0.86, 0, y + 0.1, x + 0.9, 0.3, y + 0.14, TRUNK);
-    m.cone(x + 0.88, y + 0.12, 0.1, 6, 0.6, 0.3, FOLIAGE);
+    m.cone(x + 0.88, y + 0.12, 0.1, 6, 0.3, 0.6, FOLIAGE);
   }
 }
 
