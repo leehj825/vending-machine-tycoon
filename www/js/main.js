@@ -11,6 +11,14 @@ import { truckPosition } from './sim.js';
 
 const $ = (id) => document.getElementById(id);
 const toastEl = $('toast');
+const dockToggle = $('dock-toggle');
+
+// Shows or hides the panel under the city. Hidden, the city takes the space.
+dockToggle.addEventListener('click', () => {
+  const hidden = document.body.classList.toggle('panel-hidden');
+  dockToggle.setAttribute('aria-expanded', String(!hidden));
+  dockToggle.textContent = hidden ? 'Show panel ▴' : 'Hide panel ▾';
+});
 let toastTimer = null;
 let paused = false;
 const speeds = [1, 2, 4];

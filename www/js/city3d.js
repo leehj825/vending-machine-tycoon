@@ -328,6 +328,8 @@ export function createCityView(container, onTap) {
     requestAnimationFrame(frame);
   }
 
+  // The city's size changes when the panel opens or closes, so watch the container itself.
+  if (typeof ResizeObserver !== 'undefined') new ResizeObserver(resize).observe(container);
   window.addEventListener('resize', resize);
   resize();
   requestAnimationFrame(frame);
