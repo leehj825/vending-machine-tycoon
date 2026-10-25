@@ -180,7 +180,9 @@
       tapCandidate = false;
       return;
     }
-    if (isTap) {
+    // Walking, a touch only turns the view (a drag) or works the stick and buttons. A tap
+    // here would pick a building and swing the camera to its machine.
+    if (isTap && !thirdPerson) {
       tapCandidate = false;
       pick(e.clientX, e.clientY);
     }
