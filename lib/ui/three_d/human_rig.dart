@@ -253,6 +253,12 @@ bool advanceHumanPose(HumanPose pose, double x, double z, bool running, DateTime
   return pose.lastMovedAt != null && now.difference(pose.lastMovedAt!) < _movingHold;
 }
 
+/// Advances a person's walk cycle by [distance] without turning them, for a step sideways.
+void stepHumanPose(HumanPose pose, double distance, bool running, DateTime now) {
+  pose.phase += distance / (running ? _runStride : _walkStride);
+  pose.lastMovedAt = now;
+}
+
 HumanClip? _clipFor(HumanPose pose, bool moving, bool running) {
   if (!moving) return null;
   final forward = pose.dirF;

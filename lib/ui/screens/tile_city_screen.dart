@@ -86,6 +86,9 @@ class _PedestrianState {
   // walk on, so turning or changing sides slides them over instead of jumping.
   double offsetX = 0;
   double offsetZ = 0;
+  // How far the side offset moved this update: a crossing, which the figure must face.
+  double crossX = 0;
+  double crossZ = 0;
   // The tile the side was last chosen on. The side is chosen again only on a new tile, so
   // a walker does not swap sides, and cross the road, each time the pavement test flips.
   int? sideTileX;
@@ -1162,19 +1165,31 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen>
       final look = personLook(pedestrian.personId);
       // Walks while moving, and runs once a tap sends them to a machine.
       final running = pedestrian.isHeadingToShop;
-      final moving = advanceHumanPose(
+      var moving = advanceHumanPose(
         pedestrian.pose,
         centreX,
         centreZ,
         running,
         now,
       );
+      // Crossing the road slides the side offset while the tile centre stays put. The figure
+      // turns to face the crossing and takes steps for it, instead of sliding sideways.
+      final crossing = math.sqrt(
+        pedestrian.crossX * pedestrian.crossX +
+            pedestrian.crossZ * pedestrian.crossZ,
+      );
+      var faceYaw = pedestrian.pose.yaw;
+      if (crossing > 0.0005) {
+        faceYaw = math.atan2(pedestrian.crossX, pedestrian.crossZ);
+        stepHumanPose(pedestrian.pose, crossing, running, now);
+        moving = true;
+      }
       walkers.add(
         walkerJson(
           key: 'p${pedestrian.personId}',
           x: cx,
           z: cz,
-          yaw: pedestrian.pose.yaw,
+          yaw: faceYaw,
           scale: _walkerScale,
           look: PersonLook(
             shirt: look.shirt,
@@ -2011,7 +2026,11 @@ class _TileCityScreenState extends ConsumerState<TileCityScreen>
     _updatePlayer();
     _updateCustomers();
     for (final pedestrian in _pedestrians) {
+      final oldX = pedestrian.offsetX;
+      final oldZ = pedestrian.offsetZ;
       _easeWalkerOffset(pedestrian);
+      pedestrian.crossX = pedestrian.offsetX - oldX;
+      pedestrian.crossZ = pedestrian.offsetZ - oldZ;
     }
     const double normalSpeed =
         0.01; // Grid units per update (50ms = 0.2 grid units per second) - slower
