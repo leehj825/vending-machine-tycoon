@@ -15,6 +15,10 @@ const WALK_DISTANCE = { start: 3.2, near: 1.4, far: 9 };
 const MAP_DISTANCE = { near: 6, far: 40 };
 // The original game's default view: a three-quarter view looking down on the whole grid.
 const MAP_VIEW = { yaw: Math.PI / 4, pitch: 0.85 };
+// How far the view can tilt: the map looks down from above, the walk camera from behind.
+const PITCH = { map: [0.35, 1.45], walk: [0.15, 1.2] };
+// Walk camera: a building this tall or taller blocks the view when the camera's line crosses it.
+const BUILDING_TOP = 2.6;
 
 function geometryFrom({ positions, colors }) {
   const geometry = new THREE.BufferGeometry();
@@ -262,16 +266,22 @@ export function createCityView(container, onTap) {
   canvas.addEventListener('pointermove', (e) => {
     const prev = pointers.get(e.pointerId);
     if (!prev) return;
+    const before = midpoint();
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (pointers.size === 1) {
       if (downAt && Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) > TAP_SLOP) moved = true;
       cam.yaw -= (e.clientX - prev.x) * 0.008;
-      if (!walk.on) cam.pitch = Math.min(1.45, Math.max(0.35, cam.pitch + (e.clientY - prev.y) * 0.006));
+      const [low, high] = walk.on ? PITCH.walk : PITCH.map;
+      cam.pitch = Math.min(high, Math.max(low, cam.pitch + (e.clientY - prev.y) * 0.006));
     } else if (pointers.size === 2 && pinch) {
       const now = distance();
       if (now > 0) zoom(pinch / now);
       pinch = now;
       moved = true;
+      if (!walk.on && before) {
+        const after = midpoint();
+        panMap(after.x - before.x, after.y - before.y);
+      }
     }
   });
 
@@ -294,6 +304,25 @@ export function createCityView(container, onTap) {
     return a && b ? Math.hypot(a.x - b.x, a.y - b.y) : 0;
   }
 
+  function midpoint() {
+    const [a, b] = [...pointers.values()];
+    return a && b ? { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 } : null;
+  }
+
+  // Two fingers slide the map view across the town: the map moves with the fingers.
+  function panMap(dx, dy) {
+    const scale = cam.distance * 0.0016;
+    const rightX = Math.cos(cam.yaw);
+    const rightZ = -Math.sin(cam.yaw);
+    const forwardX = -Math.sin(cam.yaw);
+    const forwardZ = -Math.cos(cam.yaw);
+    const size = city ? city.length : 15;
+    const x = cam.target.x - (rightX * dx + forwardX * dy) * scale;
+    const z = cam.target.z - (rightZ * dx + forwardZ * dy) * scale;
+    cam.target.x = Math.min(size + 2, Math.max(-2, x));
+    cam.target.z = Math.min(size + 2, Math.max(-2, z));
+  }
+
   function zoom(factor) {
     if (walk.on) {
       walk.distance = Math.min(WALK_DISTANCE.far, Math.max(WALK_DISTANCE.near, walk.distance * factor));
@@ -312,6 +341,29 @@ export function createCityView(container, onTap) {
     if (hit) onTap(hit.object.userData.cell);
   }
 
+  // How far the walk camera can sit from the player: the wanted distance, or nearer when a
+  // building stands on the camera's line, so the view is not blocked.
+  function clearDistance() {
+    const wanted = walk.distance;
+    if (!city) return wanted;
+    const cp = Math.cos(cam.pitch);
+    const dx = Math.sin(cam.yaw) * cp;
+    const dy = Math.sin(cam.pitch);
+    const dz = Math.cos(cam.yaw) * cp;
+    for (let t = 0.5; t <= wanted; t += 0.1) {
+      const x = cam.target.x + dx * t;
+      const y = cam.target.y + dy * t;
+      const z = cam.target.z + dz * t;
+      if (y < BUILDING_TOP && isBuildingAt(x, z)) return Math.max(WALK_DISTANCE.near, t - 0.3);
+    }
+    return wanted;
+  }
+
+  function isBuildingAt(x, z) {
+    const cell = city[Math.floor(z)]?.[Math.floor(x)];
+    return cell?.type === 'building' || cell?.type === 'house';
+  }
+
   // Frame loop: the walk camera eases toward the player's spot, and the scene draws each frame.
   let last = performance.now();
   function frame(now) {
@@ -321,7 +373,7 @@ export function createCityView(container, onTap) {
       const k = 1 - Math.exp(-dt * 12);
       cam.target.x += (walk.follow.x - cam.target.x) * k;
       cam.target.z += (walk.follow.z - cam.target.z) * k;
-      cam.distance += (walk.distance - cam.distance) * k;
+      cam.distance += (clearDistance() - cam.distance) * k;
     }
     applyCamera();
     renderer.render(scene, camera);

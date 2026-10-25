@@ -303,8 +303,9 @@ function mergeInto(target, source) {
 export function buildMachine(machine, grid) {
   const zone = ZONES[machine.zone];
   const anchor = machineAnchor(grid, machine.x, machine.y);
-  // The model is built about 2 units tall, then scaled to the tile and turned to face the road.
-  const turn = (4 - anchor.turns) % 4;
+  // The model is built about 2 units tall, then scaled to the tile and turned to face the road,
+  // the same way as its building.
+  const turn = anchor.turns;
   const transform = (v, isDirection) => {
     const x = v[0] * MACHINE_SCALE;
     const y = v[1] * MACHINE_SCALE;
