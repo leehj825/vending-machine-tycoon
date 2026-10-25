@@ -260,7 +260,7 @@ function attackedMachine(state) {
   sim.buyMachine(state, spot.x, spot.y);
   const machine = state.machines[0];
   machine.cash = 0;
-  for (let i = 0; i < 100000 && state.attacks.length === 0; i++) sim.tick(state);
+  for (let i = 0; i < 600000 && state.attacks.length === 0; i++) sim.tick(state);
   assert.equal(state.attacks.length, 1, 'a vandal comes');
   machine.condition = 0;
   machine.wear = 0;
@@ -313,6 +313,16 @@ test('a broken machine costs reputation each day until it is repaired', () => {
   assert.ok(state.reputation < reputation, 'reputation falls while broken');
   assert.equal(sim.repairMachine(state, machine.id).ok, true);
   assert.equal(machine.condition, 0);
+});
+
+test('weather and warehouse prices stay within their rules as the days pass', () => {
+  const state = sim.newGame(7);
+  const day = state.day;
+  for (let i = 0; i < 100000 && state.day < day + 20; i++) sim.tick(state);
+  assert.ok(Object.keys(CONFIG.weather).includes(sim.weatherOf(state)));
+  for (const p of Object.keys(state.market)) {
+    assert.ok(state.market[p] >= CONFIG.marketMin && state.market[p] <= CONFIG.marketMax, 'price within limits');
+  }
 });
 
 test('a vandal kicking a machine vandalizes it, and repair restores it', () => {

@@ -60,6 +60,17 @@ export const CONFIG = {
   // Each day a working machine may break down: the chance grows with its condition.
   breakdownChancePerDay: 0.03,
   brokenReputationPenalty: 1,
+  // Weather changes each day. Sales and breakdown chances change with it.
+  weather: {
+    sunny: { label: 'Sunny', sales: 1.1, breakdown: 1 },
+    cloudy: { label: 'Cloudy', sales: 1, breakdown: 1 },
+    rainy: { label: 'Rainy', sales: 0.85, breakdown: 1.5 },
+    stormy: { label: 'Stormy', sales: 0.7, breakdown: 2 },
+  },
+  // Each day the warehouse price of a product moves by up to this share, within the limits.
+  marketDrift: 0.05,
+  marketMin: 0.8,
+  marketMax: 1.25,
   // Most vandals that can be kicking one machine at once.
   maxKickersPerMachine: 3,
   // The rival company, by zone type. Presence grows each day, fastest where you are absent.

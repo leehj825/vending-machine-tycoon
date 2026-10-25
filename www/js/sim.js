@@ -36,6 +36,10 @@ export function newGame(seed = 7) {
     attacks: [],
     // Machines holding more cash than this show an arrow while walking.
     collectAlert: CONFIG.collectAlertStart,
+    weather: 'sunny',
+    // Warehouse price of each product, as a share of its normal price, and last day's change.
+    market: Object.fromEntries(PRODUCT_IDS.map((p) => [p, 1])),
+    marketTrend: Object.fromEntries(PRODUCT_IDS.map((p) => [p, 0])),
     news: [],
     nextId: 1,
     // Sales and revenue per product for today and the last seven days.
@@ -76,8 +80,17 @@ export function machineTotal(machine) {
   return PRODUCT_IDS.reduce((sum, p) => sum + machine.stock[p], 0);
 }
 
-export function wholesalePrice(product) {
-  return PRODUCTS[product].basePrice * CONFIG.wholesaleShare;
+export function wholesalePrice(product, state = null) {
+  const market = state ? marketFactor(state, product) : 1;
+  return PRODUCTS[product].basePrice * CONFIG.wholesaleShare * market;
+}
+
+export function weatherOf(state) {
+  return CONFIG.weather[state.weather] ? state.weather : 'sunny';
+}
+
+export function marketFactor(state, product) {
+  return state.market?.[product] ?? 1;
 }
 
 export function reputationBonus(reputation) {
@@ -161,7 +174,7 @@ export function buyWarehouseStock(state, product, units) {
   const room = CONFIG.warehouseCapacity - warehouseTotal(state);
   const count = Math.min(units, room);
   if (count <= 0) return fail('The warehouse is full.');
-  const cost = count * wholesalePrice(product);
+  const cost = count * wholesalePrice(product, state);
   if (state.cash < cost) return fail('Not enough cash for that stock.');
   state.cash -= cost;
   if (state.warehouse[product] === 0) state.warehouseDay[product] = state.day;
@@ -302,7 +315,8 @@ export function saleChance(state, machine, product) {
   const perHour = Math.min(
     0.95,
     PRODUCTS[product].demand * zoneDemand * priceFactor * CONDITION_SALES[machine.condition]
-      * salesFactor(state, machine.zone) * (1 + reputationBonus(state.reputation)) * rush,
+      * salesFactor(state, machine.zone) * (1 + reputationBonus(state.reputation)) * rush
+      * CONFIG.weather[weatherOf(state)].sales,
   );
   return 1 - Math.pow(1 - perHour, 1 / CONFIG.ticksPerHour);
 }
@@ -349,7 +363,8 @@ function breakdowns(state) {
       state.reputation = Math.max(0, state.reputation - CONFIG.brokenReputationPenalty);
       continue;
     }
-    if (nextRandom(state) < CONFIG.breakdownChancePerDay * (machine.condition + 1)) {
+    const chance = CONFIG.breakdownChancePerDay * (machine.condition + 1) * CONFIG.weather[weatherOf(state)].breakdown;
+    if (nextRandom(state) < chance) {
       machine.condition = CONDITIONS.length - 1;
       announce(state, [`A machine broke down at (${machine.x}, ${machine.y}). Repair it to sell again.`]);
     }
@@ -605,13 +620,45 @@ function endDay(state) {
   state.tick = 0;
   state.contracts = makeContracts(state, () => nextRandom(state));
   breakdowns(state);
+  changeWeather(state);
+  driftMarket(state);
   growRival(state);
+}
+
+// The weather for the coming day: sunny is most common, stormy the least.
+const WEATHER_CHANCES = [['sunny', 4], ['cloudy', 3], ['rainy', 2], ['stormy', 1]];
+
+function changeWeather(state) {
+  const total = WEATHER_CHANCES.reduce((sum, [, weight]) => sum + weight, 0);
+  let roll = nextRandom(state) * total;
+  for (const [kind, weight] of WEATHER_CHANCES) {
+    roll -= weight;
+    if (roll < 0) {
+      state.weather = kind;
+      break;
+    }
+  }
+  announce(state, [`Weather today: ${CONFIG.weather[weatherOf(state)].label.toLowerCase()}.`]);
+}
+
+// Each day the warehouse prices move a little, within their limits, and the change is kept for
+// the trend arrow.
+function driftMarket(state) {
+  state.market ??= Object.fromEntries(PRODUCT_IDS.map((p) => [p, 1]));
+  state.marketTrend ??= Object.fromEntries(PRODUCT_IDS.map((p) => [p, 0]));
+  for (const p of PRODUCT_IDS) {
+    const move = (nextRandom(state) * 2 - 1) * CONFIG.marketDrift;
+    const before = marketFactor(state, p);
+    const next = Math.min(CONFIG.marketMax, Math.max(CONFIG.marketMin, before * (1 + move)));
+    state.market[p] = next;
+    state.marketTrend[p] = next - before;
+  }
 }
 
 // Total worth: cash, cash waiting in machines, and the warehouse stock at its cost.
 export function netWorth(state) {
   const waiting = state.machines.reduce((sum, m) => sum + m.cash, 0);
-  const stock = PRODUCT_IDS.reduce((sum, p) => sum + state.warehouse[p] * wholesalePrice(p), 0);
+  const stock = PRODUCT_IDS.reduce((sum, p) => sum + state.warehouse[p] * wholesalePrice(p, state), 0);
   return state.cash + waiting + stock;
 }
 

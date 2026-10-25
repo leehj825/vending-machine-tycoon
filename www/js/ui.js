@@ -34,6 +34,7 @@ export function createUi({ panel, stats, toast, act, state: current }) {
       <span class="stat"><b>${wholeMoney(state.cash)}</b> cash</span>
       <span class="stat"><b>${state.reputation}</b> rep ${Math.round(sim.reputationBonus(state.reputation) * 100)}%</span>
       <span class="stat">Day <b>${state.day}</b> ${sim.clockText(state)}</span>
+      <span class="stat">${CONFIG.weather[sim.weatherOf(state)].label}</span>
     `;
   }
 
@@ -116,7 +117,7 @@ export function createUi({ panel, stats, toast, act, state: current }) {
   function warehousePanel(state) {
     const total = sim.warehouseTotal(state);
     const rows = PRODUCT_IDS.map((p) => {
-      const unit = sim.wholesalePrice(p);
+      const unit = sim.wholesalePrice(p, state);
       return `
         <tr>
           <td>${PRODUCTS[p].name}</td>
