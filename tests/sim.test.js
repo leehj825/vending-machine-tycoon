@@ -325,15 +325,16 @@ test('weather and warehouse prices stay within their rules as the days pass', ()
   }
 });
 
-test('the free restock run from a rewarded ad is once a day and charges no fuel', () => {
+test('the free stock from a rewarded video fills every machine, once a day, with no cash spent', () => {
   const state = sim.newGame(7);
-  state.trucks.push({ id: 900 });
   const spot = buildingCell(state);
   sim.buyMachine(state, spot.x, spot.y);
-  sim.buyWarehouseStock(state, 'soda', 50);
+  const machine = state.machines[0];
+  for (const p of PRODUCT_IDS) machine.stock[p] = 0;
   const cash = state.cash;
-  assert.equal(sim.freeRestockRun(state).ok, true);
-  assert.equal(state.cash, cash, 'no fuel charged');
+  assert.equal(sim.freeRestockRun(state).ok, true, 'works with an empty warehouse');
+  for (const p of PRODUCT_IDS) assert.equal(machine.stock[p], CONFIG.machinePerProduct);
+  assert.equal(state.cash, cash, 'no cash spent');
   assert.equal(sim.freeRestockRun(state).ok, false, 'only once a day');
 });
 

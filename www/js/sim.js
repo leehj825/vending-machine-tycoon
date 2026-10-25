@@ -199,7 +199,7 @@ export function buyTruck(state) {
 // A restock run: the truck loads from the warehouse, drives the road route past each machine
 // that needs stock, and comes back. The loads are taken now and the stock lands as the truck
 // reaches each machine (see moveTrucks). Fuel is paid at the start.
-export function dispatchTruck(state, { free = false } = {}) {
+export function dispatchTruck(state) {
   if (state.trucks.length === 0) return fail('You need a truck first.');
   const truck = state.trucks.find((t) => !t.trip);
   if (!truck) return fail('Every truck is out on a run.');
@@ -240,7 +240,7 @@ export function dispatchTruck(state, { free = false } = {}) {
   for (const stop of stops) {
     for (const [product, count] of Object.entries(stop.load)) state.warehouse[product] -= count;
   }
-  const fuel = free ? 0 : cells.length * CONFIG.fuelCostPerDistance;
+  const fuel = cells.length * CONFIG.fuelCostPerDistance;
   state.cash -= fuel;
   truck.trip = { path: cells, at: 0, stops, nextStop: 0, distance: cells.length };
   return ok(`A truck is on its way to ${stops.length} machines. Route ${routeRating(cells.length)}, fuel $${fuel.toFixed(2)}.`);
@@ -500,12 +500,15 @@ export function repairMachine(state, machineId) {
   return ok('Machine repaired.');
 }
 
-// A restock run paid for by watching a rewarded ad: once a day, and no fuel is charged.
+// The free stock from a rewarded video: every product in every machine is filled, with no
+// warehouse stock, truck or fuel needed. Once a day.
 export function freeRestockRun(state) {
   if (state.freeRunDay === state.day) return fail('You have had your free run today.');
-  const result = dispatchTruck(state, { free: true });
-  if (result.ok) state.freeRunDay = state.day;
-  return result;
+  for (const machine of state.machines) {
+    for (const p of PRODUCT_IDS) machine.stock[p] = CONFIG.machinePerProduct;
+  }
+  state.freeRunDay = state.day;
+  return ok('Every machine is stocked for free.');
 }
 
 // Installs a security system on a machine, once.

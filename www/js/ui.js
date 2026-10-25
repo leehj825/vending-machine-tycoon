@@ -160,9 +160,9 @@ export function createUi({ panel, stats, toast, act, state: current }) {
         <button data-act="buy-truck" ${state.cash < CONFIG.truckPrice ? 'disabled' : ''}>Buy truck ${wholeMoney(CONFIG.truckPrice)}</button>
         <button class="primary" data-act="dispatch" ${!idle ? 'disabled' : ''}>Send restock run</button>
       </div>
-      ${rewardReadyNow() && state.freeRunDay !== state.day && idle ? `
+      ${rewardReadyNow() && state.freeRunDay !== state.day ? `
       <div class="row">
-        <span class="hint">Watch a short video for a free restock run, once a day.</span>
+        <span class="hint">Watch a short video to stock every machine for free, once a day.</span>
         <button data-act="free-run">Free run</button>
       </div>` : ''}`;
   }

@@ -28,8 +28,10 @@ export function generateCity(size, seed = 7) {
         row.push({ type: random() < 0.4 ? 'park' : 'grass' });
       } else {
         const zone = ZONE_IDS[Math.floor(random() * ZONE_IDS.length)];
-        const type = random() < CONFIG.shopFrontShare ? 'building' : 'house';
-        row.push({ type, zone });
+        const roll = random();
+        if (roll < CONFIG.shopFrontShare) row.push({ type: 'building', zone });
+        else if (roll < CONFIG.shopFrontShare + CONFIG.houseShare) row.push({ type: 'house', zone });
+        else row.push({ type: random() < 0.4 ? 'park' : 'grass' });
       }
     }
     grid.push(row);

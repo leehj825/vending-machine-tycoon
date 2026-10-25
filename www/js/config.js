@@ -10,6 +10,8 @@ export const CONFIG = {
   collectAlertMax: 1000,
   // Share of the blocks' buildings that are shop fronts. The rest are houses, for looking at.
   shopFrontShare: 0.3,
+  // Share of the blocks' other buildings that are houses. The rest are parks or grass.
+  houseShare: 0.12,
   truckPrice: 500,
   truckCapacity: 500,
   warehouseCapacity: 1000,

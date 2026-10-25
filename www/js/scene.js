@@ -129,14 +129,45 @@ function park(m, x, y) {
   }
 }
 
-// A house: a cream cottage with a red roof and a garden. Houses are only for looking at.
+// A gabled roof: two sloping sides meeting at a ridge along x, with a triangle at each end.
+function gable(m, x0, z0, x1, z1, y0, yTop, colour) {
+  const zm = (z0 + z1) / 2;
+  m.quad([x0, y0, z0], [x1, y0, z0], [x1, yTop, zm], [x0, yTop, zm], [0, 0.7, -0.7], colour);
+  m.quad([x0, y0, z1], [x1, y0, z1], [x1, yTop, zm], [x0, yTop, zm], [0, 0.7, 0.7], colour);
+  m.tri([x0, y0, z0], [x0, y0, z1], [x0, yTop, zm], [-1, 0, 0], colour);
+  m.tri([x1, y0, z0], [x1, y0, z1], [x1, yTop, zm], [1, 0, 0], colour);
+}
+
+const HOUSE_WALLS = [0xf3e9d2, 0xbfe0f0, 0xd7eccb, 0xf6d5cf];
+const HOUSE_ROOFS = [RED, 0x6d4c41, 0x37474f, 0xd84315];
+
+// A house: a cottage with a gabled roof. Walls, roof, height, chimney and garden vary from house
+// to house. Houses are only for looking at.
 function house(m, x, y) {
-  m.flat(x + 0.05, y + 0.05, x + 0.95, y + 0.95, 0.002, 0x8bd17c);
-  m.box(x + 0.22, 0, y + 0.22, x + 0.78, 0.5, y + 0.78, 0xf3e9d2, { top: 0xe0d2b4 });
-  m.cone(x + 0.5, y + 0.5, 0.42, 4, 0.9, 0.5, RED);
-  m.box(x + 0.44, 0, y + 0.76, x + 0.56, 0.3, y + 0.79, BROWN);
-  m.box(x + 0.28, 0.28, y + 0.77, x + 0.38, 0.4, y + 0.79, GLASS);
-  m.box(x + 0.62, 0.28, y + 0.77, x + 0.72, 0.4, y + 0.79, GLASS);
+  const v = cellNoise(x, y);
+  const w = cellNoise(y + 3, x + 5);
+  const wall = HOUSE_WALLS[Math.floor(v * HOUSE_WALLS.length) % HOUSE_WALLS.length];
+  const roof = HOUSE_ROOFS[Math.floor(w * HOUSE_ROOFS.length) % HOUSE_ROOFS.length];
+  const twoFloors = v > 0.6;
+  const eave = twoFloors ? 0.8 : 0.5;
+  m.flat(x + 0.04, y + 0.04, x + 0.96, y + 0.96, 0.002, 0x8bd17c);
+  m.box(x + 0.2, 0, y + 0.2, x + 0.8, eave, y + 0.78, wall, { top: 0xe0d2b4 });
+  gable(m, x + 0.16, y + 0.2, x + 0.84, y + 0.8, eave, eave + 0.42, roof);
+  // Door and step on the front, facing the road.
+  m.box(x + 0.44, 0, y + 0.78, x + 0.56, 0.3, y + 0.8, BROWN);
+  m.box(x + 0.42, 0, y + 0.8, x + 0.58, 0.04, y + 0.84, PLINTH);
+  // Windows on each floor.
+  for (const fy of twoFloors ? [0.28, 0.58] : [0.28]) {
+    m.box(x + 0.26, fy, y + 0.79, x + 0.36, fy + 0.12, y + 0.81, GLASS);
+    m.box(x + 0.64, fy, y + 0.79, x + 0.74, fy + 0.12, y + 0.81, GLASS);
+  }
+  if (w > 0.5) m.box(x + 0.66, eave + 0.1, y + 0.3, x + 0.74, eave + 0.4, y + 0.38, BRICK);
+  // A hedge by the door on some houses, and a tree in the garden on others.
+  if (v < 0.35) m.box(x + 0.06, 0, y + 0.7, x + 0.16, 0.22, y + 0.9, BUSH);
+  if (w < 0.3) {
+    m.box(x + 0.86, 0, y + 0.1, x + 0.9, 0.3, y + 0.14, TRUNK);
+    m.cone(x + 0.88, y + 0.12, 0.1, 6, 0.6, 0.3, FOLIAGE);
+  }
 }
 
 function groundTile(m, grid, x, y, cell) {
