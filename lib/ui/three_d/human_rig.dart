@@ -3,7 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import 'human_clips.dart';
-import 'human_clips_dw.dart';
+import 'human_clips_player.dart';
 import 'lowpoly_engine.dart';
 
 /// A baked walk or run cycle from vexmarch's crowd (human_clips.dart).
@@ -258,11 +258,10 @@ HumanClip? _clipFor(HumanPose pose, bool moving, bool running) {
   final forward = pose.dirF;
   final side = pose.dirS;
   if (forward == null || side == null) return running ? humanRunClip : humanWalkClip;
-  // Same thresholds and sides as Deepward's locomotion, so a strafe looks as it does there.
-  if (forward > 0.5) return running ? dwRunClip : dwWalkClip;
-  if (forward < -0.5) return running ? dwRunBackClip : dwWalkBackClip;
-  if (side > 0) return running ? dwStrafeRunNClip : dwStrafeWalkNClip;
-  return running ? dwStrafeRunPClip : dwStrafeWalkPClip;
+  if (forward > 0.5) return running ? playerRunClip : playerWalkClip;
+  if (forward < -0.5) return running ? playerRunBackClip : playerWalkBackClip;
+  if (side > 0) return running ? playerStrafeRunPClip : playerStrafeWalkPClip;
+  return running ? playerStrafeRunNClip : playerStrafeWalkNClip;
 }
 
 /// Moves the player's figure. It faces [facing] whatever way it steps, and each step is read
@@ -276,7 +275,7 @@ bool advancePlayerPose(HumanPose pose, double x, double z, double facing, bool r
     final dz = z - lastZ;
     final dist = math.sqrt(dx * dx + dz * dz);
     if (dist > 0.0005) {
-      // Deepward's convention: forward is (sin, cos) of the facing, side is (cos, -sin).
+      // Forward is (sin, cos) of the facing; side is (cos, -sin), so side > 0 is the +X way (Nightfall's 'p').
       final ux = dx / dist;
       final uz = dz / dist;
       final fx = math.sin(facing);
