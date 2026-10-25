@@ -1,8 +1,13 @@
 # Dependencies and build output
 node_modules/
 dist/
-android/
-ios/
+
+# Android build output (the project itself is committed)
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/app/release/
 
 # Editors and OS files
 .DS_Store

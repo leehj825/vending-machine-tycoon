@@ -81,12 +81,16 @@ tools/build_clips.js  builds www/assets/clips.json from Nightfall Settlement's c
 - Talk: the nearest walker in front and touching goes to the nearest machine with stock and buys one
   item (a sale). Collect: take the cash from a machine that is touching and in front.
 - Walkers wander the roads on the right-hand side, in map view and in walk mode. Each walker goes to
-  buy from the nearest machine with stock every one to two minutes, so the machines sell while you are away
+  buy from the nearest machine with stock every one to two minutes of real time, so the machines sell while you are away
   (traffic between vehicles is not in yet)
 
-## Planned (in the order of the design)
+## Next steps
 
-1. Android package with Capacitor, and an APK in CI
+- Signing: a release keystore and its secrets, for the first Play upload
+- Audio: the music and sound files were in git history; they come back with the sound system
+- Traffic: vehicles on the roads that wait for one another
+- App icon and splash screen generated for Android
+- Playtest on a phone: the walk controls, the truck routes, and the drag feel
 
 ## Economy reference
 
@@ -114,8 +118,17 @@ To rebuild the clip data from Nightfall Settlement's source:
 node tools/build_clips.js <path to Nightfall-Settlement>
 ```
 
-## Android (planned)
+## Android
 
-The game is plain web files in `www/`. To package it, add Capacitor (`@capacitor/core`,
-`@capacitor/cli`, `@capacitor/android`), point `webDir` at `www`, and run `npx cap add android`.
-This step needs an Android SDK, which is not set up in this repository yet.
+The game is plain web files in `www/`, packaged with Capacitor (`capacitor.config.json`, `webDir`
+is `www`). The Android project is in `android/`.
+
+```bash
+npm install
+npx cap sync android      # copies www/ into the Android project
+cd android && ./gradlew assembleDebug    # needs the Android SDK
+```
+
+The CI workflow (`.github/workflows/android.yml`) builds a debug APK on every branch except main.
+On main it builds a release APK and AAB. The release build is not signed yet: add a signing
+keystore and its secrets before the first Play upload.

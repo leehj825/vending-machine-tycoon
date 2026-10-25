@@ -7,5 +7,10 @@
   "scripts": {
     "test": "node --test tests/sim.test.js tests/walk.test.js",
     "serve": "python3 -m http.server 8080 --directory www"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.6.9",
+    "@capacitor/cli": "^7.6.9",
+    "@capacitor/core": "^7.6.9"
   }
 }

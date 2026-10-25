@@ -1,0 +1,9 @@
+{
+  "appId": "com.vendingtycoon.game",
+  "appName": "Vending Tycoon",
+  "webDir": "www",
+  "backgroundColor": "#ffffff",
+  "android": {
+    "allowMixedContent": false
+  }
+}

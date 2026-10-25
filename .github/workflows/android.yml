@@ -1,0 +1,38 @@
+name: Android
+
+# Debug APK on every branch except main. Release APK and AAB only when merged to main.
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: android-actions/setup-android@v3
+      - run: npm ci
+      - run: npm test
+      - run: npx cap sync android
+      - name: Debug APK (not main)
+        if: github.ref != 'refs/heads/main'
+        working-directory: android
+        run: ./gradlew assembleDebug
+      - name: Release APK and AAB (main)
+        if: github.ref == 'refs/heads/main'
+        working-directory: android
+        run: ./gradlew assembleRelease bundleRelease
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-build
+          path: |
+            android/app/build/outputs/apk/**/*.apk
+            android/app/build/outputs/bundle/**/*.aab
