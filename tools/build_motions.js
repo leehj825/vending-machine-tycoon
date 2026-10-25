@@ -51,10 +51,15 @@ function convert(c, mirror) {
 const fingerprint = (clip) => clip.quats.map((v) => Math.round(v * 20)).join(',');
 
 const motions = {};
+const aliases = {};
 const seen = new Map();
+// A clip that repeats an earlier one is kept as an alias of it, so its name still works.
 const add = (name, clip) => {
   const key = fingerprint(clip);
-  if (seen.has(key)) return;
+  if (seen.has(key)) {
+    aliases[name] = seen.get(key);
+    return;
+  }
   seen.set(key, name);
   motions[name] = clip;
 };
@@ -63,7 +68,7 @@ for (const [name, c] of Object.entries(NF_MAIN)) add(name, convert(c, false));
 for (const [name, c] of Object.entries(NF_LIB)) add(name, convert(c, false));
 for (const [name, c] of Object.entries(DW)) add(`dw_${name}`, convert(c, true));
 
-const out = { bones: BONES, motions };
+const out = { bones: BONES, motions, aliases };
 fs.mkdirSync('www/assets', { recursive: true });
 fs.writeFileSync('www/assets/motions.json', JSON.stringify(out));
-console.log(`wrote www/assets/motions.json: ${Object.keys(motions).length} motions (${seen.size} unique)`);
+console.log(`wrote www/assets/motions.json: ${Object.keys(motions).length} motions, ${Object.keys(aliases).length} aliases`);

@@ -25,7 +25,7 @@ const camera = new THREE.PerspectiveCamera(30, 1, 0.05, 50);
 const figure = createFigure(LOOK);
 figure.root.scale.setScalar(1);
 scene.add(figure.root);
-camera.position.set(0.9, 1.1, 3.6);
+camera.position.set(0.9, 1.2, 5.2);
 camera.lookAt(0, 0.95, 0);
 
 function resize() {
@@ -39,7 +39,8 @@ window.addEventListener('resize', resize);
 resize();
 
 const data = await fetch('assets/motions.json').then((r) => r.json());
-const names = Object.keys(data.motions).sort();
+const names = [...new Set([...Object.keys(data.motions), ...Object.keys(data.aliases)])].sort();
+const resolve = (name) => data.motions[name] || data.motions[data.aliases[name]];
 const pick = $('pick');
 for (const name of names) {
   const option = document.createElement('option');
@@ -54,7 +55,7 @@ let time = 0;
 const pose = newPose();
 
 function select(name) {
-  current = data.motions[name];
+  current = resolve(name);
   $('name').textContent = name;
   $('info').textContent = `${current.frames} frames, ${current.d.toFixed(2)} s${current.loop ? '' : ', not a loop'}`;
   time = 0;
