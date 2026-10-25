@@ -5,7 +5,10 @@
 import { machineFront, inFront, samplePose, newPose } from './locomotion.js';
 import { movePlayer, newPlayer, sendWalker, spawnWalkers, stepWalker } from './walk.js';
 import { seededRandom } from './world.js';
-import { machineTotal } from './sim.js';
+import { collectAlertOf, machineTotal } from './sim.js';
+
+const BEACON_MAX = 8;
+const beacons = [];
 
 const TALK_REACH = 0.6;
 // Seconds between a walker's own errands to a machine.
@@ -199,6 +202,7 @@ export function createWalkMode({ city, getState, clips, sale, vandal, say, butto
       movePlayer(player, grid, clips, move.dx, move.dz, dt);
       city.follow(player.x, player.z);
       updateButtons();
+      updateBeacons(state, mode.player);
     }
     const people = [];
     if (mode.active && mode.player) {
@@ -233,6 +237,44 @@ export function createWalkMode({ city, getState, clips, sale, vandal, say, butto
   function updateButtons() {
     buttons.setTalk(Boolean(nearWalker()));
     buttons.setCollect(Boolean(nearMachine()));
+  }
+
+  // Arrows around the player, one per nearby machine holding more cash than HQ's threshold.
+  // Each arrow sits on a ring and points the way to its machine, as seen on screen.
+  function updateBeacons(state, player) {
+    const yaw = city.cameraYaw();
+    const rightX = Math.cos(yaw);
+    const rightZ = -Math.sin(yaw);
+    const forwardX = -Math.sin(yaw);
+    const forwardZ = -Math.cos(yaw);
+    const alert = collectAlertOf(state);
+    const targets = state.machines
+      .filter((m) => m.cash > alert)
+      .map((m) => {
+        const dx = m.x + 0.5 - player.x;
+        const dz = m.y + 0.5 - player.z;
+        return { distance: Math.hypot(dx, dz), angle: Math.atan2(dx * rightX + dz * rightZ, dx * forwardX + dz * forwardZ) };
+      })
+      .sort((a, b) => a.distance - b.distance)
+      .slice(0, BEACON_MAX);
+    const el = buttons.beaconsEl;
+    const radius = Math.min(el.clientWidth, el.clientHeight) * 0.32;
+    while (beacons.length < targets.length) {
+      const holder = document.createElement('div');
+      holder.className = 'beacon';
+      holder.innerHTML = '<span>▲</span>';
+      el.appendChild(holder);
+      beacons.push(holder);
+    }
+    beacons.forEach((holder, i) => {
+      if (i >= targets.length) {
+        holder.hidden = true;
+        return;
+      }
+      holder.hidden = false;
+      holder.style.transform = `rotate(${(targets[i].angle * 180) / Math.PI}deg)`;
+      holder.firstChild.style.top = `${-radius - 10}px`;
+    });
   }
 
   // Stick: a pointer that starts on the stick steers until it lifts.

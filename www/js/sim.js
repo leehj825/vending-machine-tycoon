@@ -34,6 +34,8 @@ export function newGame(seed = 7) {
     rushTicks: 0,
     // Vandals kicking machines: each one is a machine being attacked until it is stopped.
     attacks: [],
+    // Machines holding more cash than this show an arrow while walking.
+    collectAlert: CONFIG.collectAlertStart,
     news: [],
     nextId: 1,
     // Sales and revenue per product for today and the last seven days.
@@ -417,6 +419,17 @@ export function completeAttack(state, attackId) {
     machine.condition += 1;
     announce(state, [`A machine was vandalized: now ${CONDITIONS[machine.condition]}.`]);
   }
+}
+
+// The cash a machine must hold before walking shows an arrow to it.
+export function collectAlertOf(state) {
+  return state.collectAlert ?? CONFIG.collectAlertStart;
+}
+
+// HQ moves the arrow threshold up or down, within the limits.
+export function changeCollectAlert(state, delta) {
+  state.collectAlert = Math.min(CONFIG.collectAlertMax, Math.max(0, collectAlertOf(state) + delta));
+  return { ok: true, message: `Arrows now show machines with over $${state.collectAlert}.` };
 }
 
 // Repairs a machine to Excellent, at a price per level it has fallen.

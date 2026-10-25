@@ -4,6 +4,10 @@ export const CONFIG = {
   startingCash: 2000,
   startingReputation: 100,
   machinePrice: 400,
+  // Walking shows an arrow to each machine holding more than this much cash. HQ changes it.
+  collectAlertStart: 50,
+  collectAlertStep: 25,
+  collectAlertMax: 1000,
   // Share of the blocks' buildings that are shop fronts. The rest are houses, for looking at.
   shopFrontShare: 0.3,
   truckPrice: 500,

@@ -203,6 +203,14 @@ export function createUi({ panel, stats, toast, act, state: current }) {
         <span>${state.rushTicks > 0 ? `<b>Rush Hour</b> on, ${Math.ceil(state.rushTicks / CONFIG.ticksPerHour * 60)} min left` : `Hype ${Math.round(state.hype * 100)}%`}</span>
         <button data-act="campaign" ${state.cash < CONFIG.campaignCost ? 'disabled' : ''}>Ad campaign ${wholeMoney(CONFIG.campaignCost)}</button>
       </div>
+      <h3>Walking</h3>
+      <div class="row">
+        <span>Arrows to machines with over ${wholeMoney(sim.collectAlertOf(state))}</span>
+        <span>
+          <button data-act="alert" data-delta="${-CONFIG.collectAlertStep}">−</button>
+          <button data-act="alert" data-delta="${CONFIG.collectAlertStep}">+</button>
+        </span>
+      </div>
       <h3>Research</h3>
       <table>${researchRows(state)}</table>
       <h3>Rival company</h3>
@@ -245,6 +253,7 @@ export function createUi({ panel, stats, toast, act, state: current }) {
       capacity: () => act(() => sim.upgradeCapacity(latest, +d.machine)),
       cooling: () => act(() => sim.installCooling(latest, +d.machine)),
       ads: () => act(() => sim.installAdDisplay(latest, +d.machine)),
+      alert: () => act(() => sim.changeCollectAlert(latest, +d.delta)),
     };
     actions[d.act]?.();
   }

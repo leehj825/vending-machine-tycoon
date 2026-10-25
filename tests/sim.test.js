@@ -265,6 +265,17 @@ function attackedMachine(state) {
   return { machine, attack: state.attacks[0] };
 }
 
+test('the walking arrow threshold starts at $50 and stays within its limits', () => {
+  const state = sim.newGame(7);
+  assert.equal(sim.collectAlertOf(state), CONFIG.collectAlertStart);
+  sim.changeCollectAlert(state, -CONFIG.collectAlertStep);
+  assert.equal(sim.collectAlertOf(state), CONFIG.collectAlertStart - CONFIG.collectAlertStep);
+  for (let i = 0; i < 100; i++) sim.changeCollectAlert(state, CONFIG.collectAlertStep);
+  assert.equal(sim.collectAlertOf(state), CONFIG.collectAlertMax);
+  for (let i = 0; i < 100; i++) sim.changeCollectAlert(state, -CONFIG.collectAlertStep);
+  assert.equal(sim.collectAlertOf(state), 0);
+});
+
 test('a vandal kicking a machine vandalizes it, and repair restores it', () => {
   const state = sim.newGame(7);
   const { machine, attack } = attackedMachine(state);

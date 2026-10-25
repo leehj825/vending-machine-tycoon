@@ -95,6 +95,7 @@ async function start(slot) {
       collectEl: $('collect'),
       runEl: $('run'),
       officeEl: $('office'),
+      beaconsEl: $('beacons'),
     },
   });
 

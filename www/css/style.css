@@ -203,6 +203,21 @@ td.buttons button { padding: 4px 8px; min-height: 32px; margin-left: 4px; }
 
 .news { margin: 0; padding-left: 18px; color: var(--muted); }
 
+/* Walking: arrows on a ring around the player, pointing to machines that hold cash. */
+#walk-ui > #beacons { position: absolute; inset: 0; pointer-events: none; }
+.beacon { position: absolute; left: 50%; top: 50%; width: 0; height: 0; }
+.beacon[hidden] { display: none; }
+.beacon span {
+  position: absolute;
+  left: -10px;
+  width: 20px;
+  text-align: center;
+  font-size: 18px;
+  line-height: 20px;
+  color: var(--gold);
+  text-shadow: 0 0 3px #fff, 0 0 2px #fff;
+}
+
 /* The main menu: a full-screen page over the game, with a card for each screen. */
 .menu {
   position: fixed;
