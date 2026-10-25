@@ -81,7 +81,7 @@ export function createFigure(look) {
   for (const [bone, centre, half, colour] of bodyParts(rest, look)) {
     const geometry = new THREE.BoxGeometry(half[0] * 2, half[1] * 2, half[2] * 2);
     geometries.push(geometry);
-    const mesh = new THREE.Mesh(geometry, new THREE.MeshLambertMaterial({ color: colour, emissive: 0x404040, flatShading: true }));
+    const mesh = new THREE.Mesh(geometry, new THREE.MeshLambertMaterial({ color: colour, emissive: colour, emissiveIntensity: 0.35, flatShading: true }));
     mesh.position.set(centre[0] - rest[bone][0], centre[1] - rest[bone][1], centre[2] - rest[bone][2]);
     bones[bone].add(mesh);
   }
