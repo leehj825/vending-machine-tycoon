@@ -89,9 +89,11 @@ export function createUi({ panel, stats, toast, act, state: current }) {
           <button data-act="price" data-machine="${machine.id}" data-product="${p}" data-delta="0.1">+</button>
         </td>
       </tr>`).join('');
+    const kickers = (state.attacks ?? []).filter((a) => a.machineId === machine.id).length;
+    const broken = machine.condition === sim.CONDITIONS.length - 1;
     return `
       <h2>${zone.name} machine</h2>
-      <p class="hint">Stock ${sim.machineTotal(machine)}/${sim.machineCapacity(machine)}</p>
+      <p class="hint">Stock ${sim.machineTotal(machine)}/${sim.machineCapacity(machine)}${kickers ? ` · <b>${kickers} kicking</b>` : ''}${broken ? ' · <b>broken</b>' : ''}</p>
       <div class="row">
         <span>Cash in machine: <b>${money(machine.cash)}</b></span>
         <button class="primary" data-act="collect" data-machine="${machine.id}" ${machine.cash > 0 ? '' : 'disabled'}>Collect</button>
@@ -102,7 +104,7 @@ export function createUi({ panel, stats, toast, act, state: current }) {
         <button data-act="ads" data-machine="${machine.id}" ${machine.adDisplay ? 'disabled' : ''}>${machine.adDisplay ? 'Ads on' : `Ad display ${wholeMoney(CONFIG.adDisplayCost)}`}</button>
       </div>
       <div class="row">
-        <span>Condition: <b>${sim.CONDITIONS[machine.condition]}</b></span>
+        <span>Condition: <b>${sim.CONDITIONS[machine.condition]}</b>, wear ${Math.round(((machine.wear ?? 0) / CONFIG.wearLimit) * 100)}%</span>
         <span class="buttons">
           <button data-act="repair" data-machine="${machine.id}" ${machine.condition === 0 ? 'disabled' : ''}>Repair</button>
           <button data-act="security" data-machine="${machine.id}" ${machine.security ? 'disabled' : ''}>${machine.security ? 'Secured' : `Security ${wholeMoney(CONFIG.securityCost)}`}</button>
