@@ -43,6 +43,10 @@ tools/build_clips.js  builds www/assets/clips.json from Nightfall Settlement's c
 
 ## Features
 
+The map is drawn like the original game's: low-poly buildings in each zone's own shape, lamps and trees, lane markings,
+purchase arrows, owned plates, and coins above machines with cash.
+
+
 - City map: roads, grass, and buildings of five zones (office, school, gym, shop, hospital)
 - Buy a machine on a building ($400), one per building
 - Six products, each with a base price and demand; sales depend on zone, price, and reputation

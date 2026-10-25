@@ -1,6 +1,6 @@
 {
-  "appId": "com.vendingtycoon.game",
-  "appName": "Vending Tycoon",
+  "appId": "com.vendingmachiinetycoon.app",
+  "appName": "Vending Machine Tycoon",
   "webDir": "www",
   "backgroundColor": "#ffffff",
   "android": {

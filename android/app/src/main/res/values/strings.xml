@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Vending Tycoon</string>
-    <string name="title_activity_main">Vending Tycoon</string>
-    <string name="package_name">com.vendingtycoon.game</string>
-    <string name="custom_url_scheme">com.vendingtycoon.game</string>
+    <string name="app_name">Vending Machine Tycoon</string>
+    <string name="title_activity_main">Vending Machine Tycoon</string>
+    <string name="package_name">com.vendingmachiinetycoon.app</string>
+    <string name="custom_url_scheme">com.vendingmachiinetycoon.app</string>
 </resources>

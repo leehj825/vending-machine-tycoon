@@ -1,115 +1,136 @@
 /* global THREE */
-// The city in three.js: the map with its streets, buildings and machines, the people on it, and
-// the camera. Map view: taps pick a cell, drags turn the view, pinch and wheel zoom. Walk view:
-// a camera behind the player, drags turn the player, pinch zooms.
-import { ZONES } from './products.js';
-import { WAREHOUSE_CELL, cellAt } from './world.js';
+// The city view in three.js, drawn like the original game: the low-poly map from scene.js, the
+// machines and markers over it, the trucks and the people. Map view: taps pick a cell, drags turn
+// the view, pinch and wheel zoom. Walk view: a camera behind the player, drags turn the player.
+import { buildMachine, buildMarkers, buildStaticScene, buildTruck } from './scene.js';
 import { createFigure, poseFigure } from './figure.js';
 
-const COLORS = {
-  road: 0x3a3d44,
-  pavement: 0xb9b4a8,
-  grass: 0x6cbf5a,
-  machine: 0x2d7ff9,
-  cash: 0xffc107,
-  warehouse: 0xe57c23,
-  select: 0xffd54f,
-};
+// The colours in scene.js are final sRGB values, so three.js must not convert them.
+THREE.ColorManagement.enabled = false;
+
+const SKY = 0xa7d8f2;
 const TAP_SLOP = 8;
+const LANE_OFFSET = 0.15;
 const WALK_DISTANCE = { start: 3.2, near: 1.4, far: 9 };
-const MAP_DISTANCE = { start: 20, near: 6, far: 40 };
+const MAP_DISTANCE = { near: 6, far: 40 };
+// The original game's default view: a three-quarter view looking down on the whole grid.
+const MAP_VIEW = { yaw: Math.PI / 4, pitch: 0.85 };
+
+function geometryFrom({ positions, colors }) {
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  return geometry;
+}
 
 export function createCityView(container, onTap) {
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
   container.appendChild(renderer.domElement);
 
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0xa7d8f2);
-  scene.add(new THREE.HemisphereLight(0xffffff, 0x556070, 0.9));
-  const sun = new THREE.DirectionalLight(0xffffff, 0.8);
-  sun.position.set(-6, 12, 8);
+  scene.background = new THREE.Color(SKY);
+  // The figures are lit; the map is already lit, baked into its colours.
+  scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+  const sun = new THREE.DirectionalLight(0xffffff, 0.7);
+  sun.position.set(-0.6, 1, 0.4);
   scene.add(sun);
 
-  const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 200);
+  const camera = new THREE.PerspectiveCamera(30, 1, 0.5, 400);
   const cityGroup = new THREE.Group();
   const machineGroup = new THREE.Group();
+  const markerGroup = new THREE.Group();
   const pickGroup = new THREE.Group();
   const figureGroup = new THREE.Group();
   const vehicleGroup = new THREE.Group();
-  scene.add(cityGroup, machineGroup, pickGroup, figureGroup, vehicleGroup);
+  scene.add(cityGroup, machineGroup, markerGroup, pickGroup, figureGroup, vehicleGroup);
 
-  // The map view and the walk view share one camera: yaw and the target are common, the
-  // distance and pitch belong to the mode.
-  const cam = { target: new THREE.Vector3(7, 0, 7), yaw: 0.8, pitch: 0.9, distance: MAP_DISTANCE.start };
+  const vertexMaterial = new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide });
+  const cam = { target: new THREE.Vector3(7.5, 0, 7.5), yaw: MAP_VIEW.yaw, pitch: MAP_VIEW.pitch, distance: 16.5 };
   const walk = { on: false, follow: null, distance: WALK_DISTANCE.start };
   let city = null;
   let selected = null;
   let selectMesh = null;
+  let machineSignature = '';
+  let markerSignature = '';
+  let machineMesh = null;
+  const markerMeshes = [];
   const figures = new Map();
   const vehicles = new Map();
+  let truckGeometry = null;
+  const truckMaterial = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
 
-  const material = (color) => new THREE.MeshLambertMaterial({ color, flatShading: true });
-  const box = (w, h, d, color, x, y, z) => {
-    const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material(color));
-    mesh.position.set(x, y, z);
-    return mesh;
-  };
-
+  // The map is built once per city: ground, streets and buildings, then the pick plates.
   function buildCity(grid) {
     clear(cityGroup);
     clear(pickGroup);
-    grid.forEach((row, y) => row.forEach((cell, x) => {
-      const cx = x + 0.5;
-      const cz = y + 0.5;
-      if (cell.type === 'road') {
-        cityGroup.add(box(1, 0.05, 1, COLORS.road, cx, 0.025, cz));
-      } else if (cell.type === 'grass') {
-        cityGroup.add(box(1, 0.08, 1, COLORS.grass, cx, 0.04, cz));
-      } else {
-        cityGroup.add(box(1, 0.08, 1, COLORS.pavement, cx, 0.04, cz));
-        const zone = ZONES[cell.zone];
-        cityGroup.add(box(0.8, zone.height, 0.8, zone.color, cx, zone.height / 2, cz));
-      }
+    const mesh = new THREE.Mesh(geometryFrom(buildStaticScene(grid)), vertexMaterial);
+    cityGroup.add(mesh);
+    grid.forEach((row, y) => row.forEach((_cell, x) => {
       const plate = new THREE.Mesh(
         new THREE.PlaneGeometry(1, 1),
         new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }),
       );
       plate.rotation.x = -Math.PI / 2;
-      plate.position.set(cx, 0.12, cz);
+      plate.position.set(x + 0.5, 0.12, y + 0.5);
       plate.userData.cell = { x, y };
       pickGroup.add(plate);
     }));
-    if (cellAt(grid, WAREHOUSE_CELL.x, WAREHOUSE_CELL.y)) {
-      cityGroup.add(box(0.5, 0.4, 0.5, COLORS.warehouse, WAREHOUSE_CELL.x + 0.5, 0.25, WAREHOUSE_CELL.y + 0.5));
-    }
     selectMesh = new THREE.Mesh(
       new THREE.PlaneGeometry(1, 1),
-      new THREE.MeshBasicMaterial({ color: COLORS.select, transparent: true, opacity: 0.55, depthWrite: false }),
+      new THREE.MeshBasicMaterial({ color: 0xffd54f, transparent: true, opacity: 0.55, depthWrite: false }),
     );
     selectMesh.rotation.x = -Math.PI / 2;
     selectMesh.position.y = 0.13;
     selectMesh.visible = false;
     cityGroup.add(selectMesh);
     cam.target.set(grid.length / 2, 0, grid.length / 2);
+    cam.yaw = MAP_VIEW.yaw;
+    cam.pitch = MAP_VIEW.pitch;
+    cam.distance = grid.length * 1.1;
+    truckGeometry = geometryFrom(buildTruck());
   }
 
+  // The machines, merged into one mesh. Rebuilt when the set of machines changes.
   function drawMachines(state) {
+    const signature = state.machines.map((m) => `${m.id}:${m.zone}:${m.cash > 0}:${Object.values(m.stock).join(',')}`).join('|');
+    if (signature === machineSignature) return;
+    machineSignature = signature;
     clear(machineGroup);
-    for (const m of state.machines) {
-      const zone = ZONES[m.zone];
-      const x = m.x + 0.5;
-      const z = m.y + 0.5;
-      machineGroup.add(box(0.36, 0.5, 0.2, COLORS.machine, x, zone.height + 0.25, z + 0.35));
-      if (m.cash > 0) machineGroup.add(box(0.14, 0.14, 0.14, COLORS.cash, x, zone.height + 0.65, z + 0.35));
+    machineMesh = null;
+    if (state.machines.length === 0) return;
+    const positions = [];
+    const colors = [];
+    for (const machine of state.machines) {
+      const part = buildMachine(machine, state.city);
+      for (const v of part.positions) positions.push(v);
+      for (const v of part.colors) colors.push(v);
     }
+    machineGroup.add(new THREE.Mesh(geometryFrom({ positions: new Float32Array(positions), colors: new Float32Array(colors) }), vertexMaterial));
+  }
+
+  // Purchase arrows, owned plates and coins. The group bobs gently, as the original's did.
+  function drawMarkers(state, time) {
+    const signature = `${state.cash >= 400}|${state.machines.map((m) => `${m.x},${m.y},${m.cash > 0}`).join('|')}`;
+    if (signature !== markerSignature) {
+      markerSignature = signature;
+      clear(markerGroup);
+      const parts = buildMarkers(state);
+      for (const part of [parts.arrows, parts.owned, parts.coins]) {
+        if (part.positions.length === 0) continue;
+        const mesh = new THREE.Mesh(geometryFrom(part), vertexMaterial);
+        markerGroup.add(mesh);
+      }
+    }
+    markerGroup.position.y = Math.sin(time * 2.2) * 0.05;
   }
 
   function clear(group) {
     while (group.children.length) {
       const child = group.children.pop();
       child.geometry?.dispose();
-      child.material?.dispose();
+      child.material?.dispose?.();
     }
   }
 
@@ -127,10 +148,10 @@ export function createCityView(container, onTap) {
       setSelected(selected);
     }
     drawMachines(state);
+    drawMarkers(state, performance.now() / 1000);
   }
 
   // The people: one figure per key, placed and posed each frame, and removed when they leave.
-  // people is a list of { key, x, z, yaw, pose, look }.
   function drawPeople(people) {
     const seen = new Set();
     for (const person of people) {
@@ -151,40 +172,39 @@ export function createCityView(container, onTap) {
     }
   }
 
-  // Trucks on the road: a box per truck, turned to its heading. positions is a list of
-  // { key, x, z, yaw }.
+  // Trucks on the road, each in its lane: 0.15 to the right of its heading. positions is a list of
+  // { key, x, z, yaw } for the centre of the truck's cell, with its heading.
   function drawVehicles(positions) {
     const seen = new Set();
     for (const p of positions) {
       seen.add(p.key);
       let mesh = vehicles.get(p.key);
       if (!mesh) {
-        mesh = box(0.42, 0.28, 0.6, COLORS.warehouse, 0, 0.2, 0);
+        mesh = new THREE.Mesh(truckGeometry, truckMaterial);
         vehicles.set(p.key, mesh);
         vehicleGroup.add(mesh);
       }
-      mesh.position.set(p.x, 0.2, p.z);
+      const fx = Math.sin(p.yaw);
+      const fz = Math.cos(p.yaw);
+      mesh.position.set(p.x - fz * LANE_OFFSET, 0, p.z + fx * LANE_OFFSET);
       mesh.rotation.y = p.yaw;
     }
     for (const [key, mesh] of vehicles) {
       if (seen.has(key)) continue;
       vehicleGroup.remove(mesh);
-      mesh.geometry.dispose();
-      mesh.material.dispose();
       vehicles.delete(key);
     }
   }
 
-  // Walk view: the camera follows the player's spot, with the player's own facing.
   function setWalking(on) {
     walk.on = on;
     if (on) {
       walk.distance = WALK_DISTANCE.start;
       cam.pitch = 0.5;
     } else {
-      cam.distance = MAP_DISTANCE.start;
-      cam.pitch = 0.9;
-      cam.target.set(city ? city.length / 2 : 7, 0, city ? city.length / 2 : 7);
+      cam.distance = city ? city.length * 1.1 : 16.5;
+      cam.pitch = MAP_VIEW.pitch;
+      cam.target.set(city ? city.length / 2 : 7.5, 0, city ? city.length / 2 : 7.5);
     }
   }
 
@@ -323,3 +343,4 @@ export function createCityView(container, onTap) {
     cameraYaw,
   };
 }
+

@@ -1,4 +1,4 @@
-package com.vendingtycoon.game;
+package com.vendingmachiinetycoon.app;
 
 import com.getcapacitor.BridgeActivity;
 
