@@ -5,6 +5,7 @@ import { PRODUCTS, PRODUCT_IDS, ZONE_IDS, ZONES } from './products.js';
 import * as sim from './sim.js';
 import { cellAt, WAREHOUSE_CELL } from './world.js';
 import { CONTRACT_RULES, progressOf as contractProgress } from './contracts.js';
+import { playSound } from './audio.js';
 
 const money = (n) => `$${n.toFixed(2)}`;
 const wholeMoney = (n) => `$${Math.round(n).toLocaleString('en-US')}`;
@@ -233,7 +234,10 @@ export function createUi({ panel, stats, toast, act, state: current }) {
       security: () => act(() => sim.installSecurity(latest, +d.machine)),
       'buy-stock': () => act(() => sim.buyWarehouseStock(latest, d.product, +d.units)),
       'buy-truck': () => act(() => sim.buyTruck(latest)),
-      dispatch: () => act(() => sim.dispatchTruck(latest)),
+      dispatch: () => {
+        const result = act(() => sim.dispatchTruck(latest));
+        if (result.ok) playSound('truck');
+      },
       swap: () => act(() => sim.swapContract(latest, d.id)),
       counter: () => act(() => sim.counterAttack(latest, d.zone)),
       research: () => act(() => sim.buyResearch(latest, d.id)),
