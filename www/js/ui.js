@@ -114,6 +114,12 @@ export function createUi({ panel, stats, toast, act, state: current }) {
       <table><tr><th>Product</th><th>Stock</th><th>Price</th></tr>${rows}</table>`;
   }
 
+  // A small arrow for a price's change today: up, down or flat.
+  function trendArrow(change) {
+    if (Math.abs(change) < 0.001) return '<span class="trend flat">–</span>';
+    return change > 0 ? '<span class="trend up">▲</span>' : '<span class="trend down">▼</span>';
+  }
+
   function warehousePanel(state) {
     const total = sim.warehouseTotal(state);
     const rows = PRODUCT_IDS.map((p) => {
@@ -122,7 +128,7 @@ export function createUi({ panel, stats, toast, act, state: current }) {
         <tr>
           <td>${PRODUCTS[p].name}</td>
           <td>${state.warehouse[p]}</td>
-          <td>${money(unit)}</td>
+          <td>${money(unit)} ${trendArrow(state.marketTrend?.[p] ?? 0)}</td>
           <td class="buttons">
             ${[10, 50, 100].map((n) => `<button data-act="buy-stock" data-product="${p}" data-units="${n}">+${n}</button>`).join('')}
           </td>
@@ -136,6 +142,7 @@ export function createUi({ panel, stats, toast, act, state: current }) {
 
   function fleetPanel(state) {
     const idle = state.trucks.some((t) => !t.trip);
+    const needStock = state.machines.filter((m) => sim.machineTotal(m) < sim.machineCapacity(m)).length;
     const rows = state.trucks.map((t, i) => {
       const trip = t.trip;
       const status = trip
@@ -146,7 +153,7 @@ export function createUi({ panel, stats, toast, act, state: current }) {
     return `
       <h2>Fleet</h2>
       <p class="hint">A run loads the warehouse and restocks each machine on the road route, nearest first.
-        Trucks carry ${CONFIG.truckCapacity} items.</p>
+        Trucks carry ${CONFIG.truckCapacity} items. ${needStock} ${needStock === 1 ? 'machine needs' : 'machines need'} stock.</p>
       ${rows ? `<table>${rows}</table>` : ''}
       <div class="row">
         <button data-act="buy-truck" ${state.cash < CONFIG.truckPrice ? 'disabled' : ''}>Buy truck ${wholeMoney(CONFIG.truckPrice)}</button>
@@ -190,6 +197,10 @@ export function createUi({ panel, stats, toast, act, state: current }) {
 
   function hqPanel(state) {
     const today = PRODUCT_IDS.reduce((n, p) => n + state.today.sales[p], 0);
+    const broken = state.machines.filter((m) => m.condition === sim.CONDITIONS.length - 1).length;
+    const attacked = new Set((state.attacks ?? []).map((a) => a.machineId)).size;
+    const rising = PRODUCT_IDS.filter((p) => (state.marketTrend?.[p] ?? 0) > 0.001).length;
+    const falling = PRODUCT_IDS.filter((p) => (state.marketTrend?.[p] ?? 0) < -0.001).length;
     const history = state.history.map((d) => `<tr><td>Day ${d.day}</td><td>${money(d.revenue)}</td></tr>`).join('');
     const news = state.news.map((n) => `<li>${n}</li>`).join('');
     return `
@@ -197,6 +208,9 @@ export function createUi({ panel, stats, toast, act, state: current }) {
       <table>
         <tr><th>Net worth</th><td>${wholeMoney(sim.netWorth(state))}</td></tr>
         <tr><th>Machines</th><td>${state.machines.length}</td></tr>
+        <tr><th>Weather</th><td>${CONFIG.weather[sim.weatherOf(state)].label}</td></tr>
+        <tr><th>Broken or attacked</th><td>${broken} broken, ${attacked} under attack</td></tr>
+        <tr><th>Warehouse prices today</th><td>${rising} up, ${falling} down</td></tr>
         <tr><th>Trucks</th><td>${state.trucks.length}</td></tr>
         <tr><th>Today's sales</th><td>${today} items, ${money(state.today.revenue)}</td></tr>
         <tr><th>Spoiled so far</th><td>${state.spoiled} items</td></tr>

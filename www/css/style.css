@@ -254,3 +254,8 @@ td.buttons button { padding: 4px 8px; min-height: 32px; margin-left: 4px; }
 .menu-slider input { width: 100%; }
 
 .beacon.warn span { color: var(--red); }
+
+.trend { font-size: 12px; margin-left: 4px; }
+.trend.up { color: var(--green); }
+.trend.down { color: var(--red); }
+.trend.flat { color: var(--muted); }

@@ -12,6 +12,13 @@ const TICKS_PER_DAY = CONFIG.ticksPerHour * CONFIG.hoursPerDay;
 export const CONDITIONS = ['Excellent', 'Good', 'Fair', 'Poor', 'Broken'];
 const CONDITION_SALES = [1, 0.9, 0.75, 0.5, 0];
 
+// Short tips shown in the news at the start of a game.
+const FIRST_DAY_HINTS = [
+  'Tip: a shop front with an arrow above it can take a machine. Tap the building to buy one.',
+  'Tip: stock machines from the Warehouse tab, then send a truck from Fleet.',
+  'Tip: people may kick a machine. Walk up to them and talk to stop them.',
+];
+
 export function newGame(seed = 7) {
   const state = {
     seed,
@@ -40,7 +47,7 @@ export function newGame(seed = 7) {
     // Warehouse price of each product, as a share of its normal price, and last day's change.
     market: Object.fromEntries(PRODUCT_IDS.map((p) => [p, 1])),
     marketTrend: Object.fromEntries(PRODUCT_IDS.map((p) => [p, 0])),
-    news: [],
+    news: [...FIRST_DAY_HINTS],
     nextId: 1,
     // Sales and revenue per product for today and the last seven days.
     today: { sales: zeroCounts(), revenue: 0 },
