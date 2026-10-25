@@ -163,7 +163,7 @@ export function createUi({ panel, stats, toast, act, state: current }) {
       ${rewardReadyNow() && state.freeRunDay !== state.day ? `
       <div class="row">
         <span class="hint">Watch a short video to stock every machine for free, once a day.</span>
-        <button data-act="free-run">Free run</button>
+        <button data-act="free-run">📺 Ad: Free run</button>
       </div>` : ''}`;
   }
 
