@@ -4,7 +4,7 @@ import { CONFIG } from './config.js';
 import { PRODUCTS, PRODUCT_IDS, ZONE_IDS, ZONES } from './products.js';
 import * as sim from './sim.js';
 import * as staff from './staff.js';
-import { cellAt, WAREHOUSE_CELL } from './world.js';
+import { cellAt, districtOf, WAREHOUSE_CELL } from './world.js';
 import { CONTRACT_RULES, progressOf as contractProgress } from './contracts.js';
 import { playSound } from './audio.js';
 import { rewardReadyNow, showRewardAd } from './ads.js';
@@ -71,6 +71,10 @@ export function createUi({ panel, stats, toast, act, state: current }) {
     const machine = sim.machineAt(state, cell.x, cell.y);
     if (!machine) {
       const zone = ZONES[tile.zone];
+      const district = districtOf(cell.x, cell.y);
+      if (!state.districts[district]) {
+        return `<h2>${zone.name} building</h2><p class="hint">The ${CONFIG.districts[district].name} district is closed. Buy its permit in HQ, under Districts, to put a machine here.</p>`;
+      }
       return `
         <h2>${zone.name} building</h2>
         <p class="hint">No machine here yet.</p>
@@ -218,6 +222,8 @@ export function createUi({ panel, stats, toast, act, state: current }) {
         <tr><th>Today's sales</th><td>${today} items, ${money(state.today.revenue)}</td></tr>
         <tr><th>Spoiled so far</th><td>${state.spoiled} items</td></tr>
       </table>
+      <h3>Districts</h3>
+      ${districtPanel(state)}
       <h3>Staff</h3>
       ${staffPanel(state)}
       <h3>Marketing</h3>
@@ -241,6 +247,18 @@ export function createUi({ panel, stats, toast, act, state: current }) {
       <table>${contractRows(state)}</table>
       ${news ? `<h3>News</h3><ul class="news">${news}</ul>` : ''}
       ${history ? `<h3>Last days</h3><table>${history}</table>` : ''}`;
+  }
+
+  // The map's districts: a permit opens one for machines.
+  function districtPanel(state) {
+    const rows = CONFIG.districts.map((d, id) => {
+      const owned = state.machines.filter((m) => districtOf(m.x, m.y) === id).length;
+      const action = state.districts[id]
+        ? `<span class="hint">Open, ${owned} machine${owned === 1 ? '' : 's'}</span>`
+        : `<button class="primary" data-act="buy-district" data-id="${id}" ${state.cash < d.price ? 'disabled' : ''}>Permit ${wholeMoney(d.price)}</button>`;
+      return `<tr><td><b>${d.name}</b></td><td class="buttons">${action}</td></tr>`;
+    }).join('');
+    return `<table>${rows}</table>`;
   }
 
   // The jobs that can be handed to hired help, with what each costs a day.
@@ -283,6 +301,7 @@ export function createUi({ panel, stats, toast, act, state: current }) {
     const actions = {
       'buy-machine': () => act(() => sim.buyMachine(latest, +d.x, +d.y)),
       price: () => act(() => sim.setPrice(latest, +d.machine, d.product, sim.machineById(latest, +d.machine).prices[d.product] + +d.delta)),
+      'buy-district': () => act(() => sim.buyDistrict(latest, +d.id)),
       hire: () => act(() => staff.hireStaff(latest, d.role)),
       fire: () => act(() => staff.fireStaff(latest, d.role)),
       'agent-rule': () => act(() => staff.setAgentRule(latest, d.product, d.field, +d.dir)),

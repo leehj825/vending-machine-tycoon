@@ -118,4 +118,20 @@ export function cellAt(city, x, y) {
 }
 
 // Where the warehouse stands: the first road crossing, at the top left.
+// The district a tile is in: 0 north-west (with the warehouse), 1 north-east, 2 south-west, 3 south-east.
+export function districtOf(x, y) {
+  return (x >= CONFIG.districtSplit ? 1 : 0) + (y >= CONFIG.districtSplit ? 2 : 0);
+}
+
+// The tiles a district covers, as x0, y0, x1, y1 (the end exclusive), in a map of the given size.
+export function districtBounds(id, size) {
+  const split = CONFIG.districtSplit;
+  return {
+    x0: id % 2 === 0 ? 0 : split,
+    x1: id % 2 === 0 ? split : size,
+    y0: id < 2 ? 0 : split,
+    y1: id < 2 ? split : size,
+  };
+}
+
 export const WAREHOUSE_CELL = { x: 0, y: 0 };

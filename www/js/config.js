@@ -65,6 +65,15 @@ export const CONFIG = {
   agent: { defaultMin: 40, minStep: 10, maxMin: 200, defaultMaxPrice: 1.1, priceStep: 0.1, minPriceLimit: 0.7, maxPriceLimit: 1.5 },
   // The driver goes when a machine holds less than this share of its capacity.
   driverLowShare: 0.4,
+  // The map is four districts, split at this row and column. A permit opens each one for machines.
+  // The first, with the warehouse, is open from the start.
+  districtSplit: 8,
+  districts: [
+    { name: 'Downtown', price: 0 },
+    { name: 'Eastside', price: 1500 },
+    { name: 'Southside', price: 3000 },
+    { name: 'Harbor', price: 5000 },
+  ],
   // While the app is closed machines keep selling: for up to this many real minutes, at this share
   // of the normal rate. The earnings wait in the machines.
   offlineMaxMinutes: 120,

@@ -2,7 +2,7 @@
 // tests can run it directly. Each action returns { ok, message } for the screen to show.
 import { CONFIG } from './config.js';
 import { PRODUCTS, PRODUCT_IDS, ZONES } from './products.js';
-import { cellAt, generateCity, seededRandom, WAREHOUSE_CELL } from './world.js';
+import { cellAt, districtOf, generateCity, seededRandom, WAREHOUSE_CELL } from './world.js';
 import { findPath, machineFront, walkerWalkable } from './locomotion.js';
 import { makeContracts, settleContracts, swapContract as swapContractRule } from './contracts.js';
 import { TUTORIAL_DONE } from './tutorial.js';
@@ -66,6 +66,8 @@ export function newGame(seed = 7) {
     staffToday: newStaffToday(),
     // Where the first-day guide has got to (a saved game from before it counts as done).
     tutorialStep: 0,
+    // Which districts have a permit, in the order of CONFIG.districts. The first is open from the start.
+    districts: CONFIG.districts.map((_d, i) => i === 0),
     // The last day's summary, shown once when the day ends.
     summary: null,
     nextId: 1,
@@ -80,6 +82,8 @@ export function newGame(seed = 7) {
 // Brings a saved game from an earlier build up to date: anything the game has gained since is
 // filled in with its starting value, so an old save loads and plays instead of breaking.
 export function migrateState(state) {
+  // A saved game from before districts had every part of the map open.
+  if (state.districts === undefined) state.districts = CONFIG.districts.map(() => true);
   if (state.tutorialStep === undefined) state.tutorialStep = TUTORIAL_DONE;
   const fresh = newGame(state.seed ?? 7);
   for (const key of Object.keys(fresh)) {
@@ -167,11 +171,24 @@ export function machineAt(state, x, y) {
   return state.machines.find((m) => m.x === x && m.y === y) || null;
 }
 
+// Buys the permit that opens a district for machines.
+export function buyDistrict(state, id) {
+  const district = CONFIG.districts[id];
+  if (!district) return fail('No such district.');
+  if (state.districts[id]) return fail(`${district.name} is already open.`);
+  if (state.cash < district.price) return fail(`The ${district.name} permit costs $${district.price}.`);
+  state.cash -= district.price;
+  state.districts[id] = true;
+  return ok(`${district.name} is open. Machines can go on its shop fronts.`);
+}
+
 export function buyMachine(state, x, y) {
   const cell = cellAt(state.city, x, y);
   if (cell?.type === 'house') return fail('That house is not for sale.');
   if (!cell || cell.type !== 'building') return fail('Machines go on building tiles.');
   if (!machineFront(state.city, x, y)) return fail('A machine needs a street beside it.');
+  const district = districtOf(x, y);
+  if (!state.districts[district]) return fail(`Buy the ${CONFIG.districts[district].name} permit in HQ first.`);
   if (machineAt(state, x, y)) return fail('There is already a machine here.');
   if (state.cash < CONFIG.machinePrice) return fail('Not enough cash for a machine.');
   state.cash -= CONFIG.machinePrice;

@@ -154,3 +154,26 @@ test('machines keep selling while the app is closed, within their stock and the 
   const empty = sim.offlineSales(gameWithMachines(2), 3600);
   assert.equal(empty.items, 0, 'empty machines sell nothing');
 });
+
+test('a district needs its permit before machines can go there, and an older save has them all open', async () => {
+  const world = await import('../www/js/world.js');
+  const state = sim.newGame(7);
+  state.cash = 100000;
+  let far = null;
+  state.city.forEach((row, y) => row.forEach((cell, x) => {
+    if (!far && world.districtOf(x, y) === 3 && cell.type === 'building' && loco.machineFront(state.city, x, y)) far = { x, y };
+  }));
+  assert.ok(far, 'a shop front in the far district');
+  assert.equal(sim.buyMachine(state, far.x, far.y).ok, false, 'closed');
+  const before = state.cash;
+  assert.equal(sim.buyDistrict(state, 3).ok, true);
+  assert.equal(before - state.cash, CONFIG.districts[3].price);
+  assert.equal(sim.buyDistrict(state, 3).ok, false, 'already open');
+  assert.equal(sim.buyMachine(state, far.x, far.y).ok, true, 'open now');
+  const poor = sim.newGame(7);
+  poor.cash = 10;
+  assert.equal(sim.buyDistrict(poor, 1).ok, false, 'too dear');
+  const old = JSON.parse(JSON.stringify(sim.newGame(7)));
+  delete old.districts;
+  assert.deepEqual(sim.migrateState(old).districts, [true, true, true, true]);
+});

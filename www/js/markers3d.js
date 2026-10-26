@@ -3,6 +3,7 @@
 // machine (green when the cash covers it, yellow when not), a blue plate on a shop with a machine,
 // and a round gold coin over a machine that holds cash. Each has a dark outline.
 import { CONFIG } from './config.js';
+import { districtOf } from './world.js';
 import { machineAnchor, markerHeight } from './scene.js';
 import { lit, MACHINE_SCALE } from './machine3d.js';
 
@@ -61,6 +62,8 @@ export function buildMarkers3d(state) {
   const affordable = state.cash >= CONFIG.machinePrice;
   state.city.forEach((row, y) => row.forEach((cell, x) => {
     if (cell.type !== 'building') return;
+    // A district without its permit has no purchase markers.
+    if (!(state.districts?.[districtOf(x, y)] ?? true)) return;
     const h = markerHeight(cell.zone);
     if (machineAt.has(`${x},${y}`)) root.add(plate(x + 0.5, h, y + 0.5));
     else root.add(pin(x + 0.5, h, y + 0.5, affordable ? AFFORDABLE : UNAFFORDABLE));
