@@ -74,6 +74,7 @@ button.primary { background: var(--gold); border-color: var(--gold); color: #fff
   color: #fff;
   font-weight: 600;
   z-index: 5;
+  width: max-content;
   max-width: 92vw;
 }
 .toast.ok { background: var(--green); }
@@ -225,8 +226,8 @@ td.buttons button { padding: 4px 8px; min-height: 32px; margin-left: 4px; }
 .inside-bar {
   position: absolute;
   top: 10px;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 8px;
+  right: 8px;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -234,12 +235,13 @@ td.buttons button { padding: 4px 8px; min-height: 32px; margin-left: 4px; }
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.95);
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
-  white-space: nowrap;
+  flex-wrap: wrap;
+  justify-content: center;
   pointer-events: auto;
 }
 .inside-bar[hidden] { display: none; }
 .inside-bar button { min-height: 34px; padding: 4px 10px; font-size: 13px; }
-#inside-info { font-size: 13px; color: var(--muted); padding: 0 4px; }
+#inside-info { flex: 1 1 100%; text-align: center; font-size: 13px; color: var(--muted); padding: 0 4px; }
 #collect { bottom: 16px; }
 .action:disabled { opacity: 0.4; }
 .walk-ctl {
@@ -364,3 +366,5 @@ td.buttons button { padding: 4px 8px; min-height: 32px; margin-left: 4px; }
 .pause-card h2 { text-align: center; margin: 0; }
 .pause-card { max-height: 90vh; overflow-y: auto; }
 .summary { margin: 4px 0; }
+.summary td, .summary th { padding: 3px 4px; font-size: 13px; }
+.pause-card .news { font-size: 13px; }
