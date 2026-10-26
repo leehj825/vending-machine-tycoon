@@ -11,10 +11,14 @@ const EYE = 0x1d1412;
 const SHADOW = new THREE.CircleGeometry(0.6, 20);
 const SHADOW_MATERIAL = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.2, depthWrite: false });
 // Each bone's offset from its parent at rest. The hips sit above the legs at rest.
+// The clips were made for hips at 0.9; the hips here rest at 0.68, so their heights are scaled.
+const CLIP_HIP_HEIGHT = 0.9;
+const HIP_HEIGHT = 0.68;
+const HIP_SCALE = HIP_HEIGHT / CLIP_HIP_HEIGHT;
 const OFFSET = [
-  [0, 0.9, 0], [0, 0.05, 0], [0, 0.66, 0], [-0.34, 0.58, 0], [0.34, 0.58, 0],
-  [0, -0.3, 0], [0, -0.3, 0], [0, -0.3, 0], [0, -0.3, 0],
-  [-0.14, -0.04, 0], [0.14, -0.04, 0], [0, -0.45, 0], [0, -0.45, 0],
+  [0, HIP_HEIGHT, 0], [0, 0.37, 0], [0, 0.07, 0], [-0.36, -0.01, 0], [0.36, -0.01, 0],
+  [0, -0.32, 0], [0, -0.32, 0], [0, -0.32, 0], [0, -0.32, 0],
+  [-0.13, -0.04, 0], [0.13, -0.04, 0], [0, -0.36, 0], [0, -0.36, 0],
 ];
 const HIPS = 0;
 const SHOULDER_L = 3;
@@ -31,9 +35,8 @@ const SPINE = 1;
 const SKIN = 0xe2b88e;
 const PANTS = 0x4b4036;
 const BOOT = 0x2e241c;
-const SLEEVE = 0xffffff;
 const BAG = 0x3e2723;
-export const FIGURE_SCALE = 0.13;
+export const FIGURE_SCALE = 0.15;
 
 // Rest position of each bone, in figure space: the sum of its offsets down the hierarchy.
 function restPositions() {
@@ -49,14 +52,16 @@ function restPositions() {
 // The parts of the body, each with the bone it hangs on, its centre and half size in figure
 // space, and its colour role.
 function bodyParts(rest, look) {
+  // Proportions as in the cartoon style: a cube head as wide as the torso, a box torso, arms
+  // that reach the hips, and short legs.
   const parts = [
-    [HIPS, [0, 0.9, 0], [0.19, 0.1, 0.11], PANTS],
-    [SPINE, [0, 1.3, 0], [0.27, 0.3, 0.16], look.shirt],
-    [HEAD, [0, 1.8, 0], [0.15, 0.15, 0.14], SKIN],
-    [HEAD, [0, 1.93, -0.01], [0.155, 0.045, 0.15], look.hat],
-    [HEAD, [-0.06, 1.8, 0.145], [0.025, 0.03, 0.01], EYE],
-    [HEAD, [0.06, 1.8, 0.145], [0.025, 0.03, 0.01], EYE],
-    [SPINE, [0, 1.3, -0.19], [0.2, 0.24, 0.055], BAG],
+    [HIPS, [0, 0.7, 0], [0.26, 0.07, 0.15], PANTS],
+    [SPINE, [0, 0.92, 0], [0.27, 0.2, 0.15], look.shirt],
+    [SPINE, [0, 0.95, -0.2], [0.2, 0.2, 0.05], BAG],
+    [HEAD, [0, 1.39, 0], [0.27, 0.27, 0.26], SKIN],
+    [HEAD, [0, 1.65, -0.01], [0.285, 0.05, 0.275], look.hat],
+    [HEAD, [-0.13, 1.4, 0.265], [0.035, 0.04, 0.01], EYE],
+    [HEAD, [0.13, 1.4, 0.265], [0.035, 0.04, 0.01], EYE],
   ];
   for (const [shoulder, elbow, hip, knee] of [
     [SHOULDER_L, ELBOW_L, HIP_L, KNEE_L],
@@ -65,11 +70,11 @@ function bodyParts(rest, look) {
     const sx = rest[shoulder][0];
     const hx = rest[hip][0];
     parts.push(
-      [shoulder, [sx, 1.39, 0], [0.1, 0.16, 0.1], look.shirt],
-      [elbow, [sx, 1.05, 0], [0.085, 0.19, 0.085], SKIN],
-      [hip, [hx, 0.64, 0], [0.12, 0.23, 0.12], PANTS],
-      [knee, [hx, 0.2, 0], [0.105, 0.21, 0.105], PANTS],
-      [knee, [hx, 0.04, 0.045], [0.1, 0.06, 0.15], BOOT],
+      [shoulder, [sx, 0.88, 0], [0.1, 0.16, 0.1], look.shirt],
+      [elbow, [sx, 0.56, 0], [0.085, 0.16, 0.085], SKIN],
+      [hip, [hx, 0.46, 0], [0.12, 0.18, 0.12], PANTS],
+      [knee, [hx, 0.12, 0], [0.105, 0.16, 0.105], PANTS],
+      [knee, [hx, 0.05, 0.04], [0.11, 0.05, 0.15], BOOT],
     );
   }
   return parts;
@@ -120,5 +125,5 @@ export function poseFigure(figure, x, z, yaw, pose) {
   for (let b = 0; b < figure.bones.length; b++) {
     figure.bones[b].quaternion.set(pose.quats[b * 4], pose.quats[b * 4 + 1], pose.quats[b * 4 + 2], pose.quats[b * 4 + 3]);
   }
-  figure.bones[HIPS].position.set(OFFSET[HIPS][0], pose.hipY, pose.hipZ);
+  figure.bones[HIPS].position.set(OFFSET[HIPS][0], pose.hipY * HIP_SCALE, pose.hipZ);
 }
