@@ -64,14 +64,15 @@ async function start(slot) {
   // The popup: a tab from the left rail, or a shop front's machine detail. The machine detail can
   // be minimized to a pill at the bottom; a tab cannot. One popup at a time.
   const rail = [...document.querySelectorAll('.rail-btn')];
-  // A tap that opens or closes a popup must not carry on into what appears under the finger: the
-  // browser sends a click after the touch ends, and it would press the popup's button (or tap the
-  // building beneath). Taps on the popup, and on the map, are ignored for a moment after a change.
-  let uiLockUntil = 0;
-  const lockUi = () => { uiLockUntil = performance.now() + 450; };
-  const locked = () => performance.now() < uiLockUntil;
+  // A touch that opens a popup must not carry on into it: the browser sends a click when the touch
+  // ends, and it would press whatever button the popup put under the finger. A click only counts
+  // for the popup (or its pill) if its touch began there. The map is the other way round: it
+  // only takes a tap whose touch began on the map.
+  let downInPopup = false;
+  document.addEventListener('pointerdown', (e) => {
+    downInPopup = Boolean(e.target.closest('#sheet, #machine-pill'));
+  }, true);
   function showSheet(title, mode, tab = null) {
-    lockUi();
     $('sheet-title').textContent = title;
     $('sheet-minimize').hidden = mode !== 'machine';
     $('sheet').hidden = false;
@@ -80,7 +81,6 @@ async function start(slot) {
   }
 
   function closeSheet() {
-    lockUi();
     $('sheet').hidden = true;
     $('machine-pill').hidden = true;
     for (const btn of rail) btn.classList.remove('on');
@@ -93,31 +93,27 @@ async function start(slot) {
       showSheet(TAB_TITLES[btn.dataset.tab], 'tab', btn.dataset.tab);
     });
   }
-  // Clicks reaching the popup or its pill straight after a change are leftovers of the tap.
+  // A click on the popup or its pill whose touch began elsewhere is the tail of the tap that opened it.
   for (const el of [$('sheet'), $('machine-pill')]) {
     el.addEventListener('click', (e) => {
-      if (!locked()) return;
+      if (downInPopup) return;
       e.stopPropagation();
       e.preventDefault();
     }, true);
   }
   $('sheet-close').addEventListener('click', closeSheet);
   $('sheet-minimize').addEventListener('click', () => {
-    lockUi();
     $('sheet').hidden = true;
     $('machine-pill').textContent = $('sheet-title').textContent;
     $('machine-pill').hidden = false;
   });
   $('machine-pill').addEventListener('click', () => {
-    lockUi();
     $('machine-pill').hidden = true;
     $('sheet').hidden = false;
   });
 
   const city = createCityView($('city'), (cell) => {
-    // Only shop fronts open the popup: roads, grass, parks and houses do nothing. A tap straight
-    // after a popup changed is the end of that touch, not a new one.
-    if (locked()) return;
+    // Only shop fronts open the popup: roads, grass, parks and houses do nothing.
     if (state.city[cell.y][cell.x].type !== 'building') return;
     city.setSelected(cell);
     ui.select(cell);
