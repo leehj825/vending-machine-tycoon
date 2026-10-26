@@ -65,6 +65,10 @@ export const CONFIG = {
   agent: { defaultMin: 40, minStep: 10, maxMin: 200, defaultMaxPrice: 1.1, priceStep: 0.1, minPriceLimit: 0.7, maxPriceLimit: 1.5 },
   // The driver goes when a machine holds less than this share of its capacity.
   driverLowShare: 0.4,
+  // While the app is closed machines keep selling: for up to this many real minutes, at this share
+  // of the normal rate. The earnings wait in the machines.
+  offlineMaxMinutes: 120,
+  offlineShare: 0.5,
   // A broken machine (4 levels) costs 300 to repair, less than the 400 a new one costs.
   repairCostPerLevel: 75,
   // Wear: a machine wears a little each hour (more in risky zones and at night), and a kicker

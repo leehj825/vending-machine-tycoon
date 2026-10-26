@@ -139,3 +139,18 @@ test('a day that ends leaves a summary of its sales and what the help did', () =
   assert.equal(state.summary.staff.wages, CONFIG.staff.agent.wage);
   assert.ok(state.summary.tip.length > 0);
 });
+
+test('machines keep selling while the app is closed, within their stock and the time cap', () => {
+  const state = gameWithMachines(2);
+  for (const machine of state.machines) for (const p of PRODUCT_IDS) machine.stock[p] = CONFIG.machinePerProduct;
+  const cashBefore = state.machines.reduce((sum, m) => sum + m.cash, 0);
+  const sold = sim.offlineSales(state, 3600);
+  assert.ok(sold.items > 0, 'something sold');
+  assert.ok(state.machines.reduce((sum, m) => sum + m.cash, 0) > cashBefore, 'the money waits in the machines');
+  const total = state.machines.reduce((sum, m) => sum + sim.machineTotal(m), 0);
+  assert.equal(total, 2 * PRODUCT_IDS.length * CONFIG.machinePerProduct - sold.items, 'stock came down by what sold');
+  const capped = sim.offlineSales(gameWithMachines(2), 10 * 24 * 3600);
+  assert.ok(capped.minutes <= CONFIG.offlineMaxMinutes, 'the time away is capped');
+  const empty = sim.offlineSales(gameWithMachines(2), 3600);
+  assert.equal(empty.items, 0, 'empty machines sell nothing');
+});

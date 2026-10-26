@@ -4,7 +4,7 @@
 import { CONFIG } from './config.js';
 import { ZONES } from './products.js';
 import * as sim from './sim.js';
-import { loadSlot, saveGame, setActiveSlot } from './save.js';
+import { loadSlot, savedAt, saveGame, setActiveSlot } from './save.js';
 import { goToMenu, initMenu, pickedSlot } from './menu.js';
 import { applyVolumes, playMusic, playSound, unlockAudio } from './audio.js';
 import { createCityView } from './city3d.js';
@@ -13,7 +13,7 @@ import { createWalkMode } from './walkmode.js';
 import { createInsideView } from './inside3d.js';
 import { summaryHtml } from './summary.js';
 import { skipTutorial, tutorialCheck, tutorialEvent, tutorialStep } from './tutorial.js';
-import { startAds, startRewardAds } from './ads.js';
+import { rewardReadyNow, showRewardAd, startAds, startRewardAds } from './ads.js';
 import { truckPosition } from './sim.js';
 
 const $ = (id) => document.getElementById(id);
@@ -51,6 +51,8 @@ function toast(message, ok) {
 async function start(slot) {
   const clips = await fetch('assets/clips.json').then((r) => r.json());
   const state = loadSlot(slot) || sim.newGame(Math.floor(Math.random() * 100000));
+  // Real seconds since this game was last saved: the time the app was closed.
+  const awaySeconds = savedAt(slot) ? (Date.now() - savedAt(slot)) / 1000 : 0;
 
   // Runs a game action, saves when it worked, and shows the result.
   function act(run) {
@@ -281,8 +283,13 @@ async function start(slot) {
     goToMenu();
   });
   // Going to the background pauses and saves; coming back shows the pause dialog.
+  let hiddenAt = 0;
   document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) return;
+    if (!document.hidden) {
+      applyOffline((Date.now() - hiddenAt) / 1000);
+      return;
+    }
+    hiddenAt = Date.now();
     saveGame(state);
     pauseGame('The game was paused while the app was in the background.');
   });
@@ -322,6 +329,31 @@ async function start(slot) {
 
   ui.render(state);
   city.update(state);
+  applyOffline(awaySeconds);
+
+  // Welcome back: machines kept selling while the app was closed. A rewarded ad doubles it.
+  function applyOffline(seconds) {
+    if (seconds < 120 || state.machines.length === 0) return;
+    const sold = sim.offlineSales(state, seconds);
+    if (sold.items === 0) return;
+    saveGame(state);
+    city.update(state);
+    $('offline-message').textContent = `You were away about ${sold.minutes} minutes. Your machines sold ${sold.items} items for $${sold.money.toFixed(2)}. The cash is waiting in them.`;
+    $('offline-double').hidden = !rewardReadyNow();
+    $('offline-double').onclick = () => showRewardAd(() => {
+      state.cash += sold.money;
+      saveGame(state);
+      ui.refresh(state);
+      $('offline-message').textContent = `Doubled! Another $${sold.money.toFixed(2)} is in your cash.`;
+      $('offline-double').hidden = true;
+    });
+    $('offline-dialog').hidden = false;
+    paused = true;
+  }
+  $('offline-continue').addEventListener('click', () => {
+    $('offline-dialog').hidden = true;
+    paused = !$('pause-dialog').hidden;
+  });
 }
 
 // The page opens on the menu, or straight into a game when a slot was picked.

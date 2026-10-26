@@ -38,6 +38,16 @@ export function loadSlot(slot) {
   }
 }
 
+// When a slot was last saved, in milliseconds, or null.
+export function savedAt(slot) {
+  try {
+    const raw = localStorage.getItem(keyFor(slot));
+    return raw ? JSON.parse(raw).savedAt ?? null : null;
+  } catch {
+    return null;
+  }
+}
+
 // What a slot shows on the menu: the day, the cash and when it was saved. Null when empty.
 export function slotInfo(slot) {
   try {

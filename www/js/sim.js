@@ -407,6 +407,31 @@ export function saleChance(state, machine, product) {
 
 // Advances the game by one tick: sales every tick, empty-machine checks each hour, and the
 // day's close at midnight.
+// Sales while the app was closed: each machine sells what its stock and demand allow over the
+// time away (capped), at a reduced rate, and the money waits in the machine. Nothing else
+// happens meanwhile: no vandals, breakdowns or wages. Returns what was sold.
+export function offlineSales(state, seconds) {
+  const away = Math.min(Math.max(0, seconds), CONFIG.offlineMaxMinutes * 60);
+  const ticks = (away * 1000) / CONFIG.tickMs;
+  let items = 0;
+  let money = 0;
+  for (const machine of state.machines) {
+    for (const product of PRODUCT_IDS) {
+      const wanted = ticks * saleChance(state, machine, product) * CONFIG.offlineShare;
+      const sold = Math.min(machine.stock[product], Math.floor(wanted));
+      if (sold <= 0) continue;
+      const price = unitPrice(state, machine, product);
+      machine.stock[product] -= sold;
+      machine.cash += sold * price;
+      state.today.sales[product] += sold;
+      state.today.revenue += sold * price;
+      items += sold;
+      money += sold * price;
+    }
+  }
+  return { items, money, minutes: Math.round(away / 60) };
+}
+
 export function tick(state) {
   for (const machine of state.machines) {
     for (const product of PRODUCT_IDS) {
