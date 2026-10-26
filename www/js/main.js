@@ -63,7 +63,7 @@ async function start(slot) {
     return result;
   }
 
-  const ui = createUi({ panel: $('panel'), stats: $('stats'), toast, act, state });
+  const ui = createUi({ panel: $('panel'), stats: $('stats'), toast, act, state, guide: (event) => guide(event) });
 
   // The popup: a tab from the left rail, or a shop front's machine detail. The machine detail can
   // be minimized to a pill at the bottom; a tab cannot. One popup at a time.

@@ -124,7 +124,7 @@ test('the first-day guide moves on as the player acts, and an older save skips i
   owned.tutorialStep = 0;
   assert.equal(guide.tutorialCheck(owned), true, 'a machine moves it on');
   assert.equal(guide.tutorialEvent(owned, 'collect'), false, 'not the step it waits for');
-  for (const event of ['walk', 'open', 'refill', 'collect', 'done']) assert.equal(guide.tutorialEvent(owned, event), true, event);
+  for (const event of ['walk', 'open', 'refill', 'collect', 'stock', 'truck', 'done']) assert.equal(guide.tutorialEvent(owned, event), true, event);
   assert.equal(guide.tutorialStep(owned), null, 'finished');
   const old = JSON.parse(JSON.stringify(sim.newGame(7)));
   delete old.tutorialStep;

@@ -12,7 +12,7 @@ import { rewardReadyNow, showRewardAd } from './ads.js';
 const money = (n) => `$${n.toFixed(2)}`;
 const wholeMoney = (n) => `$${Math.round(n).toLocaleString('en-US')}`;
 
-export function createUi({ panel, stats, toast, act, state: current }) {
+export function createUi({ panel, stats, toast, act, state: current, guide = () => {} }) {
   const ui = { tab: 'city', selected: null, note: '' };
   let latest = current;
   // True while a finger or mouse is down on the panel, so a refresh does not swap the button away.
@@ -308,8 +308,12 @@ export function createUi({ panel, stats, toast, act, state: current }) {
       collect: () => act(() => sim.collectCash(latest, +d.machine)),
       repair: () => act(() => sim.repairMachine(latest, +d.machine)),
       security: () => act(() => sim.installSecurity(latest, +d.machine)),
-      'buy-stock': () => act(() => sim.buyWarehouseStock(latest, d.product, +d.units)),
-      'buy-truck': () => act(() => sim.buyTruck(latest)),
+      'buy-stock': () => {
+        if (act(() => sim.buyWarehouseStock(latest, d.product, +d.units)).ok) guide('stock');
+      },
+      'buy-truck': () => {
+        if (act(() => sim.buyTruck(latest)).ok) guide('truck');
+      },
       'free-run': () => showRewardAd(() => act(() => sim.freeRestockRun(latest))),
       dispatch: () => {
         const result = act(() => sim.dispatchTruck(latest));

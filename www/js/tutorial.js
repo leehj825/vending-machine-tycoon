@@ -7,6 +7,8 @@ export const STEPS = [
   { text: 'Stand in front of the machine and press Open.', event: 'open' },
   { text: 'Press Refill to fill it from the warehouse.', event: 'refill' },
   { text: 'Customers will buy. When coins show over the machine, open it and press Take cash.', event: 'collect' },
+  { text: 'Press Office to come back, open Warehouse on the left, and buy more stock.', event: 'stock' },
+  { text: 'Open Fleet and buy a truck, so deliveries can run without you. (Skip if you are saving up.)', event: 'truck' },
   { text: 'Well done! As you grow, hire help in HQ under Staff.', event: 'done', button: 'Got it' },
 ];
 
