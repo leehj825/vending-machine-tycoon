@@ -35,7 +35,6 @@ const SPINE = 1;
 const SKIN = 0xe2b88e;
 const PANTS = 0x4b4036;
 const BOOT = 0x2e241c;
-const BAG = 0x3e2723;
 export const FIGURE_SCALE = 0.15;
 
 // Rest position of each bone, in figure space: the sum of its offsets down the hierarchy.
@@ -57,7 +56,6 @@ function bodyParts(rest, look) {
   const parts = [
     [HIPS, [0, 0.7, 0], [0.26, 0.07, 0.15], PANTS],
     [SPINE, [0, 0.94, 0], [0.27, 0.24, 0.15], look.shirt],
-    [SPINE, [0, 0.95, -0.2], [0.2, 0.2, 0.05], BAG],
     [HEAD, [0, 1.5, 0], [0.32, 0.32, 0.32], SKIN],
     // Hair: a cap over the top and a fringe, and the back of the head all the way down.
     [HEAD, [0, 1.84, -0.01], [0.33, 0.04, 0.33], look.hat],
