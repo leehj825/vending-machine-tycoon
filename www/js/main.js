@@ -103,6 +103,47 @@ async function start(slot) {
     showSheet(machineTitle(state, cell), 'machine', 'city');
   });
 
+  // The machine whose front is open: its inside is drawn in the city, and a bar takes the cash,
+  // refills it, or shuts it. The front closes when the player walks away from the machine.
+  let insideId = null;
+  let insideShown = null;
+  let insideT = 0;
+  function openInside(id) {
+    insideId = id;
+    $('inside-bar').hidden = false;
+    refreshInsideBar();
+  }
+  function closeInside() {
+    insideId = null;
+    $('inside-bar').hidden = true;
+  }
+  // Swings the door toward its target a little each frame.
+  function insideFrame(dt) {
+    if (insideId !== null && walk.frontMachineId() !== insideId) closeInside();
+    const target = insideId === null ? 0 : 1;
+    insideT = insideT < target ? Math.min(target, insideT + dt * 3) : Math.max(target, insideT - dt * 3);
+    if (insideId !== null) insideShown = insideId;
+    if (insideId === null && insideT === 0) insideShown = null;
+    city.setOpen(insideShown, insideT);
+  }
+  function refreshInsideBar() {
+    if (insideId === null) return;
+    const machine = state.machines.find((m) => m.id === insideId);
+    if (!machine) {
+      closeInside();
+      return;
+    }
+    $('inside-info').textContent = `Stock ${sim.machineTotal(machine)}/${sim.machineCapacity(machine)} · Cash $${machine.cash.toFixed(2)}`;
+    $('inside-cash').disabled = machine.cash <= 0;
+    $('inside-refill').disabled = sim.warehouseTotal(state) === 0 || sim.machineTotal(machine) >= sim.machineCapacity(machine);
+  }
+  $('inside-cash').addEventListener('click', () => {
+    const result = act(() => sim.collectCash(state, insideId));
+    if (result.ok) playSound('coin_collect');
+  });
+  $('inside-refill').addEventListener('click', () => act(() => sim.refillMachine(state, insideId)));
+  $('inside-close').addEventListener('click', closeInside);
+
   const walk = createWalkMode({
     city,
     getState: () => state,
@@ -135,12 +176,7 @@ async function start(slot) {
       },
     },
     fix: { repair: (id) => act(() => sim.repairMachine(state, id)) },
-    inside: {
-      open: (id) => {
-        ui.openInside(id);
-        showSheet('Inside the machine', 'tab', null);
-      },
-    },
+    inside: { open: openInside, close: closeInside, isOpen: (id) => insideId === id },
     say: (message) => ui.showMessage({ ok: true, message }),
     buttons: {
       show: (on) => {
@@ -148,6 +184,7 @@ async function start(slot) {
         $('walk').disabled = on;
         $('rail').hidden = on;
         if (on) closeSheet();
+        else closeInside();
       },
       setTalk: (on) => { $('talk').disabled = !on; },
       setCollect: (on) => { $('collect').disabled = !on; },
@@ -197,6 +234,7 @@ async function start(slot) {
   setInterval(() => {
     ui.refresh(state);
     city.update(state);
+    refreshInsideBar();
   }, 500);
 
   setInterval(() => saveGame(state), 30000);
@@ -211,6 +249,7 @@ async function start(slot) {
     sim.advanceAttacks(state, dt);
     city.drawVehicles(state.trucks.filter((t) => t.trip).map((t) => ({ key: `t${t.id}`, ...truckPosition(state, t) })));
     walk.frame(dt);
+    insideFrame(dt);
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);

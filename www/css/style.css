@@ -190,6 +190,25 @@ td.buttons button { padding: 4px 8px; min-height: 32px; margin-left: 4px; }
 #fix { bottom: 56px; background: var(--red); }
 #attack { bottom: 136px; background: #6d4c41; }
 #open { bottom: 176px; background: #00897b; }
+/* The bar over the city while a machine's front is open. */
+.inside-bar {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+  white-space: nowrap;
+  pointer-events: auto;
+}
+.inside-bar[hidden] { display: none; }
+.inside-bar button { min-height: 34px; padding: 4px 10px; font-size: 13px; }
+#inside-info { font-size: 13px; color: var(--muted); padding: 0 4px; }
 #collect { bottom: 16px; }
 .action:disabled { opacity: 0.4; }
 .walk-ctl {
@@ -289,16 +308,6 @@ td.buttons button { padding: 4px 8px; min-height: 32px; margin-left: 4px; }
 .trend.up { color: var(--green); }
 .trend.down { color: var(--red); }
 .trend.flat { color: var(--muted); }
-
-/* The inside of a machine: shelves of stock on the left, the cash tray on the right. */
-.inside { display: grid; grid-template-columns: 1fr 120px; gap: 12px; margin: 8px 0; }
-.shelves { display: flex; flex-direction: column; gap: 6px; padding: 8px; border-radius: 10px; background: #f7f1e3; border: 2px solid #5d4037; }
-.shelf { display: grid; grid-template-columns: 1fr 1fr 28px; align-items: center; gap: 6px; font-size: 13px; }
-.shelf-bar { height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; }
-.shelf-bar i { display: block; height: 100%; background: var(--green); }
-.shelf b { text-align: right; }
-.tray { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 8px; border-radius: 10px; background: #37474f; color: #fff; text-align: center; }
-.tray b { font-size: 18px; color: #ffe082; }
 
 /* The pause dialog, over the game. */
 .pause {

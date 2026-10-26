@@ -136,10 +136,12 @@ export function createWalkMode({ city, getState, clips, sale, vandal, fix, insid
     return null;
   }
 
-  // Open shows the inside of the machine in front, with its stock and cash.
+  // Open swings the front of the machine in front wide open, to show its inside; pressed again, it shuts.
   function openMachine() {
     const machine = machineInFront();
-    if (machine) inside.open(machine.id);
+    if (!machine) return;
+    if (inside.isOpen(machine.id)) inside.close();
+    else inside.open(machine.id);
   }
 
   function collect() {
@@ -438,6 +440,8 @@ export function createWalkMode({ city, getState, clips, sale, vandal, fix, insid
     enter,
     exit,
     frame,
+    // The id of the machine in front of the player, or null.
+    frontMachineId: () => machineInFront()?.id ?? null,
     get active() {
       return mode.active;
     },

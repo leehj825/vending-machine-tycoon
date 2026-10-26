@@ -12,8 +12,7 @@ const money = (n) => `$${n.toFixed(2)}`;
 const wholeMoney = (n) => `$${Math.round(n).toLocaleString('en-US')}`;
 
 export function createUi({ panel, stats, toast, act, state: current }) {
-  // inside: the machine whose front is open, or null.
-  const ui = { tab: 'city', selected: null, note: '', inside: null };
+  const ui = { tab: 'city', selected: null, note: '' };
   let latest = current;
   // True while a finger or mouse is down on the panel, so a refresh does not swap the button away.
   let busy = false;
@@ -41,8 +40,7 @@ export function createUi({ panel, stats, toast, act, state: current }) {
   }
 
   function renderPanel(state) {
-    const inside = ui.inside === null ? null : sim.machineById(state, ui.inside);
-    const body = inside ? insidePanel(state, inside) : {
+    const body = {
       city: () => cityPanel(state),
       warehouse: () => warehousePanel(state),
       fleet: () => fleetPanel(state),
@@ -51,33 +49,6 @@ export function createUi({ panel, stats, toast, act, state: current }) {
     panel.innerHTML = `
       ${ui.note ? `<p class="note">${ui.note}</p>` : ''}
       ${body}
-    `;
-  }
-
-  // The inside of a machine, as if its front were open: the stock on the shelves, the cash tray,
-  // and the warehouse stock that can refill it.
-  function insidePanel(state, machine) {
-    const shelves = PRODUCT_IDS.map((p) => {
-      const count = machine.stock[p];
-      const width = Math.min(100, Math.round((count / CONFIG.machinePerProduct) * 100));
-      return `<div class="shelf"><span>${PRODUCTS[p].name}</span><div class="shelf-bar"><i style="width:${width}%"></i></div><b>${count}</b></div>`;
-    }).join('');
-    const warehouse = PRODUCT_IDS.map((p) => `${PRODUCTS[p].name} ${state.warehouse[p]}`).join(' · ');
-    const canRefill = sim.warehouseTotal(state) > 0 && sim.machineTotal(machine) < sim.machineCapacity(machine);
-    return `
-      <h2>Inside the machine</h2>
-      <p class="hint">Stock ${sim.machineTotal(machine)}/${sim.machineCapacity(machine)}</p>
-      <div class="inside">
-        <div class="shelves">${shelves}</div>
-        <div class="tray">
-          <span>Cash tray</span>
-          <b>${money(machine.cash)}</b>
-          <button class="primary" data-act="take-cash" data-machine="${machine.id}" ${machine.cash > 0 ? '' : 'disabled'}>Take cash</button>
-        </div>
-      </div>
-      <h3>Warehouse</h3>
-      <p class="hint">${warehouse}</p>
-      <button class="primary" data-act="refill-machine" data-machine="${machine.id}" ${canRefill ? '' : 'disabled'}>Refill from warehouse</button>
     `;
   }
 
@@ -285,11 +256,6 @@ export function createUi({ panel, stats, toast, act, state: current }) {
       'buy-machine': () => act(() => sim.buyMachine(latest, +d.x, +d.y)),
       price: () => act(() => sim.setPrice(latest, +d.machine, d.product, sim.machineById(latest, +d.machine).prices[d.product] + +d.delta)),
       collect: () => act(() => sim.collectCash(latest, +d.machine)),
-      'take-cash': () => {
-        const result = act(() => sim.collectCash(latest, +d.machine));
-        if (result.ok) playSound('coin_collect');
-      },
-      'refill-machine': () => act(() => sim.refillMachine(latest, +d.machine)),
       repair: () => act(() => sim.repairMachine(latest, +d.machine)),
       security: () => act(() => sim.installSecurity(latest, +d.machine)),
       'buy-stock': () => act(() => sim.buyWarehouseStock(latest, d.product, +d.units)),
@@ -315,14 +281,6 @@ export function createUi({ panel, stats, toast, act, state: current }) {
   function select(cell) {
     ui.selected = cell;
     ui.tab = 'city';
-    ui.inside = null;
-    render(latest);
-  }
-
-  // The walk's Open button: the inside of the machine in front of the player.
-  function openInside(machineId) {
-    ui.inside = machineId;
-    ui.note = '';
     render(latest);
   }
 
@@ -336,9 +294,8 @@ export function createUi({ panel, stats, toast, act, state: current }) {
   function openTab(tab) {
     ui.tab = tab;
     ui.note = '';
-    ui.inside = null;
     render(latest);
   }
 
-  return { render, refresh, select, showMessage, openTab, openInside, ui };
+  return { render, refresh, select, showMessage, openTab, ui };
 }
