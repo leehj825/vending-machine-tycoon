@@ -77,25 +77,27 @@ function fillBlock(grid, random, x0, top, bottom) {
     for (const x of [x0, x0 + 1]) tiles.push({ x, y });
   }
   const roll = random();
-  if (roll < 0.25) {
+  if (roll < 0.08) {
     for (const t of tiles) grid[t.y][t.x] = { type: 'park' };
     return;
   }
   let rest = tiles;
-  if (length >= 2 && roll < 0.4) {
+  if (length >= 2 && roll < 0.16) {
     for (const t of tiles.filter((t) => t.y === top)) grid[t.y][t.x] = { type: 'lot' };
     rest = tiles.filter((t) => t.y !== top);
-  } else if (length >= 2 && roll < 0.5) {
+  } else if (length >= 2 && roll < 0.22) {
     for (const t of tiles.filter((t) => t.y === bottom)) grid[t.y][t.x] = { type: 'gas' };
     rest = tiles.filter((t) => t.y !== bottom);
   }
   let shops = 0;
   for (const t of rest) {
+    // Most of a block is buildings: up to two shop fronts, and houses for the rest. A few tiles are
+    // parks or grass.
     const r = random();
-    if (r < CONFIG.shopFrontShare && shops < 2) {
+    if (r < 0.45 && shops < 2) {
       shops++;
       grid[t.y][t.x] = { type: 'building', zone: ZONE_IDS[Math.floor(random() * ZONE_IDS.length)] };
-    } else if (r < CONFIG.shopFrontShare + CONFIG.houseShare) {
+    } else if (r < 0.9) {
       grid[t.y][t.x] = { type: 'house', zone: ZONE_IDS[Math.floor(random() * ZONE_IDS.length)] };
     } else {
       grid[t.y][t.x] = { type: random() < 0.5 ? 'park' : 'grass' };
