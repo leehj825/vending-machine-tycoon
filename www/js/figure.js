@@ -61,7 +61,12 @@ function bodyParts(rest, look) {
     [SPINE, [0, 0.92, 0], [0.27, 0.2, 0.15], look.shirt],
     [SPINE, [0, 0.95, -0.2], [0.2, 0.2, 0.05], BAG],
     [HEAD, [0, 1.44, 0], [0.32, 0.32, 0.31], SKIN],
-    [HEAD, [0, 1.72, -0.01], [0.335, 0.05, 0.325], look.hat],
+    // Hair: a cap over the top, a fringe, the sides and the back of the head.
+    [HEAD, [0, 1.73, -0.01], [0.345, 0.05, 0.335], look.hat],
+    [HEAD, [0, 1.69, 0.3], [0.345, 0.035, 0.03], look.hat],
+    [HEAD, [-0.33, 1.6, -0.02], [0.03, 0.14, 0.3], look.hat],
+    [HEAD, [0.33, 1.6, -0.02], [0.03, 0.14, 0.3], look.hat],
+    [HEAD, [0, 1.56, -0.28], [0.34, 0.2, 0.05], look.hat],
     [HEAD, [-0.14, 1.46, 0.318], [0.05, 0.05, 0.02], EYE, DOT],
     [HEAD, [0.14, 1.46, 0.318], [0.05, 0.05, 0.02], EYE, DOT],
   ];
@@ -72,10 +77,10 @@ function bodyParts(rest, look) {
     const sx = rest[shoulder][0];
     const hx = rest[hip][0];
     parts.push(
-      [shoulder, [sx, 0.88, 0], [0.1, 0.16, 0.1], look.shirt],
-      [elbow, [sx, 0.56, 0], [0.085, 0.16, 0.085], SKIN],
-      [hip, [hx, 0.46, 0], [0.12, 0.18, 0.12], PANTS],
-      [knee, [hx, 0.12, 0], [0.105, 0.16, 0.105], PANTS],
+      [shoulder, [sx, 0.88, 0], [0.095, 0.16, 0.095], look.shirt],
+      [elbow, [sx, 0.56, 0], [0.095, 0.16, 0.095], SKIN],
+      [hip, [hx, 0.46, 0], [0.11, 0.18, 0.11], PANTS],
+      [knee, [hx, 0.12, 0], [0.11, 0.16, 0.11], PANTS],
       [knee, [hx, 0.05, 0.04], [0.11, 0.05, 0.15], BOOT],
     );
   }

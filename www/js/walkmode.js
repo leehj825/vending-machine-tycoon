@@ -15,7 +15,7 @@ const TALK_REACH = 0.6;
 const ERRAND_GAP_MIN = 60;
 const ERRAND_GAP_MAX = 120;
 const COLLECT_REACH = 0.7;
-const PLAYER_LOOK = { shirt: 0xffeb3b, hat: 0xffffff };
+const PLAYER_LOOK = { shirt: 0xffeb3b, hat: 0x3e2723 };
 const WALKER_LOOKS = [
   { shirt: 0xd9534f, hat: 0x3b2a1e },
   { shirt: 0x5bc0de, hat: 0xf0ad4e },
