@@ -2,8 +2,10 @@
 // The person: a low-poly figure of 13 bones, each a group in the hierarchy below, with boxes
 // hung on them. The same body as the Flutter version (vexmarch's civilian figure).
 const PARENT = [-1, 0, 1, 1, 1, 3, 4, 5, 6, 0, 0, 9, 10];
-// The dark outline that every figure part carries, as in the bright cartoon style.
-const OUTLINE_MATERIAL = new THREE.LineBasicMaterial({ color: 0x1d1412 });
+// Every body part is a rounded blob: one shared sphere, stretched to the part's size, with a dark
+// shell behind it for the outline, as in the bright cartoon style.
+const BODY = new THREE.SphereGeometry(1, 14, 10);
+const OUTLINE_FILL = new THREE.MeshBasicMaterial({ color: 0x1d1412, side: THREE.BackSide });
 // Each bone's offset from its parent at rest. The hips sit above the legs at rest.
 const OFFSET = [
   [0, 0.9, 0], [0, 0.05, 0], [0, 0.66, 0], [-0.34, 0.58, 0], [0.34, 0.58, 0],
@@ -46,8 +48,8 @@ function bodyParts(rest, look) {
   const parts = [
     [HIPS, [0, 0.9, 0], [0.19, 0.1, 0.11], PANTS],
     [SPINE, [0, 1.3, 0], [0.25, 0.3, 0.135], look.shirt],
-    [HEAD, [0, 1.78, 0], [0.105, 0.115, 0.105], SKIN],
-    [HEAD, [0, 1.9, -0.01], [0.12, 0.04, 0.12], look.hat],
+    [HEAD, [0, 1.8, 0], [0.15, 0.15, 0.14], SKIN],
+    [HEAD, [0, 2.0, -0.01], [0.15, 0.06, 0.15], look.hat],
     [SPINE, [0, 1.3, -0.19], [0.2, 0.24, 0.055], BAG],
   ];
   for (const [shoulder, elbow, hip, knee] of [
@@ -79,14 +81,15 @@ export function createFigure(look) {
     (PARENT[b] < 0 ? root : bones[PARENT[b]]).add(group);
     bones.push(group);
   }
-  const geometries = [];
+  const materials = [];
   for (const [bone, centre, half, colour] of bodyParts(rest, look)) {
-    const geometry = new THREE.BoxGeometry(half[0] * 2, half[1] * 2, half[2] * 2);
-    geometries.push(geometry);
-    const mesh = new THREE.Mesh(geometry, new THREE.MeshLambertMaterial({ color: colour, emissive: colour, emissiveIntensity: 0.35, flatShading: true }));
-    const edges = new THREE.EdgesGeometry(geometry, 30);
-    geometries.push(edges);
-    mesh.add(new THREE.LineSegments(edges, OUTLINE_MATERIAL));
+    const material = new THREE.MeshLambertMaterial({ color: colour, emissive: colour, emissiveIntensity: 0.35 });
+    materials.push(material);
+    const mesh = new THREE.Mesh(BODY, material);
+    mesh.scale.set(half[0], half[1], half[2]);
+    const shell = new THREE.Mesh(BODY, OUTLINE_FILL);
+    shell.scale.setScalar(1.14);
+    mesh.add(shell);
     mesh.position.set(centre[0] - rest[bone][0], centre[1] - rest[bone][1], centre[2] - rest[bone][2]);
     bones[bone].add(mesh);
   }
@@ -94,7 +97,7 @@ export function createFigure(look) {
     root,
     bones,
     dispose() {
-      for (const g of geometries) g.dispose();
+      for (const m of materials) m.dispose();
     },
   };
 }

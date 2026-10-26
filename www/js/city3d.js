@@ -2,7 +2,8 @@
 // The city view in three.js, drawn like the original game: the low-poly map from scene.js, the
 // machines and markers over it, the trucks and the people. Map view: taps pick a cell, drags turn
 // the view, pinch and wheel zoom. Walk view: a camera behind the player, drags turn the player.
-import { buildMachine, buildMarkers, buildStaticScene, buildTruck } from './scene.js';
+import { buildMarkers, buildStaticScene, buildTruck, machineAnchor } from './scene.js';
+import { buildMachine3d } from './machine3d.js';
 import { createFigure, poseFigure } from './figure.js';
 
 // The colours in scene.js are final sRGB values, so three.js must not convert them.
@@ -121,23 +122,15 @@ export function createCityView(container, onTap) {
     truckEdges = new THREE.EdgesGeometry(truckGeometry, 30);
   }
 
-  // The machines, merged into one mesh. Rebuilt when the set of machines changes.
+  // The machines, rebuilt when the set of machines or their stock, cash or condition change.
   function drawMachines(state) {
-    const signature = state.machines.map((m) => `${m.id}:${m.zone}:${m.cash > 0}:${Object.values(m.stock).join(',')}`).join('|');
+    const signature = state.machines.map((m) => `${m.id}:${m.zone}:${m.cash > 0}:${m.condition}:${Object.values(m.stock).join(',')}`).join('|');
     if (signature === machineSignature) return;
     machineSignature = signature;
     clear(machineGroup);
-    machineMesh = null;
-    if (state.machines.length === 0) return;
-    const positions = [];
-    const colors = [];
     for (const machine of state.machines) {
-      const part = buildMachine(machine, state.city);
-      for (const v of part.positions) positions.push(v);
-      for (const v of part.colors) colors.push(v);
+      machineGroup.add(buildMachine3d(machine, machineAnchor(state.city, machine.x, machine.y)));
     }
-    const machines = geometryFrom({ positions: new Float32Array(positions), colors: new Float32Array(colors) });
-    machineGroup.add(new THREE.Mesh(machines, vertexMaterial), outlineOf(machines));
   }
 
   // Purchase arrows, owned plates and coins. The group bobs gently, as the original's did.

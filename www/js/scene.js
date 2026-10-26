@@ -140,9 +140,12 @@ function gable(m, x0, z0, x1, z1, y0, yTop, colour) {
 
 const HOUSE_WALLS = [0xf3e9d2, 0xbfe0f0, 0xd7eccb, 0xf6d5cf];
 const HOUSE_ROOFS = [RED, 0x6d4c41, 0x37474f, 0xd84315];
+const SHUTTER = 0x2e7d32;
+const FLOWERS = 0xf06292;
+const STONE = 0xd7ccc8;
 
-// A house: a cottage with a gabled roof. Walls, roof, height, chimney and garden vary from house
-// to house. Houses are only for looking at.
+// A house: a cottage with a gabled roof, a porch, and windows with frames, shutters and flower
+// boxes. Walls, roof, height, chimney, hedges and garden vary from house to house. Only for looking.
 function house(m, x, y) {
   const v = cellNoise(x, y);
   const w = cellNoise(y + 3, x + 5);
@@ -150,20 +153,45 @@ function house(m, x, y) {
   const roof = HOUSE_ROOFS[Math.floor(w * HOUSE_ROOFS.length) % HOUSE_ROOFS.length];
   const twoFloors = v > 0.6;
   const eave = twoFloors ? 0.8 : 0.5;
+  // The lawn, and a stone path from the porch to the road.
   m.flat(x + 0.04, y + 0.04, x + 0.96, y + 0.96, 0.002, 0x8bd17c);
+  m.flat(x + 0.44, y + 0.86, x + 0.56, y + 0.98, 0.004, STONE);
+  // The walls on a plinth, with a white band under the roof.
   m.box(x + 0.2, 0, y + 0.2, x + 0.8, eave, y + 0.78, wall, { top: 0xe0d2b4 });
-  gable(m, x + 0.16, y + 0.2, x + 0.84, y + 0.8, eave, eave + 0.42, roof);
-  // Door and step on the front, facing the road.
+  m.box(x + 0.18, 0, y + 0.18, x + 0.82, 0.06, y + 0.8, PLINTH);
+  m.box(x + 0.18, eave - 0.03, y + 0.18, x + 0.82, eave + 0.02, y + 0.8, WHITE);
+  // The roof, with eaves that overhang the walls.
+  gable(m, x + 0.14, y + 0.16, x + 0.86, y + 0.82, eave + 0.02, eave + 0.46, roof);
+  // The porch: a canopy on two white posts, over the door.
+  m.box(x + 0.34, 0.36, y + 0.76, x + 0.66, 0.4, y + 0.96, roof);
+  m.box(x + 0.36, 0, y + 0.9, x + 0.39, 0.36, y + 0.93, WHITE);
+  m.box(x + 0.61, 0, y + 0.9, x + 0.64, 0.36, y + 0.93, WHITE);
+  // The door, with a knob.
   m.box(x + 0.44, 0, y + 0.78, x + 0.56, 0.3, y + 0.8, BROWN);
-  m.box(x + 0.42, 0, y + 0.8, x + 0.58, 0.04, y + 0.84, PLINTH);
-  // Windows on each floor.
+  m.box(x + 0.525, 0.14, y + 0.8, x + 0.54, 0.17, y + 0.82, STEEL);
+  // Windows on the front: a frame, glass, shutters on each side, and a flower box on the sill.
   for (const fy of twoFloors ? [0.28, 0.58] : [0.28]) {
-    m.box(x + 0.26, fy, y + 0.79, x + 0.36, fy + 0.12, y + 0.81, GLASS);
-    m.box(x + 0.64, fy, y + 0.79, x + 0.74, fy + 0.12, y + 0.81, GLASS);
+    for (const wx of [0.24, 0.64]) {
+      m.box(wx - 0.02, fy - 0.02, y + 0.78, wx + 0.12, fy + 0.14, y + 0.8, WHITE);
+      m.box(wx, fy, y + 0.79, wx + 0.1, fy + 0.12, y + 0.81, GLASS);
+      m.box(wx - 0.05, fy, y + 0.79, wx - 0.025, fy + 0.12, y + 0.8, SHUTTER);
+      m.box(wx + 0.125, fy, y + 0.79, wx + 0.15, fy + 0.12, y + 0.8, SHUTTER);
+      m.box(wx - 0.01, fy - 0.04, y + 0.8, wx + 0.11, fy - 0.01, y + 0.84, FLOWERS);
+    }
   }
-  if (w > 0.5) m.box(x + 0.66, eave + 0.1, y + 0.3, x + 0.74, eave + 0.4, y + 0.38, BRICK);
-  // A hedge by the door on some houses, and a tree in the garden on others.
-  if (v < 0.35) m.box(x + 0.06, 0, y + 0.7, x + 0.16, 0.22, y + 0.9, BUSH);
+  // A window on each side wall.
+  m.box(x + 0.795, 0.28, y + 0.38, x + 0.815, 0.44, y + 0.52, WHITE);
+  m.box(x + 0.8, 0.3, y + 0.4, x + 0.82, 0.42, y + 0.5, GLASS);
+  // A chimney with a cap on some roofs.
+  if (w > 0.5) {
+    m.box(x + 0.66, eave + 0.1, y + 0.3, x + 0.74, eave + 0.4, y + 0.38, BRICK);
+    m.box(x + 0.64, eave + 0.4, y + 0.28, x + 0.76, eave + 0.44, y + 0.4, PLINTH);
+  }
+  // Hedges by the porch on some houses, and a tree in the garden on others.
+  if (v < 0.35) {
+    m.box(x + 0.08, 0, y + 0.8, x + 0.26, 0.2, y + 0.92, BUSH);
+    m.box(x + 0.74, 0, y + 0.8, x + 0.92, 0.2, y + 0.92, BUSH);
+  }
   if (w < 0.3) {
     m.box(x + 0.86, 0, y + 0.1, x + 0.9, 0.3, y + 0.14, TRUNK);
     m.cone(x + 0.88, y + 0.12, 0.1, 6, 0.3, 0.6, FOLIAGE);
@@ -356,65 +384,7 @@ function mergeInto(target, source) {
   target.colors.push(...source.colors);
 }
 
-// The vending machine on its building's front corner, turned to face the road.
-export function buildMachine(machine, grid) {
-  const zone = ZONES[machine.zone];
-  const anchor = machineAnchor(grid, machine.x, machine.y);
-  // The model is built about 2 units tall, then scaled to the tile and turned to face the road,
-  // the same way as its building.
-  const turn = anchor.turns;
-  const transform = (v, isDirection) => {
-    const x = v[0] * MACHINE_SCALE;
-    const y = v[1] * MACHINE_SCALE;
-    const z = v[2] * MACHINE_SCALE;
-    const [rx, rz] = turnPoint(x, z, turn);
-    if (isDirection) return [rx, y, rz];
-    return [anchor.x + rx, y, anchor.z + rz];
-  };
-  const m = new MeshBuilder({ transform });
-  // Every machine has the same bright red cabinet; the zone shows on the sign and the panel.
-  const accent = 0xe53935;
-  const sign = lerpHex(accent, 0xffffff, 0.25);
-  const cabinetTop = lerpHex(accent, 0x000000, 0.2);
-  const cabinetSide = lerpHex(accent, 0x000000, 0.12);
-  const cash = machine.cash > 0 ? 0x43a047 : 0x9e9e9e;
-  m.box(-0.52, 0, -0.4, 0.52, 0.12, 0.4, MACHINE_BASE);
-  m.box(-0.5, 0.12, -0.38, 0.5, 1.85, 0.38, accent, { top: cabinetTop });
-  m.box(-0.5, 1.85, -0.38, 0.5, 2.0, 0.38, sign);
-  m.box(-0.46, 1.8, 0.38, 0.46, 1.84, 0.41, LAMP_LIGHT);
-  m.box(0.5, 0.2, -0.3, 0.53, 1.2, 0.3, cabinetSide);
-  m.box(-0.4, 0.46, 0.38, 0.38, 1.7, 0.4, STEEL);
-  m.box(-0.36, 0.5, 0.38, 0.34, 1.65, 0.42, 0x203040);
-  // Twelve product slots in a 4 by 3 grid, coloured by product and dimmed when empty.
-  PRODUCT_IDS.forEach((product, i) => {
-    const row = Math.floor(i / 3);
-    const col = i % 3;
-    const x0 = -0.32 + col * 0.22;
-    const y1 = 1.6 - row * 0.27;
-    const stock = machine.stock[product] ?? 0;
-    const colour = stock > 0 ? slotColour(product) : lerpHex(slotColour(product), DARK, 0.7);
-    m.box(x0, y1 - 0.22, 0.4, x0 + 0.18, y1, 0.45, colour);
-    m.box(x0 + 0.02, y1 - 0.04, 0.44, x0 + 0.16, y1, 0.47, lerpHex(colour, 0xffffff, 0.2));
-  });
-  m.box(0.37, 0.5, 0.38, 0.46, 1.3, 0.42, DARK);
-  m.box(0.39, 1.36, 0.41, 0.44, 1.5, 0.44, cash);
-  m.box(0.39, 0.6, 0.41, 0.44, 0.7, 0.44, 0xcfd8dc);
-  m.box(0.39, 0.78, 0.41, 0.44, 0.84, 0.45, 0x12161d);
-  return m.arrays();
-}
 
-const SLOT_COLOURS = {
-  soda: 0xe53935,
-  chips: 0xfdd835,
-  proteinBar: 0x8d6e63,
-  coffee: 0x5d4037,
-  techGadget: 0x42a5f5,
-  sandwich: 0xffb74d,
-};
-
-function slotColour(product) {
-  return SLOT_COLOURS[product] ?? GREY;
-}
 
 // Purchase arrows over buildings without a machine: green when the cash covers it, amber when
 // not. Owned buildings get a blue plate, and a machine with cash gets a coin above it.
