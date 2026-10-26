@@ -44,9 +44,20 @@ const rand = (i) => {
   return s - Math.floor(s);
 };
 
-function placed(geometry, colour, x, y, z) {
+const OUTLINE = new THREE.MeshBasicMaterial({ color: 0x1d1412, side: THREE.BackSide });
+
+// A coloured mesh with the game's dark cartoon outline: a shell of the same shape, a fixed
+// thickness (edge) bigger on every side, drawn behind it.
+function placed(geometry, colour, x, y, z, edge = 0.007) {
   const mesh = new THREE.Mesh(geometry, lit(colour));
   mesh.position.set(x, y, z);
+  if (edge > 0) {
+    geometry.computeBoundingBox();
+    const size = geometry.boundingBox.getSize(new THREE.Vector3());
+    const shell = new THREE.Mesh(geometry, OUTLINE);
+    shell.scale.set(1 + (2 * edge) / Math.max(size.x, 1e-3), 1 + (2 * edge) / Math.max(size.y, 1e-3), 1 + (2 * edge) / Math.max(size.z, 1e-3));
+    mesh.add(shell);
+  }
   return mesh;
 }
 // Shapes that stand on y = 0 (in the item's own space), centred on x and z.
