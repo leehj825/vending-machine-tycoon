@@ -4,6 +4,7 @@
 import { MeshBuilder, turnPoint, turnTransform } from './lowpoly.js';
 import { ZONES, PRODUCTS, PRODUCT_IDS } from './products.js';
 import { CONFIG } from './config.js';
+import { districtOf } from './world.js';
 
 const EARTH = 0x6b5b45;
 const GRASS_A = 0x7cc26a;
@@ -199,6 +200,36 @@ function groundTile(m, grid, x, y, cell) {
   }
   const grass = lerpHex(GRASS_A, GRASS_B, cellNoise(x, y));
   m.flat(x, y, x + 1, y + 1, 0, grass);
+  if (cellNoise(x * 7 + 1, y * 11 + 3) > 0.72) districtDecor(m, x, y);
+}
+
+// A feature on some empty tiles that says which district it is: a fountain downtown, a community
+// garden on the east side, a tank and shed in the industrial south, containers at the harbor.
+function districtDecor(m, x, y) {
+  switch (districtOf(x, y)) {
+    case 0:
+      m.box(x + 0.2, 0, y + 0.2, x + 0.8, 0.02, y + 0.8, 0xe0e0e0);
+      m.prism(x + 0.5, y + 0.5, 0.22, 12, 0.02, 0.1, 0xb0bec5, { top: 0xb0bec5 });
+      m.prism(x + 0.5, y + 0.5, 0.18, 12, 0.1, 0.11, 0x4fc3f7);
+      m.box(x + 0.48, 0.11, y + 0.48, x + 0.52, 0.24, y + 0.52, 0xb0bec5);
+      break;
+    case 1:
+      for (const r of [0.3, 0.5, 0.7]) {
+        m.box(x + 0.2, 0, y + r - 0.05, x + 0.8, 0.04, y + r + 0.05, BROWN);
+        for (let k = 0; k < 4; k++) m.box(x + 0.25 + k * 0.15, 0.04, y + r - 0.03, x + 0.3 + k * 0.15, 0.11, y + r + 0.03, k % 2 ? RED : BUSH);
+      }
+      break;
+    case 2:
+      m.prism(x + 0.35, y + 0.4, 0.18, 10, 0, 0.4, STEEL, { top: GREY });
+      m.box(x + 0.6, 0, y + 0.55, x + 0.9, 0.18, y + 0.85, 0x78909c, { top: 0x546e7a });
+      m.box(x + 0.7, 0.18, y + 0.6, x + 0.78, 0.5, y + 0.68, BROWN);
+      break;
+    default:
+      m.box(x + 0.2, 0, y + 0.3, x + 0.8, 0.14, y + 0.5, RED);
+      m.box(x + 0.2, 0, y + 0.55, x + 0.8, 0.14, y + 0.75, 0x1e88e5);
+      m.box(x + 0.3, 0.14, y + 0.4, x + 0.9, 0.28, y + 0.6, 0xffb300);
+      break;
+  }
 }
 
 // Lamp post on a corner of the tile.
@@ -228,7 +259,23 @@ function streetObjects(m, grid, x, y, cell) {
 
 // The static city: ground, streets, buildings and street trees. Buildings are turned so their
 // front faces a road. Returns { positions, colors } for one geometry.
-const OFFICE_BODIES = [0x8fb8de, 0xb0bec5, 0x9fd3c7, 0xc9b6e4];
+// Each district has its own office colours and an overall tint, so the parts of the map look different.
+const OFFICE_PALETTES = [
+  [0x8fb8de, 0xb0bec5, 0x9fd3c7, 0xc9b6e4],
+  [0xe0b79a, 0xd4a373, 0xc9a38c, 0xdcc4a8],
+  [0x9e9e9e, 0x8d8d86, 0x78909c, 0xa1a39a],
+  [0x4db6ac, 0x4f83a8, 0x5c7caa, 0x6fb5c9],
+];
+const DISTRICT_TINTS = [0xbbdefb, 0xffe0b2, 0xd7ccc8, 0xb2ebf2];
+
+// Leans every colour added since `start` toward a tint, a little: shaded colours are stored as
+// red, green, blue floats, so the tint is a multiplier.
+function tintFrom(m, start, hex, amount) {
+  const channels = [(hex >> 16) & 255, (hex >> 8) & 255, hex & 255];
+  const top = Math.max(...channels);
+  const mult = channels.map((c) => 1 - amount + amount * (c / top));
+  for (let i = start; i < m.colors.length; i++) m.colors[i] = Math.min(1, m.colors[i] * mult[i % 3]);
+}
 
 const AWNINGS = [0xe4572e, 0x2e7d32, 0x1565c0, 0xf9a825];
 
@@ -312,7 +359,7 @@ function gym(m, x, y, v) {
 }
 
 function office(m, x, y, v) {
-  const wall = variant(OFFICE_BODIES, x, y);
+  const wall = variant(OFFICE_PALETTES[districtOf(x, y)], x, y);
   m.box(x + 0.2, 0, y + 0.2, x + 0.8, 1.5, y + 0.8, wall, { top: 0x3d5a80 });
   m.windows(x + 0.2, y + 0.2, x + 0.8, y + 0.8, 0.12, 1.42, { cols: 3, rows: 6, glass: GLASS, frame: TRIM, lit: WARM });
   if (v === 0) {
@@ -480,6 +527,7 @@ export function building(m, x, y, zone) {
   const body = BODIES[zone];
   const [bx0, bz0, bx1, bz1, top] = body;
   const v = designOf(x, y);
+  const tintStart = m.colors.length;
   m.box(x + bx0 - 0.015, 0, y + bz0 - 0.015, x + bx1 + 0.015, 0.06, y + bz1 + 0.015, PLINTH);
   ({ shop, gym, office, school, subway, hospital, university })[zone]?.(m, x, y, v);
   // Cornice rim under the roof: the outer ring only, so the roof stays visible.
@@ -488,6 +536,7 @@ export function building(m, x, y, zone) {
   m.box(x + bx0 - 0.02, top, y + bz0, x + bx0, top + 0.04, y + bz1, TRIM);
   m.box(x + bx1, top, y + bz0, x + bx1 + 0.02, top + 0.04, y + bz1, TRIM);
   facadeDetail(m, x, y, body);
+  tintFrom(m, tintStart, DISTRICT_TINTS[districtOf(x, y)], 0.22);
 }
 
 function facadeDetail(m, x, y, body) {
