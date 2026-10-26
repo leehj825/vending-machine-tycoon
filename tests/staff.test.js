@@ -1,0 +1,116 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { CONFIG } from '../www/js/config.js';
+import { PRODUCT_IDS } from '../www/js/products.js';
+import * as sim from '../www/js/sim.js';
+import * as staff from '../www/js/staff.js';
+import * as loco from '../www/js/locomotion.js';
+
+// A new game with `count` machines on shop fronts that have a street beside them.
+function gameWithMachines(count) {
+  const state = sim.newGame(7);
+  state.cash = 100000;
+  state.city.forEach((row, y) => row.forEach((cell, x) => {
+    if (state.machines.length < count && cell.type === 'building' && loco.machineFront(state.city, x, y)) sim.buyMachine(state, x, y);
+  }));
+  assert.equal(state.machines.length, count, 'machines placed');
+  return state;
+}
+
+const hour = (state, hours = 1) => {
+  for (let i = 0; i < CONFIG.ticksPerHour * hours; i++) sim.tick(state);
+};
+
+test('a job opens once enough machines are owned, and the first day is paid up front', () => {
+  const state = gameWithMachines(2);
+  assert.equal(staff.hireStaff(state, 'agent').ok, false, 'needs 3 machines');
+  const more = gameWithMachines(3);
+  more.cash = 10;
+  assert.equal(staff.hireStaff(more, 'agent').ok, false, 'needs the first wage');
+  more.cash = 1000;
+  assert.equal(staff.hireStaff(more, 'agent').ok, true);
+  assert.equal(staff.hireStaff(more, 'agent').ok, false, 'already hired');
+  assert.equal(staff.fireStaff(more, 'agent').ok, true);
+  const five = gameWithMachines(5);
+  assert.equal(staff.hireStaff(five, 'driver').ok, false, 'a driver needs a truck');
+});
+
+test('wages come out each day, and a worker who cannot be paid leaves', () => {
+  const state = gameWithMachines(3);
+  staff.hireStaff(state, 'agent');
+  state.cash = 1000;
+  for (let i = 0; i < CONFIG.ticksPerHour * CONFIG.hoursPerDay; i++) sim.tick(state);
+  assert.equal(state.day, 2);
+  assert.ok(state.cash <= 1000 - CONFIG.staff.agent.wage + 1, 'the wage was paid');
+  state.cash = 0;
+  state.agentRules = staff.newAgentRules();
+  for (const p of PRODUCT_IDS) state.agentRules[p].min = 0;
+  for (let i = 0; i < CONFIG.ticksPerHour * CONFIG.hoursPerDay; i++) sim.tick(state);
+  assert.equal(state.staff.agent, false, 'left without pay');
+});
+
+test('the purchasing agent keeps the warehouse stocked, but not at a price over the limit', () => {
+  const state = gameWithMachines(3);
+  for (const p of PRODUCT_IDS) state.warehouse[p] = 0;
+  staff.hireStaff(state, 'agent');
+  hour(state);
+  for (const p of PRODUCT_IDS) assert.equal(state.warehouse[p], state.agentRules[p].min, `${p} stocked`);
+  // A price above the limit: no purchase.
+  const dear = gameWithMachines(3);
+  for (const p of PRODUCT_IDS) dear.warehouse[p] = 0;
+  staff.hireStaff(dear, 'agent');
+  for (const p of PRODUCT_IDS) dear.market[p] = dear.agentRules[p].maxPrice + 0.2;
+  hour(dear);
+  for (const p of PRODUCT_IDS) assert.equal(dear.warehouse[p], 0, `${p} too dear`);
+});
+
+test('the driver sends a truck when a machine runs low', () => {
+  const state = gameWithMachines(5);
+  sim.buyTruck(state);
+  for (const p of PRODUCT_IDS) state.warehouse[p] = 100;
+  staff.hireStaff(state, 'driver');
+  hour(state);
+  assert.equal(state.trucks.some((t) => t.trip), true, 'a truck is out');
+  assert.ok(state.staffToday.trips >= 1);
+});
+
+test('the collector takes the cash from full machines and keeps a cut', () => {
+  const state = gameWithMachines(5);
+  staff.hireStaff(state, 'collector');
+  const machine = state.machines[0];
+  machine.cash = sim.collectAlertOf(state) + 100;
+  const before = state.cash;
+  const amount = machine.cash;
+  hour(state);
+  assert.equal(machine.cash >= 0 && machine.cash < sim.collectAlertOf(state), true, 'emptied');
+  assert.ok(state.cash - before > amount * (1 - CONFIG.staff.collector.cut) - 1, 'the rest came in');
+});
+
+test('the mechanic repairs machines in poor shape at half price', () => {
+  const state = gameWithMachines(8);
+  staff.hireStaff(state, 'mechanic');
+  const machine = state.machines[0];
+  machine.condition = 4;
+  const before = state.cash;
+  hour(state);
+  assert.equal(machine.condition, 0);
+  assert.ok(before - state.cash <= 4 * CONFIG.repairCostPerLevel * CONFIG.staff.mechanic.repairShare + 1);
+});
+
+test('the guard chases off some vandals', () => {
+  const state = gameWithMachines(8);
+  staff.hireStaff(state, 'guard');
+  assert.equal(staff.guardStops(state, 0.1), true);
+  assert.equal(staff.guardStops(state, 0.95), false);
+  staff.fireStaff(state, 'guard');
+  assert.equal(staff.guardStops(state, 0.1), false, 'no guard, no one chased off');
+});
+
+test('the agent rules change within their limits', () => {
+  const state = sim.newGame(7);
+  const product = PRODUCT_IDS[0];
+  for (let i = 0; i < 40; i++) staff.setAgentRule(state, product, 'min', -1);
+  assert.equal(state.agentRules[product].min, 0);
+  for (let i = 0; i < 40; i++) staff.setAgentRule(state, product, 'price', 1);
+  assert.equal(state.agentRules[product].maxPrice, CONFIG.agent.maxPriceLimit);
+});

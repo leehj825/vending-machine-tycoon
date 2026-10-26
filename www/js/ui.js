@@ -3,6 +3,7 @@
 import { CONFIG } from './config.js';
 import { PRODUCTS, PRODUCT_IDS, ZONE_IDS, ZONES } from './products.js';
 import * as sim from './sim.js';
+import * as staff from './staff.js';
 import { cellAt, WAREHOUSE_CELL } from './world.js';
 import { CONTRACT_RULES, progressOf as contractProgress } from './contracts.js';
 import { playSound } from './audio.js';
@@ -217,6 +218,8 @@ export function createUi({ panel, stats, toast, act, state: current }) {
         <tr><th>Today's sales</th><td>${today} items, ${money(state.today.revenue)}</td></tr>
         <tr><th>Spoiled so far</th><td>${state.spoiled} items</td></tr>
       </table>
+      <h3>Staff</h3>
+      ${staffPanel(state)}
       <h3>Marketing</h3>
       <div class="row">
         <span>${state.rushTicks > 0 ? `<b>Rush Hour</b> on, ${Math.ceil(state.rushTicks / CONFIG.ticksPerHour * 60)} min left` : `Hype ${Math.round(state.hype * 100)}%`}</span>
@@ -240,6 +243,31 @@ export function createUi({ panel, stats, toast, act, state: current }) {
       ${history ? `<h3>Last days</h3><table>${history}</table>` : ''}`;
   }
 
+  // The jobs that can be handed to hired help, with what each costs a day.
+  function staffPanel(state) {
+    const rows = staff.STAFF_ROLES.map((role) => {
+      const job = CONFIG.staff[role];
+      let action;
+      if (state.staff[role]) action = `<button data-act="fire" data-role="${role}">Let go</button>`;
+      else if (state.machines.length < job.unlockMachines) action = `<span class="hint">${job.unlockMachines} machines</span>`;
+      else action = `<button class="primary" data-act="hire" data-role="${role}">Hire</button>`;
+      return `<tr><td><b>${job.name}</b> ${money(job.wage)}/day<br><span class="hint">${job.blurb}</span></td><td class="buttons">${action}</td></tr>`;
+    }).join('');
+    return `<table>${rows}</table>
+      <p class="hint">Wages each day: ${money(staff.dailyWages(state))}</p>
+      ${state.staff.agent ? agentRulesPanel(state) : ''}`;
+  }
+
+  // What the purchasing agent keeps in the warehouse, and the most it will pay.
+  function agentRulesPanel(state) {
+    const rows = PRODUCT_IDS.map((p) => {
+      const rule = state.agentRules[p];
+      const buttons = (field) => `<button data-act="agent-rule" data-product="${p}" data-field="${field}" data-dir="-1">−</button><button data-act="agent-rule" data-product="${p}" data-field="${field}" data-dir="1">+</button>`;
+      return `<tr><td>${PRODUCTS[p].name}</td><td>keep ${rule.min}</td><td class="buttons">${buttons('min')}</td><td>pay up to ${Math.round(rule.maxPrice * 100)}%</td><td class="buttons">${buttons('price')}</td></tr>`;
+    }).join('');
+    return `<h3>Purchasing agent's rules</h3><table>${rows}</table>`;
+  }
+
   // One handler for every button in the panel and the top bar.
   const endPress = () => setTimeout(() => { busy = false; }, 0);
   panel.addEventListener('pointerdown', () => { busy = true; });
@@ -255,6 +283,9 @@ export function createUi({ panel, stats, toast, act, state: current }) {
     const actions = {
       'buy-machine': () => act(() => sim.buyMachine(latest, +d.x, +d.y)),
       price: () => act(() => sim.setPrice(latest, +d.machine, d.product, sim.machineById(latest, +d.machine).prices[d.product] + +d.delta)),
+      hire: () => act(() => staff.hireStaff(latest, d.role)),
+      fire: () => act(() => staff.fireStaff(latest, d.role)),
+      'agent-rule': () => act(() => staff.setAgentRule(latest, d.product, d.field, +d.dir)),
       collect: () => act(() => sim.collectCash(latest, +d.machine)),
       repair: () => act(() => sim.repairMachine(latest, +d.machine)),
       security: () => act(() => sim.installSecurity(latest, +d.machine)),

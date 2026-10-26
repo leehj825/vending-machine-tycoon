@@ -5,6 +5,7 @@ import { PRODUCTS, PRODUCT_IDS, ZONES } from './products.js';
 import { cellAt, generateCity, seededRandom, WAREHOUSE_CELL } from './world.js';
 import { findPath, machineFront, walkerWalkable } from './locomotion.js';
 import { makeContracts, settleContracts, swapContract as swapContractRule } from './contracts.js';
+import { guardStops, newAgentRules, newStaff, newStaffToday, payWages, runStaffHour } from './staff.js';
 import { counterAttack as counterAttackRule, counterCost as counterCostRule, growRival, newRival, salesFactor } from './rival.js';
 
 const TICKS_PER_DAY = CONFIG.ticksPerHour * CONFIG.hoursPerDay;
@@ -58,6 +59,10 @@ export function newGame(seed = 7) {
     market: Object.fromEntries(PRODUCT_IDS.map((p) => [p, 1])),
     marketTrend: Object.fromEntries(PRODUCT_IDS.map((p) => [p, 0])),
     news: [...FIRST_DAY_HINTS],
+    // Hired help, what the purchasing agent should keep in stock, and what the workers did today.
+    staff: newStaff(),
+    agentRules: newAgentRules(),
+    staffToday: newStaffToday(),
     nextId: 1,
     // Sales and revenue per product for today and the last seven days.
     today: { sales: zeroCounts(), revenue: 0 },
@@ -79,6 +84,8 @@ export function migrateState(state) {
     for (const p of PRODUCT_IDS) if (record[p] === undefined) record[p] = value(p);
   };
   perProduct(state.warehouse, () => 0);
+  for (const role of Object.keys(CONFIG.staff)) if (state.staff[role] === undefined) state.staff[role] = false;
+  for (const [product, rule] of Object.entries(newAgentRules())) state.agentRules[product] ??= rule;
   perProduct(state.warehouseDay, () => state.day);
   perProduct(state.market, () => 1);
   perProduct(state.marketTrend, () => 0);
@@ -462,6 +469,7 @@ function hourlyChecks(state) {
       targetMachine(state, machine);
     }
   }
+  runStaffHour(state);
 }
 
 // The chance a machine is targeted this hour: more at night, with more cash in it, in riskier
@@ -478,6 +486,7 @@ export function securityChance(machine, hour) {
 
 // A targeted machine is robbed, or a vandal comes to kick it. Cash in the till can be taken.
 function targetMachine(state, machine) {
+  if (guardStops(state, nextRandom(state))) return;
   const robbed = machine.cash > 0 && nextRandom(state) < CONFIG.theftShare;
   if (robbed) {
     const share = CONFIG.theftCashMin + nextRandom(state) * (CONFIG.theftCashMax - CONFIG.theftCashMin);
@@ -622,7 +631,7 @@ function spoilStock(state) {
   }
 }
 
-function announce(state, messages) {
+export function announce(state, messages) {
   for (const message of messages) {
     state.news.unshift(message);
   }
@@ -701,11 +710,13 @@ export function swapContract(state, id) {
 
 function endDay(state) {
   spoilStock(state);
+  payWages(state);
   const adMachines = state.machines.filter((m) => m.adDisplay).length;
   if (adMachines > 0) state.cash += adMachines * CONFIG.adDisplayDailyIncome;
   state.history.unshift({ day: state.day, sales: state.today.sales, revenue: state.today.revenue });
   state.history = state.history.slice(0, 7);
   state.today = { sales: zeroCounts(), revenue: 0 };
+  state.staffToday = newStaffToday();
   state.day += 1;
   state.tick = 0;
   state.contracts = makeContracts(state, () => nextRandom(state));

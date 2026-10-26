@@ -53,6 +53,18 @@ export const CONFIG = {
   securityCost: 400,
   securityRiskFactor: 0.35,
   securityPenaltyFactor: 0.5,
+  // Hired help: daily wage, and the number of machines that must be owned before the job opens.
+  staff: {
+    agent: { name: 'Purchasing agent', wage: 40, unlockMachines: 3, blurb: 'Buys warehouse stock for you, within your limits.' },
+    driver: { name: 'Truck driver', wage: 60, unlockMachines: 5, blurb: 'Sends a truck on a restock run when machines run low.' },
+    collector: { name: 'Collector', wage: 50, unlockMachines: 5, cut: 0.1, blurb: 'Collects cash from full machines and keeps a 10% cut.' },
+    mechanic: { name: 'Mechanic', wage: 50, unlockMachines: 8, repairShare: 0.5, fromCondition: 3, blurb: 'Repairs machines in poor shape at half price.' },
+    guard: { name: 'Night guard', wage: 50, unlockMachines: 8, stopChance: 0.7, blurb: 'Chases off 7 in 10 vandals and thieves.' },
+  },
+  // The purchasing agent's starting rules, and the steps and limits for changing them.
+  agent: { defaultMin: 40, minStep: 10, maxMin: 200, defaultMaxPrice: 1.1, priceStep: 0.1, minPriceLimit: 0.7, maxPriceLimit: 1.5 },
+  // The driver goes when a machine holds less than this share of its capacity.
+  driverLowShare: 0.4,
   // A broken machine (4 levels) costs 300 to repair, less than the 400 a new one costs.
   repairCostPerLevel: 75,
   // Wear: a machine wears a little each hour (more in risky zones and at night), and a kicker
