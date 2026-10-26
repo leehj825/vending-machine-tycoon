@@ -23,6 +23,9 @@ const SLOT_COLOURS = {
 
 const OUTLINE = new THREE.MeshBasicMaterial({ color: 0x1d1412, side: THREE.BackSide });
 
+// The machine is drawn at this share of its model size, so it fits its shop front.
+export const MACHINE_SCALE = 0.65;
+
 // A lit colour that keeps its brightness on the shaded faces, as the bright style does.
 export function lit(colour) {
   return new THREE.MeshLambertMaterial({ color: colour, emissive: colour, emissiveIntensity: 0.4 });
@@ -81,6 +84,7 @@ export function part(geometry, colour, x, y, z, { outline = true } = {}) {
 export function buildMachine3d(machine, anchor) {
   const root = new THREE.Group();
   root.position.set(anchor.x, 0, anchor.z);
+  root.scale.setScalar(MACHINE_SCALE);
   root.rotation.y = -(anchor.turns % 4) * (Math.PI / 2);
 
   const cabinet = roundedSolid(0.46, 0.92, 0.4, 0.1, 0.03);

@@ -4,13 +4,15 @@
 // and a round gold coin over a machine that holds cash. Each has a dark outline.
 import { CONFIG } from './config.js';
 import { machineAnchor, markerHeight } from './scene.js';
-import { lit } from './machine3d.js';
+import { lit, MACHINE_SCALE } from './machine3d.js';
 
 const AFFORDABLE = 0x43a047;
 const UNAFFORDABLE = 0xffc107;
 const OWNED = 0x1e88e5;
 const COIN = 0xf2b632;
 const OUTLINE = new THREE.MeshBasicMaterial({ color: 0x1d1412, side: THREE.BackSide });
+// The coin floats just above the machine's top.
+const COIN_HEIGHT = 0.92 * MACHINE_SCALE + 0.33;
 
 const HEAD = new THREE.SphereGeometry(0.13, 14, 10);
 const TIP = new THREE.ConeGeometry(0.1, 0.22, 12);
@@ -70,7 +72,7 @@ export function buildMarkers3d(state) {
   for (const machine of state.machines) {
     if (machine.cash <= 0) continue;
     const anchor = machineAnchor(state.city, machine.x, machine.y);
-    root.add(coin(anchor.x, 1.25, anchor.z));
+    root.add(coin(anchor.x, COIN_HEIGHT, anchor.z));
   }
   return root;
 }
