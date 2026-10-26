@@ -35,7 +35,7 @@ const WALKER_LOOKS = [
   { shirt: 0xecf0f1, hat: 0x4a4a4a },
 ];
 
-export function createWalkMode({ city, getState, clips, sale, vandal, fix, say, buttons }) {
+export function createWalkMode({ city, getState, clips, sale, vandal, fix, stock, say, buttons }) {
   const random = seededRandom(Date.now() % 100000);
   const walkers = spawnWalkers(getState().city, 8, random, WALKER_LOOKS);
   const mode = { active: false, player: null, stick: { x: 0, y: 0, id: null }, running: false };
@@ -123,6 +123,22 @@ export function createWalkMode({ city, getState, clips, sale, vandal, fix, say, 
     } else {
       say('They cannot find a way to that machine.');
     }
+  }
+
+  // The machine in front of the player, whether or not it holds cash: for refilling.
+  function machineInFront() {
+    const state = getState();
+    const p = mode.player;
+    for (const m of state.machines) {
+      const front = machineFront(state.city, m.x, m.y);
+      if (front && inFront(p, front.anchor.x, front.anchor.z, COLLECT_REACH)) return m;
+    }
+    return null;
+  }
+
+  function refill() {
+    const machine = machineInFront();
+    if (machine) stock.refill(machine.id);
   }
 
   function collect() {
@@ -318,6 +334,7 @@ export function createWalkMode({ city, getState, clips, sale, vandal, fix, say, 
     buttons.setTalk(Boolean(nearWalker()));
     buttons.setCollect(Boolean(nearMachine()));
     buttons.setFix(Boolean(nearBroken()));
+    buttons.setRefill(Boolean(machineInFront()));
   }
 
   // Arrows around the player, one per nearby machine holding more cash than HQ's threshold.
@@ -408,6 +425,7 @@ export function createWalkMode({ city, getState, clips, sale, vandal, fix, say, 
   buttons.collectEl.addEventListener('pointerdown', collect);
   buttons.fixEl.addEventListener('pointerdown', fixNearby);
   buttons.attackEl.addEventListener('pointerdown', attack);
+  buttons.refillEl.addEventListener('pointerdown', refill);
   buttons.runEl.addEventListener('pointerdown', () => {
     mode.running = !mode.running;
     if (mode.player) mode.player.running = mode.running;

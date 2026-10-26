@@ -19,6 +19,16 @@ const FIRST_DAY_HINTS = [
   'Tip: people may kick a machine. Walk up to them and talk to stop them.',
 ];
 
+// The warehouse starts with enough stock to fill one machine, a product at a time.
+function startingStock() {
+  let left = CONFIG.machineCapacity;
+  return Object.fromEntries(PRODUCT_IDS.map((p) => {
+    const count = Math.min(CONFIG.machinePerProduct, left);
+    left -= count;
+    return [p, count];
+  }));
+}
+
 export function newGame(seed = 7) {
   const state = {
     seed,
@@ -30,7 +40,7 @@ export function newGame(seed = 7) {
     city: generateCity(CONFIG.gridSize, seed),
     machines: [],
     trucks: [],
-    warehouse: Object.fromEntries(PRODUCT_IDS.map((p) => [p, 0])),
+    warehouse: startingStock(),
     // The day each product's current stock arrived, for spoilage. Warehouse stock has its own.
     warehouseDay: Object.fromEntries(PRODUCT_IDS.map((p) => [p, 1])),
     spoiled: 0,
@@ -175,6 +185,28 @@ export function collectCash(state, machineId) {
   state.cash += amount;
   machine.cash = 0;
   return ok(`Collected $${amount.toFixed(2)}.`);
+}
+
+// Stocks a machine straight from the warehouse, on foot: no truck and no fuel. Fills each
+// product up to its share, within the machine's total room.
+export function refillMachine(state, machineId) {
+  const machine = machineById(state, machineId);
+  if (!machine) return fail('No such machine.');
+  let added = 0;
+  for (const product of PRODUCT_IDS) {
+    const need = Math.min(
+      CONFIG.machinePerProduct - machine.stock[product],
+      machineCapacity(machine) - machineTotal(machine),
+    );
+    const give = Math.min(need, state.warehouse[product]);
+    if (give > 0) {
+      machine.stock[product] += give;
+      state.warehouse[product] -= give;
+      added += give;
+    }
+  }
+  if (added === 0) return fail('Nothing to refill: it is full, or the warehouse has none to spare.');
+  return ok(`Refilled ${added} items from the warehouse.`);
 }
 
 export function buyWarehouseStock(state, product, units) {

@@ -86,8 +86,25 @@ test('an empty machine costs reputation only after the grace hours', () => {
   assert.ok(state.reputation < start, 'penalty after grace');
 });
 
+test('a new game starts with enough warehouse stock to fill one machine, and a player can refill from it on foot', () => {
+  const state = sim.newGame(7);
+  const total = Object.values(state.warehouse).reduce((a, b) => a + b, 0);
+  assert.equal(total, CONFIG.machineCapacity, 'one machine of stock');
+  const spot = [];
+  state.city.forEach((row, y) => row.forEach((cell, x) => {
+    if (spot.length === 0 && cell.type === 'building' && machineFrontFor(state, x, y)) spot.push({ x, y });
+  }));
+  sim.buyMachine(state, spot[0].x, spot[0].y);
+  const machine = state.machines[0];
+  assert.equal(sim.refillMachine(state, machine.id).ok, true, 'refills');
+  assert.equal(sim.machineTotal(machine), CONFIG.machineCapacity, 'machine filled');
+  assert.equal(Object.values(state.warehouse).reduce((a, b) => a + b, 0), 0, 'warehouse emptied');
+  assert.equal(sim.refillMachine(state, machine.id).ok, false, 'nothing left to refill');
+});
+
 test('a truck drives its road route, restocks machines on the way and charges fuel', () => {
   const state = sim.newGame(7);
+  for (const p of Object.keys(state.warehouse)) state.warehouse[p] = 0;
   // Two machines on different buildings, each with a street beside it.
   const spots = [];
   state.city.forEach((row, y) => row.forEach((cell, x) => {

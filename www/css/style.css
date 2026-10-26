@@ -189,6 +189,7 @@ td.buttons button { padding: 4px 8px; min-height: 32px; margin-left: 4px; }
 #talk { bottom: 96px; }
 #fix { bottom: 56px; background: var(--red); }
 #attack { bottom: 136px; background: #6d4c41; }
+#refill { bottom: 176px; background: #00897b; }
 #collect { bottom: 16px; }
 .action:disabled { opacity: 0.4; }
 .walk-ctl {
