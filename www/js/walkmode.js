@@ -190,8 +190,6 @@ export function createWalkMode({ city, getState, clips, sale, vandal, fix, say, 
   function startKick(w, arrived, state) {
     const machine = state.machines.find((m) => m.id === arrived.machineId);
     const front = machine ? machineFront(state.city, machine.x, machine.y) : null;
-    w.x = w.cell.x + 0.5;
-    w.z = w.cell.y + 0.5;
     if (front) w.facing = Math.atan2(front.anchor.x - w.x, front.anchor.z - w.z);
     w.kicking = true;
     w.kickPhase = 0;

@@ -86,7 +86,7 @@ export function stepWalker(walker, grid, dt, random) {
     if (walker.to.cell) walker.cell = walker.to.cell;
     const step = nextStep(walker, grid, random);
     if (!step) {
-      walker.from = { x: walker.cell.x + 0.5, z: walker.cell.y + 0.5 };
+      walker.from = { x: walker.x, z: walker.z };
       walker.to = walker.from;
       walker.progress = 1;
       return arrival(walker);
@@ -95,7 +95,8 @@ export function stepWalker(walker, grid, dt, random) {
     const dirY = step.y - walker.cell.y;
     const rightX = -dirY * LANE;
     const rightZ = dirX * LANE;
-    walker.from = { x: walker.cell.x + 0.5 + rightX, z: walker.cell.y + 0.5 + rightZ };
+    // A new stretch starts where the walker is now, so a turn or a stop never jumps.
+    walker.from = { x: walker.x, z: walker.z };
     walker.to = { x: step.x + 0.5 + rightX, z: step.y + 0.5 + rightZ, cell: step };
     walker.progress = 0;
   }
@@ -103,7 +104,9 @@ export function stepWalker(walker, grid, dt, random) {
   walker.progress = Math.min(1, walker.progress + (speed * dt) / length);
   walker.x = walker.from.x + (walker.to.x - walker.from.x) * walker.progress;
   walker.z = walker.from.z + (walker.to.z - walker.from.z) * walker.progress;
-  walker.facing = Math.atan2(walker.to.x - walker.from.x, walker.to.z - walker.from.z);
+  const dx = walker.to.x - walker.from.x;
+  const dz = walker.to.z - walker.from.z;
+  if (Math.hypot(dx, dz) > 1e-6) walker.facing = Math.atan2(dx, dz);
   walker.phase += (speed * dt) / 0.37;
   return null;
 }
