@@ -2,7 +2,9 @@
 // The city view in three.js, drawn like the original game: the low-poly map from scene.js, the
 // machines and markers over it, the trucks and the people. Map view: taps pick a cell, drags turn
 // the view, pinch and wheel zoom. Walk view: a camera behind the player, drags turn the player.
-import { buildMarkers, buildStaticScene, buildTruck, machineAnchor } from './scene.js';
+import { buildStaticScene, buildTruck, machineAnchor } from './scene.js';
+import { buildMarkers3d } from './markers3d.js';
+import { CONFIG } from './config.js';
 import { buildMachine3d } from './machine3d.js';
 import { buildBuildings } from './buildings3d.js';
 import { createFigure, poseFigure } from './figure.js';
@@ -135,18 +137,13 @@ export function createCityView(container, onTap) {
     }
   }
 
-  // Purchase arrows, owned plates and coins. The group bobs gently, as the original's did.
+  // Purchase pins, owned plates and coins. The group bobs gently, as the original's did.
   function drawMarkers(state, time) {
-    const signature = `${state.cash >= 400}|${state.machines.map((m) => `${m.x},${m.y},${m.cash > 0}`).join('|')}`;
+    const signature = `${state.cash >= CONFIG.machinePrice}|${state.machines.map((m) => `${m.x},${m.y},${m.cash > 0}`).join('|')}`;
     if (signature !== markerSignature) {
       markerSignature = signature;
       clear(markerGroup);
-      const parts = buildMarkers(state);
-      for (const part of [parts.arrows, parts.owned, parts.coins]) {
-        if (part.positions.length === 0) continue;
-        const geometry = geometryFrom(part);
-        markerGroup.add(new THREE.Mesh(geometry, vertexMaterial), outlineOf(geometry));
-      }
+      markerGroup.add(buildMarkers3d(state));
     }
     markerGroup.position.y = Math.sin(time * 2.2) * 0.05;
   }

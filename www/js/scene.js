@@ -192,33 +192,6 @@ export function buildStaticScene(grid, brightness = 1) {
 
 
 
-// Purchase arrows over buildings without a machine: green when the cash covers it, amber when
-// not. Owned buildings get a blue plate, and a machine with cash gets a coin above it.
-export function buildMarkers(state, bob = 0) {
-  const arrows = new MeshBuilder();
-  const owned = new MeshBuilder();
-  const coins = new MeshBuilder();
-  const grid = state.city;
-  const machineAt = new Set(state.machines.map((m) => `${m.x},${m.y}`));
-  const affordable = state.cash >= CONFIG.machinePrice;
-  grid.forEach((row, y) => row.forEach((cell, x) => {
-    if (cell.type !== 'building') return;
-    const h = markerHeight(cell.zone) + bob;
-    if (machineAt.has(`${x},${y}`)) {
-      owned.box(x + 0.4, h, y + 0.46, x + 0.6, h + 0.06, y + 0.54, OWNED_BLUE);
-      owned.box(x + 0.44, h + 0.06, y + 0.48, x + 0.56, h + 0.07, y + 0.52, WHITE);
-    } else {
-      arrows.cone(x + 0.5, y + 0.5, 0.22, 6, h + 0.3, h, affordable ? AFFORDABLE : UNAFFORDABLE);
-    }
-  }));
-  for (const machine of state.machines) {
-    if (machine.cash <= 0) continue;
-    const anchor = machineAnchor(grid, machine.x, machine.y);
-    const h = 0.7 + bob;
-    coins.prism(anchor.x, anchor.z, 0.12, 12, h, h + 0.05, COIN, { top: COIN_TOP });
-  }
-  return { arrows: arrows.arrays(), owned: owned.arrays(), coins: coins.arrays() };
-}
 
 // A delivery truck, built about its own origin: u runs along its travel, v across it.
 export function buildTruck() {
