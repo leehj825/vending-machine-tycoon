@@ -66,6 +66,8 @@ export function newGame(seed = 7) {
     staffToday: newStaffToday(),
     // Where the first-day guide has got to (a saved game from before it counts as done).
     tutorialStep: 0,
+    // The last day's summary, shown once when the day ends.
+    summary: null,
     nextId: 1,
     // Sales and revenue per product for today and the last seven days.
     today: { sales: zeroCounts(), revenue: 0 },
@@ -712,9 +714,29 @@ export function swapContract(state, id) {
   return result.ok ? ok(result.message) : fail(result.message);
 }
 
+// What the day that is ending came to, for the end-of-day summary.
+function daySummary(state) {
+  const empty = state.machines.filter((m) => machineTotal(m) === 0).length;
+  const waiting = state.machines.reduce((sum, m) => sum + m.cash, 0);
+  let tip = 'Keep your machines stocked and your cash collected.';
+  if (state.machines.length === 0) tip = 'Buy a machine from a shop front to start earning.';
+  else if (empty > 0) tip = `${empty} machine${empty === 1 ? '' : 's'} ran empty. Refill ${empty === 1 ? 'it' : 'them'}, or hire a driver.`;
+  else if (waiting > 200) tip = `$${Math.round(waiting)} is waiting in your machines. Collect it before thieves do.`;
+  return {
+    day: state.day,
+    revenue: state.today.revenue,
+    sales: { ...state.today.sales },
+    staff: { ...state.staffToday },
+    cash: state.cash,
+    reputation: state.reputation,
+    tip,
+  };
+}
+
 function endDay(state) {
   spoilStock(state);
   payWages(state);
+  state.summary = daySummary(state);
   const adMachines = state.machines.filter((m) => m.adDisplay).length;
   if (adMachines > 0) state.cash += adMachines * CONFIG.adDisplayDailyIncome;
   state.history.unshift({ day: state.day, sales: state.today.sales, revenue: state.today.revenue });

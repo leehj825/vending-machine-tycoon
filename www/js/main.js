@@ -11,6 +11,7 @@ import { createCityView } from './city3d.js';
 import { createUi } from './ui.js';
 import { createWalkMode } from './walkmode.js';
 import { createInsideView } from './inside3d.js';
+import { summaryHtml } from './summary.js';
 import { skipTutorial, tutorialCheck, tutorialEvent, tutorialStep } from './tutorial.js';
 import { startAds, startRewardAds } from './ads.js';
 import { truckPosition } from './sim.js';
@@ -123,6 +124,21 @@ async function start(slot) {
 
   // The machine whose front is open: a close-up of its inside is drawn over the city, and a bar
   // takes the cash, refills it, or shuts it. The front closes when the player walks away.
+  // The end-of-day summary: shown once for each day that closes, with the game paused.
+  let summaryShown = state.summary?.day ?? 0;
+  function refreshSummary() {
+    if (paused || !state.summary || state.summary.day === summaryShown) return;
+    summaryShown = state.summary.day;
+    $('summary-title').textContent = `Day ${state.summary.day} is over`;
+    $('summary-body').innerHTML = summaryHtml(state.summary);
+    $('summary-dialog').hidden = false;
+    paused = true;
+  }
+  $('summary-continue').addEventListener('click', () => {
+    $('summary-dialog').hidden = true;
+    paused = false;
+  });
+
   // The first-day guide: shows the current step, and moves on when the player does it.
   function refreshCoach() {
     tutorialCheck(state);
@@ -284,6 +300,7 @@ async function start(slot) {
     city.update(state);
     refreshInsideBar();
     refreshCoach();
+    refreshSummary();
   }, 500);
 
   setInterval(() => saveGame(state), 30000);

@@ -362,3 +362,5 @@ td.buttons button { padding: 4px 8px; min-height: 32px; margin-left: 4px; }
   padding: 20px;
 }
 .pause-card h2 { text-align: center; margin: 0; }
+.pause-card { max-height: 90vh; overflow-y: auto; }
+.summary { margin: 4px 0; }

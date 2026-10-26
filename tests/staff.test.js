@@ -130,3 +130,12 @@ test('the first-day guide moves on as the player acts, and an older save skips i
   delete old.tutorialStep;
   assert.equal(sim.migrateState(old).tutorialStep, guide.TUTORIAL_DONE, 'an older save is not shown the guide');
 });
+
+test('a day that ends leaves a summary of its sales and what the help did', () => {
+  const state = gameWithMachines(3);
+  staff.hireStaff(state, 'agent');
+  for (let i = 0; i < CONFIG.ticksPerHour * CONFIG.hoursPerDay; i++) sim.tick(state);
+  assert.equal(state.summary.day, 1);
+  assert.equal(state.summary.staff.wages, CONFIG.staff.agent.wage);
+  assert.ok(state.summary.tip.length > 0);
+});
