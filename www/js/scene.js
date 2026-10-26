@@ -149,10 +149,16 @@ function carColour(x, y, bay) {
   return CAR_COLOURS[Math.floor(cellNoise(x + bay * 7, y) * CAR_COLOURS.length)];
 }
 
-// A small car nose to the road, in a bay of width 0.4 starting at bx.
+// A small car nose to the road, in a bay of width 0.4 starting at bx: a low body, a cabin with
+// glass, four wheels, and two headlights at the front.
 function car(m, bx, y, colour) {
-  m.box(bx + 0.04, 0, y + 0.22, bx + 0.36, 0.1, y + 0.78, colour, { top: colour });
-  m.box(bx + 0.1, 0.1, y + 0.3, bx + 0.3, 0.17, y + 0.7, GLASS);
+  m.box(bx + 0.04, 0.04, y + 0.2, bx + 0.36, 0.15, y + 0.8, colour, { top: colour });
+  m.box(bx + 0.09, 0.15, y + 0.3, bx + 0.31, 0.25, y + 0.7, colour, { top: colour });
+  m.box(bx + 0.085, 0.17, y + 0.32, bx + 0.315, 0.23, y + 0.68, GLASS);
+  for (const wx of [bx + 0.02, bx + 0.31]) {
+    for (const wz of [y + 0.24, y + 0.7]) m.box(wx, 0, wz, wx + 0.07, 0.08, wz + 0.06, DARK);
+  }
+  for (const hx of [bx + 0.07, bx + 0.27]) m.box(hx, 0.08, y + 0.79, hx + 0.06, 0.12, y + 0.81, 0xfff59d);
 }
 
 // A gas station tile: a concrete forecourt, a red canopy on four posts, and two fuel pumps.
