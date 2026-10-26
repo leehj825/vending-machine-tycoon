@@ -127,6 +127,7 @@ async function start(slot) {
     vandal: {
       beginKick: (id) => sim.beginKick(state, id),
       stop: (id) => act(() => sim.stopAttack(state, id)),
+      punch: (id) => act(() => sim.punchAttack(state, id)),
       finish: (id) => {
         sim.completeAttack(state, id);
         saveGame(state);
@@ -145,12 +146,14 @@ async function start(slot) {
       setTalk: (on) => { $('talk').disabled = !on; },
       setCollect: (on) => { $('collect').disabled = !on; },
       setFix: (on) => { $('fix').disabled = !on; },
+      setAttack: (on) => { $('attack').disabled = !on; },
       setRun: (on) => { $('run').setAttribute('aria-pressed', String(on)); },
       stick: $('stick'),
       knob: $('knob'),
       talkEl: $('talk'),
       collectEl: $('collect'),
       fixEl: $('fix'),
+      attackEl: $('attack'),
       runEl: $('run'),
       officeEl: $('office'),
       beaconsEl: $('beacons'),

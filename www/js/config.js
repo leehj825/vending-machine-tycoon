@@ -75,6 +75,8 @@ export const CONFIG = {
   marketMax: 1.25,
   // Most vandals that can be kicking one machine at once.
   maxKickersPerMachine: 3,
+  // Reputation lost for each punch: passers-by see it.
+  punchReputationCost: 2,
   // The rival company, by zone type. Presence grows each day, fastest where you are absent.
   rivalMaxPresence: 0.75,
   rivalBaseDailyGrowth: 0.04,

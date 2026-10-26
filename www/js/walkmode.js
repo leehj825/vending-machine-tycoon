@@ -2,7 +2,7 @@
 // the view (and the player with it), Talk sends a nearby walker to buy from a machine or stops a
 // vandal, and Collect takes the cash from a machine that is close and in front. Also keeps the
 // walkers on the streets, and sends a vandal to any machine under attack.
-import { machineFront, inFront, samplePose, newPose } from './locomotion.js';
+import { calmTorso, machineFront, inFront, samplePose, newPose } from './locomotion.js';
 import { movePlayer, newPlayer, sendWalker, spawnWalkers, stepWalker } from './walk.js';
 import { seededRandom } from './world.js';
 import { CONDITIONS, collectAlertOf, machineTotal } from './sim.js';
@@ -219,6 +219,7 @@ export function createWalkMode({ city, getState, clips, sale, vandal, fix, say, 
     }
     if (mode.active && mode.player) {
       const player = mode.player;
+      if (player.punchT > 0) player.punchT = Math.max(0, player.punchT - dt);
       player.facing = city.walkFacing();
       const move = stickToWorld(mode.stick.x, mode.stick.y);
       movePlayer(player, grid, clips, move.dx, move.dz, dt);
@@ -233,7 +234,7 @@ export function createWalkMode({ city, getState, clips, sale, vandal, fix, say, 
         x: mode.player.x,
         z: mode.player.z,
         yaw: mode.player.facing,
-        pose: posed(mode.player.moving, mode.player.clip, mode.player.phase),
+        pose: mode.player.punchT > 0 ? punchPose(mode.player) : posed(mode.player.moving, mode.player.clip, mode.player.phase),
         look: PLAYER_LOOK,
       });
     }
@@ -253,10 +254,33 @@ export function createWalkMode({ city, getState, clips, sale, vandal, fix, say, 
   function posed(moving, clipKey, phase) {
     const pose = newPose();
     if (!moving) return pose;
-    return samplePose(clips.clips[clipKey], phase, pose);
+    samplePose(clips.clips[clipKey], phase, pose);
+    // Running swings the arms without twisting the whole body.
+    return clipKey.toLowerCase().includes('run') ? calmTorso(pose, 0.4) : pose;
+  }
+
+  // The player's punch: the clip played once, over its length.
+  function punchPose(player) {
+    const clip = clips.clips.punch;
+    const progress = Math.min(0.999, 1 - player.punchT / clip.d);
+    return samplePose(clip, progress, newPose());
+  }
+
+  // A kicking vandal within reach and in front of the player, to punch.
+  function nearVandal() {
+    const p = mode.player;
+    return walkers.find((w) => w.kicking && inFront(p, w.x, w.z, TALK_REACH)) || null;
+  }
+
+  function attack() {
+    const walker = nearVandal();
+    if (!walker) return;
+    mode.player.punchT = clips.clips.punch.d;
+    vandal.punch(walker.attackId);
   }
 
   function updateButtons() {
+    buttons.setAttack(Boolean(nearVandal()));
     buttons.setTalk(Boolean(nearWalker()));
     buttons.setCollect(Boolean(nearMachine()));
     buttons.setFix(Boolean(nearBroken()));
@@ -349,6 +373,7 @@ export function createWalkMode({ city, getState, clips, sale, vandal, fix, say, 
   buttons.talkEl.addEventListener('pointerdown', talk);
   buttons.collectEl.addEventListener('pointerdown', collect);
   buttons.fixEl.addEventListener('pointerdown', fixNearby);
+  buttons.attackEl.addEventListener('pointerdown', attack);
   buttons.runEl.addEventListener('pointerdown', () => {
     mode.running = !mode.running;
     if (mode.player) mode.player.running = mode.running;

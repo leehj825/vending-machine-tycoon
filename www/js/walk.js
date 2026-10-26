@@ -17,6 +17,7 @@ export function newPlayer(spawn) {
     clip: 'walk',
     moving: false,
     holdT: 0,
+    punchT: 0,
   };
 }
 

@@ -33,6 +33,14 @@ export function samplePose(clip, phase, out) {
   return out;
 }
 
+// Keeps only part of the hips' and spine's rotation, so the body turns less while the arms swing.
+const IDENTITY = [0, 0, 0, 1];
+export function calmTorso(pose, keep) {
+  const amount = 1 - keep;
+  for (const bone of [0, 1]) slerp(pose.quats, bone * 4, IDENTITY, 0, amount, pose.quats, bone * 4);
+  return pose;
+}
+
 export function newPose(bones = 13) {
   return { quats: new Array(bones * 4).fill(0), hipY: 0.9, hipZ: 0 };
 }

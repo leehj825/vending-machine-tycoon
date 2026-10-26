@@ -450,6 +450,14 @@ export function stopAttack(state, attackId) {
   return { ok: true, message: 'You talked them out of it. The machine is safe.' };
 }
 
+// A punch chases the vandal off. It costs a little reputation, as passers-by see it.
+export function punchAttack(state, attackId) {
+  const result = stopAttack(state, attackId);
+  if (!result.ok) return result;
+  state.reputation = Math.max(0, state.reputation - CONFIG.punchReputationCost);
+  return { ok: true, message: 'You chased the vandal off. Passers-by frown on it.' };
+}
+
 // Kicking goes on while the vandal is at the machine. Once it has gone on long enough, the
 // machine is vandalized. Called every frame with the seconds that passed.
 export function advanceAttacks(state, dt) {
