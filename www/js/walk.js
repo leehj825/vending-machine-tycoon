@@ -19,7 +19,11 @@ export function newPlayer(spawn) {
     clip: 'walk',
     moving: false,
     holdT: 0,
-    punchT: 0,
+    punchT: 0, // seconds left in the attack motion now playing
+    punchTotal: 0, // the attack motion's full length
+    punchClip: null,
+    punchStep: 0, // the next move in the combo
+    comboT: 0, // seconds left for the next press to continue the combo
   };
 }
 

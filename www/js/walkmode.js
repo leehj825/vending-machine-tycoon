@@ -15,8 +15,16 @@ const TALK_REACH = 0.6;
 const ERRAND_GAP_MIN = 60;
 const ERRAND_GAP_MAX = 120;
 const COLLECT_REACH = 0.7;
-// Seconds a punch takes from start to finish. The player stands still until it is done.
-const PUNCH_SECONDS = 0.4;
+// The attack combo, in order: jab, second punch, hook, kick. Each motion is played in its own
+// number of seconds. The player stands still, and cannot attack again, until it is done.
+const ATTACKS = [
+  { clip: 'punch', seconds: 0.4 },
+  { clip: 'punch2', seconds: 0.4 },
+  { clip: 'hook', seconds: 0.6 },
+  { clip: 'comboKick', seconds: 0.7 },
+];
+// Seconds after a motion ends in which the next press continues the combo; after that it starts over.
+const COMBO_GAP = 0.8;
 const PLAYER_LOOK = { shirt: 0xffeb3b, hat: 0x3e2723 };
 const WALKER_LOOKS = [
   { shirt: 0xd9534f, hat: 0x3b2a1e },
@@ -221,7 +229,7 @@ export function createWalkMode({ city, getState, clips, sale, vandal, fix, say, 
     }
     if (mode.active && mode.player) {
       const player = mode.player;
-      if (player.punchT > 0) player.punchT = Math.max(0, player.punchT - dt);
+      updateAttack(player, dt);
       player.facing = city.walkFacing();
       const move = player.punchT > 0 ? { dx: 0, dz: 0 } : stickToWorld(mode.stick.x, mode.stick.y);
       movePlayer(player, grid, clips, move.dx, move.dz, dt);
@@ -261,11 +269,22 @@ export function createWalkMode({ city, getState, clips, sale, vandal, fix, say, 
     return clipKey.toLowerCase().includes('run') ? calmTorso(pose, 0.4) : pose;
   }
 
-  // The player's punch: the clip played once, over its length.
+  // The attack motion now playing: its clip, played once over its length.
   function punchPose(player) {
-    const clip = clips.clips.punch;
-    const progress = Math.min(0.999, 1 - player.punchT / PUNCH_SECONDS);
+    const clip = clips.clips[player.punchClip];
+    const progress = Math.min(0.999, 1 - player.punchT / player.punchTotal);
     return samplePose(clip, progress, newPose());
+  }
+
+  // Counts the motion down. When it ends, the combo waits a moment for the next press.
+  function updateAttack(player, dt) {
+    if (player.punchT > 0) {
+      player.punchT = Math.max(0, player.punchT - dt);
+      if (player.punchT === 0) player.comboT = COMBO_GAP;
+    } else if (player.comboT > 0) {
+      player.comboT = Math.max(0, player.comboT - dt);
+      if (player.comboT === 0) player.punchStep = 0;
+    }
   }
 
   // A vandal (kicking, or on the way to kick) within reach and in front of the player, to punch.
@@ -277,7 +296,14 @@ export function createWalkMode({ city, getState, clips, sale, vandal, fix, say, 
   // Attack swings at all times. A vandal in front is punched and the attack ends; any other
   // passer-by in front is shoved and runs off; with nobody there, the punch hits the air.
   function attack() {
-    mode.player.punchT = PUNCH_SECONDS;
+    const player = mode.player;
+    if (player.punchT > 0) return; // one motion at a time: the next waits for this one to finish
+    const move = ATTACKS[player.punchStep];
+    player.punchStep = (player.punchStep + 1) % ATTACKS.length;
+    player.punchClip = move.clip;
+    player.punchTotal = move.seconds;
+    player.punchT = move.seconds;
+    player.comboT = 0;
     const vandalWalker = nearVandal();
     if (vandalWalker) {
       vandal.punch(vandalWalker.attackId);
