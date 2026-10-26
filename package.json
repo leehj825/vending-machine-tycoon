@@ -1,0 +1,17 @@
+{
+  "name": "vending-machine-tycoon",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Vending machine tycoon: a web game with three.js, packaged for Android with Capacitor.",
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/sim.test.js tests/walk.test.js tests/city.test.js tests/staff.test.js",
+    "serve": "python3 -m http.server 8080 --directory www"
+  },
+  "dependencies": {
+    "@capacitor-community/admob": "^6.2.0",
+    "@capacitor/android": "^6.2.2",
+    "@capacitor/cli": "^6.2.2",
+    "@capacitor/core": "^6.2.2"
+  }
+}
