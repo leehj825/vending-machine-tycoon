@@ -238,12 +238,44 @@ function lamp(m, px, pz) {
   m.box(px - 0.05, 0.42, pz - 0.05, px + 0.05, 0.48, pz + 0.05, LAMP_LIGHT);
 }
 
+// A fire hydrant.
+function hydrant(m, px, pz) {
+  m.box(px - 0.035, 0, pz - 0.035, px + 0.035, 0.09, pz + 0.035, RED);
+  m.box(px - 0.045, 0.09, pz - 0.045, px + 0.045, 0.115, pz + 0.045, 0xb71c1c);
+  m.box(px - 0.06, 0.05, pz - 0.015, px + 0.06, 0.07, pz + 0.015, RED);
+}
+
+// A stop sign on a pole.
+function stopSign(m, px, pz) {
+  m.box(px - 0.01, 0, pz - 0.01, px + 0.01, 0.34, pz + 0.01, GREY);
+  m.prism(px, pz, 0.06, 8, 0.34, 0.37, RED);
+  m.prism(px, pz, 0.04, 8, 0.37, 0.375, WHITE);
+}
+
+// A bus stop: a small shelter with a bench and a sign.
+function busStop(m, x, y) {
+  m.box(x + 0.3, 0, y + 0.06, x + 0.33, 0.28, y + 0.09, GREY);
+  m.box(x + 0.7, 0, y + 0.06, x + 0.73, 0.28, y + 0.09, GREY);
+  m.box(x + 0.28, 0.28, y + 0.04, x + 0.75, 0.32, y + 0.16, 0x1e88e5);
+  m.box(x + 0.34, 0.08, y + 0.08, x + 0.69, 0.1, y + 0.13, BROWN);
+  m.box(x + 0.8, 0, y + 0.1, x + 0.82, 0.4, y + 0.12, GREY);
+  m.box(x + 0.77, 0.4, y + 0.09, x + 0.85, 0.46, y + 0.13, 0x1e88e5);
+}
+
 // Lamps and street trees on the pavement of tiles beside a road.
 function streetObjects(m, grid, x, y, cell) {
   if (cell.type === 'road') return;
   const onRoad = isRoad(grid, x, y - 1) || isRoad(grid, x, y + 1) || isRoad(grid, x - 1, y) || isRoad(grid, x + 1, y);
   if (!onRoad) return;
-  if ((x + y) % 2 === 0) {
+  // Now and then a different piece of street furniture takes the place of a lamp or a tree.
+  const prop = cellNoise(x * 3 + 4, y * 5 + 1);
+  if (prop > 0.9) {
+    busStop(m, x, y);
+  } else if (prop > 0.8) {
+    hydrant(m, x + 0.9, y + 0.1);
+  } else if (prop > 0.72) {
+    stopSign(m, x + 0.9, y + 0.1);
+  } else if ((x + y) % 2 === 0) {
     lamp(m, x + 0.9, y + 0.1);
   } else {
     const tx = x + 0.12;

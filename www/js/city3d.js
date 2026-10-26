@@ -221,7 +221,8 @@ export function createCityView(container, onTap) {
       seen.add(p.key);
       let mesh = vehicles.get(p.key);
       if (!mesh) {
-        mesh = buildTruck3d();
+        // Trucks alternate between the box truck and the van, by their number.
+        mesh = buildTruck3d(Number(p.key.slice(1)) % 2);
         vehicles.set(p.key, mesh);
         vehicleGroup.add(mesh);
       }
