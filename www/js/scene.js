@@ -236,99 +236,252 @@ function variant(palette, x, y) {
   return palette[(x * 7 + y * 13 + x * y) % palette.length];
 }
 
-function building(m, x, y, zone) {
+// Three designs for each type of shop front, picked from the tile's position, so a street of shops
+// does not repeat. Every design keeps the type's footprint and height (see BODIES), so the cornice,
+// the machine and the purchase marker still sit right; the walls, roof, entrance and extras differ.
+const SHOP_WALLS = [0xf2c14e, 0xf3e0c7, 0xcfd8dc];
+const OFFICE_WINGS = [0x3d5a80, 0x37474f, 0x2e7d6e];
+
+function shop(m, x, y, v) {
+  if (v === 0) {
+    // A corner shop with a striped awning.
+    m.box(x + 0.1, 0, y + 0.12, x + 0.9, 0.55, y + 0.88, SHOP_WALLS[0], { top: 0x8d6e63 });
+    m.windows(x + 0.1, y + 0.12, x + 0.9, y + 0.88, 0.12, 0.42, { cols: 3, rows: 1, glass: GLASS, frame: TRIM, lit: WARM });
+    m.box(x + 0.44, 0, y + 0.88, x + 0.56, 0.34, y + 0.93, BROWN);
+    m.box(x + 0.06, 0.42, y + 0.84, x + 0.94, 0.52, y + 0.94, 0xe4572e);
+    for (const sx of [0.16, 0.44, 0.72]) m.box(x + sx, 0.42, y + 0.94, x + sx + 0.1, 0.52, y + 0.955, WHITE);
+    m.box(x + 0.3, 0.55, y + 0.84, x + 0.7, 0.66, y + 0.9, 0xfff176);
+    m.box(x + 0.7, 0.55, y + 0.3, x + 0.84, 0.63, y + 0.46, DARK_GREY);
+  } else if (v === 1) {
+    // A café: green awning, a round sign, a table and a planter out front.
+    m.box(x + 0.1, 0, y + 0.12, x + 0.9, 0.55, y + 0.88, SHOP_WALLS[1], { top: 0xa1887f });
+    m.windows(x + 0.1, y + 0.12, x + 0.9, y + 0.88, 0.12, 0.42, { cols: 3, rows: 1, glass: GLASS, frame: TRIM, lit: WARM });
+    m.box(x + 0.44, 0, y + 0.88, x + 0.56, 0.34, y + 0.93, BROWN);
+    m.box(x + 0.06, 0.42, y + 0.84, x + 0.94, 0.5, y + 0.94, 0x2e7d32);
+    for (const sx of [0.14, 0.38, 0.62, 0.84]) m.box(x + sx, 0.42, y + 0.94, x + sx + 0.07, 0.5, y + 0.955, WHITE);
+    m.prism(x + 0.5, y + 0.8, 0.1, 10, 0.55, 0.6, 0xfff176);
+    m.prism(x + 0.5, y + 0.8, 0.07, 10, 0.6, 0.64, 0xd84315);
+    m.box(x + 0.16, 0, y + 0.94, x + 0.3, 0.1, y + 1.0, 0x8d6e63, { top: 0xffe0b2 });
+    m.box(x + 0.34, 0, y + 0.95, x + 0.46, 0.1, y + 1.0, BUSH);
+    m.box(x + 0.7, 0.55, y + 0.3, x + 0.84, 0.63, y + 0.46, DARK_GREY);
+  } else {
+    // A boutique: a big glass front, a thin blue canopy, and a neon sign on the roof.
+    m.box(x + 0.1, 0, y + 0.12, x + 0.9, 0.55, y + 0.88, SHOP_WALLS[2], { top: 0x607d8b });
+    m.windows(x + 0.1, y + 0.12, x + 0.9, y + 0.88, 0.12, 0.42, { cols: 2, rows: 1, glass: GLASS, frame: TRIM, lit: WARM });
+    m.box(x + 0.2, 0.06, y + 0.88, x + 0.8, 0.4, y + 0.9, GLASS);
+    m.box(x + 0.44, 0, y + 0.9, x + 0.56, 0.3, y + 0.93, GLASS_DARK);
+    m.box(x + 0.12, 0.44, y + 0.86, x + 0.88, 0.5, y + 0.95, 0x1565c0);
+    m.box(x + 0.3, 0.55, y + 0.5, x + 0.7, 0.68, y + 0.54, 0xff4081);
+    m.box(x + 0.34, 0.58, y + 0.54, x + 0.66, 0.64, y + 0.56, 0xfff59d);
+    m.box(x + 0.16, 0.55, y + 0.25, x + 0.3, 0.63, y + 0.4, DARK_GREY);
+  }
+  m.box(x + 0.12, 0, y + 0.9, x + 0.2, 0.1, y + 0.98, BUSH);
+  lamp(m, x + 0.93, y + 0.93);
+}
+
+function gym(m, x, y, v) {
+  if (v === 0) {
+    // Brick, with a red entrance and two dumbbell vents.
+    m.box(x + 0.06, 0, y + 0.12, x + 0.94, 0.5, y + 0.9, BRICK, { top: 0x6b7280 });
+    m.windows(x + 0.06, y + 0.12, x + 0.94, y + 0.9, 0.12, 0.34, { cols: 5, rows: 1, glass: GLASS, frame: TRIM, lit: WARM });
+    m.box(x + 0.3, 0, y + 0.62, x + 0.7, 0.86, y + 0.92, 0x37474f, { top: 0x263238 });
+    m.box(x + 0.36, 0.2, y + 0.92, x + 0.64, 0.7, y + 0.94, GLASS);
+    m.box(x + 0.3, 0.72, y + 0.6, x + 0.7, 0.84, y + 0.94, RED);
+    m.box(x + 0.4, 0.76, y + 0.94, x + 0.6, 0.8, y + 0.96, WHITE);
+    m.prism(x + 0.25, y + 0.35, 0.1, 6, 0.5, 0.62, 0x90a4ae);
+    m.prism(x + 0.7, y + 0.35, 0.1, 6, 0.5, 0.62, 0x90a4ae);
+  } else if (v === 1) {
+    // Modern: grey concrete, a yellow band, a glass wall and a dumbbell on the roof.
+    m.box(x + 0.08, 0, y + 0.1, x + 0.92, 0.7, y + 0.9, 0x90a4ae, { top: 0x455a64 });
+    m.windows(x + 0.08, y + 0.1, x + 0.92, y + 0.9, 0.38, 0.62, { cols: 4, rows: 1, glass: GLASS, frame: TRIM, lit: WARM });
+    m.box(x + 0.06, 0.3, y + 0.88, x + 0.94, 0.36, y + 0.92, 0xffc107);
+    m.box(x + 0.34, 0, y + 0.9, x + 0.66, 0.3, y + 0.93, GLASS_DARK);
+    m.box(x + 0.34, 0.74, y + 0.46, x + 0.66, 0.78, y + 0.5, DARK_GREY);
+    m.prism(x + 0.3, y + 0.48, 0.06, 6, 0.7, 0.86, 0x37474f);
+    m.prism(x + 0.7, y + 0.48, 0.06, 6, 0.7, 0.86, 0x37474f);
+  } else {
+    // A boxing gym: navy walls, a red roll-up door and a white sign.
+    m.box(x + 0.08, 0, y + 0.1, x + 0.92, 0.7, y + 0.9, 0x1e3a5f, { top: 0x14243b });
+    m.windows(x + 0.08, y + 0.1, x + 0.92, y + 0.9, 0.46, 0.62, { cols: 5, rows: 1, glass: GLASS, frame: TRIM, lit: WARM });
+    m.box(x + 0.26, 0, y + 0.9, x + 0.74, 0.34, y + 0.935, RED);
+    for (const gy of [0.08, 0.16, 0.24]) m.box(x + 0.26, gy, y + 0.935, x + 0.74, gy + 0.02, y + 0.945, 0xb71c1c);
+    m.box(x + 0.22, 0.38, y + 0.9, x + 0.78, 0.5, y + 0.94, WHITE);
+    m.box(x + 0.3, 0.41, y + 0.94, x + 0.7, 0.47, y + 0.95, RED);
+  }
+  lamp(m, x + 0.93, y + 0.93);
+}
+
+function office(m, x, y, v) {
+  const wall = variant(OFFICE_BODIES, x, y);
+  m.box(x + 0.2, 0, y + 0.2, x + 0.8, 1.5, y + 0.8, wall, { top: 0x3d5a80 });
+  m.windows(x + 0.2, y + 0.2, x + 0.8, y + 0.8, 0.12, 1.42, { cols: 3, rows: 6, glass: GLASS, frame: TRIM, lit: WARM });
+  if (v === 0) {
+    // A plain tower with a plant room and an aerial.
+    m.box(x + 0.3, 1.5, y + 0.3, x + 0.7, 1.62, y + 0.7, 0x3d5a80);
+    m.box(x + 0.32, 1.62, y + 0.32, x + 0.44, 1.7, y + 0.44, GREY);
+    m.box(x + 0.56, 1.62, y + 0.56, x + 0.6, 1.95, y + 0.6, GREY);
+  } else if (v === 1) {
+    // A stepped tower: a second, narrower tier with its own windows and a dark band between them.
+    const wing = OFFICE_WINGS[(x + y) % OFFICE_WINGS.length];
+    m.box(x + 0.18, 1.5, y + 0.18, x + 0.82, 1.56, y + 0.82, 0x263238);
+    m.box(x + 0.3, 1.56, y + 0.3, x + 0.7, 1.86, y + 0.7, wing, { top: 0x263238 });
+    m.windows(x + 0.3, y + 0.3, x + 0.7, y + 0.7, 1.6, 1.82, { cols: 2, rows: 2, glass: GLASS, frame: TRIM, lit: WARM });
+    m.box(x + 0.49, 1.86, y + 0.49, x + 0.51, 2.1, y + 0.51, GREY);
+  } else {
+    // A roof garden: a green deck with two small trees, behind a low glass rail.
+    m.box(x + 0.22, 1.5, y + 0.22, x + 0.78, 1.56, y + 0.78, 0x6d8f5a);
+    m.box(x + 0.22, 1.56, y + 0.22, x + 0.78, 1.6, y + 0.24, GLASS);
+    m.box(x + 0.22, 1.56, y + 0.76, x + 0.78, 1.6, y + 0.78, GLASS);
+    for (const [tx, tz] of [[0.36, 0.4], [0.6, 0.58]]) {
+      m.box(x + tx - 0.015, 1.56, y + tz - 0.015, x + tx + 0.015, 1.64, y + tz + 0.015, TRUNK);
+      m.cone(x + tx, y + tz, 0.08, 7, 1.62, 1.84, FOLIAGE);
+    }
+    m.box(x + 0.62, 1.56, y + 0.3, x + 0.74, 1.66, y + 0.42, GREY);
+  }
+  m.box(x + 0.42, 0, y + 0.8, x + 0.58, 0.24, y + 0.86, GLASS_DARK);
+  m.box(x + 0.36, 0.24, y + 0.78, x + 0.64, 0.28, y + 0.9, 0x1f2a44);
+  lamp(m, x + 0.93, y + 0.93);
+}
+
+function school(m, x, y, v) {
+  if (v === 0) {
+    // A cream school with a clock tower and a flag.
+    const cream = 0xf2d6a2;
+    const creamTop = 0xe0be85;
+    const tower = 0xd9b77e;
+    m.box(x + 0.08, 0, y + 0.22, x + 0.92, 0.46, y + 0.88, cream, { top: creamTop });
+    m.windows(x + 0.08, y + 0.22, x + 0.92, y + 0.88, 0.1, 0.34, { cols: 6, rows: 1, glass: GLASS, frame: TRIM, lit: WARM });
+    m.box(x + 0.38, 0, y + 0.08, x + 0.62, 0.8, y + 0.32, tower, { top: creamTop });
+    m.windows(x + 0.38, y + 0.08, x + 0.62, y + 0.32, 0.5, 0.7, { cols: 1, rows: 1, glass: GLASS, frame: TRIM });
+    m.roof(x + 0.35, y + 0.05, x + 0.65, y + 0.35, 0.8, 1.0, 0xc0392b);
+    m.box(x + 0.44, 0, y + 0.88, x + 0.56, 0.26, y + 0.93, BROWN);
+    m.box(x + 0.34, 0.28, y + 0.88, x + 0.66, 0.36, y + 0.93, 0xffd54f);
+    m.box(x + 0.2, 0.46, y + 0.5, x + 0.23, 0.9, y + 0.53, GREY);
+    m.box(x + 0.23, 0.78, y + 0.5, x + 0.36, 0.86, y + 0.53, RED);
+  } else if (v === 1) {
+    // A red-brick school with a bell tower in the middle and a blue spire.
+    m.box(x + 0.1, 0, y + 0.12, x + 0.9, 0.5, y + 0.88, 0xc0674a, { top: 0x8d4b3a });
+    m.windows(x + 0.1, y + 0.12, x + 0.9, y + 0.88, 0.1, 0.4, { cols: 6, rows: 1, glass: GLASS, frame: WHITE, lit: WARM });
+    m.box(x + 0.4, 0.5, y + 0.4, x + 0.6, 0.8, y + 0.6, 0xc0674a, { top: 0x8d4b3a });
+    m.box(x + 0.44, 0.6, y + 0.6, x + 0.56, 0.74, y + 0.62, GLASS);
+    m.roof(x + 0.38, y + 0.38, x + 0.62, y + 0.62, 0.8, 1.04, 0x3949ab);
+    m.box(x + 0.44, 0, y + 0.88, x + 0.56, 0.28, y + 0.93, BROWN);
+    m.box(x + 0.4, 0.3, y + 0.88, x + 0.6, 0.34, y + 0.94, WHITE);
+    m.box(x + 0.82, 0.5, y + 0.2, x + 0.84, 0.86, y + 0.22, GREY);
+    m.box(x + 0.7, 0.76, y + 0.2, x + 0.82, 0.84, y + 0.22, 0x1565c0);
+  } else {
+    // A modern school: pale walls, a green roof, and blocks of red and blue on the front.
+    m.box(x + 0.1, 0, y + 0.12, x + 0.9, 0.5, y + 0.88, 0xfff3c4, { top: 0x4caf50 });
+    m.windows(x + 0.1, y + 0.12, x + 0.9, y + 0.88, 0.14, 0.38, { cols: 5, rows: 1, glass: GLASS, frame: TRIM, lit: WARM });
+    m.box(x + 0.1, 0, y + 0.88, x + 0.34, 0.46, y + 0.93, RED);
+    m.box(x + 0.66, 0, y + 0.88, x + 0.9, 0.46, y + 0.93, 0x1e88e5);
+    m.box(x + 0.44, 0, y + 0.88, x + 0.56, 0.28, y + 0.94, BROWN);
+    m.box(x + 0.7, 0.5, y + 0.3, x + 0.8, 0.54, y + 0.36, 0xffc107);
+    m.prism(x + 0.3, y + 0.5, 0.07, 8, 0.5, 0.62, 0xffc107);
+  }
+  lamp(m, x + 0.07, y + 0.93);
+}
+
+function subway(m, x, y, v) {
+  m.box(x + 0.1, 0, y + 0.1, x + 0.9, 0.04, y + 0.9, 0xbdbdb5);
+  if (v === 0) {
+    // A stair house with a round sign on a pole.
+    m.box(x + 0.32, 0, y + 0.3, x + 0.68, 0.3, y + 0.7, 0x2e5a80, { top: 0x1f3f5c });
+    m.box(x + 0.36, 0.04, y + 0.66, x + 0.64, 0.1, y + 0.72, 0x263238);
+    m.box(x + 0.4, 0.1, y + 0.7, x + 0.6, 0.16, y + 0.76, 0x263238);
+    m.box(x + 0.28, 0.3, y + 0.26, x + 0.72, 0.34, y + 0.74, GREY, { top: 0x9aa5b1 });
+    m.box(x + 0.7, 0, y + 0.5, x + 0.74, 1.05, y + 0.54, DARK_GREY);
+    m.prism(x + 0.72, y + 0.52, 0.14, 14, 1.0, 1.12, RED);
+    m.box(x + 0.56, 1.04, y + 0.5, x + 0.88, 1.08, y + 0.56, 0x1565c0);
+  } else if (v === 1) {
+    // A green stair house under a glass canopy.
+    m.box(x + 0.3, 0, y + 0.3, x + 0.7, 0.3, y + 0.7, 0x2e7d32, { top: 0x1b5e20 });
+    m.box(x + 0.34, 0.04, y + 0.66, x + 0.66, 0.1, y + 0.72, 0x263238);
+    m.box(x + 0.26, 0.3, y + 0.24, x + 0.74, 0.34, y + 0.76, GLASS, { top: GLASS });
+    for (const [cx, cz] of [[0.27, 0.25], [0.73, 0.25], [0.27, 0.75], [0.73, 0.75]]) m.box(x + cx - 0.015, 0.04, y + cz - 0.015, x + cx + 0.015, 0.3, y + cz + 0.015, DARK_GREY);
+    m.box(x + 0.16, 0, y + 0.42, x + 0.2, 0.9, y + 0.46, DARK_GREY);
+    m.box(x + 0.12, 0.84, y + 0.34, x + 0.24, 0.98, y + 0.54, 0x2e7d32);
+    m.box(x + 0.15, 0.88, y + 0.52, x + 0.21, 0.94, y + 0.55, WHITE);
+  } else {
+    // A kiosk with a red canopy and a sign board.
+    m.box(x + 0.3, 0, y + 0.3, x + 0.7, 0.3, y + 0.7, 0xeceff1, { top: 0xcfd8dc });
+    m.box(x + 0.36, 0.04, y + 0.66, x + 0.64, 0.1, y + 0.72, 0x263238);
+    m.box(x + 0.24, 0.3, y + 0.24, x + 0.76, 0.36, y + 0.76, RED);
+    m.box(x + 0.3, 0.36, y + 0.46, x + 0.7, 0.62, y + 0.5, 0x1565c0);
+    m.box(x + 0.36, 0.42, y + 0.5, x + 0.64, 0.56, y + 0.51, WHITE);
+  }
+  lamp(m, x + 0.07, y + 0.93);
+}
+
+function hospital(m, x, y, v) {
+  m.box(x + 0.1, 0, y + 0.1, x + 0.9, 0.9, y + 0.9, WHITE, { top: 0xe3e8ef });
+  m.windows(x + 0.1, y + 0.1, x + 0.9, y + 0.9, 0.3, 0.86, { cols: 4, rows: 2, glass: GLASS, frame: TRIM, lit: WARM });
+  m.box(x + 0.34, 0.24, y + 0.9, x + 0.66, 0.3, y + 0.99, 0x26a69a);
+  m.box(x + 0.42, 0, y + 0.9, x + 0.58, 0.24, y + 0.94, GLASS_DARK);
+  if (v === 0) {
+    // A red cross on the roof.
+    m.box(x + 0.42, 0.9, y + 0.28, x + 0.58, 0.94, y + 0.72, RED);
+    m.box(x + 0.28, 0.9, y + 0.42, x + 0.72, 0.94, y + 0.58, RED);
+  } else if (v === 1) {
+    // A red band round the middle and a rooftop water tank.
+    m.box(x + 0.08, 0.24, y + 0.08, x + 0.92, 0.3, y + 0.12, RED);
+    m.box(x + 0.08, 0.24, y + 0.88, x + 0.92, 0.3, y + 0.92, RED);
+    m.prism(x + 0.3, y + 0.35, 0.1, 10, 0.9, 1.08, 0xb0bec5);
+    m.cone(x + 0.3, y + 0.35, 0.1, 10, 1.08, 1.16, 0x78909c);
+    m.box(x + 0.5, 0.9, y + 0.5, x + 0.8, 0.96, y + 0.8, 0xe3e8ef);
+  } else {
+    // A helipad on the roof: a round yellow pad with an H.
+    m.prism(x + 0.5, y + 0.5, 0.3, 16, 0.9, 0.93, 0x546e7a);
+    m.prism(x + 0.5, y + 0.5, 0.25, 16, 0.93, 0.945, 0xffc107);
+    m.box(x + 0.4, 0.945, y + 0.4, x + 0.44, 0.955, y + 0.6, WHITE);
+    m.box(x + 0.56, 0.945, y + 0.4, x + 0.6, 0.955, y + 0.6, WHITE);
+    m.box(x + 0.44, 0.945, y + 0.48, x + 0.56, 0.955, y + 0.52, WHITE);
+  }
+  lamp(m, x + 0.93, y + 0.93);
+}
+
+function university(m, x, y, v) {
+  const stone = [0xd8c3a5, 0xc9d3dd, 0xb9d6d0][v];
+  const stoneTop = [0xb89f82, 0x9fb0bd, 0x8fbab2][v];
+  m.box(x + 0.1, 0, y + 0.16, x + 0.9, 0.7, y + 0.8, stone, { top: stoneTop });
+  m.windows(x + 0.1, y + 0.16, x + 0.9, y + 0.8, 0.12, 0.5, { cols: 6, rows: 2, glass: GLASS, frame: TRIM, lit: WARM });
+  m.box(x + 0.22, 0, y + 0.8, x + 0.78, 0.06, y + 0.95, 0xeee6d8);
+  m.box(x + 0.24, 0.6, y + 0.78, x + 0.76, 0.68, y + 0.92, 0xeee6d8);
+  m.roof(x + 0.22, y + 0.76, x + 0.78, y + 0.92, 0.68, 0.8, 0xe8dcc8);
+  for (const cx of [0.27, 0.4, 0.6, 0.73]) m.box(x + cx - 0.03, 0.06, y + 0.82, x + cx + 0.03, 0.6, y + 0.88, WHITE);
+  if (v === 0) {
+    // A classic hall with a blue dome.
+    m.box(x + 0.36, 0.7, y + 0.36, x + 0.64, 0.82, y + 0.64, stone, { top: stoneTop });
+    m.prism(x + 0.5, y + 0.5, 0.2, 10, 0.82, 0.92, 0x3f51b5);
+    m.cone(x + 0.5, y + 0.5, 0.2, 10, 0.92, 1.08, 0x3f51b5);
+  } else if (v === 1) {
+    // A library with a clock tower.
+    m.box(x + 0.4, 0.7, y + 0.4, x + 0.6, 1.0, y + 0.6, stone, { top: stoneTop });
+    m.prism(x + 0.5, y + 0.6, 0.07, 12, 0.78, 0.8, WHITE);
+    m.roof(x + 0.38, y + 0.38, x + 0.62, y + 0.62, 1.0, 1.2, 0x8d6e63);
+    m.box(x + 0.48, 1.2, y + 0.48, x + 0.52, 1.3, y + 0.52, GREY);
+  } else {
+    // A science hall with a glass dome and a satellite dish.
+    m.box(x + 0.34, 0.7, y + 0.34, x + 0.66, 0.78, y + 0.66, stone, { top: stoneTop });
+    m.prism(x + 0.5, y + 0.5, 0.2, 12, 0.78, 0.9, 0xb3e5fc);
+    m.cone(x + 0.5, y + 0.5, 0.2, 12, 0.9, 1.0, 0x81d4fa);
+    m.box(x + 0.7, 0.7, y + 0.3, x + 0.84, 0.76, y + 0.44, DARK_GREY);
+    m.cone(x + 0.77, y + 0.37, 0.08, 8, 0.76, 0.9, WHITE);
+  }
+  lamp(m, x + 0.07, y + 0.93);
+}
+
+// Which of the three designs a tile gets, by its position.
+export function designOf(x, y) {
+  return Math.min(2, Math.floor(cellNoise(x * 5 + 2, y * 3 + 7) * 3));
+}
+
+export function building(m, x, y, zone) {
   const body = BODIES[zone];
   const [bx0, bz0, bx1, bz1, top] = body;
+  const v = designOf(x, y);
   m.box(x + bx0 - 0.015, 0, y + bz0 - 0.015, x + bx1 + 0.015, 0.06, y + bz1 + 0.015, PLINTH);
-  switch (zone) {
-    case 'shop':
-      m.box(x + 0.1, 0, y + 0.12, x + 0.9, 0.55, y + 0.88, 0xf2c14e, { top: 0x8d6e63 });
-      m.windows(x + 0.1, y + 0.12, x + 0.9, y + 0.88, 0.12, 0.42, { cols: 3, rows: 1, glass: GLASS, frame: TRIM, lit: WARM });
-      m.box(x + 0.44, 0, y + 0.88, x + 0.56, 0.34, y + 0.93, BROWN);
-      m.box(x + 0.06, 0.42, y + 0.84, x + 0.94, 0.52, y + 0.94, 0xe4572e);
-      for (const sx of [0.16, 0.44, 0.72]) m.box(x + sx, 0.42, y + 0.94, x + sx + 0.1, 0.52, y + 0.955, WHITE);
-      m.box(x + 0.3, 0.55, y + 0.84, x + 0.7, 0.66, y + 0.9, 0xfff176);
-      m.box(x + 0.12, 0, y + 0.9, x + 0.22, 0.12, y + 0.98, BUSH);
-      m.box(x + 0.78, 0, y + 0.9, x + 0.88, 0.12, y + 0.98, BUSH);
-      m.box(x + 0.7, 0.55, y + 0.3, x + 0.84, 0.63, y + 0.46, DARK_GREY);
-      lamp(m, x + 0.93, y + 0.93);
-      break;
-    case 'gym':
-      m.box(x + 0.06, 0, y + 0.12, x + 0.94, 0.5, y + 0.9, BRICK, { top: 0x6b7280 });
-      m.windows(x + 0.06, y + 0.12, x + 0.94, y + 0.9, 0.12, 0.34, { cols: 5, rows: 1, glass: GLASS, frame: TRIM, lit: WARM });
-      m.box(x + 0.3, 0, y + 0.62, x + 0.7, 0.86, y + 0.92, 0x37474f, { top: 0x263238 });
-      m.box(x + 0.36, 0.2, y + 0.92, x + 0.64, 0.7, y + 0.94, GLASS);
-      m.box(x + 0.3, 0.72, y + 0.6, x + 0.7, 0.84, y + 0.94, RED);
-      m.box(x + 0.4, 0.76, y + 0.94, x + 0.6, 0.8, y + 0.96, WHITE);
-      m.prism(x + 0.25, y + 0.35, 0.1, 6, 0.5, 0.62, 0x90a4ae);
-      m.prism(x + 0.7, y + 0.35, 0.1, 6, 0.5, 0.62, 0x90a4ae);
-      lamp(m, x + 0.93, y + 0.93);
-      break;
-    case 'office':
-      m.box(x + 0.2, 0, y + 0.2, x + 0.8, 1.5, y + 0.8, variant(OFFICE_BODIES, x, y), { top: 0x3d5a80 });
-      m.windows(x + 0.2, y + 0.2, x + 0.8, y + 0.8, 0.12, 1.42, { cols: 3, rows: 6, glass: GLASS, frame: TRIM, lit: WARM });
-      m.box(x + 0.3, 1.5, y + 0.3, x + 0.7, 1.62, y + 0.7, 0x3d5a80);
-      m.box(x + 0.32, 1.62, y + 0.32, x + 0.44, 1.7, y + 0.44, GREY);
-      m.box(x + 0.56, 1.62, y + 0.56, x + 0.6, 1.95, y + 0.6, GREY);
-      m.box(x + 0.42, 0, y + 0.8, x + 0.58, 0.24, y + 0.86, GLASS_DARK);
-      m.box(x + 0.36, 0.24, y + 0.78, x + 0.64, 0.28, y + 0.9, 0x1f2a44);
-      lamp(m, x + 0.93, y + 0.93);
-      break;
-    case 'school': {
-      const cream = 0xf2d6a2;
-      const creamTop = 0xe0be85;
-      const tower = 0xd9b77e;
-      m.box(x + 0.08, 0, y + 0.22, x + 0.92, 0.46, y + 0.88, cream, { top: creamTop });
-      m.windows(x + 0.08, y + 0.22, x + 0.92, y + 0.88, 0.1, 0.34, { cols: 6, rows: 1, glass: GLASS, frame: TRIM, lit: WARM });
-      m.box(x + 0.38, 0, y + 0.08, x + 0.62, 0.8, y + 0.32, tower, { top: creamTop });
-      m.windows(x + 0.38, y + 0.08, x + 0.62, y + 0.32, 0.5, 0.7, { cols: 1, rows: 1, glass: GLASS, frame: TRIM });
-      m.roof(x + 0.35, y + 0.05, x + 0.65, y + 0.35, 0.8, 1.0, 0xc0392b);
-      m.box(x + 0.44, 0, y + 0.88, x + 0.56, 0.26, y + 0.93, BROWN);
-      m.box(x + 0.34, 0.28, y + 0.88, x + 0.66, 0.36, y + 0.93, 0xffd54f);
-      m.box(x + 0.2, 0.46, y + 0.5, x + 0.23, 0.9, y + 0.53, GREY);
-      m.box(x + 0.23, 0.78, y + 0.5, x + 0.36, 0.86, y + 0.53, RED);
-      lamp(m, x + 0.07, y + 0.93);
-      break;
-    }
-    case 'subway':
-      m.box(x + 0.1, 0, y + 0.1, x + 0.9, 0.04, y + 0.9, 0xbdbdb5);
-      m.box(x + 0.32, 0, y + 0.3, x + 0.68, 0.3, y + 0.7, 0x2e5a80, { top: 0x1f3f5c });
-      m.box(x + 0.36, 0.04, y + 0.66, x + 0.64, 0.1, y + 0.72, 0x263238);
-      m.box(x + 0.4, 0.1, y + 0.7, x + 0.6, 0.16, y + 0.76, 0x263238);
-      m.box(x + 0.28, 0.3, y + 0.26, x + 0.72, 0.34, y + 0.74, GREY, { top: 0x9aa5b1 });
-      m.box(x + 0.7, 0, y + 0.5, x + 0.74, 1.05, y + 0.54, DARK_GREY);
-      m.prism(x + 0.72, y + 0.52, 0.14, 14, 1.0, 1.12, RED);
-      m.box(x + 0.56, 1.04, y + 0.5, x + 0.88, 1.08, y + 0.56, 0x1565c0);
-      lamp(m, x + 0.07, y + 0.93);
-      break;
-    case 'hospital':
-      m.box(x + 0.1, 0, y + 0.1, x + 0.9, 0.9, y + 0.9, WHITE, { top: 0xe3e8ef });
-      m.windows(x + 0.1, y + 0.1, x + 0.9, y + 0.9, 0.3, 0.86, { cols: 4, rows: 2, glass: GLASS, frame: TRIM, lit: WARM });
-      m.box(x + 0.34, 0.24, y + 0.9, x + 0.66, 0.3, y + 0.99, 0x26a69a);
-      m.box(x + 0.42, 0, y + 0.9, x + 0.58, 0.24, y + 0.94, GLASS_DARK);
-      m.box(x + 0.42, 0.9, y + 0.28, x + 0.58, 0.94, y + 0.72, RED);
-      m.box(x + 0.28, 0.9, y + 0.42, x + 0.72, 0.94, y + 0.58, RED);
-      lamp(m, x + 0.93, y + 0.93);
-      break;
-    case 'university': {
-      const stone = 0xd8c3a5;
-      const stoneTop = 0xb89f82;
-      const dome = 0x3f51b5;
-      m.box(x + 0.1, 0, y + 0.16, x + 0.9, 0.7, y + 0.8, stone, { top: stoneTop });
-      m.windows(x + 0.1, y + 0.16, x + 0.9, y + 0.8, 0.12, 0.5, { cols: 6, rows: 2, glass: GLASS, frame: TRIM, lit: WARM });
-      m.box(x + 0.22, 0, y + 0.8, x + 0.78, 0.06, y + 0.95, 0xeee6d8);
-      m.box(x + 0.24, 0.6, y + 0.78, x + 0.76, 0.68, y + 0.92, 0xeee6d8);
-      m.roof(x + 0.22, y + 0.76, x + 0.78, y + 0.92, 0.68, 0.8, 0xe8dcc8);
-      m.box(x + 0.36, 0.7, y + 0.36, x + 0.64, 0.82, y + 0.64, stone, { top: stoneTop });
-      m.prism(x + 0.5, y + 0.5, 0.2, 10, 0.82, 0.92, dome);
-      m.cone(x + 0.5, y + 0.5, 0.2, 10, 0.92, 1.08, dome);
-      for (const cx of [0.27, 0.4, 0.6, 0.73]) m.box(x + cx - 0.03, 0.06, y + 0.82, x + cx + 0.03, 0.6, y + 0.88, WHITE);
-      lamp(m, x + 0.07, y + 0.93);
-      break;
-    }
-    default:
-      break;
-  }
+  ({ shop, gym, office, school, subway, hospital, university })[zone]?.(m, x, y, v);
   // Cornice rim under the roof: the outer ring only, so the roof stays visible.
   m.box(x + bx0 - 0.02, top, y + bz0 - 0.02, x + bx1 + 0.02, top + 0.04, y + bz0, TRIM);
   m.box(x + bx0 - 0.02, top, y + bz1, x + bx1 + 0.02, top + 0.04, y + bz1 + 0.02, TRIM);
