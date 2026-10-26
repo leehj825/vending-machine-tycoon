@@ -10,6 +10,7 @@ import { applyVolumes, playMusic, playSound, unlockAudio } from './audio.js';
 import { createCityView } from './city3d.js';
 import { createUi } from './ui.js';
 import { createWalkMode } from './walkmode.js';
+import { createInsideView } from './inside3d.js';
 import { startAds, startRewardAds } from './ads.js';
 import { truckPosition } from './sim.js';
 
@@ -103,13 +104,14 @@ async function start(slot) {
     showSheet(machineTitle(state, cell), 'machine', 'city');
   });
 
-  // The machine whose front is open: its inside is drawn in the city, and a bar takes the cash,
-  // refills it, or shuts it. The front closes when the player walks away from the machine.
+  // The machine whose front is open: a close-up of its inside is drawn over the city, and a bar
+  // takes the cash, refills it, or shuts it. The front closes when the player walks away.
+  const closeup = createInsideView($('city'));
   let insideId = null;
-  let insideShown = null;
   let insideT = 0;
   function openInside(id) {
     insideId = id;
+    closeup.show(state.machines.find((m) => m.id === id));
     $('inside-bar').hidden = false;
     refreshInsideBar();
   }
@@ -121,10 +123,9 @@ async function start(slot) {
   function insideFrame(dt) {
     if (insideId !== null && walk.frontMachineId() !== insideId) closeInside();
     const target = insideId === null ? 0 : 1;
-    insideT = insideT < target ? Math.min(target, insideT + dt * 3) : Math.max(target, insideT - dt * 3);
-    if (insideId !== null) insideShown = insideId;
-    if (insideId === null && insideT === 0) insideShown = null;
-    city.setOpen(insideShown, insideT);
+    insideT = insideT < target ? Math.min(target, insideT + dt * 1.6) : Math.max(target, insideT - dt * 3);
+    closeup.setOpen(insideT);
+    closeup.frame(dt);
   }
   function refreshInsideBar() {
     if (insideId === null) return;
@@ -133,15 +134,23 @@ async function start(slot) {
       closeInside();
       return;
     }
+    closeup.update(machine);
     $('inside-info').textContent = `Stock ${sim.machineTotal(machine)}/${sim.machineCapacity(machine)} · Cash $${machine.cash.toFixed(2)}`;
     $('inside-cash').disabled = machine.cash <= 0;
     $('inside-refill').disabled = sim.warehouseTotal(state) === 0 || sim.machineTotal(machine) >= sim.machineCapacity(machine);
   }
   $('inside-cash').addEventListener('click', () => {
     const result = act(() => sim.collectCash(state, insideId));
-    if (result.ok) playSound('coin_collect');
+    if (result.ok) {
+      playSound('coin_collect');
+      closeup.takeCash();
+    }
+    refreshInsideBar();
   });
-  $('inside-refill').addEventListener('click', () => act(() => sim.refillMachine(state, insideId)));
+  $('inside-refill').addEventListener('click', () => {
+    act(() => sim.refillMachine(state, insideId));
+    refreshInsideBar();
+  });
   $('inside-close').addEventListener('click', closeInside);
 
   const walk = createWalkMode({

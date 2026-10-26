@@ -6,7 +6,7 @@ import { buildStaticScene, machineAnchor } from './scene.js';
 import { buildTruck3d } from './truck3d.js';
 import { buildMarkers3d } from './markers3d.js';
 import { CONFIG } from './config.js';
-import { buildMachine3d, buildOpenMachine, DOOR_OPEN_ANGLE } from './machine3d.js';
+import { buildMachine3d } from './machine3d.js';
 import { buildBuildings } from './buildings3d.js';
 import { createFigure, poseFigure } from './figure.js';
 
@@ -75,8 +75,7 @@ export function createCityView(container, onTap) {
   const pickGroup = new THREE.Group();
   const figureGroup = new THREE.Group();
   const vehicleGroup = new THREE.Group();
-  const openGroup = new THREE.Group();
-  scene.add(cityGroup, machineGroup, openGroup, markerGroup, pickGroup, figureGroup, vehicleGroup);
+  scene.add(cityGroup, machineGroup, markerGroup, pickGroup, figureGroup, vehicleGroup);
 
   const vertexMaterial = new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide });
   const cam = { target: new THREE.Vector3(7.5, 0, 7.5), yaw: MAP_VIEW.yaw, pitch: MAP_VIEW.pitch, distance: 16.5 };
@@ -88,13 +87,6 @@ export function createCityView(container, onTap) {
   let machineSignature = '';
   let markerSignature = '';
   let machineMesh = null;
-  // The machine whose front is open (or null), how far its door has swung (0 to 1), and the
-  // open model built for it.
-  let openId = null;
-  let openT = 0;
-  let openMesh = null;
-  let openSignature = '';
-  let lastState = null;
   const markerMeshes = [];
   const figures = new Map();
   const vehicles = new Map();
@@ -132,44 +124,13 @@ export function createCityView(container, onTap) {
 
   // The machines, rebuilt when the set of machines or their stock, cash or condition change.
   function drawMachines(state) {
-    const signature = `${openId}|${state.machines.map((m) => `${m.id}:${m.zone}:${m.cash > 0}:${m.condition}:${Object.values(m.stock).join(',')}`).join('|')}`;
+    const signature = state.machines.map((m) => `${m.id}:${m.zone}:${m.cash > 0}:${m.condition}:${Object.values(m.stock).join(',')}`).join('|');
     if (signature === machineSignature) return;
     machineSignature = signature;
     clear(machineGroup);
     for (const machine of state.machines) {
-      // The machine being opened is drawn open instead, by drawOpen.
-      if (machine.id === openId) continue;
       machineGroup.add(buildMachine3d(machine, machineAnchor(state.city, machine.x, machine.y)));
     }
-  }
-
-  // The open machine: rebuilt when its stock or cash changes, and its door set to how far it has swung.
-  function drawOpen(state) {
-    const machine = openId === null ? null : state.machines.find((m) => m.id === openId);
-    const signature = machine ? `${machine.id}:${machine.cash}:${Object.values(machine.stock).join(',')}` : '';
-    if (signature !== openSignature) {
-      openSignature = signature;
-      clear(openGroup);
-      openMesh = null;
-      if (machine) {
-        openMesh = buildOpenMachine(machine, machineAnchor(state.city, machine.x, machine.y));
-        openGroup.add(openMesh.root);
-      }
-    }
-    if (openMesh) openMesh.door.rotation.y = -DOOR_OPEN_ANGLE * openT;
-  }
-
-  // Opens the machine's front (id) by t, from 0 (shut) to 1 (wide open), or shuts it with id null.
-  function setOpen(id, t) {
-    const changed = id !== openId;
-    openId = id;
-    openT = t;
-    if (changed && lastState) {
-      machineSignature = '';
-      drawMachines(lastState);
-      drawOpen(lastState);
-    }
-    if (openMesh) openMesh.door.rotation.y = -DOOR_OPEN_ANGLE * openT;
   }
 
   // Purchase pins, owned plates and coins. The group bobs gently, as the original's did.
@@ -204,9 +165,7 @@ export function createCityView(container, onTap) {
       buildCity(city);
       setSelected(selected);
     }
-    lastState = state;
     drawMachines(state);
-    drawOpen(state);
     drawMarkers(state, performance.now() / 1000);
   }
 
@@ -454,7 +413,6 @@ export function createCityView(container, onTap) {
     follow,
     walkFacing,
     cameraYaw,
-    setOpen,
   };
 }
 
