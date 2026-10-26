@@ -70,7 +70,7 @@ function slerp(a, ai, b, bi, t, out, oi) {
 // Players walk on grass and roads; buildings are solid. Walkers stay on roads.
 export function playerWalkable(grid, x, y) {
   const cell = cellAt(grid, x, y);
-  return cell !== null && (cell.type === 'road' || cell.type === 'grass' || cell.type === 'park');
+  return cell !== null && (cell.type === 'road' || cell.type === 'grass' || cell.type === 'park' || cell.type === 'lot' || cell.type === 'gas');
 }
 
 export function walkerWalkable(grid, x, y) {

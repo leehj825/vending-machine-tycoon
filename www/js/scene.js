@@ -113,14 +113,58 @@ function roadTile(m, grid, x, y) {
   else if (across && !along) m.flat(x + 0.1, y + 0.47, x + 0.9, y + 0.53, 0.004, LANE);
 }
 
-// A park: a lawn with a path, a pond and a few trees. Nothing to buy here.
+// A park tile: a lawn with a path, and a bench or a tree. Some have a pond. Nothing to buy here.
 function park(m, x, y) {
   m.flat(x, y, x + 1, y + 1, 0, 0x8bd17c);
   m.flat(x + 0.44, y, x + 0.56, y + 1, 0.003, 0xd7ccc8);
-  m.flat(x + 0.12, y + 0.12, x + 0.42, y + 0.36, 0.004, 0x4fc3f7);
-  for (const [tx, tz] of [[0.72, 0.2], [0.8, 0.7], [0.22, 0.78]]) {
-    m.box(x + tx - 0.02, 0, y + tz - 0.02, x + tx + 0.02, 0.22, y + tz + 0.02, TRUNK);
-    m.cone(x + tx, y + tz, 0.12, 6, 0.2, 0.6, FOLIAGE);
+  const v = cellNoise(x, y);
+  if (v < 0.5) {
+    bench(m, x, y);
+  } else {
+    m.box(x + 0.2, 0, y + 0.7, x + 0.24, 0.22, y + 0.74, TRUNK);
+    m.cone(x + 0.22, y + 0.72, 0.12, 6, 0.2, 0.6, FOLIAGE);
+  }
+  if (v > 0.8) m.flat(x + 0.62, y + 0.14, x + 0.9, y + 0.36, 0.004, 0x4fc3f7);
+}
+
+// A small bench beside the path: a brown seat and back on two legs.
+function bench(m, x, y) {
+  m.box(x + 0.6, 0.12, y + 0.28, x + 0.92, 0.17, y + 0.4, BROWN);
+  m.box(x + 0.6, 0.17, y + 0.26, x + 0.92, 0.23, y + 0.29, BROWN);
+  m.box(x + 0.62, 0, y + 0.3, x + 0.66, 0.12, y + 0.36, DARK_GREY);
+  m.box(x + 0.86, 0, y + 0.3, x + 0.9, 0.12, y + 0.36, DARK_GREY);
+}
+
+// A small parking lot: grey asphalt, a divider between two bays, and a small car in each bay.
+function lot(m, x, y) {
+  m.flat(x, y, x + 1, y + 1, 0.001, 0x6b7280);
+  m.flat(x + 0.49, y + 0.08, x + 0.51, y + 0.92, 0.004, LANE);
+  car(m, x + 0.05, y, carColour(x, y, 0));
+  car(m, x + 0.55, y, carColour(x, y, 1));
+}
+
+const CAR_COLOURS = [0xe53935, 0x1e88e5, 0xfdd835, 0xf5f5f5, 0x43a047, 0x8e24aa];
+
+function carColour(x, y, bay) {
+  return CAR_COLOURS[Math.floor(cellNoise(x + bay * 7, y) * CAR_COLOURS.length)];
+}
+
+// A small car nose to the road, in a bay of width 0.4 starting at bx.
+function car(m, bx, y, colour) {
+  m.box(bx + 0.04, 0, y + 0.22, bx + 0.36, 0.1, y + 0.78, colour, { top: colour });
+  m.box(bx + 0.1, 0.1, y + 0.3, bx + 0.3, 0.17, y + 0.7, GLASS);
+}
+
+// A gas station tile: a concrete forecourt, a red canopy on four posts, and two fuel pumps.
+function gasStation(m, x, y) {
+  m.flat(x, y, x + 1, y + 1, 0.001, 0xcfd8dc);
+  for (const [px, pz] of [[0.1, 0.1], [0.9, 0.1], [0.1, 0.9], [0.9, 0.9]]) {
+    m.box(x + px - 0.03, 0, y + pz - 0.03, x + px + 0.03, 0.5, y + pz + 0.03, STEEL);
+  }
+  m.box(x + 0.02, 0.5, y + 0.02, x + 0.98, 0.56, y + 0.98, RED, { top: 0xb71c1c });
+  for (const px of [0.3, 0.7]) {
+    m.box(x + px - 0.08, 0, y + 0.45, x + px + 0.08, 0.32, y + 0.6, 0x1e88e5);
+    m.box(x + px - 0.05, 0.32, y + 0.47, x + px + 0.05, 0.36, y + 0.58, DARK);
   }
 }
 
@@ -137,6 +181,14 @@ function groundTile(m, grid, x, y, cell) {
   }
   if (cell.type === 'park') {
     park(m, x, y);
+    return;
+  }
+  if (cell.type === 'lot') {
+    lot(m, x, y);
+    return;
+  }
+  if (cell.type === 'gas') {
+    gasStation(m, x, y);
     return;
   }
   const grass = lerpHex(GRASS_A, GRASS_B, cellNoise(x, y));
