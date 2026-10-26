@@ -2,10 +2,14 @@
 // The person: a low-poly figure of 13 bones, each a group in the hierarchy below, with boxes
 // hung on them. The same body as the Flutter version (vexmarch's civilian figure).
 const PARENT = [-1, 0, 1, 1, 1, 3, 4, 5, 6, 0, 0, 9, 10];
-// Every body part is a rounded blob: one shared sphere, stretched to the part's size, with a dark
-// shell behind it for the outline, as in the bright cartoon style.
-const BODY = new THREE.SphereGeometry(1, 14, 10);
+// Every body part is a blocky box: one shared unit cube, stretched to the part's size, with a
+// dark shell behind it for the outline, as in the bright cartoon style.
+const BODY = new THREE.BoxGeometry(1, 1, 1);
 const OUTLINE_FILL = new THREE.MeshBasicMaterial({ color: 0x1d1412, side: THREE.BackSide });
+const EYE = 0x1d1412;
+// A soft shadow on the ground under each person.
+const SHADOW = new THREE.CircleGeometry(0.6, 20);
+const SHADOW_MATERIAL = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.2, depthWrite: false });
 // Each bone's offset from its parent at rest. The hips sit above the legs at rest.
 const OFFSET = [
   [0, 0.9, 0], [0, 0.05, 0], [0, 0.66, 0], [-0.34, 0.58, 0], [0.34, 0.58, 0],
@@ -49,7 +53,9 @@ function bodyParts(rest, look) {
     [HIPS, [0, 0.9, 0], [0.19, 0.1, 0.11], PANTS],
     [SPINE, [0, 1.3, 0], [0.27, 0.3, 0.16], look.shirt],
     [HEAD, [0, 1.8, 0], [0.15, 0.15, 0.14], SKIN],
-    [HEAD, [0, 2.0, -0.01], [0.15, 0.06, 0.15], look.hat],
+    [HEAD, [0, 1.93, -0.01], [0.155, 0.045, 0.15], look.hat],
+    [HEAD, [-0.06, 1.8, 0.145], [0.025, 0.03, 0.01], EYE],
+    [HEAD, [0.06, 1.8, 0.145], [0.025, 0.03, 0.01], EYE],
     [SPINE, [0, 1.3, -0.19], [0.2, 0.24, 0.055], BAG],
   ];
   for (const [shoulder, elbow, hip, knee] of [
@@ -59,7 +65,7 @@ function bodyParts(rest, look) {
     const sx = rest[shoulder][0];
     const hx = rest[hip][0];
     parts.push(
-      [shoulder, [sx, 1.39, 0], [0.1, 0.16, 0.1], SLEEVE],
+      [shoulder, [sx, 1.39, 0], [0.1, 0.16, 0.1], look.shirt],
       [elbow, [sx, 1.05, 0], [0.085, 0.19, 0.085], SKIN],
       [hip, [hx, 0.64, 0], [0.12, 0.23, 0.12], PANTS],
       [knee, [hx, 0.2, 0], [0.105, 0.21, 0.105], PANTS],
@@ -74,6 +80,10 @@ export function createFigure(look) {
   const rest = restPositions();
   const root = new THREE.Group();
   root.scale.setScalar(FIGURE_SCALE);
+  const shadow = new THREE.Mesh(SHADOW, SHADOW_MATERIAL);
+  shadow.rotation.x = -Math.PI / 2;
+  shadow.position.y = 0.01;
+  root.add(shadow);
   const bones = [];
   for (let b = 0; b < PARENT.length; b++) {
     const group = new THREE.Group();
@@ -86,7 +96,7 @@ export function createFigure(look) {
     const material = new THREE.MeshLambertMaterial({ color: colour, emissive: colour, emissiveIntensity: 0.35 });
     materials.push(material);
     const mesh = new THREE.Mesh(BODY, material);
-    mesh.scale.set(half[0], half[1], half[2]);
+    mesh.scale.set(half[0] * 2, half[1] * 2, half[2] * 2);
     const shell = new THREE.Mesh(BODY, OUTLINE_FILL);
     shell.scale.setScalar(1.14);
     mesh.add(shell);
