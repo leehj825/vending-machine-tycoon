@@ -66,8 +66,8 @@ function bodyParts(rest, look) {
     // The sides of the head, flush with the cube, so they read as hair from the side.
     [HEAD, [-0.325, 1.5, -0.02], [0.015, 0.32, 0.29], look.hat],
     [HEAD, [0.325, 1.5, -0.02], [0.015, 0.32, 0.29], look.hat],
-    [HEAD, [-0.11, 1.52, 0.322], [0.02, 0.025, 0.012], EYE],
-    [HEAD, [0.11, 1.52, 0.322], [0.02, 0.025, 0.012], EYE],
+    [HEAD, [-0.11, 1.52, 0.322], [0.035, 0.04, 0.015], EYE],
+    [HEAD, [0.11, 1.52, 0.322], [0.035, 0.04, 0.015], EYE],
   ];
   for (const [shoulder, elbow, hip, knee] of [
     [SHOULDER_L, ELBOW_L, HIP_L, KNEE_L],

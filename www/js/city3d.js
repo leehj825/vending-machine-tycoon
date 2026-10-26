@@ -2,7 +2,8 @@
 // The city view in three.js, drawn like the original game: the low-poly map from scene.js, the
 // machines and markers over it, the trucks and the people. Map view: taps pick a cell, drags turn
 // the view, pinch and wheel zoom. Walk view: a camera behind the player, drags turn the player.
-import { buildStaticScene, buildTruck, machineAnchor } from './scene.js';
+import { buildStaticScene, machineAnchor } from './scene.js';
+import { buildTruck3d } from './truck3d.js';
 import { buildMarkers3d } from './markers3d.js';
 import { CONFIG } from './config.js';
 import { buildMachine3d } from './machine3d.js';
@@ -89,9 +90,6 @@ export function createCityView(container, onTap) {
   const markerMeshes = [];
   const figures = new Map();
   const vehicles = new Map();
-  let truckGeometry = null;
-  let truckEdges = null;
-  const truckMaterial = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
 
   // The map is built once per city: ground, streets and buildings, then the pick plates.
   function buildCity(grid) {
@@ -122,8 +120,6 @@ export function createCityView(container, onTap) {
     cam.yaw = MAP_VIEW.yaw;
     cam.pitch = MAP_VIEW.pitch;
     cam.distance = grid.length * 1.1;
-    truckGeometry = geometryFrom(buildTruck());
-    truckEdges = new THREE.EdgesGeometry(truckGeometry, 30);
   }
 
   // The machines, rebuilt when the set of machines or their stock, cash or condition change.
@@ -202,8 +198,7 @@ export function createCityView(container, onTap) {
       seen.add(p.key);
       let mesh = vehicles.get(p.key);
       if (!mesh) {
-        mesh = new THREE.Mesh(truckGeometry, truckMaterial);
-        mesh.add(new THREE.LineSegments(truckEdges, OUTLINE_MATERIAL));
+        mesh = buildTruck3d();
         vehicles.set(p.key, mesh);
         vehicleGroup.add(mesh);
       }
