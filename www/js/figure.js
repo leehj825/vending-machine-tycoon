@@ -7,8 +7,6 @@ const PARENT = [-1, 0, 1, 1, 1, 3, 4, 5, 6, 0, 0, 9, 10];
 const BODY = new THREE.BoxGeometry(1, 1, 1);
 const OUTLINE_FILL = new THREE.MeshBasicMaterial({ color: 0x1d1412, side: THREE.BackSide });
 const EYE = 0x1d1412;
-// A round dot, for the eyes: a sphere flattened on the face.
-const DOT = new THREE.SphereGeometry(1, 10, 8);
 // A soft shadow on the ground under each person.
 const SHADOW = new THREE.CircleGeometry(0.6, 20);
 const SHADOW_MATERIAL = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.2, depthWrite: false });
@@ -60,15 +58,13 @@ function bodyParts(rest, look) {
     [HIPS, [0, 0.7, 0], [0.26, 0.07, 0.15], PANTS],
     [SPINE, [0, 0.92, 0], [0.27, 0.2, 0.15], look.shirt],
     [SPINE, [0, 0.95, -0.2], [0.2, 0.2, 0.05], BAG],
-    [HEAD, [0, 1.44, 0], [0.32, 0.32, 0.31], SKIN],
-    // Hair: a cap over the top, a fringe, the sides and the back of the head.
-    [HEAD, [0, 1.73, -0.01], [0.345, 0.05, 0.335], look.hat],
-    [HEAD, [0, 1.69, 0.3], [0.345, 0.035, 0.03], look.hat],
-    [HEAD, [-0.33, 1.6, -0.02], [0.03, 0.14, 0.3], look.hat],
-    [HEAD, [0.33, 1.6, -0.02], [0.03, 0.14, 0.3], look.hat],
-    [HEAD, [0, 1.56, -0.28], [0.34, 0.2, 0.05], look.hat],
-    [HEAD, [-0.14, 1.46, 0.318], [0.05, 0.05, 0.02], EYE, DOT],
-    [HEAD, [0.14, 1.46, 0.318], [0.05, 0.05, 0.02], EYE, DOT],
+    [HEAD, [0, 1.44, 0], [0.32, 0.32, 0.32], SKIN],
+    // Hair: a cap over the top and a fringe, and the back of the head all the way down.
+    [HEAD, [0, 1.78, -0.01], [0.33, 0.04, 0.33], look.hat],
+    [HEAD, [0, 1.7, 0.31], [0.33, 0.06, 0.02], look.hat],
+    [HEAD, [0, 1.44, -0.3], [0.33, 0.34, 0.04], look.hat],
+    [HEAD, [-0.11, 1.46, 0.322], [0.02, 0.025, 0.012], EYE],
+    [HEAD, [0.11, 1.46, 0.322], [0.02, 0.025, 0.012], EYE],
   ];
   for (const [shoulder, elbow, hip, knee] of [
     [SHOULDER_L, ELBOW_L, HIP_L, KNEE_L],
