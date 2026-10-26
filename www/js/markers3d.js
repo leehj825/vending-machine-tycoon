@@ -12,7 +12,7 @@ const OWNED = 0x1e88e5;
 const COIN = 0xf2b632;
 const OUTLINE = new THREE.MeshBasicMaterial({ color: 0x1d1412, side: THREE.BackSide });
 // The coin floats just above the machine's top.
-const COIN_HEIGHT = 0.92 * MACHINE_SCALE + 0.33;
+const COIN_HEIGHT = 1.0 * MACHINE_SCALE + 0.12;
 
 const HEAD = new THREE.SphereGeometry(0.13, 14, 10);
 const TIP = new THREE.ConeGeometry(0.1, 0.22, 12);

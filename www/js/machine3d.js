@@ -23,8 +23,9 @@ const SLOT_COLOURS = {
 
 const OUTLINE = new THREE.MeshBasicMaterial({ color: 0x1d1412, side: THREE.BackSide });
 
-// The machine is drawn at this share of its model size, so it fits its shop front.
-export const MACHINE_SCALE = 0.65;
+// The machine is drawn at this share of its model size. Its height is 1.2 times a person's and
+// lower than a building's.
+export const MACHINE_SCALE = 0.34;
 
 // A lit colour that keeps its brightness on the shaded faces, as the bright style does.
 export function lit(colour) {
