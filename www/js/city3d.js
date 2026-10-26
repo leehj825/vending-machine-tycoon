@@ -4,6 +4,7 @@
 // the view, pinch and wheel zoom. Walk view: a camera behind the player, drags turn the player.
 import { buildMarkers, buildStaticScene, buildTruck, machineAnchor } from './scene.js';
 import { buildMachine3d } from './machine3d.js';
+import { buildBuildings } from './buildings3d.js';
 import { createFigure, poseFigure } from './figure.js';
 
 // The colours in scene.js are final sRGB values, so three.js must not convert them.
@@ -96,6 +97,7 @@ export function createCityView(container, onTap) {
     clear(pickGroup);
     const ground = geometryFrom(buildStaticScene(grid));
     cityGroup.add(new THREE.Mesh(ground, vertexMaterial), outlineOf(ground));
+    cityGroup.add(buildBuildings(grid));
     grid.forEach((row, y) => row.forEach((_cell, x) => {
       const plate = new THREE.Mesh(
         new THREE.PlaneGeometry(1, 1),

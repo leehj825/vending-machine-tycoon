@@ -23,6 +23,11 @@ const SLOT_COLOURS = {
 
 const OUTLINE = new THREE.MeshBasicMaterial({ color: 0x1d1412, side: THREE.BackSide });
 
+// A lit colour that keeps its brightness on the shaded faces, as the bright style does.
+export function lit(colour) {
+  return new THREE.MeshLambertMaterial({ color: colour, emissive: colour, emissiveIntensity: 0.4 });
+}
+
 // A rounded rectangle path in the x and y of a shape.
 function roundedRect(shape, w, d, r) {
   const x = -w / 2;
@@ -39,7 +44,7 @@ function roundedRect(shape, w, d, r) {
 }
 
 // A solid with rounded edges, standing on y = 0 and centred on x and z.
-function roundedSolid(w, h, d, radius, bevel) {
+export function roundedSolid(w, h, d, radius, bevel) {
   const shape = new THREE.Shape();
   roundedRect(shape, w - 2 * bevel, d - 2 * bevel, Math.max(0.001, radius - bevel));
   const geometry = new THREE.ExtrudeGeometry(shape, {
@@ -58,10 +63,10 @@ function roundedSolid(w, h, d, radius, bevel) {
 }
 
 // A rounded part with its outline: a dark shell slightly larger, behind the colour.
-function part(geometry, colour, x, y, z, { outline = true } = {}) {
+export function part(geometry, colour, x, y, z, { outline = true } = {}) {
   const group = new THREE.Group();
   group.position.set(x, y, z);
-  const mesh = new THREE.Mesh(geometry, new THREE.MeshLambertMaterial({ color: colour }));
+  const mesh = new THREE.Mesh(geometry, lit(colour));
   group.add(mesh);
   if (outline) {
     const shell = new THREE.Mesh(geometry, OUTLINE);
