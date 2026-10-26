@@ -47,7 +47,7 @@ function restPositions() {
 function bodyParts(rest, look) {
   const parts = [
     [HIPS, [0, 0.9, 0], [0.19, 0.1, 0.11], PANTS],
-    [SPINE, [0, 1.3, 0], [0.25, 0.3, 0.135], look.shirt],
+    [SPINE, [0, 1.3, 0], [0.27, 0.3, 0.16], look.shirt],
     [HEAD, [0, 1.8, 0], [0.15, 0.15, 0.14], SKIN],
     [HEAD, [0, 2.0, -0.01], [0.15, 0.06, 0.15], look.hat],
     [SPINE, [0, 1.3, -0.19], [0.2, 0.24, 0.055], BAG],
@@ -59,11 +59,11 @@ function bodyParts(rest, look) {
     const sx = rest[shoulder][0];
     const hx = rest[hip][0];
     parts.push(
-      [shoulder, [sx, 1.39, 0], [0.07, 0.155, 0.07], SLEEVE],
-      [elbow, [sx, 1.05, 0], [0.0575, 0.19, 0.0575], SKIN],
-      [hip, [hx, 0.64, 0], [0.09, 0.23, 0.1], PANTS],
-      [knee, [hx, 0.2, 0], [0.0775, 0.21, 0.085], PANTS],
-      [knee, [hx, 0.04, 0.045], [0.085, 0.05, 0.14], BOOT],
+      [shoulder, [sx, 1.39, 0], [0.1, 0.16, 0.1], SLEEVE],
+      [elbow, [sx, 1.05, 0], [0.085, 0.19, 0.085], SKIN],
+      [hip, [hx, 0.64, 0], [0.12, 0.23, 0.12], PANTS],
+      [knee, [hx, 0.2, 0], [0.105, 0.21, 0.105], PANTS],
+      [knee, [hx, 0.04, 0.045], [0.1, 0.06, 0.15], BOOT],
     );
   }
   return parts;
