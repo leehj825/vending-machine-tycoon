@@ -15,6 +15,8 @@ const TALK_REACH = 0.6;
 const ERRAND_GAP_MIN = 60;
 const ERRAND_GAP_MAX = 120;
 const COLLECT_REACH = 0.7;
+// Seconds a punch takes from start to finish. The player stands still until it is done.
+const PUNCH_SECONDS = 0.4;
 const PLAYER_LOOK = { shirt: 0xffeb3b, hat: 0x3e2723 };
 const WALKER_LOOKS = [
   { shirt: 0xd9534f, hat: 0x3b2a1e },
@@ -221,7 +223,7 @@ export function createWalkMode({ city, getState, clips, sale, vandal, fix, say, 
       const player = mode.player;
       if (player.punchT > 0) player.punchT = Math.max(0, player.punchT - dt);
       player.facing = city.walkFacing();
-      const move = stickToWorld(mode.stick.x, mode.stick.y);
+      const move = player.punchT > 0 ? { dx: 0, dz: 0 } : stickToWorld(mode.stick.x, mode.stick.y);
       movePlayer(player, grid, clips, move.dx, move.dz, dt);
       city.follow(player.x, player.z);
       updateButtons();
@@ -262,7 +264,7 @@ export function createWalkMode({ city, getState, clips, sale, vandal, fix, say, 
   // The player's punch: the clip played once, over its length.
   function punchPose(player) {
     const clip = clips.clips.punch;
-    const progress = Math.min(0.999, 1 - player.punchT / clip.d);
+    const progress = Math.min(0.999, 1 - player.punchT / PUNCH_SECONDS);
     return samplePose(clip, progress, newPose());
   }
 
@@ -275,7 +277,7 @@ export function createWalkMode({ city, getState, clips, sale, vandal, fix, say, 
   // Attack swings at all times. A vandal in front is punched and the attack ends; any other
   // passer-by in front is shoved and runs off; with nobody there, the punch hits the air.
   function attack() {
-    mode.player.punchT = clips.clips.punch.d;
+    mode.player.punchT = PUNCH_SECONDS;
     const vandalWalker = nearVandal();
     if (vandalWalker) {
       vandal.punch(vandalWalker.attackId);
