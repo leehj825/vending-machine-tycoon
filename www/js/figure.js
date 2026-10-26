@@ -16,7 +16,7 @@ const CLIP_HIP_HEIGHT = 0.9;
 const HIP_HEIGHT = 0.68;
 const HIP_SCALE = HIP_HEIGHT / CLIP_HIP_HEIGHT;
 const OFFSET = [
-  [0, HIP_HEIGHT, 0], [0, 0.37, 0], [0, 0.07, 0], [-0.36, -0.01, 0], [0.36, -0.01, 0],
+  [0, HIP_HEIGHT, 0], [0, 0.37, 0], [0, 0.13, 0], [-0.36, -0.01, 0], [0.36, -0.01, 0],
   [0, -0.32, 0], [0, -0.32, 0], [0, -0.32, 0], [0, -0.32, 0],
   [-0.13, -0.04, 0], [0.13, -0.04, 0], [0, -0.36, 0], [0, -0.36, 0],
 ];
@@ -56,18 +56,18 @@ function bodyParts(rest, look) {
   // that reach the hips, and short legs.
   const parts = [
     [HIPS, [0, 0.7, 0], [0.26, 0.07, 0.15], PANTS],
-    [SPINE, [0, 0.92, 0], [0.27, 0.2, 0.15], look.shirt],
+    [SPINE, [0, 0.94, 0], [0.27, 0.24, 0.15], look.shirt],
     [SPINE, [0, 0.95, -0.2], [0.2, 0.2, 0.05], BAG],
-    [HEAD, [0, 1.44, 0], [0.32, 0.32, 0.32], SKIN],
+    [HEAD, [0, 1.5, 0], [0.32, 0.32, 0.32], SKIN],
     // Hair: a cap over the top and a fringe, and the back of the head all the way down.
-    [HEAD, [0, 1.78, -0.01], [0.33, 0.04, 0.33], look.hat],
-    [HEAD, [0, 1.7, 0.31], [0.33, 0.06, 0.02], look.hat],
-    [HEAD, [0, 1.44, -0.3], [0.33, 0.34, 0.04], look.hat],
+    [HEAD, [0, 1.84, -0.01], [0.33, 0.04, 0.33], look.hat],
+    [HEAD, [0, 1.76, 0.31], [0.33, 0.06, 0.02], look.hat],
+    [HEAD, [0, 1.5, -0.3], [0.33, 0.34, 0.04], look.hat],
     // The sides of the head, flush with the cube, so they read as hair from the side.
-    [HEAD, [-0.325, 1.44, -0.02], [0.015, 0.32, 0.29], look.hat],
-    [HEAD, [0.325, 1.44, -0.02], [0.015, 0.32, 0.29], look.hat],
-    [HEAD, [-0.11, 1.46, 0.322], [0.02, 0.025, 0.012], EYE],
-    [HEAD, [0.11, 1.46, 0.322], [0.02, 0.025, 0.012], EYE],
+    [HEAD, [-0.325, 1.5, -0.02], [0.015, 0.32, 0.29], look.hat],
+    [HEAD, [0.325, 1.5, -0.02], [0.015, 0.32, 0.29], look.hat],
+    [HEAD, [-0.11, 1.52, 0.322], [0.02, 0.025, 0.012], EYE],
+    [HEAD, [0.11, 1.52, 0.322], [0.02, 0.025, 0.012], EYE],
   ];
   for (const [shoulder, elbow, hip, knee] of [
     [SHOULDER_L, ELBOW_L, HIP_L, KNEE_L],
@@ -76,11 +76,11 @@ function bodyParts(rest, look) {
     const sx = rest[shoulder][0];
     const hx = rest[hip][0];
     parts.push(
-      [shoulder, [sx, 0.88, 0], [0.095, 0.16, 0.095], look.shirt],
-      [elbow, [sx, 0.56, 0], [0.095, 0.16, 0.095], SKIN],
-      [hip, [hx, 0.46, 0], [0.11, 0.18, 0.11], PANTS],
-      [knee, [hx, 0.12, 0], [0.11, 0.16, 0.11], PANTS],
-      [knee, [hx, 0.05, 0.04], [0.11, 0.05, 0.15], BOOT],
+      [shoulder, [sx, 0.9, 0], [0.075, 0.14, 0.075], look.shirt],
+      [elbow, [sx, 0.58, 0], [0.075, 0.14, 0.075], SKIN],
+      [hip, [hx, 0.46, 0], [0.13, 0.18, 0.13], PANTS],
+      [knee, [hx, 0.12, 0], [0.13, 0.16, 0.13], PANTS],
+      [knee, [hx, 0.05, 0.04], [0.13, 0.05, 0.15], BOOT],
     );
   }
   return parts;
