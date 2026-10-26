@@ -104,6 +104,28 @@ td.buttons { white-space: nowrap; }
 td.buttons button { padding: 4px 8px; min-height: 32px; margin-left: 4px; }
 
 
+/* The first-day guide: a banner over the city, beside the rail (or under the buttons when walking). */
+.coach {
+  position: absolute;
+  top: 8px;
+  left: 100px;
+  right: 8px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 14px;
+  background: #fff8e1;
+  border: 2px solid var(--gold);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+  font-size: 13px;
+}
+.coach.walking { top: 56px; left: 8px; }
+.coach[hidden] { display: none; }
+.coach span { flex: 1; }
+.coach button { min-height: 30px; padding: 2px 10px; font-size: 12px; }
+
 /* The left rail: City, Warehouse, Fleet and HQ, stacked over the map. */
 .rail { position: absolute; left: 8px; top: 8px; z-index: 3; display: flex; flex-direction: column; gap: 6px; }
 .rail[hidden] { display: none; }

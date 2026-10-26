@@ -5,6 +5,7 @@ import { PRODUCTS, PRODUCT_IDS, ZONES } from './products.js';
 import { cellAt, generateCity, seededRandom, WAREHOUSE_CELL } from './world.js';
 import { findPath, machineFront, walkerWalkable } from './locomotion.js';
 import { makeContracts, settleContracts, swapContract as swapContractRule } from './contracts.js';
+import { TUTORIAL_DONE } from './tutorial.js';
 import { guardStops, newAgentRules, newStaff, newStaffToday, payWages, runStaffHour } from './staff.js';
 import { counterAttack as counterAttackRule, counterCost as counterCostRule, growRival, newRival, salesFactor } from './rival.js';
 
@@ -63,6 +64,8 @@ export function newGame(seed = 7) {
     staff: newStaff(),
     agentRules: newAgentRules(),
     staffToday: newStaffToday(),
+    // Where the first-day guide has got to (a saved game from before it counts as done).
+    tutorialStep: 0,
     nextId: 1,
     // Sales and revenue per product for today and the last seven days.
     today: { sales: zeroCounts(), revenue: 0 },
@@ -75,6 +78,7 @@ export function newGame(seed = 7) {
 // Brings a saved game from an earlier build up to date: anything the game has gained since is
 // filled in with its starting value, so an old save loads and plays instead of breaking.
 export function migrateState(state) {
+  if (state.tutorialStep === undefined) state.tutorialStep = TUTORIAL_DONE;
   const fresh = newGame(state.seed ?? 7);
   for (const key of Object.keys(fresh)) {
     if (state[key] === undefined) state[key] = fresh[key];

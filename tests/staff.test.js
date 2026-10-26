@@ -114,3 +114,19 @@ test('the agent rules change within their limits', () => {
   for (let i = 0; i < 40; i++) staff.setAgentRule(state, product, 'price', 1);
   assert.equal(state.agentRules[product].maxPrice, CONFIG.agent.maxPriceLimit);
 });
+
+test('the first-day guide moves on as the player acts, and an older save skips it', async () => {
+  const guide = await import('../www/js/tutorial.js');
+  const state = gameWithMachines(0);
+  assert.equal(state.tutorialStep, 0);
+  assert.equal(guide.tutorialCheck(state), false, 'no machine yet');
+  const owned = gameWithMachines(1);
+  owned.tutorialStep = 0;
+  assert.equal(guide.tutorialCheck(owned), true, 'a machine moves it on');
+  assert.equal(guide.tutorialEvent(owned, 'collect'), false, 'not the step it waits for');
+  for (const event of ['walk', 'open', 'refill', 'collect', 'done']) assert.equal(guide.tutorialEvent(owned, event), true, event);
+  assert.equal(guide.tutorialStep(owned), null, 'finished');
+  const old = JSON.parse(JSON.stringify(sim.newGame(7)));
+  delete old.tutorialStep;
+  assert.equal(sim.migrateState(old).tutorialStep, guide.TUTORIAL_DONE, 'an older save is not shown the guide');
+});

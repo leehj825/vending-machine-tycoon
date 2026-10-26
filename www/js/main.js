@@ -11,6 +11,7 @@ import { createCityView } from './city3d.js';
 import { createUi } from './ui.js';
 import { createWalkMode } from './walkmode.js';
 import { createInsideView } from './inside3d.js';
+import { skipTutorial, tutorialCheck, tutorialEvent, tutorialStep } from './tutorial.js';
 import { startAds, startRewardAds } from './ads.js';
 import { truckPosition } from './sim.js';
 
@@ -122,11 +123,30 @@ async function start(slot) {
 
   // The machine whose front is open: a close-up of its inside is drawn over the city, and a bar
   // takes the cash, refills it, or shuts it. The front closes when the player walks away.
+  // The first-day guide: shows the current step, and moves on when the player does it.
+  function refreshCoach() {
+    tutorialCheck(state);
+    const step = tutorialStep(state);
+    $('coach').hidden = !step;
+    if (!step) return;
+    $('coach-text').textContent = step.text;
+    $('coach-button').textContent = step.button ?? 'Skip';
+  }
+  function guide(event) {
+    if (tutorialEvent(state, event)) saveGame(state);
+    refreshCoach();
+  }
+  $('coach-button').addEventListener('click', () => {
+    skipTutorial(state);
+    saveGame(state);
+    refreshCoach();
+  });
   const closeup = createInsideView($('city'));
   let insideId = null;
   let insideT = 0;
   function openInside(id) {
     insideId = id;
+    guide('open');
     closeup.show(state.machines.find((m) => m.id === id));
     $('inside-bar').hidden = false;
     refreshInsideBar();
@@ -160,11 +180,12 @@ async function start(slot) {
     if (result.ok) {
       playSound('coin_collect');
       closeup.takeCash();
+      guide('collect');
     }
     refreshInsideBar();
   });
   $('inside-refill').addEventListener('click', () => {
-    act(() => sim.refillMachine(state, insideId));
+    if (act(() => sim.refillMachine(state, insideId)).ok) guide('refill');
     refreshInsideBar();
   });
   $('inside-close').addEventListener('click', closeInside);
@@ -208,6 +229,7 @@ async function start(slot) {
         $('walk-ui').hidden = !on;
         $('walk').disabled = on;
         $('rail').hidden = on;
+        $('coach').classList.toggle('walking', on);
         if (on) closeSheet();
         else closeInside();
       },
@@ -234,6 +256,7 @@ async function start(slot) {
     // Walking follows the player: the map's selection highlight goes.
     city.setSelected(null);
     walk.enter();
+    guide('walk');
   });
   $('to-menu').addEventListener('click', () => pauseGame('Save your game and go back to the main menu?'));
   $('pause-resume').addEventListener('click', resumeGame);
@@ -260,6 +283,7 @@ async function start(slot) {
     ui.refresh(state);
     city.update(state);
     refreshInsideBar();
+    refreshCoach();
   }, 500);
 
   setInterval(() => saveGame(state), 30000);
