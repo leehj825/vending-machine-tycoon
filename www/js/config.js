@@ -65,6 +65,14 @@ export const CONFIG = {
   agent: { defaultMin: 40, minStep: 10, maxMin: 200, defaultMaxPrice: 1.1, priceStep: 0.1, minPriceLimit: 0.7, maxPriceLimit: 1.5 },
   // The driver goes when a machine holds less than this share of its capacity.
   driverLowShare: 0.4,
+  // People: every head is drawn at this share of its model size, and kids are this share of an
+  // adult's height with a slightly larger head, relative to their body.
+  headScale: 0.9,
+  kidScale: 0.68,
+  kidHeadScale: 1.05,
+  // How many kids play near schools and parks, and how far from their spot they roam, in tiles.
+  kidCount: 3,
+  kidRange: 3,
   // The map is four districts, split at this row and column. A permit opens each one for machines.
   // The first, with the warehouse, is open from the start.
   districtSplit: 8,

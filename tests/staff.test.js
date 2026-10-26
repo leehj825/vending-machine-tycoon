@@ -177,3 +177,33 @@ test('a district needs its permit before machines can go there, and an older sav
   delete old.districts;
   assert.deepEqual(sim.migrateState(old).districts, [true, true, true, true]);
 });
+
+test('people get varied looks; kids play only near schools and parks and stay close', async () => {
+  const looks = await import('../www/js/looks.js');
+  const walk = await import('../www/js/walk.js');
+  const world = await import('../www/js/world.js');
+  const random = world.seededRandom(5);
+  const styles = new Set();
+  for (let i = 0; i < 200; i++) {
+    const look = looks.makeLook(random);
+    styles.add(look.hairStyle);
+    assert.ok([...looks.MEN_HAIR, ...looks.WOMEN_HAIR].includes(look.hairStyle));
+    assert.equal(look.kid, false);
+  }
+  assert.ok(styles.size >= 10, 'many hair styles appear');
+  for (let i = 0; i < 50; i++) assert.ok([...looks.GIRL_HAIR, ...looks.BOY_HAIR].includes(looks.makeLook(random, 'kid').hairStyle));
+  const state = sim.newGame(7);
+  const kids = walk.spawnKids(state.city, 3, random, [looks.makeLook(random, 'kid')], 50);
+  assert.ok(kids.length > 0, 'a city has a school or a park with a street beside it');
+  const near = (kid) => [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => {
+    const c = state.city[kid.home.y + dy]?.[kid.home.x + dx];
+    return c && (c.type === 'park' || c.zone === 'school');
+  });
+  for (const kid of kids) assert.ok(near(kid), 'starts beside a school or a park');
+  for (let i = 0; i < 4000; i++) {
+    for (const kid of kids) {
+      walk.stepWalker(kid, state.city, 0.05, random);
+      assert.ok(Math.abs(kid.cell.x - kid.home.x) + Math.abs(kid.cell.y - kid.home.y) <= CONFIG.kidRange + 1, 'stays near home');
+    }
+  }
+});

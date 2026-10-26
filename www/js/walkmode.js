@@ -3,7 +3,9 @@
 // vandal, and Collect takes the cash from a machine that is close and in front. Also keeps the
 // walkers on the streets, and sends a vandal to any machine under attack.
 import { calmTorso, machineFront, inFront, samplePose, newPose } from './locomotion.js';
-import { movePlayer, newPlayer, scareWalker, sendWalker, spawnWalkers, stepWalker } from './walk.js';
+import { CONFIG } from './config.js';
+import { makeLook, PLAYER_LOOK } from './looks.js';
+import { movePlayer, newPlayer, scareWalker, sendWalker, spawnKids, spawnWalkers, stepWalker } from './walk.js';
 import { seededRandom } from './world.js';
 import { CONDITIONS, collectAlertOf, machineTotal } from './sim.js';
 
@@ -25,19 +27,12 @@ const ATTACKS = [
 ];
 // Seconds after a motion ends in which the next press continues the combo; after that it starts over.
 const COMBO_GAP = 0.8;
-const PLAYER_LOOK = { shirt: 0xffeb3b, hat: 0x3e2723 };
-const WALKER_LOOKS = [
-  { shirt: 0xd9534f, hat: 0x3b2a1e },
-  { shirt: 0x5bc0de, hat: 0xf0ad4e },
-  { shirt: 0x5cb85c, hat: 0x2b2b2b },
-  { shirt: 0x9b59b6, hat: 0xc9a66b },
-  { shirt: 0xe67e22, hat: 0x1f3b57 },
-  { shirt: 0xecf0f1, hat: 0x4a4a4a },
-];
 
 export function createWalkMode({ city, getState, clips, sale, vandal, fix, inside, say, buttons }) {
   const random = seededRandom(Date.now() % 100000);
-  const walkers = spawnWalkers(getState().city, 8, random, WALKER_LOOKS);
+  // Adults walk the streets; a few kids play near the schools and parks.
+  const walkers = spawnWalkers(getState().city, 8, random, Array.from({ length: 8 }, () => makeLook(random)));
+  walkers.push(...spawnKids(getState().city, CONFIG.kidCount, random, Array.from({ length: CONFIG.kidCount }, () => makeLook(random, 'kid')), walkers.length + 1));
   const mode = { active: false, player: null, stick: { x: 0, y: 0, id: null }, running: false };
 
   // Starts a walk from the road nearest the middle of town.
@@ -105,6 +100,10 @@ export function createWalkMode({ city, getState, clips, sale, vandal, fix, insid
   function talk() {
     const walker = nearWalker();
     if (!walker) return;
+    if (walker.look.kid) {
+      say('"I am not allowed to buy from machines!" the kid giggles.');
+      return;
+    }
     if (walker.attackId) {
       vandal.stop(walker.attackId);
       return;
@@ -173,7 +172,7 @@ export function createWalkMode({ city, getState, clips, sale, vandal, fix, insid
 
   // Town life: a walker with nothing to do now and then goes to buy from the nearest machine.
   function errands(w, dt) {
-    if (w.task || w.attackId || w.fleeT > 0) return;
+    if (w.task || w.attackId || w.fleeT > 0 || w.look.kid) return;
     if (w.errandIn === undefined) w.errandIn = ERRAND_GAP_MIN + random() * (ERRAND_GAP_MAX - ERRAND_GAP_MIN);
     w.errandIn -= dt;
     if (w.errandIn > 0) return;
@@ -192,7 +191,7 @@ export function createWalkMode({ city, getState, clips, sale, vandal, fix, insid
         continue;
       }
       const distance = (w) => Math.hypot(machine.x + 0.5 - w.x, machine.y + 0.5 - w.z);
-      const free = walkers.filter((w) => !w.attackId && !w.task && !w.kicking).sort((a, b) => distance(a) - distance(b));
+      const free = walkers.filter((w) => !w.attackId && !w.task && !w.kicking && !w.look.kid).sort((a, b) => distance(a) - distance(b));
       if (free.length === 0) return;
       const sent = free.find((w) => {
         if (!sendWalker(w, state.city, machine)) return false;
@@ -313,6 +312,11 @@ export function createWalkMode({ city, getState, clips, sale, vandal, fix, insid
   // Attack swings at all times. A vandal in front is punched and the attack ends; any other
   // passer-by in front is shoved and runs off; with nobody there, the punch hits the air.
   function attack() {
+    const child = nearWalker();
+    if (child?.look.kid) {
+      say('Leave the kids alone!');
+      return;
+    }
     const player = mode.player;
     if (player.punchT > 0) return; // one motion at a time: the next waits for this one to finish
     const move = ATTACKS[player.punchStep];

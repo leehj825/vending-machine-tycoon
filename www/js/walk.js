@@ -1,5 +1,6 @@
 // The player and the walkers on the streets. Plain data and functions: the screen draws them and
 // feeds them input. Time is in seconds, positions in tiles.
+import { CONFIG } from './config.js';
 import {
   clipName, findPath, machineFront, PLAYER_SPEED, playerWalkable, slideMove, walkerWalkable, WALKER_SPEED,
 } from './locomotion.js';
@@ -74,6 +75,9 @@ export function newWalker(id, cell, look, random) {
     task: null,
     fleeT: 0,
     fleeFrom: null,
+    // A walker with a home (the kids) stays within range tiles of it.
+    home: null,
+    range: 0,
   };
 }
 
@@ -107,7 +111,8 @@ export function stepWalker(walker, grid, dt, random) {
   const dx = walker.to.x - walker.from.x;
   const dz = walker.to.z - walker.from.z;
   if (Math.hypot(dx, dz) > 1e-6) walker.facing = Math.atan2(dx, dz);
-  walker.phase += (speed * dt) / 0.37;
+  // A kid's legs are shorter, so their steps are too: the feet keep to the ground.
+  walker.phase += (speed * dt) / (0.37 * (walker.look?.kid ? CONFIG.kidScale : 1));
   return null;
 }
 
@@ -129,8 +134,12 @@ function nextStep(walker, grid, random) {
     walker.prev = walker.cell;
     return options.reduce((best, c) => (away(c) > away(best) ? c : best));
   }
-  const ahead = options.filter((c) => !walker.prev || c.x !== walker.prev.x || c.y !== walker.prev.y);
-  const pool = ahead.length > 0 ? ahead : options;
+  const roam = walker.home
+    ? options.filter((c) => Math.abs(c.x - walker.home.x) + Math.abs(c.y - walker.home.y) <= walker.range)
+    : options;
+  const allowed = roam.length > 0 ? roam : options;
+  const ahead = allowed.filter((c) => !walker.prev || c.x !== walker.prev.x || c.y !== walker.prev.y);
+  const pool = ahead.length > 0 ? ahead : allowed;
   walker.prev = walker.cell;
   return pool[Math.floor(random() * pool.length)];
 }
@@ -177,4 +186,27 @@ export function spawnWalkers(grid, count, random, looks) {
     walkers.push(newWalker(i + 1, cell, looks[i % looks.length], random));
   }
   return walkers;
+}
+
+// The kids: each plays on a street beside a school or a park, and does not wander far from it.
+// `firstId` is the id of the first kid.
+export function spawnKids(grid, count, random, looks, firstId) {
+  const spots = [];
+  grid.forEach((row, y) => row.forEach((cell, x) => {
+    if (cell.type !== 'road') return;
+    const playground = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => {
+      const next = grid[y + dy]?.[x + dx];
+      return next && (next.type === 'park' || (next.type === 'building' && next.zone === 'school'));
+    });
+    if (playground) spots.push({ x, y });
+  }));
+  const kids = [];
+  for (let i = 0; i < count && spots.length > 0; i++) {
+    const cell = spots.splice(Math.floor(random() * spots.length), 1)[0];
+    const kid = newWalker(firstId + i, cell, looks[i % looks.length], random);
+    kid.home = { x: cell.x, y: cell.y };
+    kid.range = CONFIG.kidRange;
+    kids.push(kid);
+  }
+  return kids;
 }
