@@ -11,6 +11,8 @@ THREE.ColorManagement.enabled = false;
 const SKY = 0xa7d8f2;
 const TAP_SLOP = 8;
 const LANE_OFFSET = 0.15;
+// The dark outline on the map's models, as in the bright cartoon style.
+const OUTLINE_MATERIAL = new THREE.LineBasicMaterial({ color: 0x1d1412 });
 const WALK_DISTANCE = { start: 3.2, near: 1.4, far: 9 };
 const MAP_DISTANCE = { near: 6, far: 40 };
 // The original game's default view: a three-quarter view looking down on the whole grid.
@@ -23,11 +25,28 @@ const BUILDING_TOP = 2.6;
 // while the camera still looks at them.
 const WALK_SCREEN_SHIFT = 0.28;
 
+// Pushes the colours a little brighter and richer, for the bright cartoon look.
+function vivid(colors) {
+  for (let i = 0; i < colors.length; i += 3) {
+    const mean = (colors[i] + colors[i + 1] + colors[i + 2]) / 3;
+    for (let k = 0; k < 3; k++) {
+      const boosted = (mean + (colors[i + k] - mean) * 1.25) * 1.1;
+      colors[i + k] = Math.min(1, Math.max(0, boosted));
+    }
+  }
+  return colors;
+}
+
 function geometryFrom({ positions, colors }) {
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  geometry.setAttribute('color', new THREE.BufferAttribute(vivid(colors), 3));
   return geometry;
+}
+
+// The dark edges of a model: the lines where its faces meet at a clear angle.
+function outlineOf(geometry) {
+  return new THREE.LineSegments(new THREE.EdgesGeometry(geometry, 30), OUTLINE_MATERIAL);
 }
 
 export function createCityView(container, onTap) {
@@ -67,14 +86,15 @@ export function createCityView(container, onTap) {
   const figures = new Map();
   const vehicles = new Map();
   let truckGeometry = null;
+  let truckEdges = null;
   const truckMaterial = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
 
   // The map is built once per city: ground, streets and buildings, then the pick plates.
   function buildCity(grid) {
     clear(cityGroup);
     clear(pickGroup);
-    const mesh = new THREE.Mesh(geometryFrom(buildStaticScene(grid)), vertexMaterial);
-    cityGroup.add(mesh);
+    const ground = geometryFrom(buildStaticScene(grid));
+    cityGroup.add(new THREE.Mesh(ground, vertexMaterial), outlineOf(ground));
     grid.forEach((row, y) => row.forEach((_cell, x) => {
       const plate = new THREE.Mesh(
         new THREE.PlaneGeometry(1, 1),
@@ -98,6 +118,7 @@ export function createCityView(container, onTap) {
     cam.pitch = MAP_VIEW.pitch;
     cam.distance = grid.length * 1.1;
     truckGeometry = geometryFrom(buildTruck());
+    truckEdges = new THREE.EdgesGeometry(truckGeometry, 30);
   }
 
   // The machines, merged into one mesh. Rebuilt when the set of machines changes.
@@ -115,7 +136,8 @@ export function createCityView(container, onTap) {
       for (const v of part.positions) positions.push(v);
       for (const v of part.colors) colors.push(v);
     }
-    machineGroup.add(new THREE.Mesh(geometryFrom({ positions: new Float32Array(positions), colors: new Float32Array(colors) }), vertexMaterial));
+    const machines = geometryFrom({ positions: new Float32Array(positions), colors: new Float32Array(colors) });
+    machineGroup.add(new THREE.Mesh(machines, vertexMaterial), outlineOf(machines));
   }
 
   // Purchase arrows, owned plates and coins. The group bobs gently, as the original's did.
@@ -127,8 +149,8 @@ export function createCityView(container, onTap) {
       const parts = buildMarkers(state);
       for (const part of [parts.arrows, parts.owned, parts.coins]) {
         if (part.positions.length === 0) continue;
-        const mesh = new THREE.Mesh(geometryFrom(part), vertexMaterial);
-        markerGroup.add(mesh);
+        const geometry = geometryFrom(part);
+        markerGroup.add(new THREE.Mesh(geometry, vertexMaterial), outlineOf(geometry));
       }
     }
     markerGroup.position.y = Math.sin(time * 2.2) * 0.05;
@@ -189,6 +211,7 @@ export function createCityView(container, onTap) {
       let mesh = vehicles.get(p.key);
       if (!mesh) {
         mesh = new THREE.Mesh(truckGeometry, truckMaterial);
+        mesh.add(new THREE.LineSegments(truckEdges, OUTLINE_MATERIAL));
         vehicles.set(p.key, mesh);
         vehicleGroup.add(mesh);
       }

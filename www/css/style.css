@@ -209,13 +209,17 @@ td.buttons button { padding: 4px 8px; min-height: 32px; margin-left: 4px; }
 .beacon[hidden] { display: none; }
 .beacon span {
   position: absolute;
-  left: -10px;
-  width: 20px;
+  left: -12px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid #1d1412;
+  background: #ffd54f;
+  color: #1d1412;
   text-align: center;
-  font-size: 18px;
+  font-size: 12px;
   line-height: 20px;
-  color: var(--gold);
-  text-shadow: 0 0 3px #fff, 0 0 2px #fff;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.35);
 }
 
 /* The main menu: a full-screen page with the logo, large buttons, and a card for each screen. */
@@ -277,7 +281,7 @@ td.buttons button { padding: 4px 8px; min-height: 32px; margin-left: 4px; }
 .menu-slider output { float: right; color: var(--muted); font-weight: 400; }
 .menu-slider input { width: 100%; accent-color: var(--gold); }
 
-.beacon.warn span { color: var(--red); }
+.beacon.warn span { background: #ff7043; }
 
 .trend { font-size: 12px; margin-left: 4px; }
 .trend.up { color: var(--green); }

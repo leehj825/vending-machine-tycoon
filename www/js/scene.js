@@ -372,7 +372,8 @@ export function buildMachine(machine, grid) {
     return [anchor.x + rx, y, anchor.z + rz];
   };
   const m = new MeshBuilder({ transform });
-  const accent = zone.color;
+  // Every machine has the same bright red cabinet; the zone shows on the sign and the panel.
+  const accent = 0xe53935;
   const sign = lerpHex(accent, 0xffffff, 0.25);
   const cabinetTop = lerpHex(accent, 0x000000, 0.2);
   const cabinetSide = lerpHex(accent, 0x000000, 0.12);

@@ -301,7 +301,7 @@ export function createWalkMode({ city, getState, clips, sale, vandal, fix, say, 
       holder.hidden = false;
       holder.classList.toggle('warn', targets[i].warn);
       holder.style.transform = `rotate(${(targets[i].angle * 180) / Math.PI}deg)`;
-      holder.firstChild.style.top = `${-radius - 10}px`;
+      holder.firstChild.style.top = `${-radius - 12}px`;
     });
   }
 

@@ -2,6 +2,8 @@
 // The person: a low-poly figure of 13 bones, each a group in the hierarchy below, with boxes
 // hung on them. The same body as the Flutter version (vexmarch's civilian figure).
 const PARENT = [-1, 0, 1, 1, 1, 3, 4, 5, 6, 0, 0, 9, 10];
+// The dark outline that every figure part carries, as in the bright cartoon style.
+const OUTLINE_MATERIAL = new THREE.LineBasicMaterial({ color: 0x1d1412 });
 // Each bone's offset from its parent at rest. The hips sit above the legs at rest.
 const OFFSET = [
   [0, 0.9, 0], [0, 0.05, 0], [0, 0.66, 0], [-0.34, 0.58, 0], [0.34, 0.58, 0],
@@ -82,6 +84,9 @@ export function createFigure(look) {
     const geometry = new THREE.BoxGeometry(half[0] * 2, half[1] * 2, half[2] * 2);
     geometries.push(geometry);
     const mesh = new THREE.Mesh(geometry, new THREE.MeshLambertMaterial({ color: colour, emissive: colour, emissiveIntensity: 0.35, flatShading: true }));
+    const edges = new THREE.EdgesGeometry(geometry, 30);
+    geometries.push(edges);
+    mesh.add(new THREE.LineSegments(edges, OUTLINE_MATERIAL));
     mesh.position.set(centre[0] - rest[bone][0], centre[1] - rest[bone][1], centre[2] - rest[bone][2]);
     bones[bone].add(mesh);
   }
