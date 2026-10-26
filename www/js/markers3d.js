@@ -1,22 +1,20 @@
 /* global THREE */
-// The map's markers in the bright cartoon style: a round pin over each shop front that can take a
-// machine (green when the cash covers it, amber when not), a blue plate on a shop with a machine,
+// The map's markers in the bright cartoon style: a bright ball over each shop front that can take a
+// machine (green when the cash covers it, yellow when not), a blue plate on a shop with a machine,
 // and a round gold coin over a machine that holds cash. Each has a dark outline.
 import { CONFIG } from './config.js';
 import { machineAnchor, markerHeight } from './scene.js';
 import { lit, MACHINE_SCALE } from './machine3d.js';
 
-const AFFORDABLE = 0x43a047;
-const UNAFFORDABLE = 0xffc107;
+const AFFORDABLE = 0x00e676;
+const UNAFFORDABLE = 0xffea00;
 const OWNED = 0x1e88e5;
 const COIN = 0xf2b632;
 const OUTLINE = new THREE.MeshBasicMaterial({ color: 0x1d1412, side: THREE.BackSide });
 // The coin floats just above the machine's top.
 const COIN_HEIGHT = 1.0 * MACHINE_SCALE + 0.12;
 
-const HEAD = new THREE.SphereGeometry(0.13, 14, 10);
-const TIP = new THREE.ConeGeometry(0.1, 0.22, 12);
-TIP.rotateX(Math.PI);
+const HEAD = new THREE.SphereGeometry(0.2, 16, 12);
 const COIN_DISC = new THREE.CylinderGeometry(0.15, 0.15, 0.06, 18);
 const PLATE = new THREE.BoxGeometry(0.22, 0.06, 0.22);
 
@@ -30,15 +28,13 @@ function outlined(geometry, colour) {
   return group;
 }
 
-// A pin above a shop front: the tip touches the roof, the round head sits above it.
+// A bright ball hovering above a shop front that can take a machine, clear of the roof.
 function pin(x, h, z, colour) {
   const group = new THREE.Group();
   group.position.set(x, h, z);
-  const tip = outlined(TIP, colour);
-  tip.position.y = 0.12;
-  const head = outlined(HEAD, colour);
-  head.position.y = 0.33;
-  group.add(tip, head);
+  const ball = outlined(HEAD, colour);
+  ball.position.y = 0.32;
+  group.add(ball);
   return group;
 }
 
