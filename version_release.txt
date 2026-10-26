@@ -1,6 +1,20 @@
 VENDING EMPIRE - RELEASE NOTES
 ================================
 
+Version 2.1.0 (build 30)
+-------------
+## New
+- **Open a machine**: walk up and press Open. A close-up shows the stock on the shelves and the cash in the tray; Take cash lifts the money out, Refill drops new stock onto the shelves.
+- **Hired help**: a purchasing agent, truck driver, collector, mechanic and night guard, hired in HQ under Staff and paid a wage each day.
+- **Districts**: Downtown is open from the start; permits open Eastside, Southside and Harbor for machines. You can walk everywhere.
+- **First-day guide**, **end-of-day summary**, and **offline earnings** (with a rewarded ad to double them).
+- **Attack combo**: jab, punch, hook and kick; shoved passers-by run away, and kids are off limits.
+- **More variety**: three designs for each building type, four house designs, district themes, street furniture, a second truck, and many hair styles, skin tones and outfits for the people, with kids near schools and parks.
+
+## Changes
+- Repairs cost 75 a level (300 for a broken machine); the warehouse starts with enough stock for one machine.
+- Saves from earlier builds are brought up to date when loaded.
+
 Version 1.1.26
 -------------
 Release Date: September 22, 2026
