@@ -7,6 +7,8 @@ const PARENT = [-1, 0, 1, 1, 1, 3, 4, 5, 6, 0, 0, 9, 10];
 const BODY = new THREE.BoxGeometry(1, 1, 1);
 const OUTLINE_FILL = new THREE.MeshBasicMaterial({ color: 0x1d1412, side: THREE.BackSide });
 const EYE = 0x1d1412;
+// A round dot, for the eyes: a sphere flattened on the face.
+const DOT = new THREE.SphereGeometry(1, 10, 8);
 // A soft shadow on the ground under each person.
 const SHADOW = new THREE.CircleGeometry(0.6, 20);
 const SHADOW_MATERIAL = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.2, depthWrite: false });
@@ -58,10 +60,10 @@ function bodyParts(rest, look) {
     [HIPS, [0, 0.7, 0], [0.26, 0.07, 0.15], PANTS],
     [SPINE, [0, 0.92, 0], [0.27, 0.2, 0.15], look.shirt],
     [SPINE, [0, 0.95, -0.2], [0.2, 0.2, 0.05], BAG],
-    [HEAD, [0, 1.39, 0], [0.27, 0.27, 0.26], SKIN],
-    [HEAD, [0, 1.65, -0.01], [0.285, 0.05, 0.275], look.hat],
-    [HEAD, [-0.13, 1.4, 0.265], [0.035, 0.04, 0.01], EYE],
-    [HEAD, [0.13, 1.4, 0.265], [0.035, 0.04, 0.01], EYE],
+    [HEAD, [0, 1.44, 0], [0.32, 0.32, 0.31], SKIN],
+    [HEAD, [0, 1.72, -0.01], [0.335, 0.05, 0.325], look.hat],
+    [HEAD, [-0.14, 1.46, 0.318], [0.05, 0.05, 0.02], EYE, DOT],
+    [HEAD, [0.14, 1.46, 0.318], [0.05, 0.05, 0.02], EYE, DOT],
   ];
   for (const [shoulder, elbow, hip, knee] of [
     [SHOULDER_L, ELBOW_L, HIP_L, KNEE_L],
@@ -97,14 +99,16 @@ export function createFigure(look) {
     bones.push(group);
   }
   const materials = [];
-  for (const [bone, centre, half, colour] of bodyParts(rest, look)) {
+  for (const [bone, centre, half, colour, shape = BODY] of bodyParts(rest, look)) {
     const material = new THREE.MeshLambertMaterial({ color: colour, emissive: colour, emissiveIntensity: 0.35 });
     materials.push(material);
-    const mesh = new THREE.Mesh(BODY, material);
+    const mesh = new THREE.Mesh(shape, material);
     mesh.scale.set(half[0] * 2, half[1] * 2, half[2] * 2);
-    const shell = new THREE.Mesh(BODY, OUTLINE_FILL);
-    shell.scale.setScalar(1.14);
-    mesh.add(shell);
+    if (shape === BODY) {
+      const shell = new THREE.Mesh(BODY, OUTLINE_FILL);
+      shell.scale.setScalar(1.14);
+      mesh.add(shell);
+    }
     mesh.position.set(centre[0] - rest[bone][0], centre[1] - rest[bone][1], centre[2] - rest[bone][2]);
     bones[bone].add(mesh);
   }
