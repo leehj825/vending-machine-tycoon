@@ -53,7 +53,8 @@ export const CONFIG = {
   securityCost: 400,
   securityRiskFactor: 0.35,
   securityPenaltyFactor: 0.5,
-  repairCostPerLevel: 150,
+  // A broken machine (4 levels) costs 300 to repair, less than the 400 a new one costs.
+  repairCostPerLevel: 75,
   // Wear: a machine wears a little each hour (more in risky zones and at night), and a kicker
   // wears it faster. Each full step of wear lowers its condition by one.
   wearPerHour: 0.6,

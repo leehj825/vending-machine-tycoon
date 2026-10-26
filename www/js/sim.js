@@ -67,6 +67,38 @@ export function newGame(seed = 7) {
   return state;
 }
 
+// Brings a saved game from an earlier build up to date: anything the game has gained since is
+// filled in with its starting value, so an old save loads and plays instead of breaking.
+export function migrateState(state) {
+  const fresh = newGame(state.seed ?? 7);
+  for (const key of Object.keys(fresh)) {
+    if (state[key] === undefined) state[key] = fresh[key];
+  }
+  // Records with one entry per product or research: a product or research added since is added.
+  const perProduct = (record, value) => {
+    for (const p of PRODUCT_IDS) if (record[p] === undefined) record[p] = value(p);
+  };
+  perProduct(state.warehouse, () => 0);
+  perProduct(state.warehouseDay, () => state.day);
+  perProduct(state.market, () => 1);
+  perProduct(state.marketTrend, () => 0);
+  perProduct(state.today.sales, () => 0);
+  for (const id of Object.keys(CONFIG.research)) if (state.research[id] === undefined) state.research[id] = false;
+  const machineDefaults = {
+    emptyHours: 0, condition: 0, wear: 0, security: false, capacityLevel: 0, cooling: false, adDisplay: false,
+  };
+  for (const machine of state.machines) {
+    for (const [key, value] of Object.entries(machineDefaults)) if (machine[key] === undefined) machine[key] = value;
+    machine.stock ??= {};
+    machine.prices ??= {};
+    machine.stockDay ??= {};
+    perProduct(machine.stock, () => 0);
+    perProduct(machine.prices, () => 1);
+    perProduct(machine.stockDay, () => state.day);
+  }
+  return state;
+}
+
 function zeroCounts() {
   return Object.fromEntries(PRODUCT_IDS.map((p) => [p, 0]));
 }

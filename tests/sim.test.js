@@ -86,6 +86,32 @@ test('an empty machine costs reputation only after the grace hours', () => {
   assert.ok(state.reputation < start, 'penalty after grace');
 });
 
+test('a save from an earlier build is brought up to date and plays on', () => {
+  const state = sim.newGame(7);
+  const spot = [];
+  state.city.forEach((row, y) => row.forEach((cell, x) => {
+    if (spot.length === 0 && cell.type === 'building' && machineFrontFor(state, x, y)) spot.push({ x, y });
+  }));
+  sim.buyMachine(state, spot[0].x, spot[0].y);
+  // Strip what later builds added, as an older save would lack it.
+  const old = JSON.parse(JSON.stringify(state));
+  for (const key of ['attacks', 'collectAlert', 'weather', 'market', 'marketTrend', 'news', 'today', 'history', 'hype', 'rushTicks', 'spoiled', 'warehouseDay']) delete old[key];
+  for (const key of ['wear', 'condition', 'security', 'capacityLevel', 'cooling', 'adDisplay', 'stockDay', 'emptyHours']) delete old.machines[0][key];
+  delete old.machines[0].stock[PRODUCT_IDS[0]];
+  delete old.research[Object.keys(old.research)[0]];
+  const loaded = sim.migrateState(old);
+  assert.deepEqual(loaded.attacks, []);
+  assert.equal(loaded.weather, 'sunny');
+  assert.equal(loaded.machines[0].condition, 0);
+  assert.equal(loaded.machines[0].stock[PRODUCT_IDS[0]], 0);
+  for (let i = 0; i < CONFIG.ticksPerHour * 48; i++) sim.tick(loaded);
+  assert.ok(loaded.day >= 2, 'the migrated game keeps running');
+});
+
+test('repairing a broken machine costs less than buying one', () => {
+  assert.ok(4 * CONFIG.repairCostPerLevel < CONFIG.machinePrice);
+});
+
 test('a new game starts with enough warehouse stock to fill one machine, and a player can refill from it on foot', () => {
   const state = sim.newGame(7);
   const total = Object.values(state.warehouse).reduce((a, b) => a + b, 0);

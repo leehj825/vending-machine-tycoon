@@ -1,4 +1,5 @@
 import { CONFIG } from './config.js';
+import { migrateState } from './sim.js';
 
 // Saves live in this browser's local storage, in three slots. Every read and write is guarded,
 // because some browsers block storage: the game then simply runs without saving.
@@ -31,7 +32,7 @@ export function loadSlot(slot) {
     const raw = localStorage.getItem(keyFor(slot));
     if (!raw) return null;
     const saved = JSON.parse(raw);
-    return saved.state ?? saved;
+    return migrateState(saved.state ?? saved);
   } catch {
     return null;
   }
