@@ -35,9 +35,12 @@ export function samplePose(clip, phase, out) {
 
 // Keeps only part of the hips' and spine's rotation, so the body turns less while the arms swing.
 const IDENTITY = [0, 0, 0, 1];
+// The head keeps less of the clip's own turn than the torso does, so it stops shaking.
+const HEAD_KEEP = 0.3;
 export function calmTorso(pose, keep) {
-  const amount = 1 - keep;
-  for (const bone of [0, 1]) slerp(pose.quats, bone * 4, IDENTITY, 0, amount, pose.quats, bone * 4);
+  for (const [bone, boneKeep] of [[0, keep], [1, keep], [2, HEAD_KEEP]]) {
+    slerp(pose.quats, bone * 4, IDENTITY, 0, 1 - boneKeep, pose.quats, bone * 4);
+  }
   return pose;
 }
 

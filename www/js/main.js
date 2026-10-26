@@ -146,7 +146,6 @@ async function start(slot) {
       setTalk: (on) => { $('talk').disabled = !on; },
       setCollect: (on) => { $('collect').disabled = !on; },
       setFix: (on) => { $('fix').disabled = !on; },
-      setAttack: (on) => { $('attack').disabled = !on; },
       setRun: (on) => { $('run').setAttribute('aria-pressed', String(on)); },
       stick: $('stick'),
       knob: $('knob'),

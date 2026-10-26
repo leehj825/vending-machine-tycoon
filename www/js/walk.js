@@ -6,6 +6,8 @@ import {
 
 const MOVING_HOLD = 0.3; // seconds a figure keeps its walk after a step
 const LANE = 0.4; // walkers keep to the right of the road, this far from its centre: on the pavement
+const FLEE_SECONDS = 5; // how long a walker runs off after a shove
+const FLEE_SPEED = 2.2; // a running walker's speed, as a multiple of a walk
 
 export function newPlayer(spawn) {
   return {
@@ -66,12 +68,16 @@ export function newWalker(id, cell, look, random) {
     look,
     path: [],
     task: null,
+    fleeT: 0,
+    fleeFrom: null,
   };
 }
 
 // Walkers walk the roads, keep to the right, and wander from crossing to crossing unless they
 // have a machine to visit.
 export function stepWalker(walker, grid, dt, random) {
+  const speed = WALKER_SPEED * (walker.fleeT > 0 ? FLEE_SPEED : 1);
+  walker.fleeT = Math.max(0, walker.fleeT - dt);
   if (walker.progress >= 1) {
     if (walker.to.cell) walker.cell = walker.to.cell;
     const step = nextStep(walker, grid, random);
@@ -90,11 +96,11 @@ export function stepWalker(walker, grid, dt, random) {
     walker.progress = 0;
   }
   const length = Math.hypot(walker.to.x - walker.from.x, walker.to.z - walker.from.z) || 1;
-  walker.progress = Math.min(1, walker.progress + (WALKER_SPEED * dt) / length);
+  walker.progress = Math.min(1, walker.progress + (speed * dt) / length);
   walker.x = walker.from.x + (walker.to.x - walker.from.x) * walker.progress;
   walker.z = walker.from.z + (walker.to.z - walker.from.z) * walker.progress;
   walker.facing = Math.atan2(walker.to.x - walker.from.x, walker.to.z - walker.from.z);
-  walker.phase += (WALKER_SPEED * dt) / 0.37;
+  walker.phase += (speed * dt) / 0.37;
   return null;
 }
 
@@ -110,6 +116,12 @@ function nextStep(walker, grid, random) {
     .map(([dx, dy]) => ({ x: walker.cell.x + dx, y: walker.cell.y + dy }))
     .filter((c) => walkerWalkable(grid, c.x, c.y));
   if (options.length === 0) return null;
+  // A walker running off takes the road that leads farthest from the player.
+  if (walker.fleeT > 0 && walker.fleeFrom) {
+    const away = (c) => Math.hypot(c.x + 0.5 - walker.fleeFrom.x, c.y + 0.5 - walker.fleeFrom.z);
+    walker.prev = walker.cell;
+    return options.reduce((best, c) => (away(c) > away(best) ? c : best));
+  }
   const ahead = options.filter((c) => !walker.prev || c.x !== walker.prev.x || c.y !== walker.prev.y);
   const pool = ahead.length > 0 ? ahead : options;
   walker.prev = walker.cell;
@@ -124,6 +136,15 @@ function arrival(walker) {
     return done;
   }
   return null;
+}
+
+// A walker the player shoves runs off from the player for a few seconds. The player is kept by
+// reference, so the walker keeps running from where the player is now.
+export function scareWalker(walker, from) {
+  walker.fleeT = FLEE_SECONDS;
+  walker.fleeFrom = from;
+  walker.task = null;
+  walker.path = [];
 }
 
 // Sends a walker to a machine's front. Returns false when the walker cannot get there.

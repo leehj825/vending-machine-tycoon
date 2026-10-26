@@ -3,7 +3,7 @@
 // vandal, and Collect takes the cash from a machine that is close and in front. Also keeps the
 // walkers on the streets, and sends a vandal to any machine under attack.
 import { calmTorso, machineFront, inFront, samplePose, newPose } from './locomotion.js';
-import { movePlayer, newPlayer, sendWalker, spawnWalkers, stepWalker } from './walk.js';
+import { movePlayer, newPlayer, scareWalker, sendWalker, spawnWalkers, stepWalker } from './walk.js';
 import { seededRandom } from './world.js';
 import { CONDITIONS, collectAlertOf, machineTotal } from './sim.js';
 
@@ -144,7 +144,7 @@ export function createWalkMode({ city, getState, clips, sale, vandal, fix, say, 
 
   // Town life: a walker with nothing to do now and then goes to buy from the nearest machine.
   function errands(w, dt) {
-    if (w.task || w.attackId) return;
+    if (w.task || w.attackId || w.fleeT > 0) return;
     if (w.errandIn === undefined) w.errandIn = ERRAND_GAP_MIN + random() * (ERRAND_GAP_MAX - ERRAND_GAP_MIN);
     w.errandIn -= dt;
     if (w.errandIn > 0) return;
@@ -244,7 +244,7 @@ export function createWalkMode({ city, getState, clips, sale, vandal, fix, say, 
         x: w.x,
         z: w.z,
         yaw: w.facing,
-        pose: w.kicking ? posed(true, 'kick', w.kickPhase) : posed(true, 'walk', w.phase),
+        pose: w.kicking ? posed(true, 'kick', w.kickPhase) : posed(true, w.fleeT > 0 ? 'run' : 'walk', w.phase),
         look: w.look,
       });
     }
@@ -266,21 +266,29 @@ export function createWalkMode({ city, getState, clips, sale, vandal, fix, say, 
     return samplePose(clip, progress, newPose());
   }
 
-  // A kicking vandal within reach and in front of the player, to punch.
+  // A vandal (kicking, or on the way to kick) within reach and in front of the player, to punch.
   function nearVandal() {
     const p = mode.player;
-    return walkers.find((w) => w.kicking && inFront(p, w.x, w.z, TALK_REACH)) || null;
+    return walkers.find((w) => w.attackId && inFront(p, w.x, w.z, TALK_REACH)) || null;
   }
 
+  // Attack swings at all times. A vandal in front is punched and the attack ends; any other
+  // passer-by in front is shoved and runs off; with nobody there, the punch hits the air.
   function attack() {
-    const walker = nearVandal();
-    if (!walker) return;
     mode.player.punchT = clips.clips.punch.d;
-    vandal.punch(walker.attackId);
+    const vandalWalker = nearVandal();
+    if (vandalWalker) {
+      vandal.punch(vandalWalker.attackId);
+      return;
+    }
+    const walker = nearWalker();
+    if (walker) {
+      scareWalker(walker, mode.player);
+      say('You shove them. They run off.');
+    }
   }
 
   function updateButtons() {
-    buttons.setAttack(Boolean(nearVandal()));
     buttons.setTalk(Boolean(nearWalker()));
     buttons.setCollect(Boolean(nearMachine()));
     buttons.setFix(Boolean(nearBroken()));
