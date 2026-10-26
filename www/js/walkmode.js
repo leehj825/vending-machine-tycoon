@@ -35,7 +35,7 @@ const WALKER_LOOKS = [
   { shirt: 0xecf0f1, hat: 0x4a4a4a },
 ];
 
-export function createWalkMode({ city, getState, clips, sale, vandal, fix, stock, say, buttons }) {
+export function createWalkMode({ city, getState, clips, sale, vandal, fix, inside, say, buttons }) {
   const random = seededRandom(Date.now() % 100000);
   const walkers = spawnWalkers(getState().city, 8, random, WALKER_LOOKS);
   const mode = { active: false, player: null, stick: { x: 0, y: 0, id: null }, running: false };
@@ -125,7 +125,7 @@ export function createWalkMode({ city, getState, clips, sale, vandal, fix, stock
     }
   }
 
-  // The machine in front of the player, whether or not it holds cash: for refilling.
+  // The machine in front of the player, whether or not it holds cash: for opening.
   function machineInFront() {
     const state = getState();
     const p = mode.player;
@@ -136,9 +136,10 @@ export function createWalkMode({ city, getState, clips, sale, vandal, fix, stock
     return null;
   }
 
-  function refill() {
+  // Open shows the inside of the machine in front, with its stock and cash.
+  function openMachine() {
     const machine = machineInFront();
-    if (machine) stock.refill(machine.id);
+    if (machine) inside.open(machine.id);
   }
 
   function collect() {
@@ -334,7 +335,7 @@ export function createWalkMode({ city, getState, clips, sale, vandal, fix, stock
     buttons.setTalk(Boolean(nearWalker()));
     buttons.setCollect(Boolean(nearMachine()));
     buttons.setFix(Boolean(nearBroken()));
-    buttons.setRefill(Boolean(machineInFront()));
+    buttons.setOpen(Boolean(machineInFront()));
   }
 
   // Arrows around the player, one per nearby machine holding more cash than HQ's threshold.
@@ -425,7 +426,7 @@ export function createWalkMode({ city, getState, clips, sale, vandal, fix, stock
   buttons.collectEl.addEventListener('pointerdown', collect);
   buttons.fixEl.addEventListener('pointerdown', fixNearby);
   buttons.attackEl.addEventListener('pointerdown', attack);
-  buttons.refillEl.addEventListener('pointerdown', refill);
+  buttons.openEl.addEventListener('pointerdown', openMachine);
   buttons.runEl.addEventListener('pointerdown', () => {
     mode.running = !mode.running;
     if (mode.player) mode.player.running = mode.running;

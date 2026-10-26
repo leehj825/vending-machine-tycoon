@@ -135,7 +135,12 @@ async function start(slot) {
       },
     },
     fix: { repair: (id) => act(() => sim.repairMachine(state, id)) },
-    stock: { refill: (id) => act(() => sim.refillMachine(state, id)) },
+    inside: {
+      open: (id) => {
+        ui.openInside(id);
+        showSheet('Inside the machine', 'tab', null);
+      },
+    },
     say: (message) => ui.showMessage({ ok: true, message }),
     buttons: {
       show: (on) => {
@@ -147,7 +152,7 @@ async function start(slot) {
       setTalk: (on) => { $('talk').disabled = !on; },
       setCollect: (on) => { $('collect').disabled = !on; },
       setFix: (on) => { $('fix').disabled = !on; },
-      setRefill: (on) => { $('refill').disabled = !on; },
+      setOpen: (on) => { $('open').disabled = !on; },
       setRun: (on) => { $('run').setAttribute('aria-pressed', String(on)); },
       stick: $('stick'),
       knob: $('knob'),
@@ -155,7 +160,7 @@ async function start(slot) {
       collectEl: $('collect'),
       fixEl: $('fix'),
       attackEl: $('attack'),
-      refillEl: $('refill'),
+      openEl: $('open'),
       runEl: $('run'),
       officeEl: $('office'),
       beaconsEl: $('beacons'),
