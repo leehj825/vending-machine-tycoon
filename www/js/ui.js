@@ -73,7 +73,12 @@ export function createUi({ panel, stats, toast, act, state: current, guide = () 
       const zone = ZONES[tile.zone];
       const district = districtOf(cell.x, cell.y);
       if (!state.districts[district]) {
-        return `<h2>${zone.name} building</h2><p class="hint">The ${CONFIG.districts[district].name} district is closed. Buy its permit in HQ, under Districts, to put a machine here.</p>`;
+        const closed = CONFIG.districts[district];
+        return `
+          <h2>${zone.name} building</h2>
+          <p class="hint">The ${closed.name} district has no permit yet, so machines cannot go here. You can still walk there.</p>
+          <button class="primary" data-act="buy-district" data-id="${district}"
+            ${state.cash < closed.price ? 'disabled' : ''}>Buy ${closed.name} permit ${wholeMoney(closed.price)}</button>`;
       }
       return `
         <h2>${zone.name} building</h2>

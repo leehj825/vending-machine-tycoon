@@ -184,6 +184,7 @@ function gasStation(m, x, y) {
 function groundTile(m, grid, x, y, cell) {
   if (cell.type === 'road') {
     roadTile(m, grid, x, y);
+    districtLine(m, x, y);
     return;
   }
   if (cell.type === 'park') {
@@ -201,6 +202,12 @@ function groundTile(m, grid, x, y, cell) {
   const grass = lerpHex(GRASS_A, GRASS_B, cellNoise(x, y));
   m.flat(x, y, x + 1, y + 1, 0, grass);
   if (cellNoise(x * 7 + 1, y * 11 + 3) > 0.72) districtDecor(m, x, y);
+}
+
+// An amber line painted across a road where one district meets the next.
+function districtLine(m, x, y) {
+  if (x === CONFIG.districtSplit) m.flat(x, y, x + 0.07, y + 1, 0.006, 0xffb300);
+  if (y === CONFIG.districtSplit) m.flat(x, y, x + 1, y + 0.07, 0.006, 0xffb300);
 }
 
 // A feature on some empty tiles that says which district it is: a fountain downtown, a community

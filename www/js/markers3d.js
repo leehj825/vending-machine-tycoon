@@ -1,6 +1,6 @@
 /* global THREE */
 // The map's markers in the bright cartoon style: a bright ball over each shop front that can take a
-// machine (green when the cash covers it, yellow when not), a blue plate on a shop with a machine,
+// machine (green when the cash covers it, yellow when not), a grey padlock where a district has no permit yet, a blue plate on a shop with a machine,
 // and a round gold coin over a machine that holds cash. Each has a dark outline.
 import { CONFIG } from './config.js';
 import { districtOf } from './world.js';
@@ -18,6 +18,11 @@ const COIN_HEIGHT = 1.0 * MACHINE_SCALE + 0.12;
 const HEAD = new THREE.SphereGeometry(0.2, 16, 12);
 const COIN_DISC = new THREE.CylinderGeometry(0.15, 0.15, 0.06, 18);
 const PLATE = new THREE.BoxGeometry(0.22, 0.06, 0.22);
+const LOCKED = 0x90a4ae;
+const LOCKED_DARK = 0x546e7a;
+const PADLOCK_BODY = new THREE.BoxGeometry(0.2, 0.15, 0.1);
+const PADLOCK_SHACKLE = new THREE.TorusGeometry(0.055, 0.018, 6, 12, Math.PI);
+const KEYHOLE = new THREE.BoxGeometry(0.025, 0.05, 0.012);
 
 // A mesh with its dark outline: the same shape, a little larger, drawn behind.
 function outlined(geometry, colour) {
@@ -36,6 +41,21 @@ function pin(x, h, z, colour) {
   const ball = outlined(HEAD, colour);
   ball.position.y = 0.32;
   group.add(ball);
+  return group;
+}
+
+// A grey padlock over a shop front in a district that has no permit yet.
+function padlock(x, h, z) {
+  const group = new THREE.Group();
+  group.position.set(x, h, z);
+  const body = outlined(PADLOCK_BODY, LOCKED);
+  body.position.y = 0.3;
+  const shackle = outlined(PADLOCK_SHACKLE, LOCKED_DARK);
+  shackle.position.y = 0.37;
+  const keyhole = new THREE.Mesh(KEYHOLE, new THREE.MeshBasicMaterial({ color: 0x1d1412 }));
+  keyhole.position.set(0, 0.3, 0.055);
+  group.add(body, shackle, keyhole);
+  group.scale.setScalar(1.5);
   return group;
 }
 
@@ -62,9 +82,12 @@ export function buildMarkers3d(state) {
   const affordable = state.cash >= CONFIG.machinePrice;
   state.city.forEach((row, y) => row.forEach((cell, x) => {
     if (cell.type !== 'building') return;
-    // A district without its permit has no purchase markers.
-    if (!(state.districts?.[districtOf(x, y)] ?? true)) return;
     const h = markerHeight(cell.zone);
+    // A district without its permit shows a padlock where the purchase ball would be.
+    if (!(state.districts?.[districtOf(x, y)] ?? true)) {
+      root.add(padlock(x + 0.5, h, y + 0.5));
+      return;
+    }
     if (machineAt.has(`${x},${y}`)) root.add(plate(x + 0.5, h, y + 0.5));
     else root.add(pin(x + 0.5, h, y + 0.5, affordable ? AFFORDABLE : UNAFFORDABLE));
   }));

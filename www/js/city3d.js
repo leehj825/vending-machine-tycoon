@@ -8,7 +8,6 @@ import { buildMarkers3d } from './markers3d.js';
 import { CONFIG } from './config.js';
 import { buildMachine3d } from './machine3d.js';
 import { buildBuildings } from './buildings3d.js';
-import { districtBounds } from './world.js';
 import { createFigure, poseFigure } from './figure.js';
 
 // The colours in scene.js are final sRGB values, so three.js must not convert them.
@@ -73,11 +72,10 @@ export function createCityView(container, onTap) {
   const cityGroup = new THREE.Group();
   const machineGroup = new THREE.Group();
   const markerGroup = new THREE.Group();
-  const districtGroup = new THREE.Group();
   const pickGroup = new THREE.Group();
   const figureGroup = new THREE.Group();
   const vehicleGroup = new THREE.Group();
-  scene.add(cityGroup, machineGroup, districtGroup, markerGroup, pickGroup, figureGroup, vehicleGroup);
+  scene.add(cityGroup, machineGroup, markerGroup, pickGroup, figureGroup, vehicleGroup);
 
   const vertexMaterial = new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide });
   const cam = { target: new THREE.Vector3(7.5, 0, 7.5), yaw: MAP_VIEW.yaw, pitch: MAP_VIEW.pitch, distance: 16.5 };
@@ -88,7 +86,6 @@ export function createCityView(container, onTap) {
   let selectMesh = null;
   let machineSignature = '';
   let markerSignature = '';
-  let districtSignature = '';
   let machineMesh = null;
   const markerMeshes = [];
   const figures = new Map();
@@ -136,25 +133,6 @@ export function createCityView(container, onTap) {
     }
   }
 
-  // A district without its permit lies under a pale haze, so the player sees where machines cannot go.
-  function drawDistricts(state) {
-    const signature = (state.districts ?? []).join(',');
-    if (signature === districtSignature) return;
-    districtSignature = signature;
-    clear(districtGroup);
-    (state.districts ?? []).forEach((open, id) => {
-      if (open) return;
-      const b = districtBounds(id, state.city.length);
-      const haze = new THREE.Mesh(
-        new THREE.PlaneGeometry(b.x1 - b.x0, b.y1 - b.y0),
-        new THREE.MeshBasicMaterial({ color: 0x37474f, transparent: true, opacity: 0.4, depthWrite: false }),
-      );
-      haze.rotation.x = -Math.PI / 2;
-      haze.position.set((b.x0 + b.x1) / 2, 1.2, (b.y0 + b.y1) / 2);
-      districtGroup.add(haze);
-    });
-  }
-
   // Purchase pins, owned plates and coins. The group bobs gently, as the original's did.
   function drawMarkers(state, time) {
     const signature = `${state.cash >= CONFIG.machinePrice}|${(state.districts ?? []).join(',')}|${state.machines.map((m) => `${m.x},${m.y},${m.cash > 0}`).join('|')}`;
@@ -188,7 +166,6 @@ export function createCityView(container, onTap) {
       setSelected(selected);
     }
     drawMachines(state);
-    drawDistricts(state);
     drawMarkers(state, performance.now() / 1000);
   }
 
