@@ -1,0 +1,212 @@
+// The player and the walkers on the streets. Plain data and functions: the screen draws them and
+// feeds them input. Time is in seconds, positions in tiles.
+import { CONFIG } from './config.js';
+import {
+  clipName, findPath, machineFront, PLAYER_SPEED, playerWalkable, slideMove, walkerWalkable, WALKER_SPEED,
+} from './locomotion.js';
+
+const MOVING_HOLD = 0.3; // seconds a figure keeps its walk after a step
+const LANE = 0.4; // walkers keep to the right of the road, this far from its centre: on the pavement
+const FLEE_SECONDS = 5; // how long a walker runs off after a shove
+const FLEE_SPEED = 2.2; // a running walker's speed, as a multiple of a walk
+
+export function newPlayer(spawn) {
+  return {
+    x: spawn.x + 0.5,
+    z: spawn.y + 0.5,
+    facing: 0,
+    running: false,
+    phase: 0,
+    clip: 'walk',
+    moving: false,
+    holdT: 0,
+    punchT: 0, // seconds left in the attack motion now playing
+    punchTotal: 0, // the attack motion's full length
+    punchClip: null,
+    punchStep: 0, // the next move in the combo
+    comboT: 0, // seconds left for the next press to continue the combo
+  };
+}
+
+// Moves the player by a stick vector (dx, dz, length up to 1) in the world, then reads the step
+// against the facing to pick the clip. clips is the parsed clips.json.
+export function movePlayer(player, grid, clips, dx, dz, dt) {
+  const length = Math.hypot(dx, dz);
+  if (length < 0.02) {
+    player.holdT = Math.max(0, player.holdT - dt);
+    player.moving = player.holdT > 0;
+    return;
+  }
+  const ux = dx / length;
+  const uz = dz / length;
+  const speed = (player.running ? PLAYER_SPEED.run : PLAYER_SPEED.walk) * Math.min(1, length);
+  const next = slideMove(playerWalkable, grid, player.x, player.z, ux * speed * dt, uz * speed * dt);
+  const moved = Math.hypot(next.x - player.x, next.z - player.z);
+  player.x = next.x;
+  player.z = next.z;
+  if (moved > 1e-6) {
+    const fx = Math.sin(player.facing);
+    const fz = Math.cos(player.facing);
+    player.clip = clipName(ux * fx + uz * fz, ux * fz - uz * fx, player.running);
+    player.phase += moved / clips.clips[player.clip].stride;
+    player.holdT = MOVING_HOLD;
+  } else {
+    player.holdT = Math.max(0, player.holdT - dt);
+  }
+  player.moving = player.holdT > 0;
+}
+
+export function newWalker(id, cell, look, random) {
+  const x = cell.x + 0.5;
+  const z = cell.y + 0.5;
+  return {
+    id,
+    cell: { x: cell.x, y: cell.y },
+    prev: null,
+    from: { x, z },
+    to: { x, z },
+    progress: 1,
+    x,
+    z,
+    facing: 0,
+    phase: random() * 0.9,
+    look,
+    path: [],
+    task: null,
+    fleeT: 0,
+    fleeFrom: null,
+    // A walker with a home (the kids) stays within range tiles of it.
+    home: null,
+    range: 0,
+  };
+}
+
+// Walkers walk the roads, keep to the right, and wander from crossing to crossing unless they
+// have a machine to visit.
+export function stepWalker(walker, grid, dt, random) {
+  const speed = WALKER_SPEED * (walker.fleeT > 0 ? FLEE_SPEED : 1);
+  walker.fleeT = Math.max(0, walker.fleeT - dt);
+  if (walker.progress >= 1) {
+    if (walker.to.cell) walker.cell = walker.to.cell;
+    const step = nextStep(walker, grid, random);
+    if (!step) {
+      walker.from = { x: walker.x, z: walker.z };
+      walker.to = walker.from;
+      walker.progress = 1;
+      return arrival(walker);
+    }
+    const dirX = step.x - walker.cell.x;
+    const dirY = step.y - walker.cell.y;
+    const rightX = -dirY * LANE;
+    const rightZ = dirX * LANE;
+    // A new stretch starts where the walker is now, so a turn or a stop never jumps.
+    walker.from = { x: walker.x, z: walker.z };
+    walker.to = { x: step.x + 0.5 + rightX, z: step.y + 0.5 + rightZ, cell: step };
+    walker.progress = 0;
+  }
+  const length = Math.hypot(walker.to.x - walker.from.x, walker.to.z - walker.from.z) || 1;
+  walker.progress = Math.min(1, walker.progress + (speed * dt) / length);
+  walker.x = walker.from.x + (walker.to.x - walker.from.x) * walker.progress;
+  walker.z = walker.from.z + (walker.to.z - walker.from.z) * walker.progress;
+  const dx = walker.to.x - walker.from.x;
+  const dz = walker.to.z - walker.from.z;
+  if (Math.hypot(dx, dz) > 1e-6) walker.facing = Math.atan2(dx, dz);
+  // A kid's legs are shorter, so their steps are too: the feet keep to the ground.
+  walker.phase += (speed * dt) / (0.37 * (walker.look?.kid ? CONFIG.kidScale : 1));
+  return null;
+}
+
+// The cell a walker heads for next: the next cell on its task path, else a road neighbour.
+function nextStep(walker, grid, random) {
+  if (walker.path.length > 0) {
+    const cell = walker.path.shift();
+    walker.prev = walker.cell;
+    return cell;
+  }
+  if (walker.task) return null;
+  const options = [[1, 0], [-1, 0], [0, 1], [0, -1]]
+    .map(([dx, dy]) => ({ x: walker.cell.x + dx, y: walker.cell.y + dy }))
+    .filter((c) => walkerWalkable(grid, c.x, c.y));
+  if (options.length === 0) return null;
+  // A walker running off takes the road that leads farthest from the player.
+  if (walker.fleeT > 0 && walker.fleeFrom) {
+    const away = (c) => Math.hypot(c.x + 0.5 - walker.fleeFrom.x, c.y + 0.5 - walker.fleeFrom.z);
+    walker.prev = walker.cell;
+    return options.reduce((best, c) => (away(c) > away(best) ? c : best));
+  }
+  const roam = walker.home
+    ? options.filter((c) => Math.abs(c.x - walker.home.x) + Math.abs(c.y - walker.home.y) <= walker.range)
+    : options;
+  const allowed = roam.length > 0 ? roam : options;
+  const ahead = allowed.filter((c) => !walker.prev || c.x !== walker.prev.x || c.y !== walker.prev.y);
+  const pool = ahead.length > 0 ? ahead : allowed;
+  walker.prev = walker.cell;
+  return pool[Math.floor(random() * pool.length)];
+}
+
+// Called when a walker with a task reaches the front of its machine.
+function arrival(walker) {
+  if (walker.task && walker.path.length === 0) {
+    const done = walker.task;
+    walker.task = null;
+    return done;
+  }
+  return null;
+}
+
+// A walker the player shoves runs off from the player for a few seconds. The player is kept by
+// reference, so the walker keeps running from where the player is now.
+export function scareWalker(walker, from) {
+  walker.fleeT = FLEE_SECONDS;
+  walker.fleeFrom = from;
+  walker.task = null;
+  walker.path = [];
+}
+
+// Sends a walker to a machine's front. Returns false when the walker cannot get there.
+export function sendWalker(walker, grid, machine) {
+  const front = machineFront(grid, machine.x, machine.y);
+  if (!front) return false;
+  const path = findPath(grid, walker.cell, front.cell, walkerWalkable);
+  if (!path) return false;
+  walker.path = path;
+  walker.task = { machineId: machine.id };
+  return true;
+}
+
+// The walkers that start in the city: a few on random roads.
+export function spawnWalkers(grid, count, random, looks) {
+  const roads = [];
+  grid.forEach((row, y) => row.forEach((cell, x) => {
+    if (cell.type === 'road') roads.push({ x, y });
+  }));
+  const walkers = [];
+  for (let i = 0; i < count && roads.length > 0; i++) {
+    const cell = roads.splice(Math.floor(random() * roads.length), 1)[0];
+    walkers.push(newWalker(i + 1, cell, looks[i % looks.length], random));
+  }
+  return walkers;
+}
+
+// The kids: each plays on a street beside a school or a park, and does not wander far from it.
+// `firstId` is the id of the first kid.
+export function spawnKids(grid, count, random, looks, firstId) {
+  const spots = [];
+  grid.forEach((row, y) => row.forEach((cell, x) => {
+    if (cell.type !== 'road') return;
+    const playground = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => {
+      const next = grid[y + dy]?.[x + dx];
+      return next && (next.type === 'park' || (next.type === 'building' && next.zone === 'school'));
+    });
+    if (playground) spots.push({ x, y });
+  }));
+  const kids = [];
+  for (let i = 0; i < count && spots.length > 0; i++) {
+    const cell = spots.splice(Math.floor(random() * spots.length), 1)[0];
+    const kid = newWalker(firstId + i, cell, looks[i % looks.length], random);
+    kid.home = { x: cell.x, y: cell.y };
+    kid.range = CONFIG.kidRange;
+    kids.push(kid);
+  }
+  return kids;
+}

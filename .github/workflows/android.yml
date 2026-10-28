@@ -1,0 +1,67 @@
+name: Android
+
+# Debug APK on every branch except main. Release APK and AAB only when merged to main.
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      # The Ubuntu runner already has the Android SDK installed at ANDROID_HOME.
+      - run: npm ci
+      - run: npm test
+      - run: npx cap sync android
+      - name: Debug APK (not main)
+        if: github.ref != 'refs/heads/main'
+        working-directory: android
+        run: ./gradlew assembleDebug
+      - name: Release signing (main)
+        if: github.ref == 'refs/heads/main'
+        env:
+          KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          for name in KEYSTORE_B64 KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+            if [ -z "${!name}" ]; then
+              echo "::error::The repository secret $name is not set. The release must be signed with the same key as the Flutter version."
+              exit 1
+            fi
+          done
+          echo "$KEYSTORE_B64" | base64 --decode > android/release.jks
+          printf 'storeFile=release.jks\nstorePassword=%s\nkeyPassword=%s\nkeyAlias=%s\n' "$KEYSTORE_PASSWORD" "$KEY_PASSWORD" "$KEY_ALIAS" > android/key.properties
+      - name: Release APK and AAB (main)
+        if: github.ref == 'refs/heads/main'
+        working-directory: android
+        run: ./gradlew assembleRelease bundleRelease
+      # The signing certificate's fingerprints, to compare with the upload key in Play Console
+      # (Setup > App signing): they must match, or Play will refuse the bundle.
+      - name: Signing certificate of the bundle (main)
+        if: github.ref == 'refs/heads/main'
+        run: keytool -printcert -jarfile android/app/build/outputs/bundle/release/app-release.aab
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-build
+          path: |
+            android/app/build/outputs/apk/**/*.apk
+            android/app/build/outputs/bundle/**/*.aab
+      # The signed bundle for Play on its own, easy to find among the run's downloads.
+      - name: Release bundle (main)
+        if: github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-aab
+          path: android/app/build/outputs/bundle/release/app-release.aab
+          retention-days: 90

@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+  <meta name="theme-color" content="#ffffff">
+  <title></title>
+  <link rel="icon" href="assets/icon.png">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header>
+    <div id="stats"></div>
+    <div class="controls">
+      <button id="walk" class="ctl" aria-label="Walk out into town">Walk</button>
+      <button id="to-menu" class="ctl" aria-label="Back to the main menu">Menu</button>
+    </div>
+  </header>
+  <div id="toast" class="toast" hidden></div>
+  <main>
+    <div id="city">
+      <div id="walk-ui" hidden>
+        <div id="beacons"></div>
+        <div id="stick"><div id="knob"></div></div>
+        <button id="office" class="walk-ctl">Office</button>
+        <button id="run" class="walk-ctl" aria-pressed="false">Run</button>
+        <button id="talk" class="action" disabled>Talk</button>
+        <button id="collect" class="action" disabled>Collect</button>
+        <button id="fix" class="action" disabled>Fix</button>
+        <button id="attack" class="action">Attack</button>
+        <button id="open" class="action" disabled>Open</button>
+        <div id="inside-bar" class="inside-bar" hidden>
+          <span id="inside-info"></span>
+          <button id="inside-cash">Take cash</button>
+          <button id="inside-refill">Refill</button>
+          <button id="inside-close">Close</button>
+        </div>
+      </div>
+    </div>
+    <div id="coach" class="coach" hidden><span id="coach-text"></span><button id="coach-button">Skip</button></div>
+    <nav id="rail" class="rail">
+      <button class="rail-btn" data-tab="city">City</button>
+      <button class="rail-btn" data-tab="warehouse">Warehouse</button>
+      <button class="rail-btn" data-tab="fleet">Fleet</button>
+      <button class="rail-btn" data-tab="hq">HQ</button>
+    </nav>
+    <section id="sheet" class="sheet" hidden>
+      <div class="sheet-bar">
+        <h2 id="sheet-title"></h2>
+        <span class="sheet-buttons">
+          <button id="sheet-minimize" hidden>Minimize</button>
+          <button id="sheet-close">Close</button>
+        </span>
+      </div>
+      <div id="panel"></div>
+    </section>
+    <button id="machine-pill" class="machine-pill" hidden></button>
+  </main>
+
+  <!-- The pause dialog: from the Menu button, or when the app goes to the background. -->
+  <div id="pause-dialog" class="pause" hidden>
+    <section class="pause-card">
+      <h2>Paused</h2>
+      <p id="pause-message"></p>
+      <button id="pause-resume" class="menu-btn primary">Resume</button>
+      <button id="pause-exit" class="menu-btn">Save and exit to menu</button>
+    </section>
+  </div>
+
+  <!-- Welcome back: what the machines sold while the app was closed. -->
+  <div id="offline-dialog" class="pause" hidden>
+    <section class="pause-card">
+      <h2>Welcome back</h2>
+      <p id="offline-message"></p>
+      <button id="offline-double" class="menu-btn" hidden>📺 Ad: double it</button>
+      <button id="offline-continue" class="menu-btn primary">Continue</button>
+    </section>
+  </div>
+
+  <!-- The end-of-day summary, shown when a day closes. -->
+  <div id="summary-dialog" class="pause" hidden>
+    <section class="pause-card">
+      <h2 id="summary-title"></h2>
+      <div id="summary-body"></div>
+      <button id="summary-continue" class="menu-btn primary">Continue</button>
+    </section>
+  </div>
+
+  <!-- The main menu: shown when the page opens without a game picked. -->
+  <div id="menu" class="menu">
+    <section data-screen="main" class="menu-screen">
+      <img class="menu-logo" src="assets/icon.png" alt="">
+      <button data-go="start" class="menu-btn primary"><b>Start game</b><span>Begin a new city</span></button>
+      <button data-go="load" class="menu-btn"><b>Load game</b><span>Carry on with a saved city</span></button>
+      <button data-go="settings" class="menu-btn"><b>Settings</b><span>Music and sound volume</span></button>
+    </section>
+
+    <section data-screen="start" class="menu-screen" hidden>
+      <h2>Start a new game</h2>
+      <p class="hint">Pick a slot. A slot with a saved game is replaced.</p>
+      <button data-slot="1" data-mode="start" class="menu-btn slot"></button>
+      <button data-slot="2" data-mode="start" class="menu-btn slot"></button>
+      <button data-slot="3" data-mode="start" class="menu-btn slot"></button>
+      <button data-go="main" class="menu-btn back">Back</button>
+    </section>
+
+    <section data-screen="load" class="menu-screen" hidden>
+      <h2>Load a game</h2>
+      <p class="hint">Empty slots cannot be loaded.</p>
+      <button data-slot="1" data-mode="load" class="menu-btn slot"></button>
+      <button data-slot="2" data-mode="load" class="menu-btn slot"></button>
+      <button data-slot="3" data-mode="load" class="menu-btn slot"></button>
+      <button data-go="main" class="menu-btn back">Back</button>
+    </section>
+
+    <section data-screen="settings" class="menu-screen" hidden>
+      <h2>Settings</h2>
+      <label class="menu-slider">Master volume <output data-out="master"></output>
+        <input type="range" min="0" max="100" data-setting="master">
+      </label>
+      <label class="menu-slider">Music <output data-out="music"></output>
+        <input type="range" min="0" max="100" data-setting="music">
+      </label>
+      <label class="menu-slider">Sound effects <output data-out="sound"></output>
+        <input type="range" min="0" max="100" data-setting="sound">
+      </label>
+      <button data-go="main" class="menu-btn back">Back</button>
+    </section>
+  </div>
+
+  <script src="vendor/three.min.js"></script>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+{
+  "appId": "com.vendingmachiinetycoon.app",
+  "appName": "Vending Machine Tycoon",
+  "webDir": "www",
+  "backgroundColor": "#ffffff",
+  "android": {
+    "allowMixedContent": false
+  }
+}

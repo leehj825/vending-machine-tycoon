@@ -1,17 +1,19 @@
-# Miscellaneous
+# Dependencies and build output
+node_modules/
+dist/
+
+# Android build output (the project itself is committed)
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/app/release/
+
+# Editors and OS files
 .DS_Store
+.idea/
+*.iml
 
-# Flutter/Dart/Pub related
-.dart_tool/
-.packages
-.pub/
-.flutter-plugins-dependencies
-build/
-build/*.apk
-build/**/*.apk
-build/*apk
-
-# Local tool installs (workspace-only)
-.flutter/
-.android-sdk/
-android/app/upload-keystore.jks
+# Release signing (never commit)
+android/key.properties
+android/release.jks

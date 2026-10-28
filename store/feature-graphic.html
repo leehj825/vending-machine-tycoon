@@ -1,0 +1,23 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Feature graphic</title>
+<style>
+  html, body { margin: 0; width: 1024px; height: 500px; overflow: hidden; font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; }
+  .bg { position: absolute; inset: 0; background: linear-gradient(120deg, #1e88e5 0%, #4fc3f7 55%, #b3e5fc 100%); }
+  .city { position: absolute; inset: 0; opacity: 0.35; background: url(screenshots/01-overview.png) center 30% / 1100px auto; filter: blur(3px); }
+  .title { position: absolute; left: 48px; top: 120px; width: 460px; color: #fff; text-shadow: 0 3px 0 rgba(0,0,0,0.25); }
+  .icon { width: 120px; height: 120px; border-radius: 26px; box-shadow: 0 8px 20px rgba(0,0,0,0.3); border: 4px solid #fff; }
+  h1 { margin: 16px 0 8px; font-size: 54px; line-height: 1.02; font-weight: 900; letter-spacing: -1px; }
+  p { margin: 0; font-size: 24px; font-weight: 700; color: #fff8e1; text-shadow: 0 2px 0 rgba(0,0,0,0.25); }
+  .phone { position: absolute; width: 214px; height: 380px; border-radius: 22px; border: 6px solid #1d1412; background: #000 center / cover; box-shadow: 0 12px 28px rgba(0,0,0,0.35); }
+  .p1 { right: 270px; top: 70px; transform: rotate(-6deg); background-image: url(screenshots/01-overview.png); }
+  .p2 { right: 36px; top: 54px; transform: rotate(5deg); background-image: url(screenshots/03-machine-open.png); }
+  .p3 { right: 150px; top: 100px; transform: rotate(-1deg); z-index: 2; background-image: url(screenshots/04-vandalism.png); }
+</style>
+<div class="bg"></div><div class="city"></div>
+<div class="title">
+  <img class="icon" src="icon-512.png" alt="">
+  <h1>Vending Machine Tycoon</h1>
+  <p>Walk the city. Open the machines. Build your empire.</p>
+</div>
+<div class="phone p1"></div><div class="phone p2"></div><div class="phone p3"></div>

@@ -1,0 +1,370 @@
+:root {
+  --ink: #1e1d22;
+  --muted: #5e5b66;
+  --paper: #ffffff;
+  --soft: #f3f4f6;
+  --line: #d9dbe0;
+  --gold: #b88a1a;
+  --green: #2e7d32;
+  --red: #c62828;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  height: 100dvh;
+  overflow: hidden;
+  background: var(--soft);
+  color: var(--ink);
+  font: 15px/1.35 system-ui, -apple-system, 'Segoe UI', sans-serif;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+html { --ad-top: 0px; --ad-min: 0px; }
+/* In the Android app the banner is at least this tall, whatever height it last reported. */
+html.native { --ad-min: 64px; }
+html.native, html.native body { background: transparent; }
+/* The top ad banner, and the phone's status bar and navigation buttons, are kept clear. */
+body {
+  display: flex;
+  flex-direction: column;
+  padding-top: max(var(--ad-top), var(--ad-min), env(safe-area-inset-top, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  box-sizing: border-box;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: var(--paper);
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+
+#stats { display: flex; flex-wrap: wrap; gap: 10px; flex: 1; font-size: 13px; color: var(--muted); }
+.stat b { color: var(--ink); }
+.controls { display: flex; gap: 6px; }
+
+.ctl, button {
+  font: inherit;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+  border-radius: 8px;
+  padding: 8px 12px;
+  min-height: 40px;
+  touch-action: manipulation;
+}
+button:disabled { opacity: 0.45; }
+button.primary { background: var(--gold); border-color: var(--gold); color: #fff; font-weight: 700; }
+
+.toast {
+  position: fixed;
+  top: calc(max(var(--ad-top), var(--ad-min), env(safe-area-inset-top, 0px)) + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8px 14px;
+  border-radius: 10px;
+  color: #fff;
+  font-weight: 600;
+  z-index: 5;
+  width: max-content;
+  max-width: 92vw;
+}
+.toast.ok { background: var(--green); }
+.toast.bad { background: var(--red); }
+.toast[hidden] { display: none; }
+
+main { flex: 1; display: flex; flex-direction: column; min-height: 0; position: relative; }
+
+#city { flex: 1 1 auto; min-height: 160px; position: relative; overflow: hidden; }
+#city canvas { display: block; width: 100%; height: 100%; }
+
+.tab { flex: 1; }
+.tab.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+
+h2 { margin: 4px 0 6px; font-size: 18px; }
+h3 { margin: 14px 0 6px; font-size: 15px; }
+.hint, .note { color: var(--muted); margin: 6px 0; }
+.note { color: var(--ink); font-weight: 600; }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 8px 0; flex-wrap: wrap; }
+
+table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 14px; }
+th, td { text-align: left; padding: 6px 4px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+th { color: var(--muted); font-weight: 600; }
+td.price { white-space: nowrap; }
+td.price button { padding: 2px 10px; min-height: 32px; }
+td.price span { display: inline-block; min-width: 118px; text-align: center; }
+td.buttons { white-space: nowrap; }
+td.buttons button { padding: 4px 8px; min-height: 32px; margin-left: 4px; }
+
+
+/* The first-day guide: a banner over the city, beside the rail (or under the buttons when walking). */
+.coach {
+  position: absolute;
+  top: 8px;
+  left: 100px;
+  right: 8px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 14px;
+  background: #fff8e1;
+  border: 2px solid var(--gold);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+  font-size: 13px;
+}
+.coach.walking { top: 56px; left: 8px; }
+.coach[hidden] { display: none; }
+.coach span { flex: 1; }
+.coach button { min-height: 30px; padding: 2px 10px; font-size: 12px; }
+
+/* The left rail: City, Warehouse, Fleet and HQ, stacked over the map. */
+.rail { position: absolute; left: 8px; top: 8px; z-index: 3; display: flex; flex-direction: column; gap: 6px; }
+.rail[hidden] { display: none; }
+.rail-btn { width: 80px; padding: 8px 4px; font-size: 13px; background: rgba(255, 255, 255, 0.92); }
+.rail-btn.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+
+/* The popup: a card over most of the screen, with a bar for its title and buttons. */
+.sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  top: 8%;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  background: var(--paper);
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.2);
+}
+.sheet[hidden] { display: none; }
+.sheet-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+.sheet-bar h2 { margin: 0; }
+.sheet-buttons { display: flex; gap: 6px; }
+#panel { flex: 1 1 auto; overflow-y: auto; padding: 12px; min-height: 0; }
+
+/* A minimized machine detail: a pill at the bottom of the map. */
+.machine-pill {
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
+  z-index: 4;
+  padding: 8px 16px;
+  border-radius: 20px;
+  background: var(--ink);
+  color: #fff;
+  font-weight: 700;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25);
+}
+.machine-pill[hidden] { display: none; }
+
+/* Walk mode: the stick and the buttons sit over the city. Buttons stay visible; they are
+   disabled when their target is not close and in front. */
+#walk-ui { position: absolute; inset: 0; pointer-events: none; }
+#walk-ui[hidden] { display: none; }
+#walk-ui > * { pointer-events: auto; }
+#stick {
+  position: absolute;
+  left: 18px;
+  bottom: 18px;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.22);
+  border: 2px solid rgba(255, 255, 255, 0.6);
+  touch-action: none;
+}
+#knob {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 46px;
+  height: 46px;
+  margin: -23px 0 0 -23px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.75);
+}
+.action {
+  position: absolute;
+  right: 14px;
+  min-width: 72px;
+  text-align: center;
+  padding: 6px 12px;
+  border-radius: 24px;
+  border: none;
+  background: var(--gold);
+  color: #fff;
+  font-weight: 700;
+  font-size: 14px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+}
+#talk { bottom: 96px; }
+#fix { bottom: 56px; background: var(--red); }
+#attack { bottom: 136px; background: #6d4c41; }
+#open { bottom: 176px; background: #00897b; }
+/* The close-up of an open machine, over the dimmed city and under the walk buttons. */
+.inside-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 45%, rgba(30, 40, 70, 0.35), rgba(10, 14, 28, 0.8));
+}
+/* The bar over the city while a machine's front is open. */
+.inside-bar {
+  position: absolute;
+  top: 10px;
+  left: 8px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+  flex-wrap: wrap;
+  justify-content: center;
+  pointer-events: auto;
+}
+.inside-bar[hidden] { display: none; }
+.inside-bar button { min-height: 34px; padding: 4px 10px; font-size: 13px; }
+#inside-info { flex: 1 1 100%; text-align: center; font-size: 13px; color: var(--muted); padding: 0 4px; }
+#collect { bottom: 16px; }
+.action:disabled { opacity: 0.4; }
+.walk-ctl {
+  position: absolute;
+  top: 10px;
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.9);
+  font-size: 14px;
+}
+#office { left: 10px; }
+#run { right: 10px; }
+#run[aria-pressed="true"] { background: var(--ink); color: #fff; }
+
+.news { margin: 0; padding-left: 18px; color: var(--muted); }
+
+/* Walking: arrows on a ring around the player, pointing to machines that hold cash. */
+#walk-ui > #beacons { position: absolute; inset: 0; pointer-events: none; }
+.beacon { position: absolute; left: 50%; top: 50%; width: 0; height: 0; }
+.beacon[hidden] { display: none; }
+.beacon span {
+  position: absolute;
+  left: -12px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid #1d1412;
+  background: #ffd54f;
+  color: #1d1412;
+  text-align: center;
+  font-size: 12px;
+  line-height: 20px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.35);
+}
+
+/* The main menu: a full-screen page with the logo, large buttons, and a card for each screen. */
+.menu {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  padding-top: calc(20px + max(var(--ad-top), var(--ad-min), env(safe-area-inset-top, 0px)));
+  padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(180deg, #a7d8f2 0%, #e6f5fc 55%, #f3f4f6 100%);
+  overflow-y: auto;
+}
+.menu[hidden] { display: none; }
+.menu-screen {
+  width: min(420px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--paper);
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0 10px 30px rgba(30, 29, 34, 0.18);
+}
+.menu-screen[hidden] { display: none; }
+.menu-logo {
+  display: block;
+  width: 104px;
+  height: 104px;
+  margin: 0 auto 8px;
+  border-radius: 22px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+.menu-screen h2 { text-align: center; margin: 0; font-size: 20px; }
+.menu-screen .hint { text-align: center; margin: 0; }
+.menu-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-height: 56px;
+  padding: 12px 16px;
+  font-size: 16px;
+  text-align: left;
+  border-radius: 14px;
+}
+.menu-btn b { font-size: 17px; }
+.menu-btn span { color: var(--muted); font-size: 13px; }
+.menu-btn.primary { background: var(--gold); border-color: var(--gold); color: #fff; }
+.menu-btn.primary span { color: rgba(255, 255, 255, 0.85); }
+.menu-btn.slot { flex-direction: row; justify-content: space-between; align-items: center; gap: 10px; }
+.menu-btn.slot span { text-align: right; }
+.menu-btn.slot:disabled { opacity: 0.5; }
+.menu-btn.back { align-items: center; background: var(--soft); font-weight: 600; }
+.menu-slider { display: flex; flex-direction: column; gap: 8px; font-weight: 600; }
+.menu-slider output { float: right; color: var(--muted); font-weight: 400; }
+.menu-slider input { width: 100%; accent-color: var(--gold); }
+
+.beacon.warn span { background: #ff7043; }
+
+.trend { font-size: 12px; margin-left: 4px; }
+.trend.up { color: var(--green); }
+.trend.down { color: var(--red); }
+.trend.flat { color: var(--muted); }
+
+/* The pause dialog, over the game. */
+.pause {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.45);
+}
+.pause[hidden] { display: none; }
+.pause-card {
+  width: min(360px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--paper);
+  border-radius: 14px;
+  padding: 20px;
+}
+.pause-card h2 { text-align: center; margin: 0; }
+.pause-card { max-height: 90vh; overflow-y: auto; }
+.summary { margin: 4px 0; }
+.summary td, .summary th { padding: 3px 4px; font-size: 13px; }
+.pause-card .news { font-size: 13px; }
