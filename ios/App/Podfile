@@ -17,6 +17,9 @@ end
 target 'App' do
   capacitor_pods
   # Add your Pods here
+  # The AdMob plugin (6.x) uses the old consent (UMP) API names. UMP 3.x renamed them and breaks
+  # its build, so stay on 2.x.
+  pod 'GoogleUserMessagingPlatform', '~> 2.7'
 end
 
 post_install do |installer|
