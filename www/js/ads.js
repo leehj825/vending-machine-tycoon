@@ -39,6 +39,7 @@ export async function startAds() {
   if (!AdMob) return;
   // Transparent page background, so the banner shows where the page's background would be.
   document.documentElement.classList.add('native');
+  if (capacitor.getPlatform?.() === 'ios') document.documentElement.classList.add('ios');
   document.body.classList.add('native');
   try {
     const units = adUnits();
