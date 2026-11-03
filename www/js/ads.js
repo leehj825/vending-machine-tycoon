@@ -1,4 +1,4 @@
-// The top banner ad, shown only inside the Android app (through the AdMob Capacitor plugin). In a
+// The top banner ad, shown only inside the native apps, Android and iOS (through the AdMob Capacitor plugin). In a
 // browser there are no ads. The page leaves room for the banner: its height is set on the root
 // element as --ad-top, so the header and the city start below it.
 import { CONFIG } from './config.js';
@@ -7,6 +7,29 @@ import { CONFIG } from './config.js';
 function noBanner() {
   document.documentElement.style.setProperty('--ad-top', '0px');
   document.documentElement.style.setProperty('--ad-min', '0px');
+}
+
+// The ad unit IDs for the platform we run on, or test IDs when CONFIG.admob.testing is on.
+function adUnits() {
+  const a = CONFIG.admob;
+  const ios = window.Capacitor?.getPlatform?.() === 'ios';
+  const own = ios ? a.ios : a.android;
+  return {
+    ios,
+    banner: a.testing ? (ios ? a.iosTestBannerId : a.testBannerId) : own.bannerId,
+    rewarded: a.testing ? (ios ? a.iosRewardedTestId : a.rewardedTestId) : own.rewardedId,
+  };
+}
+
+// iOS asks the player once whether apps may track them (App Tracking Transparency). The answer
+// only decides whether ads are personalised; ads are shown either way.
+async function askTracking(AdMob) {
+  try {
+    const status = await AdMob.trackingAuthorizationStatus?.();
+    if (status?.status === 'notDetermined') await AdMob.requestTrackingAuthorization();
+  } catch {
+    // Not fatal: ads still load, just not personalised.
+  }
 }
 
 export async function startAds() {
@@ -18,6 +41,9 @@ export async function startAds() {
   document.documentElement.classList.add('native');
   document.body.classList.add('native');
   try {
+    const units = adUnits();
+    if (!units.banner) return noBanner();
+    if (units.ios) await askTracking(AdMob);
     await AdMob.initialize({});
     await AdMob.addListener('bannerAdSizeChanged', (info) => {
       document.documentElement.style.setProperty('--ad-top', `${info.height}px`);
@@ -26,7 +52,7 @@ export async function startAds() {
       noBanner();
     });
     await AdMob.showBanner({
-      adId: CONFIG.admob.testing ? CONFIG.admob.testBannerId : CONFIG.admob.bannerId,
+      adId: units.banner,
       adSize: 'ADAPTIVE_BANNER',
       position: 'TOP_CENTER',
       isTesting: CONFIG.admob.testing,
@@ -45,7 +71,7 @@ let rewardCallback = null;
 
 function rewardOptions() {
   return {
-    adId: CONFIG.admob.testing ? CONFIG.admob.rewardedTestId : CONFIG.admob.rewardedId,
+    adId: adUnits().rewarded,
     isTesting: CONFIG.admob.testing,
   };
 }
@@ -59,7 +85,10 @@ export async function startRewardAds() {
   const capacitor = window.Capacitor;
   if (!capacitor?.isNativePlatform?.()) return;
   rewardAds = capacitor.Plugins?.AdMob ?? null;
-  if (!rewardAds) return;
+  if (!rewardAds || !adUnits().rewarded) {
+    rewardAds = null; // no rewarded unit on this platform
+    return;
+  }
   try {
     await rewardAds.addListener('onRewardedVideoAdLoaded', () => { rewardReady = true; });
     await rewardAds.addListener('onRewardedVideoAdFailedToLoad', () => setTimeout(prepareReward, 30000));

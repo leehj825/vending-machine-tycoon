@@ -143,15 +143,25 @@ export const CONFIG = {
   campaignHype: 0.25,
   rushMultiplier: 10,
   rushTicks: 125,
-  // AdMob, as in the original app. The banner sits at the top of the screen, inside the Android app
-  // only. Set testing to true while you check the layout: live ads must not be clicked by their owner.
+  // AdMob. The banner sits at the top of the screen, inside the native apps only (Android and iOS).
+  // Set testing to true while you check the layout: live ads must not be clicked by their owner.
+  // The IDs are per platform: an Android ad unit does not serve on iOS. A null ID turns that ad off.
   admob: {
-    bannerId: 'ca-app-pub-4400173019354346/5798507534',
-    testBannerId: 'ca-app-pub-3940256099942544/6300978111',
     testing: false,
-    // Rewarded video: watching it to the end gives a free restock run once a day (Flutter's IDs).
-    rewardedId: 'ca-app-pub-4400173019354346/8820412223',
+    testBannerId: 'ca-app-pub-3940256099942544/6300978111',
     rewardedTestId: 'ca-app-pub-3940256099942544/5224354917',
+    iosTestBannerId: 'ca-app-pub-3940256099942544/2934735716',
+    iosRewardedTestId: 'ca-app-pub-3940256099942544/1712485313',
+    android: {
+      bannerId: 'ca-app-pub-4400173019354346/5798507534',
+      // Rewarded video: watching it to the end gives a free restock run once a day (Flutter's IDs).
+      rewardedId: 'ca-app-pub-4400173019354346/8820412223',
+    },
+    ios: {
+      bannerId: 'ca-app-pub-4400173019354346/2000388392',
+      // No iOS rewarded unit yet: create one in AdMob and put its ID here to turn it on.
+      rewardedId: null,
+    },
   },
   saveKey: 'vending_tycoon_save_v2',
 };
