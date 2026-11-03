@@ -27,12 +27,17 @@ html, body {
 html { --ad-top: 0px; --ad-min: 0px; }
 /* In the Android app the banner is at least this tall, whatever height it last reported. */
 html.native { --ad-min: 64px; }
+/* The space kept clear at the top: the banner, and the phone's status bar. On Android the banner is
+   drawn from the very top, so the larger of the two is enough. On iOS the banner sits below the
+   status bar and notch, so the two add up. */
+html { --top-clear: max(var(--ad-top), var(--ad-min), env(safe-area-inset-top, 0px)); }
+html.ios { --ad-min: 50px; --top-clear: calc(env(safe-area-inset-top, 0px) + max(var(--ad-top), var(--ad-min))); }
 html.native, html.native body { background: transparent; }
 /* The top ad banner, and the phone's status bar and navigation buttons, are kept clear. */
 body {
   display: flex;
   flex-direction: column;
-  padding-top: max(var(--ad-top), var(--ad-min), env(safe-area-inset-top, 0px));
+  padding-top: var(--top-clear);
   padding-bottom: env(safe-area-inset-bottom, 0px);
   box-sizing: border-box;
 }
@@ -66,7 +71,7 @@ button.primary { background: var(--gold); border-color: var(--gold); color: #fff
 
 .toast {
   position: fixed;
-  top: calc(max(var(--ad-top), var(--ad-min), env(safe-area-inset-top, 0px)) + 8px);
+  top: calc(var(--top-clear) + 8px);
   left: 50%;
   transform: translateX(-50%);
   padding: 8px 14px;
@@ -285,7 +290,7 @@ td.buttons button { padding: 4px 8px; min-height: 32px; margin-left: 4px; }
   align-items: center;
   justify-content: center;
   padding: 20px;
-  padding-top: calc(20px + max(var(--ad-top), var(--ad-min), env(safe-area-inset-top, 0px)));
+  padding-top: calc(20px + var(--top-clear));
   padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
   background: linear-gradient(180deg, #a7d8f2 0%, #e6f5fc 55%, #f3f4f6 100%);
   overflow-y: auto;
