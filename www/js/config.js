@@ -159,8 +159,7 @@ export const CONFIG = {
     },
     ios: {
       bannerId: 'ca-app-pub-4400173019354346/2000388392',
-      // No iOS rewarded unit yet: create one in AdMob and put its ID here to turn it on.
-      rewardedId: null,
+      rewardedId: 'ca-app-pub-4400173019354346/8905542246',
     },
   },
   saveKey: 'vending_tycoon_save_v2',
