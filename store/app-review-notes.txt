@@ -1,0 +1,26 @@
+App Review notes - Vending Machine City Tycoon (iOS 1.0)
+
+1. SCREEN RECORDING
+Recording captured on a physical iPhone: <paste the link to your recording here>
+It starts at app launch and shows: Start game, picking a save slot, the first-day guide, walking out into the city, buying and opening a machine, taking cash and refilling, the HQ and Warehouse screens, and the ad banner. The app has no account sign-in, no user-generated content, and no in-app purchases, so there are no such flows to show.
+
+2. PURPOSE AND AUDIENCE
+Vending Machine City Tycoon is a casual single-player business-simulation game for ages 4 and up. The player starts with a little cash and one vending machine in a colorful 3D city, then grows a business: buying stock at changing warehouse prices, setting prices, restocking machines by hand or by truck, collecting cash, hiring staff, and unlocking new districts. It is entertainment: a relaxed idle/tycoon game that also works offline.
+
+3. HOW TO USE THE MAIN FEATURES (no login needed)
+- Launch the app and tap "Start game", then pick any empty slot. No account, sign-in, or sample files are needed.
+- Follow the first-day guide at the top of the screen: tap a glowing ball over a shop front to buy a first machine.
+- Tap "Walk" to walk the streets with the on-screen stick (or W A S D / arrow keys with a keyboard). Walk up to a machine and tap "Open" to see its shelves, then "Take cash" and "Refill".
+- "Warehouse" buys stock, "Fleet" runs delivery trucks, "HQ" hires staff and opens districts, "City" shows the map.
+- Optional: walking up to a vandal near a machine lets the player "Talk" them down or "Attack" (cartoon-style, no blood).
+- "Menu" returns to the title screen, where saves can be loaded.
+
+4. EXTERNAL SERVICES AND TOOLS
+- Google AdMob (Google Mobile Ads SDK): shows a banner ad at the top of the screen and an optional rewarded video ad that the player chooses to watch for a bonus. The app asks for App Tracking Transparency permission before personalized ads. The game plays normally if the player declines.
+- Everything else (3D engine, graphics, sound, game rules) is bundled inside the app. There are no accounts, servers, payment processors, analytics services, or AI services. Game saves are stored locally on the device.
+
+5. REGIONAL DIFFERENCES
+The app works the same in all regions. Only the ads that AdMob serves can vary by region and by the player's tracking choice.
+
+6. REGULATED INDUSTRY / THIRD-PARTY MATERIAL
+Not applicable. The app is not in a regulated industry. All art, music, and code are original or used under their licenses.
