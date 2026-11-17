@@ -34,6 +34,8 @@ export function createWalkMode({ city, getState, clips, sale, vandal, fix, insid
   const walkers = spawnWalkers(getState().city, 8, random, Array.from({ length: 8 }, () => makeLook(random)));
   walkers.push(...spawnKids(getState().city, CONFIG.kidCount, random, Array.from({ length: CONFIG.kidCount }, () => makeLook(random, 'kid')), walkers.length + 1));
   const mode = { active: false, player: null, stick: { x: 0, y: 0, id: null }, running: false };
+  // Keys held for walking (WASD or the arrow keys), by physical key.
+  const keysDown = new Set();
 
   // Starts a walk from the road nearest the middle of town.
   function enter() {
@@ -50,6 +52,7 @@ export function createWalkMode({ city, getState, clips, sale, vandal, fix, insid
     mode.active = false;
     mode.player = null;
     mode.stick = { x: 0, y: 0, id: null };
+    keysDown.clear();
     city.setWalking(false);
     buttons.show(false);
     say('Back at the office.');
@@ -247,7 +250,8 @@ export function createWalkMode({ city, getState, clips, sale, vandal, fix, insid
       const player = mode.player;
       updateAttack(player, dt);
       player.facing = city.walkFacing();
-      const move = player.punchT > 0 ? { dx: 0, dz: 0 } : stickToWorld(mode.stick.x, mode.stick.y);
+      const push = keyboardPush() || mode.stick;
+      const move = player.punchT > 0 ? { dx: 0, dz: 0 } : stickToWorld(push.x, push.y);
       movePlayer(player, grid, clips, move.dx, move.dz, dt);
       city.follow(player.x, player.z);
       updateButtons();
@@ -426,6 +430,52 @@ export function createWalkMode({ city, getState, clips, sale, vandal, fix, insid
   // A lost release must not keep the player walking: the window also ends the hold.
   window.addEventListener('pointerup', endStick);
   window.addEventListener('pointercancel', endStick);
+
+  // Keyboard: W A S D or the arrow keys walk, like the stick. The first key press shows that a
+  // keyboard is in use (a Mac, or an iPad with a keyboard), so the on-screen stick goes away. A
+  // touch on the screen after a long pause with no keys brings it back.
+  const KEY_DIRECTION = {
+    KeyW: [0, -1], ArrowUp: [0, -1],
+    KeyS: [0, 1], ArrowDown: [0, 1],
+    KeyA: [-1, 0], ArrowLeft: [-1, 0],
+    KeyD: [1, 0], ArrowRight: [1, 0],
+  };
+  const KEYBOARD_IDLE_MS = 60000;
+  let lastKeyAt = 0;
+  // The push from the held keys, up to length 1, or null when none is held.
+  function keyboardPush() {
+    let x = 0;
+    let y = 0;
+    keysDown.forEach((code) => {
+      x += KEY_DIRECTION[code][0];
+      y += KEY_DIRECTION[code][1];
+    });
+    if (x === 0 && y === 0) return null;
+    const length = Math.hypot(x, y);
+    return { x: x / length, y: y / length };
+  }
+  function typingInField(e) {
+    const tag = e.target?.tagName;
+    return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || e.target?.isContentEditable;
+  }
+  window.addEventListener('keydown', (e) => {
+    if (!mode.active || !(e.code in KEY_DIRECTION) || typingInField(e)) return;
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    e.preventDefault();
+    keysDown.add(e.code);
+    lastKeyAt = Date.now();
+    document.documentElement.classList.add('keyboard');
+  });
+  window.addEventListener('keyup', (e) => {
+    keysDown.delete(e.code);
+  });
+  // Losing focus must not leave the player walking.
+  window.addEventListener('blur', () => keysDown.clear());
+  window.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'touch' && Date.now() - lastKeyAt > KEYBOARD_IDLE_MS) {
+      document.documentElement.classList.remove('keyboard');
+    }
+  });
 
   // The action buttons act on touch-down, so they work while another finger holds the stick.
   buttons.talkEl.addEventListener('pointerdown', talk);

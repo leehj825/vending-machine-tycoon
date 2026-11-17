@@ -190,6 +190,8 @@ td.buttons button { padding: 4px 8px; min-height: 32px; margin-left: 4px; }
   border: 2px solid rgba(255, 255, 255, 0.6);
   touch-action: none;
 }
+/* A keyboard is in use: WASD walks, so the on-screen stick is not needed. */
+html.keyboard #stick { display: none; }
 #knob {
   position: absolute;
   left: 50%;
